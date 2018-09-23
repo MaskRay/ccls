@@ -4,11 +4,12 @@
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "query_utils.h"
-using namespace ccls;
 
-#include <cstdlib>
 #include <ctype.h>
 #include <limits.h>
+#include <stdlib.h>
+
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "textDocument/definition";

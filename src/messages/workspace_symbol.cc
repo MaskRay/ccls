@@ -5,12 +5,13 @@
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "query_utils.h"
-using namespace ccls;
 
 #include <algorithm>
 #include <ctype.h>
 #include <functional>
 #include <limits.h>
+
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "workspace/symbol";

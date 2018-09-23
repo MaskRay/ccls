@@ -4,12 +4,11 @@
 #include "clang_complete.hh"
 #include "message_handler.h"
 #include "pipeline.hh"
-using namespace ccls;
 
 #include <clang/Sema/Sema.h>
-using namespace clang;
 
-#include <stdint.h>
+using namespace ccls;
+using namespace clang;
 
 namespace {
 MethodType kMethodType = "textDocument/signatureHelp";

@@ -101,7 +101,7 @@ std::string NormalizePath(const std::string &path) {
 
 void FreeUnusedMemory() {
 #ifdef __GLIBC__
-  malloc_trim(0);
+  malloc_trim(4 * 1024 * 1024);
 #endif
 }
 

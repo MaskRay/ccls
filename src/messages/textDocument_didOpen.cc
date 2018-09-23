@@ -12,7 +12,6 @@ using namespace ccls;
 namespace {
 MethodType kMethodType = "textDocument/didOpen";
 
-// Open, view, change, close file
 struct In_TextDocumentDidOpen : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 
@@ -37,7 +36,7 @@ struct Handler_TextDocumentDidOpen
     // NOTE: This function blocks code lens. If it starts taking a long time
     // we will need to find a way to unblock the code lens request.
     const auto &params = request->params;
-    std::string path = params.textDocument.uri.GetPath();
+    const std::string &path = params.textDocument.uri.GetPath();
 
     WorkingFile *working_file = working_files->OnOpen(params.textDocument);
     if (std::optional<std::string> cached_file_contents =

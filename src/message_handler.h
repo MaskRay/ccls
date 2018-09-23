@@ -75,7 +75,6 @@ MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting, jsonrpc, method,
 
 struct MessageHandler {
   DB *db = nullptr;
-  MultiQueueWaiter *waiter = nullptr;
   Project *project = nullptr;
   VFS *vfs = nullptr;
   SemanticHighlight *highlight = nullptr;

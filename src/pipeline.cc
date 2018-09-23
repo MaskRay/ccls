@@ -478,7 +478,6 @@ void MainLoop() {
   // Setup shared references.
   for (MessageHandler *handler : *MessageHandler::message_handlers) {
     handler->db = &db;
-    handler->waiter = indexer_waiter;
     handler->project = &project;
     handler->vfs = &vfs;
     handler->highlight = &highlight;
@@ -487,6 +486,7 @@ void MainLoop() {
     handler->include_complete = &include_complete;
   }
 
+  bool last_indexed = false;
   while (true) {
     std::vector<std::unique_ptr<InMessage>> messages = on_request->DequeueAll();
     bool did_work = messages.size();
@@ -503,18 +503,22 @@ void MainLoop() {
         LOG_S(ERROR) << "No handler for " << message->GetMethodType();
     }
 
-    for (int i = 80; i--;) {
+    bool indexed = false;
+    for (int i = 20; i--;) {
       std::optional<IndexUpdate> update = on_indexed->TryPopFront();
       if (!update)
         break;
       did_work = true;
+      indexed = true;
       Main_OnIndexed(&db, &highlight, &working_files, &*update);
     }
 
     if (!did_work) {
-      FreeUnusedMemory();
+      if (last_indexed)
+        FreeUnusedMemory();
       main_waiter->Wait(on_indexed, on_request);
     }
+    last_indexed = indexed;
   }
 }
 

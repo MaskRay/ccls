@@ -5,13 +5,13 @@
 #include "match.h"
 #include "message_handler.h"
 #include "pipeline.hh"
-#include "platform.h"
 #include "project.h"
 #include "working_files.h"
-using namespace ccls;
 
 #include <queue>
 #include <unordered_set>
+
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "$ccls/reload";
@@ -22,8 +22,7 @@ struct In_CclsReload : public NotificationInMessage {
     bool dependencies = true;
     std::vector<std::string> whitelist;
     std::vector<std::string> blacklist;
-  };
-  Params params;
+  } params;
 };
 MAKE_REFLECT_STRUCT(In_CclsReload::Params, dependencies, whitelist,
                     blacklist);
