@@ -18,7 +18,6 @@
 #include <llvm/ADT/DenseMap.h>
 
 #include <algorithm>
-#include <optional>
 #include <stdint.h>
 #include <string_view>
 #include <unordered_map>

@@ -11,15 +11,15 @@
 #include "project.h"
 #include "serializers/json.h"
 #include "working_files.h"
-using namespace ccls;
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
-using namespace llvm;
 
-#include <iostream>
 #include <stdexcept>
 #include <thread>
+
+using namespace ccls;
+using namespace llvm;
 
 // TODO Cleanup global variables
 extern std::string g_init_options;

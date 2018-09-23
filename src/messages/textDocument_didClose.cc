@@ -14,8 +14,7 @@ struct In_TextDocumentDidClose : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     lsTextDocumentIdentifier textDocument;
-  };
-  Params params;
+  } params;
 };
 MAKE_REFLECT_STRUCT(In_TextDocumentDidClose::Params, textDocument);
 MAKE_REFLECT_STRUCT(In_TextDocumentDidClose, params);

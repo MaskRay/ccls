@@ -13,18 +13,14 @@
 #include "serializers/json.h"
 #include "utils.h"
 #include "working_files.h"
-using namespace ccls;
 
 #include <clang/Driver/Compilation.h>
 #include <clang/Driver/Driver.h>
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Tooling/CompilationDatabase.h>
-#include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/StringSet.h>
 #include <llvm/Support/LineIterator.h>
-using namespace clang;
-using namespace llvm;
 
 #include <rapidjson/writer.h>
 
@@ -32,9 +28,13 @@ using namespace llvm;
 #include <unistd.h>
 #endif
 
-#include <limits>
+#include <limits.h>
 #include <unordered_set>
 #include <vector>
+
+using namespace ccls;
+using namespace clang;
+using namespace llvm;
 
 namespace {
 
@@ -387,7 +387,7 @@ Project::FindCompilationEntryForFile(const std::string &filename) {
   // We couldn't find the file. Try to infer it.
   // TODO: Cache inferred file in a separate array (using a lock or similar)
   Entry *best_entry = nullptr;
-  int best_score = std::numeric_limits<int>::min();
+  int best_score = INT_MIN;
   for (Entry &entry : entries) {
     int score = ComputeGuessScore(filename, entry.filename);
     if (score > best_score) {
