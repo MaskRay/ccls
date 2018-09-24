@@ -55,9 +55,5 @@ struct Project {
   void SetArgsForFile(const std::vector<const char *> &args,
                       const std::string &path);
 
-  // Run |action| on every file in the project.
-  void
-  ForAllFilteredFiles(std::function<void(int i, const Entry &entry)> action);
-
   void Index(WorkingFiles *wfiles, lsRequestId id);
 };
