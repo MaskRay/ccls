@@ -421,28 +421,25 @@ Project::FindCompilationEntryForFile(const std::string &filename) {
   return result;
 }
 
-void Project::ForAllFilteredFiles(
-    std::function<void(int i, const Entry &entry)> action) {
-  GroupMatch matcher(g_config->index.whitelist, g_config->index.blacklist);
+void Project::Index(WorkingFiles *wfiles, lsRequestId id) {
+  auto &gi = g_config->index;
+  GroupMatch match(gi.whitelist, gi.blacklist),
+      match_i(gi.initialWhitelist, gi.initialBlacklist);
   for (int i = 0; i < entries.size(); ++i) {
     const Project::Entry &entry = entries[i];
-    std::string failure_reason;
-    if (matcher.IsMatch(entry.filename, &failure_reason))
-      action(i, entries[i]);
-    else {
-      LOG_V(1) << "[" << i + 1 << "/" << entries.size() << "]: Failed "
-               << failure_reason << "; skipping " << entry.filename;
+    std::string reason;
+    if (match.IsMatch(entry.filename, &reason) &&
+        match_i.IsMatch(entry.filename, &reason)) {
+      bool interactive = wfiles->GetFileByFilename(entry.filename) != nullptr;
+      pipeline::Index(
+          entry.filename, entry.args,
+          interactive ? IndexMode::Normal : IndexMode::NonInteractive, id);
+    } else {
+      LOG_V(1) << "[" << i << "/" << entries.size() << "]: " << reason
+               << "; skip " << entry.filename;
     }
   }
-}
 
-void Project::Index(WorkingFiles *wfiles, lsRequestId id) {
-  ForAllFilteredFiles([&](int i, const Project::Entry &entry) {
-    bool interactive = wfiles->GetFileByFilename(entry.filename) != nullptr;
-    pipeline::Index(entry.filename, entry.args,
-                    interactive ? IndexMode::Normal : IndexMode::NonInteractive,
-                    id);
-  });
   pipeline::loaded_ts = pipeline::tick;
   // Dummy request to indicate that project is loaded and
   // trigger refreshing semantic highlight for all working files.
