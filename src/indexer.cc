@@ -524,7 +524,8 @@ public:
       binding = true;
     }
     auto BT = GetBaseType(T, false);
-    if (!BT.isNull() && (binding || BT->getAs<AutoType>())) {
+    if (!BT.isNull() &&
+        (binding || BT.getUnqualifiedType()->getAs<AutoType>())) {
       SmallString<256> Str;
       llvm::raw_svector_ostream OS(Str);
       PrintingPolicy PP = GetDefaultPolicy();

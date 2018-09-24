@@ -60,34 +60,6 @@ struct ScanLineEvent {
 };
 } // namespace
 
-int SemanticHighlight::GetStableId(SymbolKind kind, Usr usr) {
-  decltype(func2id) *map;
-  switch (kind) {
-  case SymbolKind::Func:
-    map = &func2id;
-    break;
-  case SymbolKind::Type:
-    map = &type2id;
-    break;
-  case SymbolKind::Var:
-    map = &var2id;
-    break;
-  case SymbolKind::File:
-  case SymbolKind::Invalid:
-    llvm_unreachable("");
-  }
-
-  auto it = map->try_emplace(usr, next_id);
-  if (it.second)
-    next_id++;
-  return it.first->second;
-}
-
-void SemanticHighlight::Init() {
-  match_ = std::make_unique<GroupMatch>(g_config->highlight.whitelist,
-                                        g_config->highlight.blacklist);
-}
-
 MessageHandler::MessageHandler() {
   // Dynamically allocate |message_handlers|, otherwise there will be static
   // initialization order races.
@@ -157,11 +129,12 @@ void EmitSkippedRanges(WorkingFile *working_file,
   pipeline::WriteStdout(kMethodType_CclsPublishSkippedRanges, out);
 }
 
-void EmitSemanticHighlighting(DB *db, SemanticHighlight *highlight,
-                              WorkingFile *wfile, QueryFile *file) {
+void EmitSemanticHighlighting(DB *db, WorkingFile *wfile, QueryFile *file) {
+  static GroupMatch match(g_config->highlight.whitelist,
+                          g_config->highlight.blacklist);
   assert(file->def);
   if (wfile->buffer_content.size() > g_config->largeFileSize ||
-      !highlight->match_->IsMatch(file->def->path))
+      !match.IsMatch(file->def->path))
     return;
 
   // Group symbols together.
@@ -174,10 +147,12 @@ void EmitSemanticHighlighting(DB *db, SemanticHighlight *highlight,
     lsSymbolKind parent_kind = lsSymbolKind::Unknown;
     lsSymbolKind kind = lsSymbolKind::Unknown;
     uint8_t storage = SC_None;
+    int idx;
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.kind) {
     case SymbolKind::Func: {
-      const QueryFunc &func = db->GetFunc(sym);
+      idx = db->func_usr[sym.usr];
+      const QueryFunc &func = db->funcs[idx];
       const QueryFunc::Def *def = func.AnyDef();
       if (!def)
         continue; // applies to for loop
@@ -218,8 +193,10 @@ void EmitSemanticHighlighting(DB *db, SemanticHighlight *highlight,
       sym.range.end.column = start_col + concise_name.size();
       break;
     }
-    case SymbolKind::Type:
-      for (auto &def : db->GetType(sym).def) {
+    case SymbolKind::Type: {
+      idx = db->type_usr[sym.usr];
+      const QueryType &type = db->types[idx];
+      for (auto &def : type.def) {
         kind = def.kind;
         detailed_name = def.detailed_name;
         if (def.spell) {
@@ -228,8 +205,10 @@ void EmitSemanticHighlighting(DB *db, SemanticHighlight *highlight,
         }
       }
       break;
+    }
     case SymbolKind::Var: {
-      const QueryVar &var = db->GetVar(sym);
+      idx = db->var_usr[sym.usr];
+      const QueryVar &var = db->vars[idx];
       for (auto &def : var.def) {
         kind = def.kind;
         storage = def.storage;
@@ -258,7 +237,7 @@ void EmitSemanticHighlighting(DB *db, SemanticHighlight *highlight,
         it->second.lsRanges.push_back(*loc);
       } else {
         Out_CclsPublishSemanticHighlighting::Symbol symbol;
-        symbol.stableId = highlight->GetStableId(sym.kind, sym.usr);
+        symbol.stableId = idx;
         symbol.parentKind = parent_kind;
         symbol.kind = kind;
         symbol.storage = storage;

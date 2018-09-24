@@ -59,7 +59,7 @@ struct Handler_TextDocumentDidOpen
     FindFileOrFail(db, project, std::nullopt, path, &file);
     if (file && file->def) {
       EmitSkippedRanges(working_file, file->def->skipped_ranges);
-      EmitSemanticHighlighting(db, highlight, working_file, file);
+      EmitSemanticHighlighting(db, working_file, file);
     }
 
     include_complete->AddFile(working_file->filename);

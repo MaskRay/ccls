@@ -487,7 +487,6 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     }
 
     idx::Init();
-    highlight->Init();
 
     // Open up / load the project.
     project->Load(project_path);
