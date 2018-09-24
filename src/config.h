@@ -204,6 +204,12 @@ struct Config {
     // If false, the indexer will be disabled.
     bool enabled = true;
 
+    // By default, all project entries will be indexed on initialization. Use
+    // these two options to exclude some. They can still be indexed after you
+    // open them.
+    std::vector<std::string> initialBlacklist;
+    std::vector<std::string> initialWhitelist;
+
     // If not 0, a file will be indexed in each tranlation unit that includes it.
     int multiVersion = 0;
 
@@ -259,7 +265,8 @@ MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
 MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
                     spellChecking, whitelist)
 MAKE_REFLECT_STRUCT(Config::Highlight, lsRanges, blacklist, whitelist)
-MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, enabled, multiVersion,
+MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, enabled,
+                    initialBlacklist, initialWhitelist, multiVersion,
                     multiVersionBlacklist, multiVersionWhitelist, onChange,
                     reparseForDependency, threads, whitelist);
 MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
