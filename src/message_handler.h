@@ -24,17 +24,6 @@ struct DB;
 struct WorkingFile;
 struct WorkingFiles;
 
-// Caches symbols for a single file for semantic highlighting to provide
-// relatively stable ids. Only supports xxx files at a time.
-struct SemanticHighlight {
-  llvm::DenseMap<Usr, int, DenseMapInfoForUsr> func2id, type2id, var2id;
-  uint32_t next_id = 0;
-  std::unique_ptr<GroupMatch> match_;
-
-  void Init();
-  int GetStableId(SymbolKind kind, Usr usr);
-};
-
 struct Out_CclsPublishSemanticHighlighting
     : public lsOutMessage<Out_CclsPublishSemanticHighlighting> {
   struct Symbol {
@@ -77,7 +66,6 @@ struct MessageHandler {
   DB *db = nullptr;
   Project *project = nullptr;
   VFS *vfs = nullptr;
-  SemanticHighlight *highlight = nullptr;
   WorkingFiles *working_files = nullptr;
   CompletionManager *clang_complete = nullptr;
   IncludeComplete *include_complete = nullptr;
@@ -107,5 +95,5 @@ bool FindFileOrFail(DB *db, Project *project, std::optional<lsRequestId> id,
 void EmitSkippedRanges(WorkingFile *working_file,
                        const std::vector<Range> &skipped_ranges);
 
-void EmitSemanticHighlighting(DB *db, SemanticHighlight *highlight,
-                              WorkingFile *working_file, QueryFile *file);
+void EmitSemanticHighlighting(DB *db, WorkingFile *working_file,
+                              QueryFile *file);
