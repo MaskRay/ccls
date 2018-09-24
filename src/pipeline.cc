@@ -356,8 +356,7 @@ void Indexer_Main(CompletionManager *completion, VFS *vfs, Project *project,
       indexer_waiter->Wait(index_request);
 }
 
-void Main_OnIndexed(DB *db, SemanticHighlight *highlight,
-                    WorkingFiles *working_files, IndexUpdate *update) {
+void Main_OnIndexed(DB *db, WorkingFiles *working_files, IndexUpdate *update) {
   if (update->refresh) {
     LOG_S(INFO)
         << "loaded project. Refresh semantic highlight for all working file.";
@@ -367,7 +366,7 @@ void Main_OnIndexed(DB *db, SemanticHighlight *highlight,
       if (db->name2file_id.find(filename) == db->name2file_id.end())
         continue;
       QueryFile *file = &db->files[db->name2file_id[filename]];
-      EmitSemanticHighlighting(db, highlight, f.get(), file);
+      EmitSemanticHighlighting(db, f.get(), file);
     }
     return;
   }
@@ -387,8 +386,7 @@ void Main_OnIndexed(DB *db, SemanticHighlight *highlight,
       wfile->SetIndexContent(g_config->index.onChange ? wfile->buffer_content
                                                       : def_u.second);
       EmitSkippedRanges(wfile, def_u.first.skipped_ranges);
-      EmitSemanticHighlighting(db, highlight, wfile,
-                               &db->files[update->file_id]);
+      EmitSemanticHighlighting(db, wfile, &db->files[update->file_id]);
     }
   }
 }
@@ -458,7 +456,6 @@ void LaunchStdout() {
 
 void MainLoop() {
   Project project;
-  SemanticHighlight highlight;
   WorkingFiles working_files;
   VFS vfs;
 
@@ -490,13 +487,12 @@ void MainLoop() {
     handler->db = &db;
     handler->project = &project;
     handler->vfs = &vfs;
-    handler->highlight = &highlight;
     handler->working_files = &working_files;
     handler->clang_complete = &clang_complete;
     handler->include_complete = &include_complete;
   }
 
-  bool last_indexed = false;
+  bool has_indexed = false;
   while (true) {
     std::vector<std::unique_ptr<InMessage>> messages = on_request->DequeueAll();
     bool did_work = messages.size();
@@ -520,15 +516,18 @@ void MainLoop() {
         break;
       did_work = true;
       indexed = true;
-      Main_OnIndexed(&db, &highlight, &working_files, &*update);
+      Main_OnIndexed(&db, &working_files, &*update);
     }
 
-    if (!did_work) {
-      if (last_indexed)
+    if (did_work)
+      has_indexed |= indexed;
+    else {
+      if (has_indexed) {
         FreeUnusedMemory();
+        has_indexed = false;
+      }
       main_waiter->Wait(on_indexed, on_request);
     }
-    last_indexed = indexed;
   }
 }
 
