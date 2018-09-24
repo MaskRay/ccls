@@ -4,6 +4,7 @@
 #include "method.h"
 #include "query.h"
 
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -38,7 +39,8 @@ enum class IndexMode {
 };
 
 namespace pipeline {
-extern int64_t loaded_ts, tick;
+extern std::atomic<int64_t> loaded_ts;
+extern int64_t tick;
 void Init();
 void LaunchStdin();
 void LaunchStdout();
