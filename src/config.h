@@ -210,13 +210,13 @@ struct Config {
     // May be too slow for big projects, so it is off by default.
     bool onChange = false;
 
+    // Number of indexer threads. If 0, 80% of cores are used.
+    int threads = 0;
+
     // Whether to reparse a file if write times of its dependencies have
     // changed. The file will always be reparsed if its own write time changes.
     // 0: no, 1: only after initial load of project, 2: yes
-    int reparseForDependency = 2;
-
-    // Number of indexer threads. If 0, 80% of cores are used.
-    int threads = 0;
+    int trackDependency = 2;
 
     std::vector<std::string> whitelist;
   } index;
@@ -256,7 +256,7 @@ MAKE_REFLECT_STRUCT(Config::Highlight, lsRanges, blacklist, whitelist)
 MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, enabled,
                     initialBlacklist, initialWhitelist, multiVersion,
                     multiVersionBlacklist, multiVersionWhitelist, onChange,
-                    reparseForDependency, threads, whitelist);
+                    threads, trackDependency, whitelist);
 MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 MAKE_REFLECT_STRUCT(Config::Xref, container, maxNum);
 MAKE_REFLECT_STRUCT(Config, compilationDatabaseCommand,

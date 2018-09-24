@@ -50,7 +50,8 @@ bool VFS::Stamp(const std::string &path, int64_t ts, int step) {
 
 namespace ccls::pipeline {
 
-int64_t loaded_ts = 0, tick = 0;
+std::atomic<int64_t> loaded_ts = ATOMIC_VAR_INIT(0);
+int64_t tick = 0;
 
 namespace {
 
@@ -187,7 +188,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
     if (!mtime1)
       return true;
     if (vfs->Stamp(request.path, *mtime1, 0))
-      reparse = 1;
+      reparse = 2;
   }
   if (g_config->index.onChange) {
     reparse = 2;
@@ -196,45 +197,55 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
     if (request.path != path_to_index)
       vfs->state[request.path].step = 0;
   }
-  if (!reparse)
+  bool track = g_config->index.trackDependency > 1 ||
+               (g_config->index.trackDependency == 1 && request.ts < loaded_ts);
+  if (!reparse && !track)
     return true;
 
-  if (reparse < 2) do {
-    std::unique_lock lock(
+  if (reparse < 2)
+    do {
+      std::unique_lock lock(
         mutexes[std::hash<std::string>()(path_to_index) % N_MUTEXES]);
-    prev = RawCacheLoad(path_to_index);
-    if (!prev || CacheInvalid(vfs, prev.get(), path_to_index, entry.args,
-                      std::nullopt))
-      break;
-    bool update = false;
-    for (const auto &dep : prev->dependencies)
-      if (auto mtime1 = LastWriteTime(dep.first.val().str())) {
-        if (dep.second < *mtime1)
-          update = true;
-      } else {
-        update = true;
-      }
-    int forDep = g_config->index.reparseForDependency;
-    if (update && (forDep > 1 || (forDep == 1 && request.ts < loaded_ts)))
-      break;
+      prev = RawCacheLoad(path_to_index);
+      if (!prev || CacheInvalid(vfs, prev.get(), path_to_index, entry.args,
+          std::nullopt))
+        break;
+      if (track)
+        for (const auto &dep : prev->dependencies) {
+          if (auto mtime1 = LastWriteTime(dep.first.val().str())) {
+            if (dep.second < *mtime1) {
+              reparse = 2;
+              break;
+            }
+          } else {
+            reparse = 2;
+            break;
+          }
+        }
+      if (reparse == 0)
+        return true;
+      if (reparse == 2)
+        break;
 
-    if (reparse < 2) {
+      if (vfs->Loaded(path_to_index))
+        return true;
       LOG_S(INFO) << "load cache for " << path_to_index;
       auto dependencies = prev->dependencies;
-      if (reparse) {
-        if (vfs->Loaded(path_to_index))
-          return true;
-        IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
-        on_indexed->PushBack(std::move(update),
-                             request.mode != IndexMode::NonInteractive);
+      IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
+      on_indexed->PushBack(std::move(update),
+        request.mode != IndexMode::NonInteractive);
+      {
         std::lock_guard lock1(vfs->mutex);
         vfs->state[path_to_index].loaded = true;
       }
       lock.unlock();
+
       for (const auto &dep : dependencies) {
         std::string path = dep.first.val().str();
+        if (!vfs->Stamp(path, dep.second, 1))
+          continue;
         std::lock_guard lock1(
-            mutexes[std::hash<std::string>()(path) % N_MUTEXES]);
+          mutexes[std::hash<std::string>()(path) % N_MUTEXES]);
         prev = RawCacheLoad(path);
         if (!prev)
           continue;
@@ -248,15 +259,14 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
         }
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
         on_indexed->PushBack(std::move(update),
-                             request.mode != IndexMode::NonInteractive);
+          request.mode != IndexMode::NonInteractive);
         if (entry.id >= 0) {
           std::lock_guard lock2(project->mutex_);
           project->path_to_entry_index[path] = entry.id;
         }
       }
       return true;
-    }
-  } while (0);
+    } while (0);
 
   LOG_IF_S(INFO, loud) << "parse " << path_to_index;
 
