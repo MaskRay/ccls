@@ -66,7 +66,7 @@ MAKE_REFLECT_STRUCT(lsCompletionOptions, resolveProvider, triggerCharacters);
 // Format document on type options
 struct lsDocumentOnTypeFormattingOptions {
   // A character on which formatting should be triggered, like `}`.
-  std::string firstTriggerCharacter;
+  std::string firstTriggerCharacter = "}";
 
   // More trigger characters.
   std::vector<std::string> moreTriggerCharacter;
@@ -77,7 +77,7 @@ MAKE_REFLECT_STRUCT(lsDocumentOnTypeFormattingOptions, firstTriggerCharacter,
 // Document link options
 struct lsDocumentLinkOptions {
   // Document links have a resolve provider as well.
-  bool resolveProvider = true;
+  bool resolveProvider = false;
 };
 MAKE_REFLECT_STRUCT(lsDocumentLinkOptions, resolveProvider);
 
@@ -170,12 +170,11 @@ struct lsServerCapabilities {
   // The server provides code lens.
   lsCodeLensOptions codeLensProvider;
   // The server provides document formatting.
-  bool documentFormattingProvider = false;
+  bool documentFormattingProvider = true;
   // The server provides document range formatting.
-  bool documentRangeFormattingProvider = false;
+  bool documentRangeFormattingProvider = true;
   // The server provides document formatting on typing.
-  std::optional<lsDocumentOnTypeFormattingOptions>
-      documentOnTypeFormattingProvider;
+  lsDocumentOnTypeFormattingOptions documentOnTypeFormattingProvider;
   // The server provides rename support.
   bool renameProvider = true;
   // The server provides document link support.
