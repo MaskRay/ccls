@@ -162,10 +162,14 @@ std::unique_ptr<IndexFile> RawCacheLoad(const std::string &path) {
                            IndexFile::kMajorVersion);
 }
 
-bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
-                   Project *project, VFS *vfs, const GroupMatch &matcher) {
+std::mutex &GetFileMutex(const std::string &path) {
   const int N_MUTEXES = 256;
   static std::mutex mutexes[N_MUTEXES];
+  return mutexes[std::hash<std::string>()(path) % N_MUTEXES];
+}
+
+bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
+                   Project *project, VFS *vfs, const GroupMatch &matcher) {
   std::optional<Index_Request> opt_request = index_request->TryPopFront();
   if (!opt_request)
     return false;
@@ -216,8 +220,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
 
   if (reparse < 2)
     do {
-      std::unique_lock lock(
-        mutexes[std::hash<std::string>()(path_to_index) % N_MUTEXES]);
+      std::unique_lock lock(GetFileMutex(path_to_index));
       prev = RawCacheLoad(path_to_index);
       if (!prev || CacheInvalid(vfs, prev.get(), path_to_index, entry.args,
           std::nullopt))
@@ -256,8 +259,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
         std::string path = dep.first.val().str();
         if (!vfs->Stamp(path, dep.second, 1))
           continue;
-        std::lock_guard lock1(
-          mutexes[std::hash<std::string>()(path) % N_MUTEXES]);
+        std::lock_guard lock1(GetFileMutex(path));
         prev = RawCacheLoad(path);
         if (!prev)
           continue;
@@ -313,7 +315,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
     LOG_IF_S(INFO, loud) << "store index for " << path << " (delta: " << !!prev
                          << ")";
     {
-      std::lock_guard lock(mutexes[std::hash<std::string>()(path) % N_MUTEXES]);
+      std::lock_guard lock(GetFileMutex(path));
       if (vfs->Loaded(path))
         prev = RawCacheLoad(path);
       else

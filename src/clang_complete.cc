@@ -202,6 +202,12 @@ std::unique_ptr<CompilerInstance> BuildCompilerInstance(
       Clang->getDiagnostics(), Clang->getInvocation().TargetOpts));
   if (!Clang->hasTarget())
     return nullptr;
+  // Construct SourceManager with UserFilesAreVolatile: true because otherwise
+  // RequiresNullTerminator: true may cause out-of-bounds read when a file is
+  // mmap'ed but is saved concurrently.
+  Clang->createFileManager();
+  Clang->setSourceManager(new SourceManager(Clang->getDiagnostics(),
+                                            Clang->getFileManager(), true));
   return Clang;
 }
 
