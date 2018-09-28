@@ -222,6 +222,7 @@ target_sources(ccls PRIVATE
   src/messages/textDocument_completion.cc
   src/messages/textDocument_definition.cc
   src/messages/textDocument_did.cc
+  src/messages/textDocument_formatting.cc
   src/messages/textDocument_documentHighlight.cc
   src/messages/textDocument_documentSymbol.cc
   src/messages/textDocument_hover.cc

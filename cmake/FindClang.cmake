@@ -69,7 +69,17 @@ set(_Clang_REQUIRED_VARS Clang_LIBRARY Clang_INCLUDE_DIR Clang_EXECUTABLE
                          LLVM_INCLUDE_DIR LLVM_BUILD_INCLUDE_DIR)
 
 _Clang_find_library(Clang_LIBRARY clangIndex)
+_Clang_find_add_library(clangFormat)
 _Clang_find_add_library(clangTooling)
+
+# TODO Remove after dropping clang 6
+_Clang_find_library(clangToolingInclusions_LIBRARY clangToolingInclusions)
+if (clangToolingInclusions_LIBRARY)
+  list(APPEND _Clang_LIBRARIES ${clangToolingInclusions_LIBRARY})
+endif()
+
+_Clang_find_add_library(clangToolingCore)
+_Clang_find_add_library(clangRewrite)
 _Clang_find_add_library(clangFrontend)
 _Clang_find_add_library(clangParse)
 _Clang_find_add_library(clangSerialization)

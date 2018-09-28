@@ -8,6 +8,7 @@ ccls, which originates from [cquery](https://github.com/cquery-project/cquery), 
   * code completion (with both signature help and snippets)
   * [definition](src/messages/textDocument_definition.cc)/[references](src/messages/textDcument_references.cc), and other cross references
   * cross reference extensions: `$ccls/call` `$ccls/inheritance` `$ccls/member` `$ccls/vars` ...
+  * formatting
   * hierarchies: [call (caller/callee) hierarchy](src/messages/ccls_call.cc), [inheritance (base/derived) hierarchy](src/messages/ccls_inheritance.cc), [member hierarchy](src/messages/ccls_member.cc)
   * [symbol rename](src/messages/textDocument_rename.cc)
   * [document symbols](src/messages/textDocument_documentSymbol.cc) and approximate search of [workspace symbol](src/messages/workspace_symbol.cc)
@@ -22,7 +23,7 @@ Saving files will incrementally update the index.
 
 Compared with cquery, it makes use of C++17 features, has less third-party dependencies and slimmed-down code base.
 It leverages Clang C++ API as [clangd](https://clang.llvm.org/extra/clangd.html) does, which provides better support for code completion and diagnostics.
-Refactoring and formatting are non-goals as they can be provided by clang-format, clang-include-fixer and other Clang based tools.
+Refactoring is a non-goal as it can be provided by clang-include-fixer and other Clang based tools.
 
 The comparison with cquery as noted on 2018-07-15:
 
