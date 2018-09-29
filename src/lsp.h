@@ -91,6 +91,8 @@ struct lsResponseError {
   void Write(Writer &visitor);
 };
 
+constexpr std::string_view ccls_xref("ccls.xref");
+
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -204,43 +206,6 @@ struct lsLocationEx : lsLocation {
   std::optional<uint16_t> role;
 };
 MAKE_REFLECT_STRUCT(lsLocationEx, uri, range, containerName, parentKind, role);
-
-template <typename T> struct lsCommand {
-  // Title of the command (ie, 'save')
-  std::string title;
-  // Actual command identifier.
-  std::string command;
-  // Arguments to run the command with.
-  // **NOTE** This must be serialized as an array. Use
-  // MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY.
-  T arguments;
-};
-template <typename TVisitor, typename T>
-void Reflect(TVisitor &visitor, lsCommand<T> &value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(title);
-  REFLECT_MEMBER(command);
-  REFLECT_MEMBER(arguments);
-  REFLECT_MEMBER_END();
-}
-
-template <typename TData, typename TCommandArguments> struct lsCodeLens {
-  // The range in which this code lens is valid. Should only span a single line.
-  lsRange range;
-  // The command this code lens represents.
-  std::optional<lsCommand<TCommandArguments>> command;
-  // A data entry field that is preserved on a code lens item between
-  // a code lens and a code lens resolve request.
-  TData data;
-};
-template <typename TVisitor, typename TData, typename TCommandArguments>
-void Reflect(TVisitor &visitor, lsCodeLens<TData, TCommandArguments> &value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(range);
-  REFLECT_MEMBER(command);
-  REFLECT_MEMBER(data);
-  REFLECT_MEMBER_END();
-}
 
 struct lsTextDocumentIdentifier {
   lsDocumentUri uri;

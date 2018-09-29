@@ -81,13 +81,6 @@ struct lsDocumentLinkOptions {
 };
 MAKE_REFLECT_STRUCT(lsDocumentLinkOptions, resolveProvider);
 
-// Execute command options.
-struct lsExecuteCommandOptions {
-  // The commands to be executed on the server
-  std::vector<std::string> commands;
-};
-MAKE_REFLECT_STRUCT(lsExecuteCommandOptions, commands);
-
 // Save options.
 struct lsSaveOptions {
   // The client is supposed to include the content on save.
@@ -180,8 +173,11 @@ struct lsServerCapabilities {
   // The server provides document link support.
   lsDocumentLinkOptions documentLinkProvider;
   // The server provides execute command support.
-  lsExecuteCommandOptions executeCommandProvider;
+  struct ExecuteCommandOptions {
+    std::vector<std::string> commands{std::string(ccls_xref)};
+  } executeCommandProvider;
 };
+MAKE_REFLECT_STRUCT(lsServerCapabilities::ExecuteCommandOptions, commands);
 MAKE_REFLECT_STRUCT(lsServerCapabilities, textDocumentSync, hoverProvider,
                     completionProvider, signatureHelpProvider,
                     definitionProvider, implementationProvider,

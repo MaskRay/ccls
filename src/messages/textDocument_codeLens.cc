@@ -13,21 +13,64 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "clang_complete.hh"
-#include "lsp_code_action.h"
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "query_utils.h"
-using namespace ccls;
+#include "serializers/json.h"
+
+#include <llvm/Support/FormatVariadic.h>
 
 #include <unordered_set>
 
-namespace {
-MethodType kMethodType = "textDocument/codeLens";
+using namespace ccls;
 
-using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
+namespace {
+const MethodType codeLens = "textDocument/codeLens",
+                 executeCommand = "workspace/executeCommand";
+
+struct lsCommand {
+  std::string title;
+  std::string command;
+  std::vector<std::string> arguments;
+};
+MAKE_REFLECT_STRUCT(lsCommand, title, command, arguments);
+
+struct lsCodeLens {
+  lsRange range;
+  std::optional<lsCommand> command;
+};
+MAKE_REFLECT_STRUCT(lsCodeLens, range, command);
+
+struct Cmd_xref {
+  Usr usr;
+  SymbolKind kind;
+  std::string field;
+};
+MAKE_REFLECT_STRUCT(Cmd_xref, usr, kind, field);
+
+struct Out_xref : public lsOutMessage<Out_xref> {
+  lsRequestId id;
+  std::vector<lsLocation> result;
+};
+MAKE_REFLECT_STRUCT(Out_xref, jsonrpc, id, result);
+
+template <typename T>
+std::string ToString(T &v) {
+  rapidjson::StringBuffer output;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(output);
+  JsonWriter json_writer(&writer);
+  Reflect(json_writer, v);
+  return output.GetString();
+}
+
+struct CommonCodeLensParams {
+  std::vector<lsCodeLens> *result;
+  DB *db;
+  WorkingFile *wfile;
+};
+
 struct In_TextDocumentCodeLens : public RequestInMessage {
-  MethodType GetMethodType() const override { return kMethodType; }
+  MethodType GetMethodType() const override { return codeLens; }
   struct Params {
     lsTextDocumentIdentifier textDocument;
   } params;
@@ -39,179 +82,85 @@ REGISTER_IN_MESSAGE(In_TextDocumentCodeLens);
 struct Out_TextDocumentCodeLens
     : public lsOutMessage<Out_TextDocumentCodeLens> {
   lsRequestId id;
-  std::vector<lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>>
-      result;
+  std::vector<lsCodeLens> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentCodeLens, jsonrpc, id, result);
 
-struct CommonCodeLensParams {
-  std::vector<TCodeLens> *result;
-  DB *db;
-  WorkingFiles *working_files;
-  WorkingFile *working_file;
-};
-
-Use OffsetStartColumn(Use use, int16_t offset) {
-  use.range.start.column += offset;
-  return use;
-}
-
-void AddCodeLens(const char *singular, const char *plural,
-                 CommonCodeLensParams *common, Use use,
-                 const std::vector<Use> &uses, bool force_display) {
-  TCodeLens code_lens;
-  std::optional<lsRange> range = GetLsRange(common->working_file, use.range);
-  if (!range)
-    return;
-  if (use.file_id < 0)
-    return;
-  code_lens.range = *range;
-  code_lens.command = lsCommand<lsCodeLensCommandArguments>();
-  code_lens.command->command = "ccls.showReferences";
-  code_lens.command->arguments.uri = GetLsDocumentUri(common->db, use.file_id);
-  code_lens.command->arguments.position = code_lens.range.start;
-
-  // Add unique uses.
-  std::vector<lsLocation> unique_uses;
-  for (Use use1 : uses) {
-    if (auto ls_loc = GetLsLocation(common->db, common->working_files, use1))
-      unique_uses.push_back(*ls_loc);
-  }
-  code_lens.command->arguments.locations.assign(unique_uses.begin(),
-                                                unique_uses.end());
-
-  // User visible label
-  size_t num_usages = unique_uses.size();
-  code_lens.command->title = std::to_string(num_usages) + " ";
-  if (num_usages == 1)
-    code_lens.command->title += singular;
-  else
-    code_lens.command->title += plural;
-
-  if (force_display || unique_uses.size() > 0)
-    common->result->push_back(code_lens);
-}
-
 struct Handler_TextDocumentCodeLens
     : BaseMessageHandler<In_TextDocumentCodeLens> {
-  MethodType GetMethodType() const override { return kMethodType; }
+  MethodType GetMethodType() const override { return codeLens; }
   void Run(In_TextDocumentCodeLens *request) override {
     auto &params = request->params;
     Out_TextDocumentCodeLens out;
     out.id = request->id;
-
     std::string path = params.textDocument.uri.GetPath();
-    clang_complete->NotifyView(path);
 
     QueryFile *file;
-    if (!FindFileOrFail(db, project, request->id,
-                        params.textDocument.uri.GetPath(), &file))
+    if (!FindFileOrFail(db, project, request->id, path, &file))
       return;
+    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
 
-    CommonCodeLensParams common;
-    common.result = &out.result;
-    common.db = db;
-    common.working_files = working_files;
-    common.working_file = working_files->GetFileByFilename(file->def->path);
+    auto Add = [&](const char *singular, Cmd_xref show, Use use, int num,
+                   bool force_display = false) {
+      if (!num && !force_display)
+        return;
+      std::optional<lsRange> range = GetLsRange(wfile, use.range);
+      if (!range)
+        return;
+      lsCodeLens &code_lens = out.result.emplace_back();
+      code_lens.range = *range;
+      code_lens.command = lsCommand();
+      code_lens.command->command = std::string(ccls_xref);
+      bool plural = num > 1 && singular[strlen(singular) - 1] != 'd';
+      code_lens.command->title =
+          llvm::formatv("{0} {1}{2}", num, singular, plural ? "s" : "").str();
+      code_lens.command->arguments.push_back(ToString(show));
+    };
+
+    auto ToSpell = [&](Use use) {
+      Maybe<Use> def = GetDefinitionSpell(db, use);
+      if (def && def->file_id == use.file_id &&
+          def->range.start.line == use.range.start.line)
+        return *def;
+      return use;
+    };
 
     std::unordered_set<Range> seen;
     for (auto [sym, refcnt] : file->outline2refcnt) {
       if (refcnt <= 0 || !seen.insert(sym.range).second)
         continue;
-      // NOTE: We OffsetColumn so that the code lens always show up in a
-      // predictable order. Otherwise, the client may randomize it.
-      Use use{{sym.range, sym.usr, sym.kind, sym.role}, file->id};
-
+      Use use = ToSpell({{sym.range, sym.usr, sym.kind, sym.role}, file->id});
       switch (sym.kind) {
-      case SymbolKind::Type: {
-        QueryType &type = db->GetType(sym);
-        const QueryType::Def *def = type.AnyDef();
-        if (!def || def->kind == lsSymbolKind::Namespace)
-          continue;
-        AddCodeLens("ref", "refs", &common, OffsetStartColumn(use, 0),
-                    type.uses, true /*force_display*/);
-        AddCodeLens("derived", "derived", &common, OffsetStartColumn(use, 1),
-                    GetTypeDeclarations(db, type.derived),
-                    false /*force_display*/);
-        AddCodeLens("var", "vars", &common, OffsetStartColumn(use, 2),
-                    GetVarDeclarations(db, type.instances, true),
-                    false /*force_display*/);
-        break;
-      }
       case SymbolKind::Func: {
         QueryFunc &func = db->GetFunc(sym);
         const QueryFunc::Def *def = func.AnyDef();
         if (!def)
           continue;
-
-        int16_t offset = 0;
-
-        // For functions, the outline will report a location that is using the
-        // extent since that is better for outline. This tries to convert the
-        // extent location to the spelling location.
-        auto try_ensure_spelling = [&](Use use) {
-          Maybe<Use> def = GetDefinitionSpell(db, use);
-          if (!def || def->range.start.line != use.range.start.line) {
-            return use;
-          }
-          return *def;
-        };
-
-        std::vector<Use> base_callers = GetUsesForAllBases(db, func);
-        std::vector<Use> derived_callers = GetUsesForAllDerived(db, func);
-        if (base_callers.empty() && derived_callers.empty()) {
-          Use loc = try_ensure_spelling(use);
-          AddCodeLens("call", "calls", &common,
-                      OffsetStartColumn(loc, offset++), func.uses,
-                      true /*force_display*/);
-        } else {
-          Use loc = try_ensure_spelling(use);
-          AddCodeLens("direct call", "direct calls", &common,
-                      OffsetStartColumn(loc, offset++), func.uses,
-                      false /*force_display*/);
-          if (!base_callers.empty())
-            AddCodeLens("base call", "base calls", &common,
-                        OffsetStartColumn(loc, offset++), base_callers,
-                        false /*force_display*/);
-          if (!derived_callers.empty())
-            AddCodeLens("derived call", "derived calls", &common,
-                        OffsetStartColumn(loc, offset++), derived_callers,
-                        false /*force_display*/);
-        }
-
-        AddCodeLens(
-            "derived", "derived", &common, OffsetStartColumn(use, offset++),
-            GetFuncDeclarations(db, func.derived), false /*force_display*/);
-
-        // "Base"
-        if (def->bases.size() == 1) {
-          Maybe<Use> base_loc = GetDefinitionSpell(
-              db, SymbolIdx{def->bases[0], SymbolKind::Func});
-          if (base_loc) {
-            std::optional<lsLocation> ls_base =
-                GetLsLocation(db, working_files, *base_loc);
-            if (ls_base) {
-              std::optional<lsRange> range =
-                  GetLsRange(common.working_file, sym.range);
-              if (range) {
-                TCodeLens code_lens;
-                code_lens.range = *range;
-                code_lens.range.start.character += offset++;
-                code_lens.command = lsCommand<lsCodeLensCommandArguments>();
-                code_lens.command->title = "Base";
-                code_lens.command->command = "ccls.goto";
-                code_lens.command->arguments.uri = ls_base->uri;
-                code_lens.command->arguments.position = ls_base->range.start;
-                out.result.push_back(code_lens);
-              }
-            }
-          }
-        } else {
-          AddCodeLens("base", "base", &common, OffsetStartColumn(use, 1),
-                      GetTypeDeclarations(db, def->bases),
-                      false /*force_display*/);
-        }
-
+        std::vector<Use> base_uses = GetUsesForAllBases(db, func);
+        std::vector<Use> derived_uses = GetUsesForAllDerived(db, func);
+        Add("ref", {sym.usr, SymbolKind::Func, "uses"}, use, func.uses.size(),
+            base_uses.empty());
+        if (base_uses.size())
+          Add("b.ref", {sym.usr, SymbolKind::Func, "bases uses"}, use,
+              base_uses.size());
+        if (derived_uses.size())
+          Add("d.ref", {sym.usr, SymbolKind::Func, "derived uses"}, use,
+              derived_uses.size());
+        if (base_uses.empty())
+          Add("base", {sym.usr, SymbolKind::Func, "bases"}, use,
+              def->bases.size());
+        Add("derived", {sym.usr, SymbolKind::Func, "derived"}, use,
+            func.derived.size());
+        break;
+      }
+      case SymbolKind::Type: {
+        QueryType &type = db->GetType(sym);
+        Add("ref", {sym.usr, SymbolKind::Type, "uses"}, use, type.uses.size(),
+            true);
+        Add("derived", {sym.usr, SymbolKind::Type, "derived"}, use,
+            type.derived.size());
+        Add("var", {sym.usr, SymbolKind::Type, "instances"}, use,
+            type.instances.size());
         break;
       }
       case SymbolKind::Var: {
@@ -219,27 +168,88 @@ struct Handler_TextDocumentCodeLens
         const QueryVar::Def *def = var.AnyDef();
         if (!def || (def->is_local() && !g_config->codeLens.localVariables))
           continue;
-
-        bool force_display = true;
-        // Do not show 0 refs on macro with no uses, as it is most likely
-        // a header guard.
-        if (def->kind == lsSymbolKind::Macro)
-          force_display = false;
-
-        AddCodeLens("ref", "refs", &common, OffsetStartColumn(use, 0), var.uses,
-                    force_display);
+        Add("ref", {sym.usr, SymbolKind::Var, "uses"}, use, var.uses.size(),
+            def->kind != lsSymbolKind::Macro);
         break;
       }
       case SymbolKind::File:
-      case SymbolKind::Invalid: {
-        assert(false && "unexpected");
-        break;
-      }
+      case SymbolKind::Invalid:
+        llvm_unreachable("");
       };
     }
 
-    pipeline::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(codeLens, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentCodeLens);
+
+struct In_WorkspaceExecuteCommand : public RequestInMessage {
+  MethodType GetMethodType() const override { return executeCommand; }
+  lsCommand params;
+};
+MAKE_REFLECT_STRUCT(In_WorkspaceExecuteCommand, id, params);
+REGISTER_IN_MESSAGE(In_WorkspaceExecuteCommand);
+
+struct Handler_WorkspaceExecuteCommand
+    : BaseMessageHandler<In_WorkspaceExecuteCommand> {
+  MethodType GetMethodType() const override { return executeCommand; }
+  void Run(In_WorkspaceExecuteCommand *request) override {
+    const auto &params = request->params;
+    if (params.arguments.empty())
+      return;
+    rapidjson::Document reader;
+    reader.Parse(params.arguments[0].c_str());
+    JsonReader json_reader{&reader};
+    if (params.command == ccls_xref) {
+      Cmd_xref cmd;
+      Reflect(json_reader, cmd);
+      Out_xref out;
+      out.id = request->id;
+      auto Map = [&](auto &&uses) {
+        for (auto &use : uses)
+          if (auto loc = GetLsLocation(db, working_files, use))
+            out.result.push_back(std::move(*loc));
+      };
+      switch (cmd.kind) {
+      case SymbolKind::Func: {
+        QueryFunc &func = db->Func(cmd.usr);
+        if (cmd.field == "bases") {
+          if (auto *def = func.AnyDef())
+            Map(GetFuncDeclarations(db, def->bases));
+        } else if (cmd.field == "bases uses") {
+          Map(GetUsesForAllBases(db, func));
+        } else if (cmd.field == "derived") {
+          Map(GetFuncDeclarations(db, func.derived));
+        } else if (cmd.field == "derived uses") {
+          Map(GetUsesForAllDerived(db, func));
+        } else if (cmd.field == "uses") {
+          Map(func.uses);
+        }
+        break;
+      }
+      case SymbolKind::Type: {
+        QueryType &type = db->Type(cmd.usr);
+        if (cmd.field == "derived") {
+          Map(GetTypeDeclarations(db, type.derived));
+        } else if (cmd.field == "instances") {
+          Map(GetVarDeclarations(db, type.instances, 7));
+        } else if (cmd.field == "uses") {
+          Map(type.uses);
+        }
+        break;
+      }
+      case SymbolKind::Var: {
+        QueryVar &var = db->Var(cmd.usr);
+        if (cmd.field == "uses")
+          Map(var.uses);
+        break;
+      }
+      default:
+        break;
+      }
+      pipeline::WriteStdout(executeCommand, out);
+    }
+  }
+};
+REGISTER_MESSAGE_HANDLER(Handler_WorkspaceExecuteCommand);
 } // namespace
