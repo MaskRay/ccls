@@ -6,12 +6,6 @@
 #include "working_files.h"
 using namespace ccls;
 
-struct CommandArgs {
-  lsDocumentUri textDocumentUri;
-  std::vector<lsTextEdit> edits;
-};
-MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(CommandArgs, textDocumentUri, edits);
-
 namespace {
 MethodType kMethodType = "textDocument/codeAction";
 
@@ -41,10 +35,17 @@ MAKE_REFLECT_STRUCT(In_TextDocumentCodeAction::lsCodeActionParams, textDocument,
 MAKE_REFLECT_STRUCT(In_TextDocumentCodeAction, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentCodeAction);
 
+struct lsCodeAction {
+  std::string title;
+  const char *kind = "quickfix";
+  lsWorkspaceEdit edit;
+};
+MAKE_REFLECT_STRUCT(lsCodeAction, title, kind, edit);
+
 struct Out_TextDocumentCodeAction
     : public lsOutMessage<Out_TextDocumentCodeAction> {
   lsRequestId id;
-  std::vector<lsCommand<CommandArgs>> result;
+  std::vector<lsCodeAction> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentCodeAction, jsonrpc, id, result);
 
@@ -64,12 +65,12 @@ struct Handler_TextDocumentCodeAction
     working_files->DoAction([&]() { diagnostics = wfile->diagnostics_; });
     for (lsDiagnostic &diag : diagnostics)
       if (diag.fixits_.size()) {
-        lsCommand<CommandArgs> command;
-        command.title = "FixIt: " + diag.message;
-        command.command = "ccls._applyFixIt";
-        command.arguments.textDocumentUri = params.textDocument.uri;
-        command.arguments.edits = diag.fixits_;
-        out.result.push_back(command);
+        lsCodeAction &cmd = out.result.emplace_back();
+        cmd.title = "FixIt: " + diag.message;
+        auto &edit = cmd.edit.documentChanges.emplace_back();
+        edit.textDocument.uri = params.textDocument.uri;
+        edit.textDocument.version = wfile->version;
+        edit.edits = diag.fixits_;
       }
     pipeline::WriteStdout(kMethodType, out);
   }
