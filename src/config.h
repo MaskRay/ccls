@@ -118,25 +118,27 @@ struct Config {
     // that implement their own filtering and sorting logic.
     bool filterAndSort = true;
 
-    // Regex patterns to match include completion candidates against. They
-    // receive the absolute file path.
-    //
-    // For example, to hide all files in a /CACHE/ folder, use ".*/CACHE/.*"
-    std::vector<std::string> includeBlacklist;
+    struct Include {
+      // Regex patterns to match include completion candidates against. They
+      // receive the absolute file path.
+      //
+      // For example, to hide all files in a /CACHE/ folder, use ".*/CACHE/.*"
+      std::vector<std::string> blacklist;
 
-    // Maximum path length to show in completion results. Paths longer than this
-    // will be elided with ".." put at the front. Set to 0 or a negative number
-    // to disable eliding.
-    int includeMaxPathSize = 30;
+      // Maximum path length to show in completion results. Paths longer than
+      // this will be elided with ".." put at the front. Set to 0 or a negative
+      // number to disable eliding.
+      int maxPathSize = 30;
 
-    // Whitelist that file paths will be tested against. If a file path does not
-    // end in one of these values, it will not be considered for
-    // auto-completion. An example value is { ".h", ".hpp" }
-    //
-    // This is significantly faster than using a regex.
-    std::vector<std::string> includeSuffixWhitelist = {".h", ".hpp", ".hh", ".inc"};
+      // Whitelist that file paths will be tested against. If a file path does
+      // not end in one of these values, it will not be considered for
+      // auto-completion. An example value is { ".h", ".hpp" }
+      //
+      // This is significantly faster than using a regex.
+      std::vector<std::string> suffixWhitelist = {".h", ".hpp", ".hh", ".inc"};
 
-    std::vector<std::string> includeWhitelist;
+      std::vector<std::string> whitelist;
+    } include;
   } completion;
 
   struct Diagnostics {
@@ -164,6 +166,9 @@ struct Config {
 
   // Semantic highlighting
   struct Highlight {
+    // Disable semantic highlighting for files larger than the size.
+    int64_t largeFileSize = 2 * 1024 * 1024;
+
     // true: LSP line/character; false: position
     bool lsRanges = false;
 
@@ -189,9 +194,6 @@ struct Config {
     // - https://github.com/autozimu/LanguageClient-neovim/issues/224
     int comments = 2;
 
-    // If false, the indexer will be disabled.
-    bool enabled = true;
-
     // By default, all project entries will be indexed on initialization. Use
     // these two options to exclude some. They can still be indexed after you
     // open them.
@@ -215,14 +217,11 @@ struct Config {
 
     // Whether to reparse a file if write times of its dependencies have
     // changed. The file will always be reparsed if its own write time changes.
-    // 0: no, 1: only after initial load of project, 2: yes
+    // 0: no, 1: only during initial load of project, 2: yes
     int trackDependency = 2;
 
     std::vector<std::string> whitelist;
   } index;
-
-  // Disable semantic highlighting for files larger than the size.
-  int64_t largeFileSize = 2 * 1024 * 1024;
 
   struct WorkspaceSymbol {
     int caseSensitivity = 1;
@@ -246,24 +245,24 @@ MAKE_REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, pathMappings,
 MAKE_REFLECT_STRUCT(Config::ClientCapability, hierarchicalDocumentSymbolSupport,
                     snippetSupport);
 MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
+MAKE_REFLECT_STRUCT(Config::Completion::Include, blacklist, maxPathSize,
+                    suffixWhitelist, whitelist);
 MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
-                    dropOldRequests, duplicateOptional, filterAndSort,
-                    includeBlacklist, includeMaxPathSize,
-                    includeSuffixWhitelist, includeWhitelist);
+                    dropOldRequests, duplicateOptional, filterAndSort, include);
 MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
                     spellChecking, whitelist)
-MAKE_REFLECT_STRUCT(Config::Highlight, lsRanges, blacklist, whitelist)
-MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, enabled,
-                    initialBlacklist, initialWhitelist, multiVersion,
-                    multiVersionBlacklist, multiVersionWhitelist, onChange,
-                    threads, trackDependency, whitelist);
+MAKE_REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist,
+                    whitelist)
+MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, initialBlacklist,
+                    initialWhitelist, multiVersion, multiVersionBlacklist,
+                    multiVersionWhitelist, onChange, threads, trackDependency,
+                    whitelist);
 MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 MAKE_REFLECT_STRUCT(Config::Xref, container, maxNum);
 MAKE_REFLECT_STRUCT(Config, compilationDatabaseCommand,
                     compilationDatabaseDirectory, cacheDirectory, cacheFormat,
-
                     clang, client, codeLens, completion, diagnostics, highlight,
-                    index, largeFileSize, workspaceSymbol, xref);
+                    index, workspaceSymbol, xref);
 
 extern Config *g_config;
 

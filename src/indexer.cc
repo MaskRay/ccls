@@ -1230,9 +1230,6 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
       const std::vector<const char *> &args,
       const std::vector<std::pair<std::string, std::string>> &remapped, bool &ok) {
   ok = true;
-  if (!g_config->index.enabled)
-    return {};
-
   auto PCH = std::make_shared<PCHContainerOperations>();
   llvm::IntrusiveRefCntPtr<vfs::FileSystem> FS = vfs::getRealFileSystem();
   std::shared_ptr<CompilerInvocation> CI = BuildCompilerInvocation(args, FS);

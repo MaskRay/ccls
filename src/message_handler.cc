@@ -121,7 +121,7 @@ void EmitSemanticHighlighting(DB *db, WorkingFile *wfile, QueryFile *file) {
   static GroupMatch match(g_config->highlight.whitelist,
                           g_config->highlight.blacklist);
   assert(file->def);
-  if (wfile->buffer_content.size() > g_config->largeFileSize ||
+  if (wfile->buffer_content.size() > g_config->highlight.largeFileSize ||
       !match.IsMatch(file->def->path))
     return;
 
