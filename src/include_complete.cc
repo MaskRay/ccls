@@ -35,13 +35,11 @@ struct CompletionCandidate {
 };
 
 std::string ElideLongPath(const std::string &path) {
-  if (g_config->completion.includeMaxPathSize <= 0)
+  if (g_config->completion.include.maxPathSize <= 0 ||
+      (int)path.size() <= g_config->completion.include.maxPathSize)
     return path;
 
-  if ((int)path.size() <= g_config->completion.includeMaxPathSize)
-    return path;
-
-  size_t start = path.size() - g_config->completion.includeMaxPathSize;
+  size_t start = path.size() - g_config->completion.include.maxPathSize;
   return ".." + path.substr(start + 2);
 }
 
@@ -113,11 +111,11 @@ void IncludeComplete::Rescan() {
   absolute_path_to_completion_item.clear();
   inserted_paths.clear();
 
-  if (!match_ && (g_config->completion.includeWhitelist.size() ||
-                  g_config->completion.includeBlacklist.size()))
+  if (!match_ && (g_config->completion.include.whitelist.size() ||
+                  g_config->completion.include.blacklist.size()))
     match_ =
-        std::make_unique<GroupMatch>(g_config->completion.includeWhitelist,
-                                     g_config->completion.includeBlacklist);
+        std::make_unique<GroupMatch>(g_config->completion.include.whitelist,
+                                     g_config->completion.include.blacklist);
 
   is_scanning = true;
   std::thread([this]() {
@@ -156,7 +154,7 @@ void IncludeComplete::InsertCompletionItem(const std::string &absolute_path,
 }
 
 void IncludeComplete::AddFile(const std::string &absolute_path) {
-  if (!EndsWithAny(absolute_path, g_config->completion.includeSuffixWhitelist))
+  if (!EndsWithAny(absolute_path, g_config->completion.include.suffixWhitelist))
     return;
   if (match_ && !match_->IsMatch(absolute_path))
     return;
@@ -186,7 +184,7 @@ void IncludeComplete::InsertIncludesFromDirectory(std::string directory,
       directory, true /*recursive*/, false /*add_folder_to_path*/,
       [&](const std::string &path) {
         if (!include_cpp &&
-            !EndsWithAny(path, g_config->completion.includeSuffixWhitelist))
+            !EndsWithAny(path, g_config->completion.include.suffixWhitelist))
           return;
         if (match_ && !match_->IsMatch(directory + path))
           return;

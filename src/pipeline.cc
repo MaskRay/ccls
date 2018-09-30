@@ -295,7 +295,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
                             path_to_index, entry.args, remapped, ok);
 
   if (!ok) {
-    if (g_config->index.enabled && request.id.Valid()) {
+    if (request.id.Valid()) {
       Out_Error out;
       out.id = request.id;
       out.error.code = lsErrorCodes::InternalError;
