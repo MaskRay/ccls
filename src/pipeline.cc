@@ -62,7 +62,8 @@ bool VFS::Stamp(const std::string &path, int64_t ts, int step) {
 
 namespace ccls::pipeline {
 
-std::atomic<int64_t> loaded_ts = ATOMIC_VAR_INIT(0);
+std::atomic<int64_t> loaded_ts = ATOMIC_VAR_INIT(0),
+                     pending_index_requests = ATOMIC_VAR_INIT(0);
 int64_t tick = 0;
 
 namespace {
@@ -175,6 +176,9 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
     return false;
   auto &request = *opt_request;
   bool loud = request.mode != IndexMode::OnChange;
+  struct RAII {
+    ~RAII() { pending_index_requests--; }
+  } raii;
 
   // Dummy one to trigger refresh semantic highlight.
   if (request.path.empty()) {
@@ -189,7 +193,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
     return false;
   }
 
-  Project::Entry entry = project->FindCompilationEntryForFile(request.path);
+  Project::Entry entry = project->FindEntry(request.path, true);
   if (request.args.size())
     entry.args = request.args;
   std::string path_to_index = entry.filename;
@@ -547,6 +551,7 @@ void MainLoop() {
 
 void Index(const std::string &path, const std::vector<const char *> &args,
            IndexMode mode, lsRequestId id) {
+  pending_index_requests++;
   index_request->PushBack({path, args, mode, id}, mode != IndexMode::NonInteractive);
 }
 

@@ -59,7 +59,7 @@ struct Project {
 
   // Lookup the CompilationEntry for |filename|. If no entry was found this
   // will infer one based on existing project structure.
-  Entry FindCompilationEntryForFile(const std::string &filename);
+  Entry FindEntry(const std::string &path, bool can_be_inferred);
 
   // If the client has overridden the flags, or specified them for a file
   // that is not in the compilation_database.json make sure those changes

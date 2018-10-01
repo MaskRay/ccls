@@ -386,13 +386,16 @@ void Project::SetArgsForFile(const std::vector<const char *> &args,
   }
 }
 
-Project::Entry
-Project::FindCompilationEntryForFile(const std::string &filename) {
+Project::Entry Project::FindEntry(const std::string &path,
+                                  bool can_be_inferred) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto it = path_to_entry_index.find(filename);
-    if (it != path_to_entry_index.end())
-      return entries[it->second];
+    auto it = path_to_entry_index.find(path);
+    if (it != path_to_entry_index.end()) {
+      Project::Entry &entry = entries[it->second];
+      if (can_be_inferred || entry.filename == path)
+        return entry;
+    }
   }
 
   // We couldn't find the file. Try to infer it.
@@ -400,7 +403,7 @@ Project::FindCompilationEntryForFile(const std::string &filename) {
   Entry *best_entry = nullptr;
   int best_score = INT_MIN;
   for (Entry &entry : entries) {
-    int score = ComputeGuessScore(filename, entry.filename);
+    int score = ComputeGuessScore(path, entry.filename);
     if (score > best_score) {
       best_score = score;
       best_entry = &entry;
@@ -409,10 +412,10 @@ Project::FindCompilationEntryForFile(const std::string &filename) {
 
   Project::Entry result;
   result.is_inferred = true;
-  result.filename = filename;
+  result.filename = path;
   if (!best_entry) {
     result.args.push_back("%clang");
-    result.args.push_back(Intern(filename));
+    result.args.push_back(Intern(path));
   } else {
     result.args = best_entry->args;
 
@@ -424,7 +427,7 @@ Project::FindCompilationEntryForFile(const std::string &filename) {
       try {
         if (arg == best_entry->filename ||
             sys::path::filename(arg) == best_entry_base_name)
-          arg = Intern(filename);
+          arg = Intern(path);
       } catch (...) {
       }
     }

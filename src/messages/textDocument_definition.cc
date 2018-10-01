@@ -76,21 +76,11 @@ struct Handler_TextDocumentDefinition
     Out_TextDocumentDefinition out;
     out.id = request->id;
 
-    Maybe<Range> range;
-    SymbolKind kind;
     Maybe<Use> on_def;
     WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
     lsPosition &ls_pos = params.position;
 
-    for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, ls_pos)) {
-      if (!range) {
-        range = sym.range;
-        kind = sym.kind;
-      } else if (!(sym.range == *range && sym.kind == kind)) {
-        break;
-      }
-      // Found symbol. Return definition.
-
+    for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, ls_pos, true)) {
       // Special cases which are handled:
       //  - symbol has declaration but no definition (ie, pure virtual)
       //  - goto declaration while in definition of recursive type
@@ -129,6 +119,7 @@ struct Handler_TextDocumentDefinition
       out.result.erase(std::unique(out.result.begin(), out.result.end()),
                        out.result.end());
     } else {
+      Maybe<Range> range;
       // Check #include
       for (const IndexInclude &include : file->def->includes) {
         if (include.line == ls_pos.line) {

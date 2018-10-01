@@ -29,7 +29,6 @@ limitations under the License.
 #include <llvm/ADT/CachedHashString.h>
 #include <llvm/ADT/DenseMap.h>
 
-#include <algorithm>
 #include <stdint.h>
 #include <string_view>
 #include <unordered_map>

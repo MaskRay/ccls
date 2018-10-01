@@ -18,7 +18,6 @@ limitations under the License.
 #include <optional>
 #include <string_view>
 
-#include <algorithm>
 #include <iterator>
 #include <memory>
 #include <string>
