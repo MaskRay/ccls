@@ -179,23 +179,25 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig *config) {
 
   std::unordered_map<std::string, std::vector<const char *>> folder_args;
   std::vector<std::string> files;
+  const std::string &project_dir = config->project_dir;
 
-  GetFilesInFolder(config->project_dir, true /*recursive*/,
+  GetFilesInFolder(project_dir, true /*recursive*/,
                    true /*add_folder_to_path*/,
                    [&folder_args, &files](const std::string &path) {
                      if (SourceFileLanguage(path) != LanguageId::Unknown) {
                        files.push_back(path);
                      } else if (sys::path::filename(path) == ".ccls") {
-                       LOG_S(INFO) << "Using .ccls arguments from " << path;
-                       folder_args.emplace(sys::path::parent_path(path),
-                                           ReadCompilerArgumentsFromFile(path));
+                       std::vector<const char *> args = ReadCompilerArgumentsFromFile(path);
+                       folder_args.emplace(sys::path::parent_path(path), args);
+                       std::string l;
+                       for (size_t i = 0; i < args.size(); i++) {
+                         if (i)
+                           l += ' ';
+                         l += args[i];
+                       }
+                       LOG_S(INFO) << "use " << path << ": " << l;
                      }
                    });
-
-  const std::string &project_dir = config->project_dir;
-  const auto &project_dir_args = folder_args[project_dir];
-  LOG_IF_S(INFO, !project_dir_args.empty())
-      << "Using .ccls arguments " << StringJoin(project_dir_args);
 
   auto GetCompilerArgumentForFile = [&project_dir,
                                      &folder_args](std::string cur) {
