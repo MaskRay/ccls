@@ -15,7 +15,6 @@ limitations under the License.
 
 #pragma once
 
-#include "lru_cache.h"
 #include "lsp.h"
 #include "method.h"
 #include "query.h"

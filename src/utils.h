@@ -19,7 +19,6 @@ limitations under the License.
 #include <string_view>
 
 #include <iterator>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -41,26 +40,6 @@ std::vector<std::string> SplitString(const std::string &str,
                                      const std::string &delimiter);
 
 std::string LowerPathIfInsensitive(const std::string &path);
-
-template <typename TValues, typename TMap>
-std::string StringJoinMap(const TValues &values, const TMap &map,
-                          const std::string &sep = ", ") {
-  std::string result;
-  bool first = true;
-  for (auto &entry : values) {
-    if (!first)
-      result += sep;
-    first = false;
-    result += map(entry);
-  }
-  return result;
-}
-
-template <typename TValues>
-std::string StringJoin(const TValues &values, const std::string &sep = ", ") {
-  return StringJoinMap(values, [](const std::string &entry) { return entry; },
-                       sep);
-}
 
 // Ensures that |path| ends in a slash.
 void EnsureEndsInSlash(std::string &path);

@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
     if (!opt_init.empty()) {
       // We check syntax error here but override client-side
       // initializationOptions in messages/initialize.cc
-      g_init_options = opt_init;
+      g_init_options = opt_init.getValue();
       rapidjson::Document reader;
       rapidjson::ParseResult ok = reader.Parse(g_init_options.c_str());
       if (!ok) {
