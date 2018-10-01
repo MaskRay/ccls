@@ -296,7 +296,8 @@ std::optional<lsSymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *wfile,
                                              QueryFile *file,
-                                             lsPosition &ls_pos) {
+                                             lsPosition &ls_pos,
+                                             bool smallest) {
   std::vector<SymbolRef> symbols;
   // If multiVersion > 0, index may not exist and thus index_lines is empty.
   if (wfile && wfile->index_lines.size()) {
@@ -341,6 +342,14 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *wfile,
           return t > 0;
         return a.usr < b.usr;
       });
+  if (symbols.size() && smallest) {
+    SymbolRef sym = symbols[0];
+    for (size_t i = 1; i < symbols.size(); i++)
+      if (!(sym.range == symbols[i].range && sym.kind == symbols[i].kind)) {
+        symbols.resize(i);
+        break;
+      }
+  }
 
   return symbols;
 }

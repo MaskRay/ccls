@@ -5,10 +5,27 @@
 #include "pipeline.hh"
 #include "query_utils.h"
 #include "symbol.h"
+
+#include <algorithm>
 using namespace ccls;
 
 namespace {
 MethodType kMethodType = "textDocument/documentHighlight";
+
+struct lsDocumentHighlight {
+  enum Kind { Text = 1, Read = 2, Write = 3 };
+
+  lsRange range;
+  int kind = 1;
+
+  // ccls extension
+  Role role = Role::None;
+
+  bool operator<(const lsDocumentHighlight &o) const {
+    return !(range == o.range) ? range < o.range : kind < o.kind;
+  }
+};
+MAKE_REFLECT_STRUCT(lsDocumentHighlight, range, kind, role);
 
 struct In_TextDocumentDocumentHighlight : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
@@ -32,39 +49,41 @@ struct Handler_TextDocumentDocumentHighlight
     QueryFile *file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file,
-                        &file_id)) {
+                        &file_id))
       return;
-    }
-
     WorkingFile *working_file =
         working_files->GetFileByFilename(file->def->path);
 
     Out_TextDocumentDocumentHighlight out;
     out.id = request->id;
 
-    for (SymbolRef sym :
-         FindSymbolsAtLocation(working_file, file, request->params.position)) {
-      // Found symbol. Return references to highlight.
-      EachOccurrence(db, sym, true, [&](Use use) {
-        if (use.file_id != file_id)
-          return;
-        if (std::optional<lsLocation> ls_loc =
-                GetLsLocation(db, working_files, use)) {
-          lsDocumentHighlight highlight;
-          highlight.range = ls_loc->range;
-          if (use.role & Role::Write)
-            highlight.kind = lsDocumentHighlightKind::Write;
-          else if (use.role & Role::Read)
-            highlight.kind = lsDocumentHighlightKind::Read;
-          else
-            highlight.kind = lsDocumentHighlightKind::Text;
-          highlight.role = use.role;
-          out.result.push_back(highlight);
-        }
-      });
-      break;
+    std::vector<SymbolRef> syms = FindSymbolsAtLocation(
+        working_file, file, request->params.position, true);
+    for (auto [sym, refcnt] : file->symbol2refcnt) {
+      if (refcnt <= 0)
+        continue;
+      Usr usr = sym.usr;
+      SymbolKind kind = sym.kind;
+      if (std::none_of(syms.begin(), syms.end(), [&](auto &sym1) {
+            return usr == sym1.usr && kind == sym1.kind;
+          }))
+        continue;
+      if (auto ls_loc =
+              GetLsLocation(db, working_files,
+                            Use{{sym.range, usr, kind, sym.role}, file_id})) {
+        lsDocumentHighlight highlight;
+        highlight.range = ls_loc->range;
+        if (sym.role & Role::Write)
+          highlight.kind = lsDocumentHighlight::Write;
+        else if (sym.role & Role::Read)
+          highlight.kind = lsDocumentHighlight::Read;
+        else
+          highlight.kind = lsDocumentHighlight::Text;
+        highlight.role = sym.role;
+        out.result.push_back(highlight);
+      }
     }
-
+    std::sort(out.result.begin(), out.result.end());
     pipeline::WriteStdout(kMethodType, out);
   }
 };

@@ -113,8 +113,10 @@ struct Handler_TextDocumentDidOpen
     if (args.size())
       project->SetArgsForFile(args, path);
 
-    // Submit new index request if it is not a header file.
-    if (SourceFileLanguage(path) != LanguageId::Unknown)
+    // Submit new index request if it is not a header file or there is no
+    // pending index request.
+    if (SourceFileLanguage(path) != LanguageId::Unknown ||
+        !pipeline::pending_index_requests)
       pipeline::Index(path, args, IndexMode::Normal);
 
     clang_complete->NotifyView(path);

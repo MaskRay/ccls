@@ -219,16 +219,13 @@ void CompletionPreloadMain(CompletionManager *manager) {
     if (!session)
       continue;
 
-    // For inferred session, don't build preamble because changes in a.h will
-    // invalidate it.
-    if (!session->inferred) {
-      const auto &args = session->file.args;
-      WorkingFiles::Snapshot snapshot = session->wfiles->AsSnapshot(
-        {StripFileType(session->file.filename)});
-      if (std::unique_ptr<CompilerInvocation> CI =
-              BuildCompilerInvocation(args, session->FS))
-        session->BuildPreamble(*CI, request.path);
-    }
+    const auto &args = session->file.args;
+    WorkingFiles::Snapshot snapshot =
+        session->wfiles->AsSnapshot({StripFileType(session->file.filename)});
+    if (std::unique_ptr<CompilerInvocation> CI =
+            BuildCompilerInvocation(args, session->FS))
+      session->BuildPreamble(*CI, request.path);
+
     int debounce =
         is_open ? g_config->diagnostics.onOpen : g_config->diagnostics.onSave;
     if (debounce >= 0) {
@@ -528,7 +525,7 @@ bool CompletionManager::EnsureCompletionOrCreatePreloadSession(
 
   // No CompletionSession, create new one.
   auto session = std::make_shared<ccls::CompletionSession>(
-      project_->FindCompilationEntryForFile(path), working_files_, PCH);
+      project_->FindEntry(path, false), working_files_, PCH);
   if (session->file.filename != path) {
     session->inferred = true;
     session->file.filename = path;
@@ -557,7 +554,7 @@ CompletionManager::TryGetSession(const std::string &path, bool preload,
   session = sessions.TryGet(path);
   if (!session && !preload) {
     session = std::make_shared<ccls::CompletionSession>(
-        project_->FindCompilationEntryForFile(path), working_files_, PCH);
+        project_->FindEntry(path, false), working_files_, PCH);
     sessions.Insert(path, session);
     LOG_S(INFO) << "create session for " << path;
     if (is_open)

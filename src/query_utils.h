@@ -39,7 +39,8 @@ std::optional<lsSymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *working_file,
                                              QueryFile *file,
-                                             lsPosition &ls_pos);
+                                             lsPosition &ls_pos,
+                                             bool smallest = false);
 
 template <typename Fn> void WithEntity(DB *db, SymbolIdx sym, Fn &&fn) {
   switch (sym.kind) {
