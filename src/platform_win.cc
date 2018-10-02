@@ -15,8 +15,8 @@
 #include <sys/types.h>
 
 #include <algorithm>
-#include <cassert>
 #include <string>
+#include <thread>
 
 std::string NormalizePath(const std::string &path) {
   DWORD retval = 0;
@@ -47,6 +47,10 @@ void TraceMe() {}
 std::string GetExternalCommandOutput(const std::vector<std::string> &command,
                                      std::string_view input) {
   return "";
+}
+
+void SpawnThread(void *(*fn)(void *), void *arg) {
+  std::thread(fn, arg).detach();
 }
 
 #endif
