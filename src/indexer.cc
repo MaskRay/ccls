@@ -1033,10 +1033,10 @@ public:
       break;
     }
     case Decl::CXXConstructor:
-    case Decl::CXXConversion:
       func->def.kind = lsSymbolKind::Constructor;
       break;
     case Decl::CXXDestructor:
+    case Decl::CXXConversion:
       func->def.kind = lsSymbolKind::Method;
       break;
     case Decl::Var:
