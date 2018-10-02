@@ -30,9 +30,9 @@ int ComputeRangeSize(const Range &range) {
 }
 
 template <typename Q>
-std::vector<Use> GetDeclarations(llvm::DenseMap<WrappedUsr, int> &entity_usr,
-                                 std::vector<Q> &entities,
-                                 const std::vector<Usr> &usrs) {
+std::vector<Use>
+GetDeclarations(llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
+                std::vector<Q> &entities, const std::vector<Usr> &usrs) {
   std::vector<Use> ret;
   ret.reserve(usrs.size());
   for (Usr usr : usrs) {
@@ -105,16 +105,24 @@ std::vector<Use> GetVarDeclarations(DB *db, const std::vector<Usr> &usrs,
 }
 
 std::vector<Use> GetNonDefDeclarations(DB *db, SymbolIdx sym) {
+  std::vector<Use> ret;
   switch (sym.kind) {
   case SymbolKind::Func:
-    return db->GetFunc(sym).declarations;
+    for (auto &d : db->GetFunc(sym).declarations)
+      ret.push_back(d);
+    break;
   case SymbolKind::Type:
-    return db->GetType(sym).declarations;
+    for (auto &d : db->GetType(sym).declarations)
+      ret.push_back(d);
+    break;
   case SymbolKind::Var:
-    return db->GetVar(sym).declarations;
+    for (auto &d : db->GetVar(sym).declarations)
+      ret.push_back(d);
+    break;
   default:
-    return {};
+    break;
   }
+  return ret;
 }
 
 std::vector<Use> GetUsesForAllBases(DB *db, QueryFunc &root) {
@@ -159,29 +167,16 @@ std::vector<Use> GetUsesForAllDerived(DB *db, QueryFunc &root) {
   return ret;
 }
 
-std::optional<lsPosition> GetLsPosition(WorkingFile *working_file,
-                                        const Position &position) {
-  if (!working_file)
-    return lsPosition{position.line, position.column};
-
-  int column = position.column;
-  if (std::optional<int> start =
-          working_file->GetBufferPosFromIndexPos(position.line, &column, false))
-    return lsPosition{*start, column};
-  return std::nullopt;
-}
-
-std::optional<lsRange> GetLsRange(WorkingFile *working_file,
+std::optional<lsRange> GetLsRange(WorkingFile *wfile,
                                   const Range &location) {
-  if (!working_file) {
+  if (!wfile || wfile->index_lines.empty())
     return lsRange{lsPosition{location.start.line, location.start.column},
                    lsPosition{location.end.line, location.end.column}};
-  }
 
   int start_column = location.start.column, end_column = location.end.column;
-  std::optional<int> start = working_file->GetBufferPosFromIndexPos(
+  std::optional<int> start = wfile->GetBufferPosFromIndexPos(
       location.start.line, &start_column, false);
-  std::optional<int> end = working_file->GetBufferPosFromIndexPos(
+  std::optional<int> end = wfile->GetBufferPosFromIndexPos(
       location.end.line, &end_column, true);
   if (!start || !end)
     return std::nullopt;
@@ -279,11 +274,8 @@ lsSymbolKind GetSymbolKind(DB *db, SymbolIdx sym) {
   return ret;
 }
 
-// Returns a symbol. The symbol will have *NOT* have a location assigned.
-std::optional<lsSymbolInformation> GetSymbolInfo(DB *db,
-                                                 WorkingFiles *working_files,
-                                                 SymbolIdx sym,
-                                                 bool detailed_name) {
+std::optional<lsSymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
+                                                 bool detailed) {
   switch (sym.kind) {
   case SymbolKind::Invalid:
     break;
@@ -300,12 +292,11 @@ std::optional<lsSymbolInformation> GetSymbolInfo(DB *db,
   default: {
     lsSymbolInformation info;
     EachEntityDef(db, sym, [&](const auto &def) {
-      if (detailed_name)
+      if (detailed)
         info.name = def.detailed_name;
       else
         info.name = def.Name(true);
       info.kind = def.kind;
-      info.containerName = def.detailed_name;
       return false;
     });
     return info;
@@ -315,12 +306,14 @@ std::optional<lsSymbolInformation> GetSymbolInfo(DB *db,
   return std::nullopt;
 }
 
-std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *working_file,
+std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *wfile,
                                              QueryFile *file,
-                                             lsPosition &ls_pos) {
+                                             lsPosition &ls_pos,
+                                             bool smallest) {
   std::vector<SymbolRef> symbols;
-  if (working_file) {
-    if (auto line = working_file->GetIndexPosFromBufferPos(
+  // If multiVersion > 0, index may not exist and thus index_lines is empty.
+  if (wfile && wfile->index_lines.size()) {
+    if (auto line = wfile->GetIndexPosFromBufferPos(
             ls_pos.line, &ls_pos.character, false)) {
       ls_pos.line = *line;
     } else {
@@ -329,9 +322,6 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *working_file,
     }
   }
 
-  for (SymbolRef sym : file->def->all_symbols)
-    if (sym.range.Contains(ls_pos.line, ls_pos.character))
-      symbols.push_back(sym);
   for (auto [sym, refcnt] : file->symbol2refcnt)
     if (refcnt > 0 && sym.range.Contains(ls_pos.line, ls_pos.character))
       symbols.push_back(sym);
@@ -364,6 +354,14 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *working_file,
           return t > 0;
         return a.usr < b.usr;
       });
+  if (symbols.size() && smallest) {
+    SymbolRef sym = symbols[0];
+    for (size_t i = 1; i < symbols.size(); i++)
+      if (!(sym.range == symbols[i].range && sym.kind == symbols[i].kind)) {
+        symbols.resize(i);
+        break;
+      }
+  }
 
   return symbols;
 }

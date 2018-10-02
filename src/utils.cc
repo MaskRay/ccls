@@ -15,12 +15,15 @@ limitations under the License.
 
 #include "utils.h"
 
-#include "filesystem.hh"
-using namespace llvm;
 #include "log.hh"
 #include "platform.h"
 
 #include <siphash.h>
+
+#include <llvm/ADT/StringRef.h>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/Path.h>
+using namespace llvm;
 
 #include <algorithm>
 #include <assert.h>
@@ -29,17 +32,6 @@ using namespace llvm;
 #include <functional>
 #include <string.h>
 #include <unordered_map>
-using namespace std::placeholders;
-
-void TrimInPlace(std::string &s) {
-  auto f = [](char c) { return !isspace(c); };
-  s.erase(s.begin(), std::find_if(s.begin(), s.end(), f));
-  s.erase(std::find_if(s.rbegin(), s.rend(), f).base(), s.end());
-}
-std::string Trim(std::string s) {
-  TrimInPlace(s);
-  return s;
-}
 
 uint64_t HashUsr(std::string_view s) {
   union {
@@ -69,7 +61,8 @@ bool StartsWith(std::string_view s, std::string_view prefix) {
 }
 
 bool EndsWithAny(std::string_view s, const std::vector<std::string> &ss) {
-  return std::any_of(ss.begin(), ss.end(), std::bind(EndsWith, s, _1));
+  return std::any_of(ss.begin(), ss.end(),
+                     std::bind(EndsWith, s, std::placeholders::_1));
 }
 
 bool FindAnyPartial(const std::string &value,
@@ -124,6 +117,22 @@ std::string EscapeFileName(std::string path) {
   return path;
 }
 
+std::string ResolveIfRelative(const std::string &directory,
+                              const std::string &path) {
+  if (sys::path::is_absolute(path))
+    return path;
+  SmallString<256> Ret;
+  sys::path::append(Ret, directory, path);
+  return NormalizePath(Ret.str());
+}
+
+std::optional<int64_t> LastWriteTime(const std::string &path) {
+  sys::fs::file_status Status;
+  if (sys::fs::status(path, Status))
+    return {};
+  return sys::toTimeT(Status.getLastModificationTime());
+}
+
 std::optional<std::string> ReadContent(const std::string &filename) {
   char buf[4096];
   std::string ret;
@@ -145,13 +154,6 @@ void WriteToFile(const std::string &filename, const std::string &content) {
     return;
   }
   fclose(f);
-}
-
-std::optional<int64_t> LastWriteTime(const std::string &filename) {
-  sys::fs::file_status Status;
-  if (sys::fs::status(filename, Status))
-    return {};
-  return Status.getLastModificationTime().time_since_epoch().count();
 }
 
 // Find discontinous |search| in |content|.

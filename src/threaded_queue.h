@@ -48,8 +48,7 @@ private:
   }
 
   template <size_t... Is> void unlock_impl(std::index_sequence<Is...>) {
-    (void)std::initializer_list<int>{
-        (std::get<Is>(tuple_)->mutex_.unlock(), 0)...};
+    (std::get<Is>(tuple_)->mutex_.unlock(), ...);
   }
 
   std::tuple<Queue...> tuple_;

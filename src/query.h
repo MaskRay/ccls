@@ -21,28 +21,40 @@ limitations under the License.
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallVector.h>
 
+namespace llvm {
+template <> struct DenseMapInfo<SymbolRef> {
+  static inline SymbolRef getEmptyKey() { return {}; }
+  static inline SymbolRef getTombstoneKey() {
+    SymbolRef ret{};
+    ret.usr = -1;
+    return ret;
+  }
+  static unsigned getHashValue(SymbolRef sym) {
+    return std::hash<SymbolRef>()(sym);
+  }
+  static bool isEqual(SymbolRef l, SymbolRef r) { return l == r; }
+};
+}
+
 struct QueryFile {
   struct Def {
     std::string path;
-    std::vector<std::string> args;
+    std::vector<const char *> args;
     LanguageId language;
     // Includes in the file.
     std::vector<IndexInclude> includes;
-    // Outline of the file (ie, for code lens).
-    std::vector<SymbolRef> outline;
-    // Every symbol found in the file (ie, for goto definition)
-    std::vector<SymbolRef> all_symbols;
     // Parts of the file which are disabled.
     std::vector<Range> skipped_ranges;
-    // Used by |$ccls/freshenIndex|.
-    std::vector<std::string> dependencies;
+    // Used by |$ccls/reload|.
+    std::vector<const char *> dependencies;
   };
 
   using DefUpdate = std::pair<Def, std::string>;
 
   int id = -1;
   std::optional<Def> def;
-  std::unordered_map<SymbolRef, int> symbol2refcnt;
+  llvm::DenseMap<SymbolRef, int> symbol2refcnt;
+  llvm::DenseMap<SymbolRef, int> outline2refcnt;
 };
 
 template <typename Q, typename QDef> struct QueryEntity {
@@ -61,6 +73,9 @@ template <typename Q, typename QDef> struct QueryEntity {
   }
 };
 
+using DeclRefUpdate =
+    std::unordered_map<Usr,
+                       std::pair<std::vector<DeclRef>, std::vector<DeclRef>>>;
 using UseUpdate =
     std::unordered_map<Usr, std::pair<std::vector<Use>, std::vector<Use>>>;
 using UsrUpdate =
@@ -69,7 +84,7 @@ using UsrUpdate =
 struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
   Usr usr;
   llvm::SmallVector<Def, 1> def;
-  std::vector<Use> declarations;
+  std::vector<DeclRef> declarations;
   std::vector<Use> uses;
   std::vector<Usr> derived;
 };
@@ -77,7 +92,7 @@ struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
 struct QueryType : QueryEntity<QueryType, TypeDef> {
   Usr usr;
   llvm::SmallVector<Def, 1> def;
-  std::vector<Use> declarations;
+  std::vector<DeclRef> declarations;
   std::vector<Use> uses;
   std::vector<Usr> derived;
   std::vector<Usr> instances;
@@ -86,7 +101,7 @@ struct QueryType : QueryEntity<QueryType, TypeDef> {
 struct QueryVar : QueryEntity<QueryVar, VarDef> {
   Usr usr;
   llvm::SmallVector<Def, 1> def;
-  std::vector<Use> declarations;
+  std::vector<DeclRef> declarations;
   std::vector<Use> uses;
 };
 
@@ -109,37 +124,34 @@ struct IndexUpdate {
 
   // Function updates.
   int funcs_hint;
-  std::vector<Usr> funcs_removed;
+  std::vector<std::pair<Usr, QueryFunc::Def>> funcs_removed;
   std::vector<std::pair<Usr, QueryFunc::Def>> funcs_def_update;
-  UseUpdate funcs_declarations;
+  DeclRefUpdate funcs_declarations;
   UseUpdate funcs_uses;
   UsrUpdate funcs_derived;
 
   // Type updates.
   int types_hint;
-  std::vector<Usr> types_removed;
+  std::vector<std::pair<Usr, QueryType::Def>> types_removed;
   std::vector<std::pair<Usr, QueryType::Def>> types_def_update;
-  UseUpdate types_declarations;
+  DeclRefUpdate types_declarations;
   UseUpdate types_uses;
   UsrUpdate types_derived;
   UsrUpdate types_instances;
 
   // Variable updates.
   int vars_hint;
-  std::vector<Usr> vars_removed;
+  std::vector<std::pair<Usr, QueryVar::Def>> vars_removed;
   std::vector<std::pair<Usr, QueryVar::Def>> vars_def_update;
-  UseUpdate vars_declarations;
+  DeclRefUpdate vars_declarations;
   UseUpdate vars_uses;
 };
 
-struct WrappedUsr {
-  Usr usr;
-};
-template <> struct llvm::DenseMapInfo<WrappedUsr> {
-  static inline WrappedUsr getEmptyKey() { return {0}; }
-  static inline WrappedUsr getTombstoneKey() { return {~0ULL}; }
-  static unsigned getHashValue(WrappedUsr w) { return w.usr; }
-  static bool isEqual(WrappedUsr l, WrappedUsr r) { return l.usr == r.usr; }
+struct DenseMapInfoForUsr {
+  static inline Usr getEmptyKey() { return 0; }
+  static inline Usr getTombstoneKey() { return ~0ULL; }
+  static unsigned getHashValue(Usr w) { return w; }
+  static bool isEqual(Usr l, Usr r) { return l == r; }
 };
 
 using Lid2file_id = std::unordered_map<int, int>;
@@ -149,13 +161,16 @@ using Lid2file_id = std::unordered_map<int, int>;
 struct DB {
   std::vector<QueryFile> files;
   llvm::StringMap<int> name2file_id;
-  llvm::DenseMap<WrappedUsr, int> func_usr, type_usr, var_usr;
+  llvm::DenseMap<Usr, int, DenseMapInfoForUsr> func_usr, type_usr, var_usr;
   std::vector<QueryFunc> funcs;
   std::vector<QueryType> types;
   std::vector<QueryVar> vars;
 
+  void clear();
+
+  template <typename Def>
   void RemoveUsrs(SymbolKind kind, int file_id,
-                  const std::vector<Usr> &to_remove);
+                  const std::vector<std::pair<Usr, Def>> &to_remove);
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate *update);
   int GetFileId(const std::string &path);
@@ -168,13 +183,13 @@ struct DB {
               std::vector<std::pair<Usr, QueryVar::Def>> &&us);
   std::string_view GetSymbolName(SymbolIdx sym, bool qualified);
 
-  bool HasFunc(Usr usr) const { return func_usr.count({usr}); }
-  bool HasType(Usr usr) const { return type_usr.count({usr}); }
-  bool HasVar(Usr usr) const { return var_usr.count({usr}); }
+  bool HasFunc(Usr usr) const { return func_usr.count(usr); }
+  bool HasType(Usr usr) const { return type_usr.count(usr); }
+  bool HasVar(Usr usr) const { return var_usr.count(usr); }
 
-  QueryFunc &Func(Usr usr) { return funcs[func_usr[{usr}]]; }
-  QueryType &Type(Usr usr) { return types[type_usr[{usr}]]; }
-  QueryVar &Var(Usr usr) { return vars[var_usr[{usr}]]; }
+  QueryFunc &Func(Usr usr) { return funcs[func_usr[usr]]; }
+  QueryType &Type(Usr usr) { return types[type_usr[usr]]; }
+  QueryVar &Var(Usr usr) { return vars[var_usr[usr]]; }
 
   QueryFile &GetFile(SymbolIdx ref) { return files[ref.usr]; }
   QueryFunc &GetFunc(SymbolIdx ref) { return Func(ref.usr); }

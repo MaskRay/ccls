@@ -34,8 +34,8 @@ OUTPUT:
       "short_name": "Foo",
       "kind": 23,
       "declarations": [],
-      "spell": "2:8-2:11|0|1|2",
-      "extent": "2:1-4:2|0|1|0",
+      "spell": "2:8-2:11|0|1|2|-1",
+      "extent": "2:1-4:2|0|1|0|-1",
       "alias_of": 0,
       "bases": [],
       "derived": [],
@@ -43,7 +43,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["6:9-6:12|0|1|4", "7:9-7:12|0|1|4"]
+      "uses": ["6:9-6:12|0|1|4|-1", "7:9-7:12|0|1|4|-1"]
     }],
   "usr2var": [{
       "usr": 12028309045033782423,
@@ -52,8 +52,8 @@ OUTPUT:
       "short_name": "b",
       "hover": "int b = Foo<bool>::var",
       "declarations": [],
-      "spell": "7:5-7:6|0|1|2",
-      "extent": "7:1-7:23|0|1|0",
+      "spell": "7:5-7:6|0|1|2|-1",
+      "extent": "7:1-7:23|0|1|0|-1",
       "type": 53,
       "uses": [],
       "kind": 13,
@@ -64,9 +64,9 @@ OUTPUT:
       "qual_name_offset": 21,
       "short_name": "var",
       "hover": "static constexpr int Foo::var = 3",
-      "declarations": ["3:24-3:27|10528472276654770367|2|1025"],
+      "declarations": ["3:24-3:27|3:3-3:31|10528472276654770367|2|1025|-1"],
       "type": 53,
-      "uses": ["6:19-6:22|0|1|12", "7:20-7:23|0|1|12"],
+      "uses": ["6:19-6:22|0|1|12|-1", "7:20-7:23|0|1|12|-1"],
       "kind": 13,
       "storage": 2
     }, {
@@ -76,8 +76,8 @@ OUTPUT:
       "short_name": "a",
       "hover": "int a = Foo<int>::var",
       "declarations": [],
-      "spell": "6:5-6:6|0|1|2",
-      "extent": "6:1-6:22|0|1|0",
+      "spell": "6:5-6:6|0|1|2|-1",
+      "extent": "6:1-6:22|0|1|0|-1",
       "type": 53,
       "uses": [],
       "kind": 13,

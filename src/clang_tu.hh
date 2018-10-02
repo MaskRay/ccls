@@ -14,20 +14,15 @@ limitations under the License.
 ==============================================================================*/
 
 #pragma once
+
 #include "position.h"
-#include "working_files.h"
 
-#include <clang/Frontend/ASTUnit.h>
+#include <clang/Basic/LangOptions.h>
+#include <clang/Basic/FileManager.h>
+#include <clang/Basic/SourceManager.h>
 #include <clang/Frontend/CompilerInstance.h>
-#include <llvm/Support/CrashRecoveryContext.h>
 
-#include <memory>
-#include <stdlib.h>
-#include <string>
-#include <vector>
-
-std::vector<clang::ASTUnit::RemappedFile>
-GetRemapped(const WorkingFiles::Snapshot &snapshot);
+std::string PathFromFileEntry(const clang::FileEntry &file);
 
 Range FromCharSourceRange(const clang::SourceManager &SM,
                           const clang::LangOptions &LangOpts,
@@ -42,14 +37,8 @@ Range FromTokenRange(const clang::SourceManager &SM,
                      const clang::LangOptions &LangOpts, clang::SourceRange R,
                      llvm::sys::fs::UniqueID *UniqueID = nullptr);
 
-struct ClangTranslationUnit {
-  static std::unique_ptr<ClangTranslationUnit>
-  Create(const std::string &filepath, const std::vector<std::string> &args,
-         const WorkingFiles::Snapshot &snapshot, bool diagnostic);
+std::unique_ptr<clang::CompilerInvocation>
+BuildCompilerInvocation(std::vector<const char *> args,
+                        llvm::IntrusiveRefCntPtr<clang::vfs::FileSystem> VFS);
 
-  int Reparse(llvm::CrashRecoveryContext &CRC,
-              const WorkingFiles::Snapshot &snapshot);
-
-  std::shared_ptr<clang::PCHContainerOperations> PCHCO;
-  std::unique_ptr<clang::ASTUnit> Unit;
-};
+const char *ClangBuiltinTypeName(int);

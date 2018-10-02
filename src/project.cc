@@ -15,7 +15,6 @@ limitations under the License.
 
 #include "project.h"
 
-#include "clang_utils.h"
 #include "filesystem.hh"
 #include "language.h"
 #include "log.hh"
@@ -25,17 +24,14 @@ limitations under the License.
 #include "serializers/json.h"
 #include "utils.h"
 #include "working_files.h"
-using namespace ccls;
 
 #include <clang/Driver/Compilation.h>
 #include <clang/Driver/Driver.h>
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Tooling/CompilationDatabase.h>
-#include <llvm/ADT/ArrayRef.h>
+#include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/StringSet.h>
 #include <llvm/Support/LineIterator.h>
-using namespace clang;
-using namespace llvm;
 
 #include <rapidjson/writer.h>
 
@@ -43,9 +39,13 @@ using namespace llvm;
 #include <unistd.h>
 #endif
 
-#include <limits>
+#include <limits.h>
 #include <unordered_set>
 #include <vector>
+
+using namespace ccls;
+using namespace clang;
+using namespace llvm;
 
 namespace {
 
@@ -54,7 +54,6 @@ enum class ProjectMode { CompileCommandsJson, DotCcls, ExternalCommand };
 struct ProjectConfig {
   std::unordered_set<std::string> quote_dirs;
   std::unordered_set<std::string> angle_dirs;
-  std::vector<std::string> extra_flags;
   std::string project_dir;
   ProjectMode mode = ProjectMode::CompileCommandsJson;
 };
@@ -66,15 +65,6 @@ enum OptionClass {
   Separate,
 };
 
-std::string ResolveIfRelative(const std::string &directory,
-                              const std::string &path) {
-  if (sys::path::is_absolute(path))
-    return path;
-  SmallString<256> Ret;
-  sys::path::append(Ret, directory, path);
-  return NormalizePath(Ret.str());
-}
-
 struct ProjectProcessor {
   ProjectConfig *config;
   std::unordered_set<size_t> command_set;
@@ -84,26 +74,26 @@ struct ProjectProcessor {
     const std::string base_name = sys::path::filename(entry.filename);
 
     // Expand %c %cpp %clang
-    std::vector<std::string> args;
-    args.reserve(entry.args.size() + config->extra_flags.size() + 3);
+    std::vector<const char *> args;
+    args.reserve(entry.args.size() + g_config->clang.extraArgs.size() + 1);
     const LanguageId lang = SourceFileLanguage(entry.filename);
-    for (const std::string &arg : entry.args) {
-      if (arg.compare(0, 3, "%c ") == 0) {
+    for (const char *arg : entry.args) {
+      if (strncmp(arg, "%c ", 3) == 0) {
         if (lang == LanguageId::C)
-          args.push_back(arg.substr(3));
-      } else if (arg.compare(0, 5, "%cpp ") == 0) {
+          args.push_back(arg + 3);
+      } else if (strncmp(arg, "%cpp ", 5) == 0) {
         if (lang == LanguageId::Cpp)
-          args.push_back(arg.substr(5));
-      } else if (arg == "%clang") {
+          args.push_back(arg + 5);
+      } else if (strcmp(arg, "%clang") == 0) {
         args.push_back(lang == LanguageId::Cpp ? "clang++" : "clang");
-      } else {
+      } else if (!llvm::is_contained(g_config->clang.excludeArgs, arg)) {
         args.push_back(arg);
       }
     }
     if (args.empty())
       return;
-    args.insert(args.end(), config->extra_flags.begin(),
-      config->extra_flags.end());
+    for (const std::string &arg : g_config->clang.extraArgs)
+      args.push_back(Intern(arg));
 
     size_t hash = std::hash<std::string>{}(entry.directory);
     for (auto &arg : args) {
@@ -116,21 +106,7 @@ struct ProjectProcessor {
       }
       hash_combine(hash, std::hash<std::string>{}(arg));
     }
-    for (size_t i = 1; i < args.size(); i++)
-      // This is most likely the file path we will be passing to clang. The
-      // path needs to be absolute, otherwise clang_codeCompleteAt is extremely
-      // slow. See
-      // https://github.com/cquery-project/cquery/commit/af63df09d57d765ce12d40007bf56302a0446678.
-      if (args[i][0] != '-' && EndsWith(args[i], base_name)) {
-        args[i] = ResolveIfRelative(entry.directory, args[i]);
-        continue;
-      }
-
-    args.push_back("-resource-dir=" + g_config->clang.resourceDir);
-    args.push_back("-working-directory=" + entry.directory);
-    // There could be a clang version mismatch between what the project uses and
-    // what ccls uses. Make sure we do not emit warnings for mismatched options.
-    args.push_back("-Wno-unknown-warning-option");
+    args.push_back(Intern("-working-directory=" + entry.directory));
 
     if (!command_set.insert(hash).second) {
       entry.args = std::move(args);
@@ -154,13 +130,9 @@ struct ProjectProcessor {
     }
     Driver.setCheckInputsExist(false);
 
-    std::vector<const char *> cargs;
-    cargs.reserve(args.size() + 1);
-    for (auto &arg : args)
-      cargs.push_back(arg.c_str());
-    cargs.push_back("-fsyntax-only");
+    args.push_back("-fsyntax-only");
 
-    std::unique_ptr<driver::Compilation> C(Driver.BuildCompilation(cargs));
+    std::unique_ptr<driver::Compilation> C(Driver.BuildCompilation(args));
     const driver::JobList &Jobs = C->getJobs();
     if (Jobs.size() != 1)
       return;
@@ -174,7 +146,8 @@ struct ProjectProcessor {
 
     HeaderSearchOptions &HeaderOpts = CI->getHeaderSearchOpts();
     for (auto &E : HeaderOpts.UserEntries) {
-      std::string path = ResolveIfRelative(entry.directory, E.Path);
+      std::string path =
+          NormalizePath(ResolveIfRelative(entry.directory, E.Path));
       switch (E.Group) {
       default:
         config->angle_dirs.insert(path);
@@ -192,14 +165,17 @@ struct ProjectProcessor {
   }
 };
 
-std::vector<std::string>
+std::vector<const char *>
 ReadCompilerArgumentsFromFile(const std::string &path) {
   auto MBOrErr = MemoryBuffer::getFile(path);
   if (!MBOrErr)
     return {};
-  std::vector<std::string> args;
-  for (line_iterator I(*MBOrErr.get(), true, '#'), E; I != E; ++I)
-    args.push_back(*I);
+  std::vector<const char *> args;
+  for (line_iterator I(*MBOrErr.get(), true, '#'), E; I != E; ++I) {
+    std::string line = *I;
+    DoPathMapping(line);
+    args.push_back(Intern(line));
+  }
   return args;
 }
 
@@ -208,30 +184,32 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig *config) {
   config->mode = ProjectMode::DotCcls;
   SmallString<256> Path;
   sys::path::append(Path, config->project_dir, ".ccls");
-  LOG_IF_S(WARNING, !sys::fs::exists(Path) && config->extra_flags.empty())
+  LOG_IF_S(WARNING, !sys::fs::exists(Path) && g_config->clang.extraArgs.empty())
       << "ccls has no clang arguments. Use either "
          "compile_commands.json or .ccls, See ccls README for "
          "more information.";
 
-  std::unordered_map<std::string, std::vector<std::string>> folder_args;
+  std::unordered_map<std::string, std::vector<const char *>> folder_args;
   std::vector<std::string> files;
+  const std::string &project_dir = config->project_dir;
 
-  GetFilesInFolder(config->project_dir, true /*recursive*/,
+  GetFilesInFolder(project_dir, true /*recursive*/,
                    true /*add_folder_to_path*/,
                    [&folder_args, &files](const std::string &path) {
                      if (SourceFileLanguage(path) != LanguageId::Unknown) {
                        files.push_back(path);
                      } else if (sys::path::filename(path) == ".ccls") {
-                       LOG_S(INFO) << "Using .ccls arguments from " << path;
-                       folder_args.emplace(sys::path::parent_path(path),
-                                           ReadCompilerArgumentsFromFile(path));
+                       std::vector<const char *> args = ReadCompilerArgumentsFromFile(path);
+                       folder_args.emplace(sys::path::parent_path(path), args);
+                       std::string l;
+                       for (size_t i = 0; i < args.size(); i++) {
+                         if (i)
+                           l += ' ';
+                         l += args[i];
+                       }
+                       LOG_S(INFO) << "use " << path << ": " << l;
                      }
                    });
-
-  const std::string &project_dir = config->project_dir;
-  const auto &project_dir_args = folder_args[project_dir];
-  LOG_IF_S(INFO, !project_dir_args.empty())
-      << "Using .ccls arguments " << StringJoin(project_dir_args);
 
   auto GetCompilerArgumentForFile = [&project_dir,
                                      &folder_args](std::string cur) {
@@ -256,7 +234,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig *config) {
     e.args = GetCompilerArgumentForFile(file);
     if (e.args.empty())
       e.args.push_back("%clang"); // Add a Dummy.
-    e.args.push_back(e.filename);
+    e.args.push_back(Intern(e.filename));
     proc.Process(e);
     result.push_back(e);
   }
@@ -329,9 +307,17 @@ LoadEntriesFromDirectory(ProjectConfig *project,
   ProjectProcessor proc(project);
   for (tooling::CompileCommand &Cmd : CDB->getAllCompileCommands()) {
     Project::Entry entry;
-    entry.directory = std::move(Cmd.Directory);
-    entry.filename = ResolveIfRelative(entry.directory, Cmd.Filename);
-    entry.args = std::move(Cmd.CommandLine);
+    entry.directory = NormalizePath(Cmd.Directory);
+    DoPathMapping(entry.directory);
+    entry.filename =
+        NormalizePath(ResolveIfRelative(entry.directory, Cmd.Filename));
+    DoPathMapping(entry.filename);
+    std::vector<std::string> args = std::move(Cmd.CommandLine);
+    entry.args.reserve(args.size());
+    for (std::string &arg : args) {
+      DoPathMapping(arg);
+      entry.args.push_back(Intern(arg));
+    }
     proc.Process(entry);
     if (Seen.insert(entry.filename).second)
       result.push_back(entry);
@@ -356,12 +342,8 @@ int ComputeGuessScore(std::string_view a, std::string_view b) {
 
 } // namespace
 
-bool Project::loaded = false;
-
 void Project::Load(const std::string &root_directory) {
-  Project::loaded = false;
   ProjectConfig project;
-  project.extra_flags = g_config->clang.extraArgs;
   project.project_dir = root_directory;
   entries = LoadEntriesFromDirectory(&project,
                                      g_config->compilationDatabaseDirectory);
@@ -379,40 +361,51 @@ void Project::Load(const std::string &root_directory) {
     EnsureEndsInSlash(path);
     LOG_S(INFO) << "angle_include_dir: " << path;
   }
+
+  // Setup project entries.
+  std::lock_guard lock(mutex_);
+  path_to_entry_index.reserve(entries.size());
+  for (size_t i = 0; i < entries.size(); ++i) {
+    entries[i].id = i;
+    path_to_entry_index[entries[i].filename] = i;
+  }
 }
 
-void Project::SetFlagsForFile(const std::vector<std::string> &flags,
-                              const std::string &path) {
+void Project::SetArgsForFile(const std::vector<const char *> &args,
+                             const std::string &path) {
   std::lock_guard<std::mutex> lock(mutex_);
-  auto it = absolute_path_to_entry_index_.find(path);
-  if (it != absolute_path_to_entry_index_.end()) {
+  auto it = path_to_entry_index.find(path);
+  if (it != path_to_entry_index.end()) {
     // The entry already exists in the project, just set the flags.
-    this->entries[it->second].args = flags;
+    this->entries[it->second].args = args;
   } else {
     // Entry wasn't found, so we create a new one.
     Entry entry;
     entry.is_inferred = false;
     entry.filename = path;
-    entry.args = flags;
+    entry.args = args;
     this->entries.emplace_back(entry);
   }
 }
 
-Project::Entry
-Project::FindCompilationEntryForFile(const std::string &filename) {
+Project::Entry Project::FindEntry(const std::string &path,
+                                  bool can_be_inferred) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto it = absolute_path_to_entry_index_.find(filename);
-    if (it != absolute_path_to_entry_index_.end())
-      return entries[it->second];
+    auto it = path_to_entry_index.find(path);
+    if (it != path_to_entry_index.end()) {
+      Project::Entry &entry = entries[it->second];
+      if (can_be_inferred || entry.filename == path)
+        return entry;
+    }
   }
 
   // We couldn't find the file. Try to infer it.
   // TODO: Cache inferred file in a separate array (using a lock or similar)
   Entry *best_entry = nullptr;
-  int best_score = std::numeric_limits<int>::min();
+  int best_score = INT_MIN;
   for (Entry &entry : entries) {
-    int score = ComputeGuessScore(filename, entry.filename);
+    int score = ComputeGuessScore(path, entry.filename);
     if (score > best_score) {
       best_score = score;
       best_entry = &entry;
@@ -421,10 +414,10 @@ Project::FindCompilationEntryForFile(const std::string &filename) {
 
   Project::Entry result;
   result.is_inferred = true;
-  result.filename = filename;
+  result.filename = path;
   if (!best_entry) {
     result.args.push_back("%clang");
-    result.args.push_back(filename);
+    result.args.push_back(Intern(path));
   } else {
     result.args = best_entry->args;
 
@@ -432,11 +425,11 @@ Project::FindCompilationEntryForFile(const std::string &filename) {
     // that path to the new filename.
     std::string best_entry_base_name =
         sys::path::filename(best_entry->filename);
-    for (std::string &arg : result.args) {
+    for (const char *&arg : result.args) {
       try {
         if (arg == best_entry->filename ||
             sys::path::filename(arg) == best_entry_base_name)
-          arg = filename;
+          arg = Intern(path);
       } catch (...) {
       }
     }
@@ -445,27 +438,27 @@ Project::FindCompilationEntryForFile(const std::string &filename) {
   return result;
 }
 
-void Project::ForAllFilteredFiles(
-    std::function<void(int i, const Entry &entry)> action) {
-  GroupMatch matcher(g_config->index.whitelist, g_config->index.blacklist);
+void Project::Index(WorkingFiles *wfiles, lsRequestId id) {
+  auto &gi = g_config->index;
+  GroupMatch match(gi.whitelist, gi.blacklist),
+      match_i(gi.initialWhitelist, gi.initialBlacklist);
   for (int i = 0; i < entries.size(); ++i) {
     const Project::Entry &entry = entries[i];
-    std::string failure_reason;
-    if (matcher.IsMatch(entry.filename, &failure_reason))
-      action(i, entries[i]);
-    else {
-      LOG_V(1) << "[" << i + 1 << "/" << entries.size() << "]: Failed "
-               << failure_reason << "; skipping " << entry.filename;
+    std::string reason;
+    if (match.IsMatch(entry.filename, &reason) &&
+        match_i.IsMatch(entry.filename, &reason)) {
+      bool interactive = wfiles->GetFileByFilename(entry.filename) != nullptr;
+      pipeline::Index(
+          entry.filename, entry.args,
+          interactive ? IndexMode::Normal : IndexMode::NonInteractive, id);
+    } else {
+      LOG_V(1) << "[" << i << "/" << entries.size() << "]: " << reason
+               << "; skip " << entry.filename;
     }
   }
-}
 
-void Project::Index(WorkingFiles *wfiles, lsRequestId id) {
-  ForAllFilteredFiles([&](int i, const Project::Entry &entry) {
-    bool is_interactive = wfiles->GetFileByFilename(entry.filename) != nullptr;
-    pipeline::Index(entry.filename, entry.args, is_interactive, id);
-  });
+  pipeline::loaded_ts = pipeline::tick;
   // Dummy request to indicate that project is loaded and
   // trigger refreshing semantic highlight for all working files.
-  pipeline::Index("", {}, false);
+  pipeline::Index("", {}, IndexMode::NonInteractive);
 }

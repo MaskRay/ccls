@@ -16,8 +16,8 @@ OUTPUT:
       "kind": 12,
       "storage": 0,
       "declarations": [],
-      "spell": "3:6-3:9|0|1|2",
-      "extent": "3:1-5:2|0|1|0",
+      "spell": "3:6-3:9|0|1|2|-1",
+      "extent": "3:1-5:2|0|1|0|-1",
       "bases": [],
       "derived": [],
       "vars": [],
@@ -45,9 +45,9 @@ OUTPUT:
       "detailed_name": "extern int a",
       "qual_name_offset": 11,
       "short_name": "a",
-      "declarations": ["1:12-1:13|0|1|1"],
+      "declarations": ["1:12-1:13|1:1-1:13|0|1|1|-1"],
       "type": 53,
-      "uses": ["4:3-4:4|4259594751088586730|3|20"],
+      "uses": ["4:3-4:4|4259594751088586730|3|20|-1"],
       "kind": 13,
       "storage": 1
     }]

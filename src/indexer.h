@@ -15,8 +15,6 @@ limitations under the License.
 
 #pragma once
 
-#include "clang_utils.h"
-#include "file_consumer.h"
 #include "language.h"
 #include "lsp.h"
 #include "lsp_diagnostic.h"
@@ -26,11 +24,11 @@ limitations under the License.
 #include "symbol.h"
 #include "utils.h"
 
+#include <clang/Basic/FileManager.h>
 #include <clang/Basic/Specifiers.h>
-#include <llvm/ADT/StringMap.h>
+#include <llvm/ADT/CachedHashString.h>
+#include <llvm/ADT/DenseMap.h>
 
-#include <algorithm>
-#include <optional>
 #include <stdint.h>
 #include <string_view>
 #include <unordered_map>
@@ -82,10 +80,17 @@ struct Use : Reference {
 };
 MAKE_HASHABLE(Use, t.range, t.file_id)
 
+struct DeclRef : Use {
+  Range extent;
+};
+MAKE_HASHABLE(DeclRef, t.range, t.file_id)
+
 void Reflect(Reader &visitor, Reference &value);
 void Reflect(Writer &visitor, Reference &value);
 void Reflect(Reader &visitor, Use &value);
 void Reflect(Writer &visitor, Use &value);
+void Reflect(Reader &visitor, DeclRef &value);
+void Reflect(Writer &visitor, DeclRef &value);
 
 template <typename D> struct NameMixin {
   std::string_view Name(bool qualified) const {
@@ -134,7 +139,7 @@ struct IndexFunc : NameMixin<IndexFunc> {
   using Def = FuncDef;
   Usr usr;
   Def def;
-  std::vector<Use> declarations;
+  std::vector<DeclRef> declarations;
   std::vector<Use> uses;
   std::vector<Usr> derived;
 };
@@ -174,7 +179,7 @@ struct IndexType {
   using Def = TypeDef;
   Usr usr;
   Def def;
-  std::vector<Use> declarations;
+  std::vector<DeclRef> declarations;
   std::vector<Use> uses;
   std::vector<Usr> derived;
   std::vector<Usr> instances;
@@ -216,7 +221,7 @@ struct IndexVar {
   using Def = VarDef;
   Usr usr;
   Def def;
-  std::vector<Use> declarations;
+  std::vector<DeclRef> declarations;
   std::vector<Use> uses;
 };
 
@@ -225,8 +230,18 @@ struct IndexInclude {
   // information - a line is good enough for clicking.
   int line = 0;
   // Absolute path to the index.
-  std::string resolved_path;
+  const char *resolved_path;
 };
+
+namespace std {
+template <> struct hash<llvm::sys::fs::UniqueID> {
+  std::size_t operator()(llvm::sys::fs::UniqueID ID) const {
+    size_t ret = ID.getDevice();
+    hash_combine(ret, ID.getFile());
+    return ret;
+  }
+};
+} // namespace std
 
 struct IndexFile {
   // For both JSON and MessagePack cache files.
@@ -239,9 +254,10 @@ struct IndexFile {
 
   llvm::sys::fs::UniqueID UniqueID;
   std::string path;
-  std::vector<std::string> args;
-  int64_t last_write_time = 0;
-  LanguageId language = LanguageId::Unknown;
+  std::vector<const char *> args;
+  // This is unfortunately time_t as used by clang::FileEntry
+  int64_t mtime = 0;
+  LanguageId language = LanguageId::C;
 
   // uid2lid_and_path is used to generate lid2path, but not serialized.
   std::unordered_map<llvm::sys::fs::UniqueID, std::pair<int, std::string>>
@@ -258,13 +274,11 @@ struct IndexFile {
   std::vector<Range> skipped_ranges;
 
   std::vector<IndexInclude> includes;
-  llvm::StringMap<int64_t> dependencies;
+  llvm::DenseMap<llvm::CachedHashStringRef, int64_t> dependencies;
   std::unordered_map<Usr, IndexFunc> usr2func;
   std::unordered_map<Usr, IndexType> usr2type;
   std::unordered_map<Usr, IndexVar> usr2var;
 
-  // Diagnostics found when indexing this file. Not serialized.
-  std::vector<lsDiagnostic> diagnostics_;
   // File contents at the time of index. Not serialized.
   std::string file_contents;
 
@@ -278,9 +292,16 @@ struct IndexFile {
   std::string ToString();
 };
 
+struct CompletionManager;
+struct WorkingFiles;
+struct VFS;
+
 namespace ccls::idx {
+void Init();
 std::vector<std::unique_ptr<IndexFile>>
-Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
-      const std::vector<std::string> &args,
-      const std::vector<FileContents> &file_contents);
-}
+Index(CompletionManager *complete, WorkingFiles *wfiles, VFS *vfs,
+      const std::string &opt_wdir, const std::string &file,
+      const std::vector<const char *> &args,
+      const std::vector<std::pair<std::string, std::string>> &remapped,
+      bool &ok);
+} // namespace ccls::idx

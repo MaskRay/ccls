@@ -40,6 +40,7 @@ struct Position {
       return line < o.line;
     return column < o.column;
   }
+  bool operator<=(const Position &o) const { return !(o < *this); }
 };
 MAKE_HASHABLE(Position, t.line, t.column);
 

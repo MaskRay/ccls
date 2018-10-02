@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "clang_complete.h"
+#include "clang_complete.hh"
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "project.h"
@@ -54,26 +54,22 @@ struct Handler_WorkspaceDidChangeWatchedFiles
   void Run(In_WorkspaceDidChangeWatchedFiles *request) override {
     for (lsFileEvent &event : request->params.changes) {
       std::string path = event.uri.GetPath();
-      Project::Entry entry;
-      {
-        std::lock_guard<std::mutex> lock(project->mutex_);
-        auto it = project->absolute_path_to_entry_index_.find(path);
-        if (it == project->absolute_path_to_entry_index_.end())
-          continue;
-        entry = project->entries[it->second];
-      }
-      bool is_interactive =
-          working_files->GetFileByFilename(entry.filename) != nullptr;
+      IndexMode mode = working_files->GetFileByFilename(path)
+                           ? IndexMode::Normal
+                           : IndexMode::NonInteractive;
       switch (event.type) {
       case lsFileChangeType::Created:
       case lsFileChangeType::Changed: {
-        pipeline::Index(path, entry.args, is_interactive);
-        if (is_interactive)
+        pipeline::Index(path, {}, mode);
+        if (mode == IndexMode::Normal)
           clang_complete->NotifySave(path);
+        else
+          clang_complete->OnClose(path);
         break;
       }
       case lsFileChangeType::Deleted:
-        pipeline::Index(path, entry.args, is_interactive);
+        pipeline::Index(path, {}, mode);
+        clang_complete->OnClose(path);
         break;
       }
     }

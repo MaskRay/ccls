@@ -13,18 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include "hierarchy.hh"
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "query_utils.h"
 using namespace ccls;
 
-#include <queue>
 #include <unordered_set>
 
 namespace {
-MethodType kMethodType = "$ccls/inheritanceHierarchy";
+MethodType kMethodType = "$ccls/inheritance";
 
-struct In_CclsInheritanceHierarchy : public RequestInMessage {
+struct In_CclsInheritance : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     // If id+kind are specified, expand a node; otherwise textDocument+position
@@ -40,17 +40,17 @@ struct In_CclsInheritanceHierarchy : public RequestInMessage {
     bool derived = false;
     bool qualified = true;
     int levels = 1;
-    bool flat = false;
+    bool hierarchy = false;
   } params;
 };
 
-MAKE_REFLECT_STRUCT(In_CclsInheritanceHierarchy::Params, textDocument, position,
-                    id, kind, derived, qualified, levels, flat);
-MAKE_REFLECT_STRUCT(In_CclsInheritanceHierarchy, id, params);
-REGISTER_IN_MESSAGE(In_CclsInheritanceHierarchy);
+MAKE_REFLECT_STRUCT(In_CclsInheritance::Params, textDocument, position,
+                    id, kind, derived, qualified, levels, hierarchy);
+MAKE_REFLECT_STRUCT(In_CclsInheritance, id, params);
+REGISTER_IN_MESSAGE(In_CclsInheritance);
 
-struct Out_CclsInheritanceHierarchy
-    : public lsOutMessage<Out_CclsInheritanceHierarchy> {
+struct Out_CclsInheritance
+    : public lsOutMessage<Out_CclsInheritance> {
   struct Entry {
     Usr usr;
     std::string id;
@@ -66,22 +66,25 @@ struct Out_CclsInheritanceHierarchy
   lsRequestId id;
   std::optional<Entry> result;
 };
-MAKE_REFLECT_STRUCT(Out_CclsInheritanceHierarchy::Entry, id, kind, name,
+MAKE_REFLECT_STRUCT(Out_CclsInheritance::Entry, id, kind, name,
                     location, numChildren, children);
-MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_CclsInheritanceHierarchy, jsonrpc,
+MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_CclsInheritance, jsonrpc,
                                        id, result);
 
-bool Expand(MessageHandler *m, Out_CclsInheritanceHierarchy::Entry *entry,
+bool Expand(MessageHandler *m, Out_CclsInheritance::Entry *entry,
             bool derived, bool qualified, int levels);
 
 template <typename Q>
-bool ExpandHelper(MessageHandler *m, Out_CclsInheritanceHierarchy::Entry *entry,
+bool ExpandHelper(MessageHandler *m, Out_CclsInheritance::Entry *entry,
                   bool derived, bool qualified, int levels, Q &entity) {
   const auto *def = entity.AnyDef();
   if (def) {
     entry->name = def->Name(qualified);
     if (def->spell) {
       if (auto loc = GetLsLocation(m->db, m->working_files, *def->spell))
+        entry->location = *loc;
+    } else if (entity.declarations.size()) {
+      if (auto loc = GetLsLocation(m->db, m->working_files, entity.declarations[0]))
         entry->location = *loc;
     }
   } else if (!derived) {
@@ -94,7 +97,7 @@ bool ExpandHelper(MessageHandler *m, Out_CclsInheritanceHierarchy::Entry *entry,
       for (auto usr : entity.derived) {
         if (!seen.insert(usr).second)
           continue;
-        Out_CclsInheritanceHierarchy::Entry entry1;
+        Out_CclsInheritance::Entry entry1;
         entry1.id = std::to_string(usr);
         entry1.usr = usr;
         entry1.kind = entry->kind;
@@ -109,7 +112,7 @@ bool ExpandHelper(MessageHandler *m, Out_CclsInheritanceHierarchy::Entry *entry,
       for (auto usr : def->bases) {
         if (!seen.insert(usr).second)
           continue;
-        Out_CclsInheritanceHierarchy::Entry entry1;
+        Out_CclsInheritance::Entry entry1;
         entry1.id = std::to_string(usr);
         entry1.usr = usr;
         entry1.kind = entry->kind;
@@ -123,7 +126,7 @@ bool ExpandHelper(MessageHandler *m, Out_CclsInheritanceHierarchy::Entry *entry,
   return true;
 }
 
-bool Expand(MessageHandler *m, Out_CclsInheritanceHierarchy::Entry *entry,
+bool Expand(MessageHandler *m, Out_CclsInheritance::Entry *entry,
             bool derived, bool qualified, int levels) {
   if (entry->kind == SymbolKind::Func)
     return ExpandHelper(m, entry, derived, qualified, levels,
@@ -133,13 +136,13 @@ bool Expand(MessageHandler *m, Out_CclsInheritanceHierarchy::Entry *entry,
                         m->db->Type(entry->usr));
 }
 
-struct Handler_CclsInheritanceHierarchy
-    : BaseMessageHandler<In_CclsInheritanceHierarchy> {
+struct Handler_CclsInheritance
+    : BaseMessageHandler<In_CclsInheritance> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  std::optional<Out_CclsInheritanceHierarchy::Entry>
+  std::optional<Out_CclsInheritance::Entry>
   BuildInitial(SymbolRef sym, bool derived, bool qualified, int levels) {
-    Out_CclsInheritanceHierarchy::Entry entry;
+    Out_CclsInheritance::Entry entry;
     entry.id = std::to_string(sym.usr);
     entry.usr = sym.usr;
     entry.kind = sym.kind;
@@ -147,18 +150,18 @@ struct Handler_CclsInheritanceHierarchy
     return entry;
   }
 
-  void Run(In_CclsInheritanceHierarchy *request) override {
+  void Run(In_CclsInheritance *request) override {
     auto &params = request->params;
-    Out_CclsInheritanceHierarchy out;
+    Out_CclsInheritance out;
     out.id = request->id;
 
-    if (!params.flat && params.id.size()) {
+    if (params.id.size()) {
       try {
         params.usr = std::stoull(params.id);
       } catch (...) {
         return;
       }
-      Out_CclsInheritanceHierarchy::Entry entry;
+      Out_CclsInheritance::Entry entry;
       entry.id = std::to_string(params.usr);
       entry.usr = params.usr;
       entry.kind = params.kind;
@@ -181,31 +184,17 @@ struct Handler_CclsInheritanceHierarchy
         }
     }
 
-    if (!params.flat) {
+    if (params.hierarchy) {
       pipeline::WriteStdout(kMethodType, out);
       return;
     }
     Out_LocationList out1;
     out1.id = request->id;
-    if (out.result) {
-      std::queue<Out_CclsInheritanceHierarchy::Entry *> q;
-      for (auto &entry1 : out.result->children)
-        q.push(&entry1);
-      while (q.size()) {
-        auto *entry = q.front();
-        q.pop();
-        if (entry->location.uri.raw_uri.size())
-          out1.result.push_back({entry->location});
-        for (auto &entry1 : entry->children)
-          q.push(&entry1);
-      }
-      std::sort(out1.result.begin(), out1.result.end());
-      out1.result.erase(std::unique(out1.result.begin(), out1.result.end()),
-                        out1.result.end());
-    }
+    if (out.result)
+      FlattenHierarchy<Out_CclsInheritance::Entry>(*out.result, out1);
     pipeline::WriteStdout(kMethodType, out1);
   }
 };
-REGISTER_MESSAGE_HANDLER(Handler_CclsInheritanceHierarchy);
+REGISTER_MESSAGE_HANDLER(Handler_CclsInheritance);
 
 } // namespace

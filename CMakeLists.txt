@@ -181,9 +181,7 @@ target_sources(ccls PRIVATE third_party/siphash.cc)
 target_sources(ccls PRIVATE
   src/clang_complete.cc
   src/clang_tu.cc
-  src/clang_utils.cc
   src/config.cc
-  src/file_consumer.cc
   src/filesystem.cc
   src/fuzzy_match.cc
   src/main.cc
@@ -209,13 +207,12 @@ target_sources(ccls PRIVATE
 )
 
 target_sources(ccls PRIVATE
-  src/messages/ccls_base.cc
-  src/messages/ccls_callHierarchy.cc
-  src/messages/ccls_callers.cc
-  src/messages/ccls_fileInfo.cc
-  src/messages/ccls_freshenIndex.cc
-  src/messages/ccls_inheritanceHierarchy.cc
-  src/messages/ccls_memberHierarchy.cc
+  src/messages/ccls_call.cc
+  src/messages/ccls_info.cc
+  src/messages/ccls_inheritance.cc
+  src/messages/ccls_member.cc
+  src/messages/ccls_navigate.cc
+  src/messages/ccls_reload.cc
   src/messages/ccls_vars.cc
   src/messages/exit.cc
   src/messages/initialize.cc
@@ -224,10 +221,8 @@ target_sources(ccls PRIVATE
   src/messages/textDocument_codeLens.cc
   src/messages/textDocument_completion.cc
   src/messages/textDocument_definition.cc
-  src/messages/textDocument_didChange.cc
-  src/messages/textDocument_didClose.cc
-  src/messages/textDocument_didOpen.cc
-  src/messages/textDocument_didSave.cc
+  src/messages/textDocument_did.cc
+  src/messages/textDocument_formatting.cc
   src/messages/textDocument_documentHighlight.cc
   src/messages/textDocument_documentSymbol.cc
   src/messages/textDocument_hover.cc

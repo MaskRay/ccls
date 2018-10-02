@@ -16,9 +16,10 @@ limitations under the License.
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "query_utils.h"
-using namespace ccls;
 
 #include <unordered_set>
+
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "textDocument/references";
@@ -66,13 +67,17 @@ struct Handler_TextDocumentReferences
     if (!FindFileOrFail(db, project, request->id,
                         params.textDocument.uri.GetPath(), &file))
       return;
-
-    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
-
     Out_TextDocumentReferences out;
     out.id = request->id;
+    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+    if (!file) {
+      pipeline::WriteStdout(kMethodType, out);
+      return;
+    }
+
     bool container = g_config->xref.container;
     std::unordered_set<Use> seen_uses;
+    int line = params.position.line;
 
     for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, params.position)) {
       // Found symbol. Return references.
@@ -127,7 +132,7 @@ struct Handler_TextDocumentReferences
       // = 0,
       // use the current filename.
       std::string path;
-      if (params.position.line == 0)
+      if (line == 0 || line >= (int)wfile->buffer_lines.size() - 1)
         path = file->def->path;
       for (const IndexInclude &include : file->def->includes)
         if (include.line == params.position.line) {

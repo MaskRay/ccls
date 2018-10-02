@@ -17,20 +17,23 @@ limitations under the License.
 
 #include "lsp.h"
 
-// codeAction
-struct CommandArgs {
-  lsDocumentUri textDocumentUri;
-  std::vector<lsTextEdit> edits;
-};
-MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(CommandArgs, textDocumentUri, edits);
+#include <algorithm>
+#include <queue>
 
-// codeLens
-struct lsCodeLensUserData {};
-MAKE_REFLECT_EMPTY_STRUCT(lsCodeLensUserData);
-
-struct lsCodeLensCommandArguments {
-  lsDocumentUri uri;
-  lsPosition position;
-  std::vector<lsLocation> locations;
-};
-MAKE_REFLECT_STRUCT(lsCodeLensCommandArguments, uri, position, locations)
+template <typename Node>
+void FlattenHierarchy(const Node &root, Out_LocationList &out) {
+  std::queue<const Node *> q;
+  for (auto &entry : root.children)
+    q.push(&entry);
+  while (q.size()) {
+    auto *entry = q.front();
+    q.pop();
+    if (entry->location.uri.raw_uri.size())
+      out.result.push_back({entry->location});
+    for (auto &entry1 : entry->children)
+      q.push(&entry1);
+  }
+  std::sort(out.result.begin(), out.result.end());
+  out.result.erase(std::unique(out.result.begin(), out.result.end()),
+    out.result.end());
+}

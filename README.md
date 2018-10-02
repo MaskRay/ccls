@@ -6,17 +6,24 @@
 ccls, which originates from [cquery](https://github.com/cquery-project/cquery), is a C/C++/Objective-C language server.
 
   * code completion (with both signature help and snippets)
-  * [definition](src/messages/text_document_definition.cc)/[references](src/messages/text_document_references.cc), and other cross references
-  * [call (caller/callee) hierarchy](src/messages/ccls_call_hierarchy.cc), [inheritance (base/derived) hierarchy](src/messages/ccls_inheritance_hierarchy.cc), [member hierarchy](src/messages/ccls_member_hierarchy.cc)
-  * [symbol rename](src/messages/text_document_rename.cc)
-  * [document symbols](src/messages/text_document_document_symbol.cc) and approximate search of [workspace symbol](src/messages/workspace_symbol.cc)
-  * [hover information](src/messages/text_document_hover.cc)
-  * diagnostics
-  * code actions (clang FixIts)
-  * preprocessor skipped regions
-  * semantic highlighting, including support for [rainbow semantic highlighting](https://medium.com/@evnbr/coding-in-color-3a6db2743a1e)
+  * [definition](src/messages/textDocument_definition.cc)/[references](src/messages/textDcument_references.cc), and other cross references
+  * cross reference extensions: `$ccls/call` `$ccls/inheritance` `$ccls/member` `$ccls/vars` ...
+  * formatting
+  * hierarchies: [call (caller/callee) hierarchy](src/messages/ccls_call.cc), [inheritance (base/derived) hierarchy](src/messages/ccls_inheritance.cc), [member hierarchy](src/messages/ccls_member.cc)
+  * [symbol rename](src/messages/textDocument_rename.cc)
+  * [document symbols](src/messages/textDocument_documentSymbol.cc) and approximate search of [workspace symbol](src/messages/workspace_symbol.cc)
+  * [hover information](src/messages/textDocument_hover.cc)
+  * diagnostics and code actions (clang FixIts)
+  * semantic highlighting and preprocessor skipped regions
+  * semantic navigation: `$ccls/navigate`
 
-It makes use of C++17 features, has less third-party dependencies and slimmed-down code base. Cross reference features are strengthened, (see [wiki/FAQ](../../wiki/FAQ)). It currently uses libclang to index C++ code but will switch to Clang C++ API. Refactoring and formatting are non-goals as they can be provided by clang-format, clang-include-fixer and other Clang based tools.
+It has a global view of the code base and support a lot of cross reference features, see [wiki/FAQ](../../wiki/FAQ).
+It starts indexing the whole project (including subprojects if exist) parallelly when you open the first file, while the main thread can serve requests before the indexing is complete.
+Saving files will incrementally update the index.
+
+Compared with cquery, it makes use of C++17 features, has less third-party dependencies and slimmed-down code base.
+It leverages Clang C++ API as [clangd](https://clang.llvm.org/extra/clangd.html) does, which provides better support for code completion and diagnostics.
+Refactoring is a non-goal as it can be provided by clang-include-fixer and other Clang based tools.
 
 The comparison with cquery as noted on 2018-07-15:
 
@@ -35,4 +42,7 @@ cquery has system include path detection (through running the compiler driver) w
 
 * [Build](../../wiki/Build)
 * [Emacs](../../wiki/Emacs)
+* [LanguageClient-neovim](../../wiki/LanguageClient-neovim)
 * [FAQ](../../wiki/FAQ)
+
+ccls can index itself (~180MiB RSS when ide, noted on 2018-09-01), FreeBSD, glibc, Linux, LLVM (~1800MiB RSS), musl (~60MiB RSS), ... with decent memory footprint. See [wiki/compile_commands.json](../../wiki/compile_commands.json) for examples.

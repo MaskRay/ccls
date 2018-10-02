@@ -46,36 +46,10 @@ inline Role operator|(Role lhs, Role rhs) {
   return Role(uint16_t(lhs) | uint16_t(rhs));
 }
 
-// A document highlight kind.
-enum class lsDocumentHighlightKind {
-  // A textual occurrence.
-  Text = 1,
-  // Read-access of a symbol, like reading a variable.
-  Read = 2,
-  // Write-access of a symbol, like writing to a variable.
-  Write = 3
-};
-MAKE_REFLECT_TYPE_PROXY(lsDocumentHighlightKind);
-
-// A document highlight is a range inside a text document which deserves
-// special attention. Usually a document highlight is visualized by changing
-// the background color of its range.
-struct lsDocumentHighlight {
-  // The range this highlight applies to.
-  lsRange range;
-
-  // The highlight kind, default is DocumentHighlightKind.Text.
-  lsDocumentHighlightKind kind = lsDocumentHighlightKind::Text;
-
-  // ccls extension
-  Role role = Role::None;
-};
-MAKE_REFLECT_STRUCT(lsDocumentHighlight, range, kind, role);
-
 struct lsSymbolInformation {
   std::string_view name;
   lsSymbolKind kind;
   lsLocation location;
-  std::string_view containerName;
+  std::optional<std::string_view> containerName;
 };
 MAKE_REFLECT_STRUCT(lsSymbolInformation, name, kind, location, containerName);

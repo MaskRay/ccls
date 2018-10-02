@@ -15,7 +15,7 @@ limitations under the License.
 
 #pragma once
 
-#include "clang_tu.h"
+#include "clang_tu.hh"
 #include "lru_cache.h"
 #include "lsp_completion.h"
 #include "lsp_diagnostic.h"
@@ -23,97 +23,119 @@ limitations under the License.
 #include "threaded_queue.h"
 #include "working_files.h"
 
+#include <clang/Frontend/CompilerInstance.h>
+#include <clang/Frontend/FrontendActions.h>
+#include <clang/Sema/CodeCompleteOptions.h>
+
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
 
-struct CompletionSession
-    : public std::enable_shared_from_this<CompletionSession> {
-  // Translation unit for clang.
-  struct Tu {
-    // When |tu| was last parsed.
-    std::optional<std::chrono::time_point<std::chrono::high_resolution_clock>>
-        last_parsed_at;
-    // Acquired when |tu| is being used.
-    std::mutex lock;
-    std::unique_ptr<ClangTranslationUnit> tu;
-  };
-
-  Project::Entry file;
-  WorkingFiles *working_files;
-
-  Tu completion;
-  Tu diagnostics;
-
-  CompletionSession(const Project::Entry &file, WorkingFiles *wfiles)
-      : file(file), working_files(wfiles) {}
+namespace ccls {
+struct DiagBase {
+  Range range;
+  std::string message;
+  std::string file;
+  clang::DiagnosticsEngine::Level level = clang::DiagnosticsEngine::Note;
+  unsigned category;
+  bool concerned = false;
+};
+struct Note : DiagBase {};
+struct Diag : DiagBase {
+  std::vector<Note> notes;
+  std::vector<lsTextEdit> edits;
 };
 
-struct ClangCompleteManager {
+struct PreambleData {
+  PreambleData(clang::PrecompiledPreamble P, std::vector<Diag> diags)
+      : Preamble(std::move(P)), diags(std::move(diags)) {}
+  clang::PrecompiledPreamble Preamble;
+  std::vector<Diag> diags;
+};
+
+struct CompletionSession
+    : public std::enable_shared_from_this<CompletionSession> {
+  std::mutex mutex;
+  std::shared_ptr<PreambleData> preamble;
+
+  Project::Entry file;
+  WorkingFiles *wfiles;
+  bool inferred = false;
+
+  // TODO share
+  llvm::IntrusiveRefCntPtr<clang::vfs::FileSystem> FS =
+      clang::vfs::getRealFileSystem();
+  std::shared_ptr<clang::PCHContainerOperations> PCH;
+
+  CompletionSession(const Project::Entry &file, WorkingFiles *wfiles,
+                    std::shared_ptr<clang::PCHContainerOperations> PCH)
+      : file(file), wfiles(wfiles), PCH(PCH) {}
+
+  std::shared_ptr<PreambleData> GetPreamble();
+  void BuildPreamble(clang::CompilerInvocation &CI, const std::string &main);
+};
+}
+
+struct CompletionManager {
   using OnDiagnostic = std::function<void(
       std::string path, std::vector<lsDiagnostic> diagnostics)>;
-  using OnComplete = std::function<void(
-      const std::vector<lsCompletionItem> &results, bool is_cached_result)>;
+  // If OptConsumer is nullptr, the request has been cancelled.
+  using OnComplete =
+      std::function<void(clang::CodeCompleteConsumer *OptConsumer)>;
   using OnDropped = std::function<void(lsRequestId request_id)>;
 
   struct PreloadRequest {
-    PreloadRequest(const std::string &path)
-        : request_time(std::chrono::high_resolution_clock::now()), path(path) {}
-
-    std::chrono::time_point<std::chrono::high_resolution_clock> request_time;
     std::string path;
   };
   struct CompletionRequest {
     CompletionRequest(const lsRequestId &id,
                       const lsTextDocumentIdentifier &document,
-                      const lsPosition &position, const OnComplete &on_complete)
+                      const lsPosition &position,
+                      std::unique_ptr<clang::CodeCompleteConsumer> Consumer,
+                      clang::CodeCompleteOptions CCOpts,
+                      const OnComplete &on_complete)
         : id(id), document(document), position(position),
+          Consumer(std::move(Consumer)), CCOpts(CCOpts),
           on_complete(on_complete) {}
 
     lsRequestId id;
     lsTextDocumentIdentifier document;
     lsPosition position;
+    std::unique_ptr<clang::CodeCompleteConsumer> Consumer;
+    clang::CodeCompleteOptions CCOpts;
     OnComplete on_complete;
   };
   struct DiagnosticRequest {
-    lsTextDocumentIdentifier document;
+    std::string path;
+    int64_t wait_until;
+    int64_t debounce;
   };
 
-  ClangCompleteManager(Project *project, WorkingFiles *working_files,
-                       OnDiagnostic on_diagnostic, OnDropped on_dropped);
+  CompletionManager(Project *project, WorkingFiles *working_files,
+                    OnDiagnostic on_diagnostic, OnDropped on_dropped);
 
-  // Start a code completion at the given location. |on_complete| will run when
-  // completion results are available. |on_complete| may run on any thread.
-  void CodeComplete(const lsRequestId &request_id,
-                    const lsTextDocumentPositionParams &completion_location,
-                    const OnComplete &on_complete);
   // Request a diagnostics update.
-  void DiagnosticsUpdate(const lsTextDocumentIdentifier &document);
+  void DiagnosticsUpdate(const std::string &path, int debounce);
 
   // Notify the completion manager that |filename| has been viewed and we
   // should begin preloading completion data.
-  void NotifyView(const std::string &filename);
-  // Notify the completion manager that |filename| has been edited.
-  void NotifyEdit(const std::string &filename);
+  void NotifyView(const std::string &path);
   // Notify the completion manager that |filename| has been saved. This
   // triggers a reparse.
-  void NotifySave(const std::string &filename);
+  void NotifySave(const std::string &path);
   // Notify the completion manager that |filename| has been closed. Any existing
   // completion session will be dropped.
-  void NotifyClose(const std::string &filename);
+  void OnClose(const std::string &path);
 
   // Ensures there is a completion or preloaded session. Returns true if a new
   // session was created.
-  bool EnsureCompletionOrCreatePreloadSession(const std::string &filename);
+  bool EnsureCompletionOrCreatePreloadSession(const std::string &path);
   // Tries to find an edit session for |filename|. This will move the session
   // from view to edit.
-  std::shared_ptr<CompletionSession> TryGetSession(const std::string &filename,
-                                                   bool mark_as_completion,
-                                                   bool create_if_needed);
+  std::shared_ptr<ccls::CompletionSession>
+  TryGetSession(const std::string &path, bool preload, bool *is_open = nullptr);
 
-  // Flushes all saved sessions with the supplied filename
-  void FlushSession(const std::string &filename);
   // Flushes all saved sessions
   void FlushAllSessions(void);
 
@@ -127,17 +149,20 @@ struct ClangCompleteManager {
   OnDiagnostic on_diagnostic_;
   OnDropped on_dropped_;
 
-  using LruSessionCache = LruCache<std::string, CompletionSession>;
+  using LruSessionCache = LruCache<std::string, ccls::CompletionSession>;
 
   // CompletionSession instances which are preloaded, ie, files which the user
   // has viewed but not requested code completion for.
-  LruSessionCache preloaded_sessions_;
+  LruSessionCache preloads;
   // CompletionSession instances which the user has actually performed
   // completion on. This is more rare so these instances tend to stay alive
   // much longer than the ones in |preloaded_sessions_|.
-  LruSessionCache completion_sessions_;
+  LruSessionCache sessions;
   // Mutex which protects |view_sessions_| and |edit_sessions_|.
   std::mutex sessions_lock_;
+
+  std::mutex diag_mutex;
+  std::unordered_map<std::string, int64_t> next_diag;
 
   // Request a code completion at the given location.
   ThreadedQueue<std::unique_ptr<CompletionRequest>> completion_request_;
@@ -145,19 +170,29 @@ struct ClangCompleteManager {
   // Parse requests. The path may already be parsed, in which case it should be
   // reparsed.
   ThreadedQueue<PreloadRequest> preload_requests_;
+
+  std::shared_ptr<clang::PCHContainerOperations> PCH;
 };
 
 // Cached completion information, so we can give fast completion results when
 // the user erases a character. vscode will resend the completion request if
 // that happens.
-struct CodeCompleteCache {
+template <typename T>
+struct CompleteConsumerCache {
   // NOTE: Make sure to access these variables under |WithLock|.
-  std::optional<std::string> cached_path_;
-  std::optional<lsPosition> cached_completion_position_;
-  std::vector<lsCompletionItem> cached_results_;
+  std::optional<std::string> path;
+  std::optional<lsPosition> position;
+  T result;
 
-  std::mutex mutex_;
+  std::mutex mutex;
 
-  void WithLock(std::function<void()> action);
-  bool IsCacheValid(lsTextDocumentPositionParams position);
+  void WithLock(std::function<void()> action) {
+    std::lock_guard lock(mutex);
+    action();
+  }
+  bool IsCacheValid(const lsTextDocumentPositionParams &params) {
+    std::lock_guard lock(mutex);
+    return path == params.textDocument.uri.GetPath() &&
+           position == params.position;
+  }
 };

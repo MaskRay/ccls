@@ -19,18 +19,7 @@ limitations under the License.
 #include "pipeline.hh"
 using namespace ccls;
 
-// static
 std::optional<Matcher> Matcher::Create(const std::string &search) {
-  /*
-  std::string real_search;
-  real_search.reserve(search.size() * 3 + 2);
-  for (auto c : search) {
-    real_search += ".*";
-    real_search += c;
-  }
-  real_search += ".*";
-  */
-
   try {
     Matcher m;
     m.regex_string = search;
@@ -73,18 +62,16 @@ GroupMatch::GroupMatch(const std::vector<std::string> &whitelist,
 
 bool GroupMatch::IsMatch(const std::string &value,
                          std::string *match_failure_reason) const {
-  for (const Matcher &m : whitelist) {
+  for (const Matcher &m : whitelist)
     if (m.IsMatch(value))
       return true;
-  }
 
-  for (const Matcher &m : blacklist) {
+  for (const Matcher &m : blacklist)
     if (m.IsMatch(value)) {
       if (match_failure_reason)
         *match_failure_reason = "blacklist \"" + m.regex_string + "\"";
       return false;
     }
-  }
 
   return true;
 }

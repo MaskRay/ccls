@@ -13,8 +13,8 @@ OUTPUT:
       "kind": 12,
       "storage": 0,
       "declarations": [],
-      "spell": "2:6-2:9|0|1|2",
-      "extent": "2:1-2:26|0|1|0",
+      "spell": "2:6-2:9|0|1|2|-1",
+      "extent": "2:1-2:26|0|1|0|-1",
       "bases": [],
       "derived": [],
       "vars": [],
@@ -27,7 +27,7 @@ OUTPUT:
       "qual_name_offset": 7,
       "short_name": "ForwardType",
       "kind": 23,
-      "declarations": ["1:8-1:19|0|1|1"],
+      "declarations": ["1:8-1:19|1:1-1:19|0|1|1|-1"],
       "alias_of": 0,
       "bases": [],
       "derived": [],
@@ -35,7 +35,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["2:10-2:21|0|1|4"]
+      "uses": ["2:10-2:21|0|1|4|-1"]
     }],
   "usr2var": []
 }

@@ -14,8 +14,8 @@ OUTPUT:
       "short_name": "T",
       "kind": 23,
       "declarations": [],
-      "spell": "1:8-1:9|0|1|2",
-      "extent": "1:1-1:12|0|1|0",
+      "spell": "1:8-1:9|0|1|2|-1",
+      "extent": "1:1-1:12|0|1|0|-1",
       "alias_of": 0,
       "bases": [],
       "derived": [],
@@ -23,14 +23,14 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [1346710425945444872],
-      "uses": ["3:8-3:9|0|1|4"]
+      "uses": ["3:8-3:9|0|1|4|-1"]
     }],
   "usr2var": [{
       "usr": 1346710425945444872,
       "detailed_name": "extern T t",
       "qual_name_offset": 9,
       "short_name": "t",
-      "declarations": ["3:10-3:11|0|1|1"],
+      "declarations": ["3:10-3:11|3:1-3:11|0|1|1|-1"],
       "type": 5673439900521455039,
       "uses": [],
       "kind": 13,

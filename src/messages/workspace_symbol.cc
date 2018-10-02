@@ -17,12 +17,13 @@ limitations under the License.
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "query_utils.h"
-using namespace ccls;
 
 #include <algorithm>
 #include <ctype.h>
 #include <functional>
 #include <limits.h>
+
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "workspace/symbol";
@@ -31,8 +32,7 @@ MethodType kMethodType = "workspace/symbol";
 bool AddSymbol(
     DB *db, WorkingFiles *working_files, SymbolIdx sym, bool use_detailed,
     std::vector<std::tuple<lsSymbolInformation, int, SymbolIdx>> *result) {
-  std::optional<lsSymbolInformation> info =
-      GetSymbolInfo(db, working_files, sym, true);
+  std::optional<lsSymbolInformation> info = GetSymbolInfo(db, sym, true);
   if (!info)
     return false;
 

@@ -21,14 +21,7 @@ limitations under the License.
 
 /*
 The language client plugin needs to send initialization options in the
-`initialize` request to the ccls language server. The only required option is
-`cacheDirectory`, which is where index files will be stored.
-
-  {
-    "initializationOptions": {
-      "cacheDirectory": "/tmp/ccls"
-    }
-  }
+`initialize` request to the ccls language server.
 
 If necessary, the command line option --init can be used to override
 initialization options specified by the client. For example, in shell syntax:
@@ -47,6 +40,7 @@ struct Config {
   std::string compilationDatabaseDirectory;
   // Cache directory for indexed files, either absolute or relative to the
   // project root.
+  // If empty, cache will be stored in memory.
   std::string cacheDirectory = ".ccls-cache";
   // Cache serialization format.
   //
@@ -54,13 +48,30 @@ struct Config {
   // printed with jq.
   //
   // "binary" uses a compact binary serialization format.
-  // It is not schema-aware and you need to re-index whenever a struct
+  // It is not schema-aware and you need to re-index whenever an internal struct
   // member has changed.
   SerializeFormat cacheFormat = SerializeFormat::Binary;
 
   struct Clang {
+    // Arguments that should be excluded, e.g. ["-fopenmp", "-Wall"]
+    //
+    // e.g. If your project is built by GCC and has an option thag clang does not understand.
+    std::vector<std::string> excludeArgs;
+
     // Additional arguments to pass to clang.
     std::vector<std::string> extraArgs;
+
+    // Translate absolute paths in compile_commands.json entries, .ccls options
+    // and cache files. This allows to reuse cache files built otherwhere if the
+    // source paths are different.
+    //
+    // This is a list of colon-separated strings, e.g. ["/container:/host"]
+    //
+    // An entry of "clang -I /container/include /container/a.cc" will be
+    // translated to "clang -I /host/include /host/a.cc". This is simple string
+    // replacement, so "clang /prefix/container/a.cc" will become "clang
+    // /prefix/host/a.cc".
+    std::vector<std::string> pathMappings;
 
     // Value to use for clang -resource-dir if not specified.
     //
@@ -70,8 +81,10 @@ struct Config {
   } clang;
 
   struct ClientCapability {
+    // TextDocumentClientCapabilities.documentSymbol.hierarchicalDocumentSymbolSupport
+    bool hierarchicalDocumentSymbolSupport = true;
     // TextDocumentClientCapabilities.completion.completionItem.snippetSupport
-    bool snippetSupport = false;
+    bool snippetSupport = true;
   } client;
 
   struct CodeLens {
@@ -93,22 +106,22 @@ struct Config {
     // When this option is enabled, the completion item label is very detailed,
     // it shows the full signature of the candidate.
     // The detail just contains the completion item parent context.
-    // Also, in this mode, functions with default arguments,
-    // generates one more item per default argument
-    // so that the right function call can be selected.
-    // That is, you get something like:
-    //     "int foo()" "Foo"
-    //     "void bar()" "Foo"
-    //     "void bar(int i = 0)" "Foo"
-    // Be wary, this is quickly quite verbose,
-    // items can end up truncated by the UIs.
-    bool detailedLabel = false;
+    bool detailedLabel = true;
 
     // On large projects, completion can take a long time. By default if ccls
     // receives multiple completion requests while completion is still running
     // it will only service the newest request. If this is set to false then all
     // completion requests will be serviced.
     bool dropOldRequests = true;
+
+    // Functions with default arguments, generate one more item per default
+    // argument. That is, you get something like:
+    //     "int foo()" "Foo"
+    //     "void bar()" "Foo"
+    //     "void bar(int i = 0)" "Foo"
+    // Be wary, this is quickly quite verbose,
+    // items can end up truncated by the UIs.
+    bool duplicateOptional = true;
 
     // If true, filter and sort completion response. ccls filters and sorts
     // completions to try to be nicer to clients that can't handle big numbers
@@ -117,25 +130,27 @@ struct Config {
     // that implement their own filtering and sorting logic.
     bool filterAndSort = true;
 
-    // Regex patterns to match include completion candidates against. They
-    // receive the absolute file path.
-    //
-    // For example, to hide all files in a /CACHE/ folder, use ".*/CACHE/.*"
-    std::vector<std::string> includeBlacklist;
+    struct Include {
+      // Regex patterns to match include completion candidates against. They
+      // receive the absolute file path.
+      //
+      // For example, to hide all files in a /CACHE/ folder, use ".*/CACHE/.*"
+      std::vector<std::string> blacklist;
 
-    // Maximum path length to show in completion results. Paths longer than this
-    // will be elided with ".." put at the front. Set to 0 or a negative number
-    // to disable eliding.
-    int includeMaxPathSize = 30;
+      // Maximum path length to show in completion results. Paths longer than
+      // this will be elided with ".." put at the front. Set to 0 or a negative
+      // number to disable eliding.
+      int maxPathSize = 30;
 
-    // Whitelist that file paths will be tested against. If a file path does not
-    // end in one of these values, it will not be considered for
-    // auto-completion. An example value is { ".h", ".hpp" }
-    //
-    // This is significantly faster than using a regex.
-    std::vector<std::string> includeSuffixWhitelist = {".h", ".hpp", ".hh"};
+      // Whitelist that file paths will be tested against. If a file path does
+      // not end in one of these values, it will not be considered for
+      // auto-completion. An example value is { ".h", ".hpp" }
+      //
+      // This is significantly faster than using a regex.
+      std::vector<std::string> suffixWhitelist = {".h", ".hpp", ".hh", ".inc"};
 
-    std::vector<std::string> includeWhitelist;
+      std::vector<std::string> whitelist;
+    } include;
   } completion;
 
   struct Diagnostics {
@@ -143,23 +158,29 @@ struct Config {
     // blacklisted files.
     std::vector<std::string> blacklist;
 
-    // How often should ccls publish diagnostics in completion?
-    //  -1: never
-    //   0: as often as possible
-    //   xxx: at most every xxx milliseconds
-    int frequencyMs = 0;
+    // Time to wait before computing diagnostics for textDocument/didChange.
+    //   -1: disable diagnostics on change
+    //   0: immediately
+    //   positive (e.g. 500): wait for 500 milliseconds. didChange requests in
+    //     this period of time will only cause one computation.
+    int onChange = 1000;
 
-    // If true, diagnostics from a full document parse will be reported.
-    bool onParse = true;
+    // Time to wait before computing diagnostics for textDocument/didOpen.
+    int onOpen = 0;
 
-    // If true, diagnostics from typing will be reported.
-    bool onType = true;
+    // Time to wait before computing diagnostics for textDocument/didSave.
+    int onSave = 0;
+
+    bool spellChecking = true;
 
     std::vector<std::string> whitelist;
   } diagnostics;
 
   // Semantic highlighting
   struct Highlight {
+    // Disable semantic highlighting for files larger than the size.
+    int64_t largeFileSize = 2 * 1024 * 1024;
+
     // true: LSP line/character; false: position
     bool lsRanges = false;
 
@@ -171,14 +192,6 @@ struct Config {
   } highlight;
 
   struct Index {
-    // Attempt to convert calls of make* functions to constructors based on
-    // hueristics.
-    //
-    // For example, this will show constructor calls for std::make_unique
-    // invocations. Specifically, ccls will try to attribute a ctor call
-    // whenever the function name starts with make (ignoring case).
-    bool attributeMakeCallsToCtor = true;
-
     // If a translation unit's absolute path matches any EMCAScript regex in the
     // whitelist, or does not match any regex in the blacklist, it will be
     // indexed. To only index files in the whitelist, add ".*" to the blacklist.
@@ -193,26 +206,34 @@ struct Config {
     // - https://github.com/autozimu/LanguageClient-neovim/issues/224
     int comments = 2;
 
-    // If false, the indexer will be disabled.
-    bool enabled = true;
+    // By default, all project entries will be indexed on initialization. Use
+    // these two options to exclude some. They can still be indexed after you
+    // open them.
+    std::vector<std::string> initialBlacklist;
+    std::vector<std::string> initialWhitelist;
+
+    // If not 0, a file will be indexed in each tranlation unit that includes it.
+    int multiVersion = 0;
+
+    // If multiVersion != 0, files that match blacklist but not whitelist will
+    // still only be indexed for one version.
+    std::vector<std::string> multiVersionBlacklist;
+    std::vector<std::string> multiVersionWhitelist;
 
     // Allow indexing on textDocument/didChange.
     // May be too slow for big projects, so it is off by default.
-    bool onDidChange = false;
-
-    // Whether to reparse a file if write times of its dependencies have
-    // changed. The file will always be reparsed if its own write time changes.
-    // 0: no, 1: only after initial load of project, 2: yes
-    int reparseForDependency = 2;
+    bool onChange = false;
 
     // Number of indexer threads. If 0, 80% of cores are used.
     int threads = 0;
 
+    // Whether to reparse a file if write times of its dependencies have
+    // changed. The file will always be reparsed if its own write time changes.
+    // 0: no, 1: only during initial load of project, 2: yes
+    int trackDependency = 2;
+
     std::vector<std::string> whitelist;
   } index;
-
-  // Disable semantic highlighting for files larger than the size.
-  int64_t largeFileSize = 2 * 1024 * 1024;
 
   struct WorkspaceSymbol {
     int caseSensitivity = 1;
@@ -231,26 +252,32 @@ struct Config {
     int maxNum = 2000;
   } xref;
 };
-MAKE_REFLECT_STRUCT(Config::Clang, extraArgs, resourceDir);
-MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
+MAKE_REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, pathMappings,
+                    resourceDir);
+MAKE_REFLECT_STRUCT(Config::ClientCapability, hierarchicalDocumentSymbolSupport,
+                    snippetSupport);
 MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
-MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, dropOldRequests,
-                    detailedLabel, filterAndSort, includeBlacklist,
-                    includeMaxPathSize, includeSuffixWhitelist,
-                    includeWhitelist);
-MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, frequencyMs, onParse,
-                    onType, whitelist)
-MAKE_REFLECT_STRUCT(Config::Highlight, lsRanges, blacklist, whitelist)
-MAKE_REFLECT_STRUCT(Config::Index, attributeMakeCallsToCtor, blacklist,
-                    comments, enabled, onDidChange, reparseForDependency,
-                    threads, whitelist);
+MAKE_REFLECT_STRUCT(Config::Completion::Include, blacklist, maxPathSize,
+                    suffixWhitelist, whitelist);
+MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
+                    dropOldRequests, duplicateOptional, filterAndSort, include);
+MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
+                    spellChecking, whitelist)
+MAKE_REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist,
+                    whitelist)
+MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, initialBlacklist,
+                    initialWhitelist, multiVersion, multiVersionBlacklist,
+                    multiVersionWhitelist, onChange, threads, trackDependency,
+                    whitelist);
 MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 MAKE_REFLECT_STRUCT(Config::Xref, container, maxNum);
 MAKE_REFLECT_STRUCT(Config, compilationDatabaseCommand,
                     compilationDatabaseDirectory, cacheDirectory, cacheFormat,
-
                     clang, client, codeLens, completion, diagnostics, highlight,
-                    index, largeFileSize, workspaceSymbol, xref);
+                    index, workspaceSymbol, xref);
 
 extern Config *g_config;
-thread_local extern int g_thread_id;
+
+namespace ccls {
+void DoPathMapping(std::string &arg);
+}

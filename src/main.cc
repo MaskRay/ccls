@@ -20,15 +20,12 @@ limitations under the License.
 #include "serializers/json.h"
 #include "test.h"
 #include "working_files.h"
-using namespace ccls;
 
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/CrashRecoveryContext.h>
 #include <llvm/Support/Process.h>
 #include <llvm/Support/Program.h>
 #include <llvm/Support/Signals.h>
-using namespace llvm;
-using namespace llvm::cl;
 
 #include <rapidjson/error/en.h>
 
@@ -37,6 +34,10 @@ using namespace llvm::cl;
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+using namespace ccls;
+using namespace llvm;
+using namespace llvm::cl;
 
 std::string g_init_options;
 
@@ -101,7 +102,7 @@ int main(int argc, char **argv) {
     if (!opt_init.empty()) {
       // We check syntax error here but override client-side
       // initializationOptions in messages/initialize.cc
-      g_init_options = opt_init;
+      g_init_options = opt_init.getValue();
       rapidjson::Document reader;
       rapidjson::ParseResult ok = reader.Parse(g_init_options.c_str());
       if (!ok) {

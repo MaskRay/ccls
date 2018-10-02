@@ -34,8 +34,6 @@ std::vector<Use> GetNonDefDeclarations(DB *db, SymbolIdx sym);
 
 std::vector<Use> GetUsesForAllBases(DB *db, QueryFunc &root);
 std::vector<Use> GetUsesForAllDerived(DB *db, QueryFunc &root);
-std::optional<lsPosition> GetLsPosition(WorkingFile *working_file,
-                                        const Position &position);
 std::optional<lsRange> GetLsRange(WorkingFile *working_file,
                                   const Range &location);
 lsDocumentUri GetLsDocumentUri(DB *db, int file_id, std::string *path);
@@ -47,15 +45,14 @@ std::optional<lsLocationEx> GetLsLocationEx(DB *db, WorkingFiles *working_files,
                                             Use use, bool container);
 std::vector<lsLocationEx> GetLsLocationExs(DB *db, WorkingFiles *working_files,
                                            const std::vector<Use> &refs);
-// Returns a symbol. The symbol will have *NOT* have a location assigned.
-std::optional<lsSymbolInformation> GetSymbolInfo(DB *db,
-                                                 WorkingFiles *working_files,
-                                                 SymbolIdx sym,
-                                                 bool detailed_name);
+// Returns a symbol. The symbol will *NOT* have a location assigned.
+std::optional<lsSymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
+                                                 bool detailed);
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *working_file,
                                              QueryFile *file,
-                                             lsPosition &ls_pos);
+                                             lsPosition &ls_pos,
+                                             bool smallest = false);
 
 template <typename Fn> void WithEntity(DB *db, SymbolIdx sym, Fn &&fn) {
   switch (sym.kind) {
@@ -103,24 +100,6 @@ template <typename Fn>
 void EachDefinedFunc(DB *db, const std::vector<Usr> &usrs, Fn &&fn) {
   for (Usr usr : usrs) {
     auto &obj = db->Func(usr);
-    if (!obj.def.empty())
-      fn(obj);
-  }
-}
-
-template <typename Fn>
-void EachDefinedType(DB *db, const std::vector<Usr> &usrs, Fn &&fn) {
-  for (Usr usr : usrs) {
-    auto &obj = db->Type(usr);
-    if (!obj.def.empty())
-      fn(obj);
-  }
-}
-
-template <typename Fn>
-void EachDefinedVar(DB *db, const std::vector<Usr> &usrs, Fn &&fn) {
-  for (Usr usr : usrs) {
-    auto &obj = db->Var(usr);
     if (!obj.def.empty())
       fn(obj);
   }

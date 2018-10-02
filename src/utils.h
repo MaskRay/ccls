@@ -18,18 +18,13 @@ limitations under the License.
 #include <optional>
 #include <string_view>
 
-#include <algorithm>
 #include <iterator>
-#include <memory>
 #include <string>
 #include <vector>
 
 namespace llvm {
 class StringRef;
 }
-
-void TrimInPlace(std::string &s);
-std::string Trim(std::string s);
 
 uint64_t HashUsr(std::string_view s);
 uint64_t HashUsr(llvm::StringRef s);
@@ -46,26 +41,6 @@ std::vector<std::string> SplitString(const std::string &str,
 
 std::string LowerPathIfInsensitive(const std::string &path);
 
-template <typename TValues, typename TMap>
-std::string StringJoinMap(const TValues &values, const TMap &map,
-                          const std::string &sep = ", ") {
-  std::string result;
-  bool first = true;
-  for (auto &entry : values) {
-    if (!first)
-      result += sep;
-    first = false;
-    result += map(entry);
-  }
-  return result;
-}
-
-template <typename TValues>
-std::string StringJoin(const TValues &values, const std::string &sep = ", ") {
-  return StringJoinMap(values, [](const std::string &entry) { return entry; },
-                       sep);
-}
-
 // Ensures that |path| ends in a slash.
 void EnsureEndsInSlash(std::string &path);
 
@@ -73,9 +48,12 @@ void EnsureEndsInSlash(std::string &path);
 // e.g. foo/bar.c => foo_bar.c
 std::string EscapeFileName(std::string path);
 
+std::string ResolveIfRelative(const std::string &directory,
+                              const std::string &path);
+
+std::optional<int64_t> LastWriteTime(const std::string &path);
 std::optional<std::string> ReadContent(const std::string &filename);
 void WriteToFile(const std::string &filename, const std::string &content);
-std::optional<int64_t> LastWriteTime(const std::string &filename);
 
 int ReverseSubseqMatch(std::string_view pat, std::string_view text,
                        int case_sensitivity);

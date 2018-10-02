@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include "clang_complete.hh"
 #include "filesystem.hh"
 #include "include_complete.h"
 #include "log.hh"
@@ -22,15 +23,15 @@ limitations under the License.
 #include "project.h"
 #include "serializers/json.h"
 #include "working_files.h"
-using namespace ccls;
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
-using namespace llvm;
 
-#include <iostream>
 #include <stdexcept>
 #include <thread>
+
+using namespace ccls;
+using namespace llvm;
 
 // TODO Cleanup global variables
 extern std::string g_init_options;
@@ -65,7 +66,7 @@ MAKE_REFLECT_STRUCT(lsCompletionOptions, resolveProvider, triggerCharacters);
 // Format document on type options
 struct lsDocumentOnTypeFormattingOptions {
   // A character on which formatting should be triggered, like `}`.
-  std::string firstTriggerCharacter;
+  std::string firstTriggerCharacter = "}";
 
   // More trigger characters.
   std::vector<std::string> moreTriggerCharacter;
@@ -76,16 +77,9 @@ MAKE_REFLECT_STRUCT(lsDocumentOnTypeFormattingOptions, firstTriggerCharacter,
 // Document link options
 struct lsDocumentLinkOptions {
   // Document links have a resolve provider as well.
-  bool resolveProvider = true;
+  bool resolveProvider = false;
 };
 MAKE_REFLECT_STRUCT(lsDocumentLinkOptions, resolveProvider);
-
-// Execute command options.
-struct lsExecuteCommandOptions {
-  // The commands to be executed on the server
-  std::vector<std::string> commands;
-};
-MAKE_REFLECT_STRUCT(lsExecuteCommandOptions, commands);
 
 // Save options.
 struct lsSaveOptions {
@@ -169,19 +163,21 @@ struct lsServerCapabilities {
   // The server provides code lens.
   lsCodeLensOptions codeLensProvider;
   // The server provides document formatting.
-  bool documentFormattingProvider = false;
+  bool documentFormattingProvider = true;
   // The server provides document range formatting.
-  bool documentRangeFormattingProvider = false;
+  bool documentRangeFormattingProvider = true;
   // The server provides document formatting on typing.
-  std::optional<lsDocumentOnTypeFormattingOptions>
-      documentOnTypeFormattingProvider;
+  lsDocumentOnTypeFormattingOptions documentOnTypeFormattingProvider;
   // The server provides rename support.
   bool renameProvider = true;
   // The server provides document link support.
   lsDocumentLinkOptions documentLinkProvider;
   // The server provides execute command support.
-  lsExecuteCommandOptions executeCommandProvider;
+  struct ExecuteCommandOptions {
+    std::vector<std::string> commands{std::string(ccls_xref)};
+  } executeCommandProvider;
 };
+MAKE_REFLECT_STRUCT(lsServerCapabilities::ExecuteCommandOptions, commands);
 MAKE_REFLECT_STRUCT(lsServerCapabilities, textDocumentSync, hoverProvider,
                     completionProvider, signatureHelpProvider,
                     definitionProvider, implementationProvider,
@@ -269,6 +265,10 @@ struct lsTextDocumentClientCapabilities {
     } completionItem;
   } completion;
 
+  struct lsDocumentSymbol {
+    bool hierarchicalDocumentSymbolSupport = false;
+  } documentSymbol;
+
   struct lsGenericDynamicReg {
     // Whether foo supports dynamic registration.
     std::optional<bool> dynamicRegistration;
@@ -290,6 +290,8 @@ MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsSynchronization,
                     dynamicRegistration, willSave, willSaveWaitUntil, didSave);
 MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsCompletion,
                     dynamicRegistration, completionItem);
+MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsDocumentSymbol,
+                    hierarchicalDocumentSymbolSupport);
 MAKE_REFLECT_STRUCT(
     lsTextDocumentClientCapabilities::lsCompletion::lsCompletionItem,
     snippetSupport);
@@ -298,8 +300,8 @@ MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsGenericDynamicReg,
 MAKE_REFLECT_STRUCT(
     lsTextDocumentClientCapabilities::CodeLensRegistrationOptions,
     dynamicRegistration, resolveProvider);
-MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities, synchronization,
-                    completion, rename);
+MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities, completion,
+                    documentSymbol, rename, synchronization);
 
 struct lsClientCapabilities {
   // Workspace specific client capabilities.
@@ -438,10 +440,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       Reflect(json_writer, *g_config);
       LOG_S(INFO) << "initializationOptions: " << output.GetString();
 
-      if (g_config->cacheDirectory.empty()) {
-        LOG_S(ERROR) << "cacheDirectory cannot be empty.";
-        exit(1);
-      } else {
+      if (g_config->cacheDirectory.size()) {
         g_config->cacheDirectory = NormalizePath(g_config->cacheDirectory);
         EnsureEndsInSlash(g_config->cacheDirectory);
       }
@@ -449,12 +448,15 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
 
     // Client capabilities
     const auto &capabilities = params.capabilities;
-    g_config->client.snippetSupport =
+    g_config->client.snippetSupport &=
         capabilities.textDocument.completion.completionItem.snippetSupport;
+    g_config->client.hierarchicalDocumentSymbolSupport &=
+        capabilities.textDocument.documentSymbol.hierarchicalDocumentSymbolSupport;
 
     // Ensure there is a resource directory.
     if (g_config->clang.resourceDir.empty())
       g_config->clang.resourceDir = GetDefaultResourceDirectory();
+    DoPathMapping(g_config->clang.resourceDir);
     LOG_S(INFO) << "Using -resource-dir=" << g_config->clang.resourceDir;
 
     // Send initialization before starting indexers, so we don't send a
@@ -470,15 +472,16 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     // Set project root.
     EnsureEndsInSlash(project_path);
     g_config->projectRoot = project_path;
-    // Create two cache directories for files inside and outside of the
-    // project.
-    sys::fs::create_directories(g_config->cacheDirectory +
-                                EscapeFileName(g_config->projectRoot));
-    sys::fs::create_directories(g_config->cacheDirectory + '@' +
-                                EscapeFileName(g_config->projectRoot));
+    if (g_config->cacheDirectory.size()) {
+      // Create two cache directories for files inside and outside of the
+      // project.
+      auto len = g_config->projectRoot.size();
+      std::string escaped = EscapeFileName(g_config->projectRoot.substr(0, len - 1));
+      sys::fs::create_directories(g_config->cacheDirectory + escaped);
+      sys::fs::create_directories(g_config->cacheDirectory + '@' + escaped);
+    }
 
-    diag_pub->Init();
-    semantic_cache->Init();
+    idx::Init();
 
     // Open up / load the project.
     project->Load(project_path);
@@ -492,10 +495,9 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     LOG_S(INFO) << "start " << g_config->index.threads << " indexers";
     for (int i = 0; i < g_config->index.threads; i++) {
       std::thread([=]() {
-        g_thread_id = i + 1;
         std::string name = "indexer" + std::to_string(i);
         set_thread_name(name.c_str());
-        pipeline::Indexer_Main(diag_pub, vfs, project, working_files);
+        pipeline::Indexer_Main(clang_complete, vfs, project, working_files);
       })
           .detach();
     }

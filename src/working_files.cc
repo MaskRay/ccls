@@ -387,31 +387,17 @@ std::string WorkingFile::FindClosestCallNameInBuffer(
   return buffer_content.substr(offset, start_offset - offset + 1);
 }
 
-lsPosition WorkingFile::FindStableCompletionSource(
-    lsPosition position, bool *is_global_completion,
-    std::string *existing_completion, lsPosition *replace_end_pos) const {
-  *is_global_completion = true;
-
+lsPosition
+WorkingFile::FindStableCompletionSource(lsPosition position,
+                                        std::string *existing_completion,
+                                        lsPosition *replace_end_pos) const {
   int start_offset = GetOffsetForPosition(position, buffer_content);
   int offset = start_offset;
 
   while (offset > 0) {
     char c = buffer_content[offset - 1];
-    if (!isalnum(c) && c != '_') {
-      // Global completion is everything except for dot (.), arrow (->), and
-      // double colon (::)
-      if (c == '.')
-        *is_global_completion = false;
-      if (offset > 2) {
-        char pc = buffer_content[offset - 2];
-        if (pc == ':' && c == ':')
-          *is_global_completion = false;
-        else if (pc == '-' && c == '>')
-          *is_global_completion = false;
-      }
-
+    if (!isalnum(c) && c != '_')
       break;
-    }
     --offset;
   }
 
@@ -440,6 +426,14 @@ WorkingFiles::GetFileByFilenameNoLock(const std::string &filename) {
       return file.get();
   }
   return nullptr;
+}
+
+std::string WorkingFiles::GetContent(const std::string &filename) {
+  std::lock_guard<std::mutex> lock(files_mutex);
+  for (auto &file : files)
+    if (file->filename == filename)
+      return file->buffer_content;
+  return "";
 }
 
 void WorkingFiles::DoAction(const std::function<void()> &action) {

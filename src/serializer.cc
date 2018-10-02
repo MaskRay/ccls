@@ -27,6 +27,7 @@ limitations under the License.
 #include <mutex>
 #include <stdexcept>
 
+using namespace ccls;
 using namespace llvm;
 
 bool gTestOutputMode = false;
@@ -127,7 +128,7 @@ void Reflect(Writer &visitor, std::string_view &data) {
 
 void Reflect(Reader &vis, const char *&v) {
   const char *str = vis.GetString();
-  v = ccls::Intern(str);
+  v = Intern(str);
 }
 void Reflect(Writer &vis, const char *&v) { vis.String(v); }
 
@@ -159,26 +160,38 @@ void Reflect(Writer &visitor, std::unordered_map<Usr, V> &map) {
   visitor.EndArray();
 }
 
-// Used by IndexFile::dependencies. Timestamps are emitted for Binary.
-void Reflect(Reader &visitor, StringMap<int64_t> &map) {
-  visitor.IterArray([&](Reader &entry) {
-    std::string name;
-    Reflect(entry, name);
-    if (visitor.Format() == SerializeFormat::Binary)
-      Reflect(entry, map[name]);
-    else
-      map[name] = 0;
-  });
-}
-void Reflect(Writer &visitor, StringMap<int64_t> &map) {
-  visitor.StartArray(map.size());
-  for (auto &it : map) {
-    std::string key = it.first();
-    Reflect(visitor, key);
-    if (visitor.Format() == SerializeFormat::Binary)
-      Reflect(visitor, it.second);
+// Used by IndexFile::dependencies.
+void Reflect(Reader &vis, DenseMap<CachedHashStringRef, int64_t> &v) {
+  std::string name;
+  if (vis.Format() == SerializeFormat::Json) {
+    auto &vis1 = static_cast<JsonReader&>(vis);
+    for (auto it = vis1.m().MemberBegin(); it != vis1.m().MemberEnd(); ++it)
+      v[InternH(it->name.GetString())] = it->value.GetInt64();
+  } else {
+    vis.IterArray([&](Reader &entry) {
+      Reflect(entry, name);
+      Reflect(entry, v[InternH(name)]);
+    });
   }
-  visitor.EndArray();
+}
+void Reflect(Writer &vis, DenseMap<CachedHashStringRef, int64_t> &v) {
+  if (vis.Format() == SerializeFormat::Json) {
+    auto &vis1 = static_cast<JsonWriter&>(vis);
+    vis.StartObject();
+    for (auto &it : v) {
+      vis1.m().Key(it.first.val().data()); // llvm 8 -> data()
+      vis1.m().Int64(it.second);
+    }
+    vis.EndObject();
+  } else {
+    vis.StartArray(v.size());
+    for (auto &it : v) {
+      std::string key = it.first.val().str();
+      Reflect(vis, key);
+      Reflect(vis, it.second);
+    }
+    vis.EndArray();
+  }
 }
 
 // TODO: Move this to indexer.cc
@@ -309,7 +322,7 @@ bool ReflectMemberStart(Writer &visitor, IndexFile &value) {
 template <typename TVisitor> void Reflect(TVisitor &visitor, IndexFile &value) {
   REFLECT_MEMBER_START();
   if (!gTestOutputMode) {
-    REFLECT_MEMBER(last_write_time);
+    REFLECT_MEMBER(mtime);
     REFLECT_MEMBER(language);
     REFLECT_MEMBER(lid2path);
     REFLECT_MEMBER(import_file);
@@ -324,9 +337,9 @@ template <typename TVisitor> void Reflect(TVisitor &visitor, IndexFile &value) {
   REFLECT_MEMBER_END();
 }
 
-void Reflect(Reader &visitor, SerializeFormat &value) {
-  std::string fmt = visitor.GetString();
-  value = fmt[0] == 'b' ? SerializeFormat::Binary : SerializeFormat::Json;
+void Reflect(Reader &vis, SerializeFormat &v) {
+  v = vis.GetString()[0] == 'j' ? SerializeFormat::Json
+                                : SerializeFormat::Binary;
 }
 
 void Reflect(Writer &visitor, SerializeFormat &value) {
@@ -342,18 +355,26 @@ void Reflect(Writer &visitor, SerializeFormat &value) {
 
 namespace ccls {
 static BumpPtrAllocator Alloc;
-static DenseSet<StringRef> Strings;
+static DenseSet<CachedHashStringRef> Strings;
 static std::mutex AllocMutex;
 
-const char *Intern(const std::string &str) {
-  if (str.empty())
-    return "";
-  StringRef Str(str.data(), str.size() + 1);
+CachedHashStringRef InternH(StringRef S) {
+  if (S.empty())
+    S = "";
+  CachedHashString HS(S);
   std::lock_guard lock(AllocMutex);
-  auto R = Strings.insert(Str);
-  if (R.second)
-    *R.first = Str.copy(Alloc);
-  return R.first->data();
+  auto R = Strings.insert(HS);
+  if (R.second) {
+    char *P = Alloc.Allocate<char>(S.size() + 1);
+    memcpy(P, S.data(), S.size());
+    P[S.size()] = '\0';
+    *R.first = CachedHashStringRef(StringRef(P, S.size()), HS.hash());
+  }
+  return *R.first;
+}
+
+const char *Intern(StringRef S) {
+  return InternH(S).val().data();
 }
 
 std::string Serialize(SerializeFormat format, IndexFile &file) {
@@ -448,6 +469,30 @@ Deserialize(SerializeFormat format, const std::string &path,
 
   // Restore non-serialized state.
   file->path = path;
+  if (g_config->clang.pathMappings.size()) {
+    DoPathMapping(file->import_file);
+    std::vector<const char *> args;
+    for (const char *arg : file->args) {
+      std::string s(arg);
+      DoPathMapping(s);
+      args.push_back(Intern(s));
+    }
+    file->args = std::move(args);
+    for (auto &[_, path] : file->lid2path)
+      DoPathMapping(path);
+    for (auto &include : file->includes) {
+      std::string p(include.resolved_path);
+      DoPathMapping(p);
+      include.resolved_path = Intern(p);
+    }
+    decltype(file->dependencies) dependencies;
+    for (auto &it : file->dependencies) {
+      std::string path = it.first.val().str();
+      DoPathMapping(path);
+      dependencies[InternH(path)] = it.second;
+    }
+    file->dependencies = std::move(dependencies);
+  }
   return file;
 }
 } // namespace ccls

@@ -15,13 +15,17 @@ limitations under the License.
 
 #include "test.h"
 
+#include "clang_complete.hh"
 #include "filesystem.hh"
 #include "indexer.h"
+#include "pipeline.hh"
 #include "platform.h"
 #include "serializer.h"
 #include "utils.h"
 
 #include <llvm/Config/llvm-config.h>
+#include <llvm/ADT/StringRef.h>
+using namespace llvm;
 
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
@@ -79,6 +83,12 @@ struct TextReplacer {
   }
 };
 
+void TrimInPlace(std::string &s) {
+  auto f = [](char c) { return !isspace(c); };
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), f));
+  s.erase(std::find_if(s.rbegin(), s.rend(), f).base(), s.end());
+}
+
 void ParseTestExpectation(
     const std::string &filename,
     const std::vector<std::string> &lines_with_endings, TextReplacer *replacer,
@@ -88,7 +98,7 @@ void ParseTestExpectation(
   {
     bool in_output = false;
     for (std::string line : lines_with_endings) {
-      TrimInPlace(line);
+      line = StringRef(line).trim().str();
 
       if (StartsWith(line, "EXTRA_FLAGS:")) {
         assert(!in_output && "multiple EXTRA_FLAGS sections");
@@ -124,8 +134,7 @@ void ParseTestExpectation(
         // one token assume it is a filename.
         std::vector<std::string> tokens = SplitString(line_with_ending, " ");
         if (tokens.size() > 1) {
-          active_output_filename = tokens[1];
-          TrimInPlace(active_output_filename);
+          active_output_filename = StringRef(tokens[1]).trim().str();
         } else {
           active_output_filename = filename;
         }
@@ -258,6 +267,9 @@ bool RunIndexTests(const std::string &filter_path, bool enable_update) {
   bool update_all = false;
   // FIXME: show diagnostics in STL/headers when running tests. At the moment
   // this can be done by constructing ClangIndex index(1, 1);
+  CompletionManager completion(
+      nullptr, nullptr, [&](std::string, std::vector<lsDiagnostic>) {},
+      [](lsRequestId id) {});
   GetFilesInFolder(
       "index_tests", true /*recursive*/, true /*add_folder_to_path*/,
       [&](const std::string &path) {
@@ -301,48 +313,19 @@ bool RunIndexTests(const std::string &filter_path, bool enable_update) {
         // Run test.
         g_config = new Config;
         VFS vfs;
-        auto dbs = ccls::idx::Index(&vfs, "", path, flags, {});
+        WorkingFiles wfiles;
+        std::vector<const char *> cargs;
+        for (auto &arg : flags)
+          cargs.push_back(arg.c_str());
+        bool ok;
+        auto dbs = ccls::idx::Index(&completion, &wfiles, &vfs, "", path, cargs, {}, ok);
 
         for (const auto &entry : all_expected_output) {
           const std::string &expected_path = entry.first;
           std::string expected_output = text_replacer.Apply(entry.second);
 
-          // FIXME: promote to utils, find and remove duplicates (ie,
-          // ccls_call_tree.cc, maybe something in project.cc).
-          auto basename = [](const std::string &path) -> std::string {
-            size_t last_index = path.find_last_of('/');
-            if (last_index == std::string::npos)
-              return path;
-            return path.substr(last_index + 1);
-          };
-
           // Get output from index operation.
           IndexFile *db = FindDbForPathEnding(expected_path, dbs);
-          if (db && !db->diagnostics_.empty()) {
-            printf("For %s\n", path.c_str());
-            for (const lsDiagnostic &diagnostic : db->diagnostics_) {
-              printf("  ");
-              if (diagnostic.severity)
-                switch (*diagnostic.severity) {
-                case lsDiagnosticSeverity::Error:
-                  printf("error ");
-                  break;
-                case lsDiagnosticSeverity::Warning:
-                  printf("warning ");
-                  break;
-                case lsDiagnosticSeverity::Information:
-                  printf("information ");
-                  break;
-                case lsDiagnosticSeverity::Hint:
-                  printf("hint ");
-                  break;
-                }
-              printf("%s:%s-%s:%s\n", basename(db->path).c_str(),
-                     diagnostic.range.start.ToString().c_str(),
-                     diagnostic.range.end.ToString().c_str(),
-                     diagnostic.message.c_str());
-            }
-          }
           std::string actual_output = "{}";
           if (db) {
             VerifySerializeToFrom(db);

@@ -16,4 +16,16 @@ limitations under the License.
 #include "config.h"
 
 Config *g_config;
-thread_local int g_thread_id;
+
+namespace ccls {
+void DoPathMapping(std::string &arg) {
+  for (const std::string &mapping : g_config->clang.pathMappings) {
+    auto colon = mapping.find(':');
+    if (colon != std::string::npos) {
+      auto p = arg.find(mapping.substr(0, colon));
+      if (p != std::string::npos)
+        arg.replace(p, colon, mapping.substr(colon + 1));
+    }
+  }
+}
+}

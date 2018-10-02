@@ -30,7 +30,7 @@ struct Project {
   struct Entry {
     std::string directory;
     std::string filename;
-    std::vector<std::string> args;
+    std::vector<const char *> args;
     // If true, this entry is inferred and was not read from disk.
     bool is_inferred = false;
     int id = -1;
@@ -43,7 +43,7 @@ struct Project {
 
   std::vector<Entry> entries;
   std::mutex mutex_;
-  std::unordered_map<std::string, int> absolute_path_to_entry_index_;
+  std::unordered_map<std::string, int> path_to_entry_index;
 
   // Loads a project for the given |directory|.
   //
@@ -59,19 +59,13 @@ struct Project {
 
   // Lookup the CompilationEntry for |filename|. If no entry was found this
   // will infer one based on existing project structure.
-  Entry FindCompilationEntryForFile(const std::string &filename);
+  Entry FindEntry(const std::string &path, bool can_be_inferred);
 
   // If the client has overridden the flags, or specified them for a file
   // that is not in the compilation_database.json make sure those changes
   // are permanent.
-  void SetFlagsForFile(const std::vector<std::string> &flags,
-                       const std::string &path);
-
-  // Run |action| on every file in the project.
-  void
-  ForAllFilteredFiles(std::function<void(int i, const Entry &entry)> action);
+  void SetArgsForFile(const std::vector<const char *> &args,
+                      const std::string &path);
 
   void Index(WorkingFiles *wfiles, lsRequestId id);
-
-  static bool loaded;
 };
