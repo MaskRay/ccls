@@ -406,6 +406,19 @@ struct Out_InitializeResponse : public lsOutMessage<Out_InitializeResponse> {
 MAKE_REFLECT_STRUCT(Out_InitializeResponse::InitializeResult, capabilities);
 MAKE_REFLECT_STRUCT(Out_InitializeResponse, jsonrpc, id, result);
 
+void *Indexer(void *arg_) {
+  MessageHandler *h;
+  int idx;
+  auto *arg = static_cast<std::pair<MessageHandler *, int> *>(arg_);
+  std::tie(h, idx) = *arg;
+  delete arg;
+  std::string name = "indexer" + std::to_string(idx);
+  set_thread_name(name.c_str());
+  pipeline::Indexer_Main(h->clang_complete, h->vfs, h->project,
+                         h->working_files);
+  return nullptr;
+}
+
 struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
   MethodType GetMethodType() const override { return kMethodType; }
 
@@ -483,7 +496,6 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
 
     idx::Init();
 
-    // Open up / load the project.
     project->Load(project_path);
 
     // Start indexer threads. Start this after loading the project, as that
@@ -493,14 +505,8 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       g_config->index.threads = std::thread::hardware_concurrency();
 
     LOG_S(INFO) << "start " << g_config->index.threads << " indexers";
-    for (int i = 0; i < g_config->index.threads; i++) {
-      std::thread([=]() {
-        std::string name = "indexer" + std::to_string(i);
-        set_thread_name(name.c_str());
-        pipeline::Indexer_Main(clang_complete, vfs, project, working_files);
-      })
-          .detach();
-    }
+    for (int i = 0; i < g_config->index.threads; i++)
+      SpawnThread(Indexer, new std::pair<MessageHandler *, int>{this, i});
 
     // Start scanning include directories before dispatching project
     // files, because that takes a long time.

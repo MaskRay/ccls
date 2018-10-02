@@ -221,7 +221,9 @@ bool Parse(CompilerInstance &Clang) {
   return true;
 }
 
-void CompletionPreloadMain(CompletionManager *manager) {
+void *CompletionPreloadMain(void *manager_) {
+  auto *manager = static_cast<CompletionManager*>(manager_);
+  set_thread_name("comp-preload");
   while (true) {
     auto request = manager->preload_requests_.Dequeue();
 
@@ -246,9 +248,12 @@ void CompletionPreloadMain(CompletionManager *manager) {
       manager->DiagnosticsUpdate(request.path, debounce);
     }
   }
+  return nullptr;
 }
 
-void CompletionMain(CompletionManager *manager) {
+void *CompletionMain(void *manager_) {
+  auto *manager = static_cast<CompletionManager *>(manager_);
+  set_thread_name("comp");
   while (true) {
     // Fetching the completion request blocks until we have a request.
     std::unique_ptr<CompletionManager::CompletionRequest> request =
@@ -296,6 +301,7 @@ void CompletionMain(CompletionManager *manager) {
 
     request->on_complete(&Clang->getCodeCompletionConsumer());
   }
+  return nullptr;
 }
 
 llvm::StringRef diagLeveltoString(DiagnosticsEngine::Level Lvl) {
@@ -326,7 +332,9 @@ void printDiag(llvm::raw_string_ostream &OS, const DiagBase &d) {
   OS << diagLeveltoString(d.level) << ": " << d.message;
 }
 
-void DiagnosticMain(CompletionManager *manager) {
+void *DiagnosticMain(void *manager_) {
+  auto *manager = static_cast<CompletionManager*>(manager_);
+  set_thread_name("diag");
   while (true) {
     CompletionManager::DiagnosticRequest request =
         manager->diagnostic_request_.Dequeue();
@@ -422,6 +430,7 @@ void DiagnosticMain(CompletionManager *manager) {
     }
     manager->on_diagnostic_(path, ls_diags);
   }
+  return nullptr;
 }
 
 } // namespace
@@ -470,21 +479,9 @@ CompletionManager::CompletionManager(Project *project,
       preloads(kMaxPreloadedSessions),
       sessions(kMaxCompletionSessions),
       PCH(std::make_shared<PCHContainerOperations>()) {
-  std::thread([&]() {
-    set_thread_name("comp");
-    ccls::CompletionMain(this);
-  })
-      .detach();
-  std::thread([&]() {
-    set_thread_name("comp-preload");
-    ccls::CompletionPreloadMain(this);
-  })
-      .detach();
-  std::thread([&]() {
-    set_thread_name("diag");
-    ccls::DiagnosticMain(this);
-  })
-      .detach();
+  SpawnThread(ccls::CompletionMain, this);
+  SpawnThread(ccls::CompletionPreloadMain, this);
+  SpawnThread(ccls::DiagnosticMain, this);
 }
 
 void CompletionManager::DiagnosticsUpdate(const std::string &path,

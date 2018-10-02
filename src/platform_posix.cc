@@ -28,7 +28,9 @@ limitations under the License.
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <signal.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/types.h> // required for stat.h
 #include <sys/wait.h>
@@ -167,6 +169,21 @@ std::string GetExternalCommandOutput(const std::vector<std::string> &command,
   close(pin[0]);
   waitpid(child, NULL, 0);
   return ret;
+}
+
+void SpawnThread(void *(*fn)(void *), void *arg) {
+  pthread_t thd;
+  pthread_attr_t attr;
+  struct rlimit rlim;
+  size_t stack_size = 4 * 1024 * 1024;
+  if (getrlimit(RLIMIT_STACK, &rlim) == 0 &&
+      rlim.rlim_cur != RLIM_INFINITY)
+    stack_size = rlim.rlim_cur;
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+  pthread_attr_setstacksize(&attr, stack_size);
+  pthread_create(&thd, &attr, fn, arg);
+  pthread_attr_destroy(&attr);
 }
 
 #endif
