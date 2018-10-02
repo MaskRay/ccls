@@ -1035,8 +1035,8 @@ public:
     case Decl::CXXConstructor:
       func->def.kind = lsSymbolKind::Constructor;
       break;
-    case Decl::CXXDestructor:
     case Decl::CXXConversion:
+    case Decl::CXXDestructor:
       func->def.kind = lsSymbolKind::Method;
       break;
     case Decl::Var:
