@@ -25,7 +25,99 @@ using namespace llvm;
 #include <thread>
 namespace chrono = std::chrono;
 
+#if LLVM_VERSION_MAJOR < 8
+namespace clang::vfs {
+struct ProxyFileSystem : FileSystem {
+  explicit ProxyFileSystem(IntrusiveRefCntPtr<FileSystem> FS)
+      : FS(std::move(FS)) {}
+  llvm::ErrorOr<Status> status(const Twine &Path) override {
+    return FS->status(Path);
+  }
+  llvm::ErrorOr<std::unique_ptr<File>>
+  openFileForRead(const Twine &Path) override {
+    return FS->openFileForRead(Path);
+  }
+  directory_iterator dir_begin(const Twine &Dir, std::error_code &EC) override {
+    return FS->dir_begin(Dir, EC);
+  }
+  llvm::ErrorOr<std::string> getCurrentWorkingDirectory() const override {
+    return FS->getCurrentWorkingDirectory();
+  }
+  std::error_code setCurrentWorkingDirectory(const Twine &Path) override {
+    return FS->setCurrentWorkingDirectory(Path);
+  }
+#if LLVM_VERSION_MAJOR == 7
+  std::error_code getRealPath(const Twine &Path,
+                              SmallVectorImpl<char> &Output) const override {
+    return FS->getRealPath(Path, Output);
+  }
+#endif
+  FileSystem &getUnderlyingFS() { return *FS; }
+  IntrusiveRefCntPtr<FileSystem> FS;
+};
+}
+#endif
+
 namespace ccls {
+struct PreambleStatCache {
+  llvm::StringMap<ErrorOr<vfs::Status>> Cache;
+
+  void Update(Twine Path, ErrorOr<vfs::Status> S) {
+    Cache.try_emplace(Path.str(), std::move(S));
+  }
+
+  IntrusiveRefCntPtr<vfs::FileSystem>
+  Producer(IntrusiveRefCntPtr<vfs::FileSystem> FS) {
+    struct VFS : vfs::ProxyFileSystem {
+      PreambleStatCache &Cache;
+
+      VFS(IntrusiveRefCntPtr<vfs::FileSystem> FS, PreambleStatCache &Cache)
+          : ProxyFileSystem(std::move(FS)), Cache(Cache) {}
+      llvm::ErrorOr<std::unique_ptr<vfs::File>>
+      openFileForRead(const Twine &Path) override {
+        auto File = getUnderlyingFS().openFileForRead(Path);
+        if (!File || !*File)
+          return File;
+        Cache.Update(Path, File->get()->status());
+        return File;
+      }
+      llvm::ErrorOr<vfs::Status> status(const Twine &Path) override {
+        auto S = getUnderlyingFS().status(Path);
+        Cache.Update(Path, S);
+        return S;
+      }
+    };
+    return new VFS(std::move(FS), *this);
+  }
+
+  IntrusiveRefCntPtr<vfs::FileSystem>
+  Consumer(IntrusiveRefCntPtr<vfs::FileSystem> FS) {
+    struct VFS : vfs::ProxyFileSystem {
+      const PreambleStatCache &Cache;
+      VFS(IntrusiveRefCntPtr<vfs::FileSystem> FS,
+          const PreambleStatCache &Cache)
+          : ProxyFileSystem(std::move(FS)), Cache(Cache) {}
+      llvm::ErrorOr<vfs::Status> status(const Twine &Path) override {
+        auto I = Cache.Cache.find(Path.str());
+        if (I != Cache.Cache.end())
+          return I->getValue();
+        return getUnderlyingFS().status(Path);
+      }
+    };
+    return new VFS(std::move(FS), *this);
+  }
+};
+
+struct PreambleData {
+  PreambleData(clang::PrecompiledPreamble P, std::vector<Diag> diags,
+               std::unique_ptr<PreambleStatCache> stat_cache)
+      : Preamble(std::move(P)), diags(std::move(diags)),
+        stat_cache(std::move(stat_cache)) {}
+  clang::PrecompiledPreamble Preamble;
+  std::vector<Diag> diags;
+  std::unique_ptr<PreambleStatCache> stat_cache;
+};
+
 namespace {
 
 std::string StripFileType(const std::string &path) {
@@ -160,31 +252,29 @@ public:
 
 std::unique_ptr<CompilerInstance> BuildCompilerInstance(
     CompletionSession &session, std::unique_ptr<CompilerInvocation> CI,
-    DiagnosticConsumer &DC, const WorkingFiles::Snapshot &snapshot,
+    IntrusiveRefCntPtr<vfs::FileSystem> FS, DiagnosticConsumer &DC,
+    const PreambleData *preamble, const WorkingFiles::Snapshot &snapshot,
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> &Bufs) {
   std::string main = ResolveIfRelative(
       session.file.directory,
       sys::path::convert_to_slash(CI->getFrontendOpts().Inputs[0].getFile()));
   for (auto &file : snapshot.files) {
     Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(file.content));
-    if (file.filename == main)
-      if (auto Preamble = session.GetPreamble()) {
+    if (preamble && file.filename == main) {
 #if LLVM_VERSION_MAJOR >= 7
-        Preamble->Preamble.OverridePreamble(*CI, session.FS,
-                                            Bufs.back().get());
+      preamble->Preamble.OverridePreamble(*CI, FS, Bufs.back().get());
 #else
-        Preamble->Preamble.AddImplicitPreamble(*CI, session.FS,
-                                               Bufs.back().get());
+      preamble->Preamble.AddImplicitPreamble(*CI, FS, Bufs.back().get());
 #endif
-        continue;
-      }
+      continue;
+    }
     CI->getPreprocessorOpts().addRemappedFile(file.filename,
       Bufs.back().get());
   }
 
   auto Clang = std::make_unique<CompilerInstance>(session.PCH);
   Clang->setInvocation(std::move(CI));
-  Clang->setVirtualFileSystem(session.FS);
+  Clang->setVirtualFileSystem(FS);
   Clang->createDiagnostics(&DC, false);
   Clang->setTarget(TargetInfo::CreateTargetInfo(
       Clang->getDiagnostics(), Clang->getInvocation().TargetOpts));
@@ -209,6 +299,37 @@ bool Parse(CompilerInstance &Clang) {
   return true;
 }
 
+void BuildPreamble(CompletionSession &session, CompilerInvocation &CI,
+                   IntrusiveRefCntPtr<vfs::FileSystem> FS,
+                   const std::string &main,
+                   std::unique_ptr<PreambleStatCache> stat_cache) {
+  std::shared_ptr<PreambleData> OldP = session.GetPreamble();
+  std::string content = session.wfiles->GetContent(main);
+  std::unique_ptr<llvm::MemoryBuffer> Buf =
+      llvm::MemoryBuffer::getMemBuffer(content);
+  auto Bounds = ComputePreambleBounds(*CI.getLangOpts(), Buf.get(), 0);
+  if (OldP && OldP->Preamble.CanReuse(CI, Buf.get(), Bounds, FS.get()))
+    return;
+  CI.getDiagnosticOpts().IgnoreWarnings = false;
+  CI.getFrontendOpts().SkipFunctionBodies = true;
+  CI.getLangOpts()->CommentOpts.ParseAllComments = true;
+  CI.getLangOpts()->RetainCommentsFromSystemHeaders = true;
+#if LLVM_VERSION_MAJOR >= 7
+  CI.getPreprocessorOpts().WriteCommentListToPCH = false;
+#endif
+
+  StoreDiags DC(main);
+  IntrusiveRefCntPtr<DiagnosticsEngine> DE =
+      CompilerInstance::createDiagnostics(&CI.getDiagnosticOpts(), &DC, false);
+  PreambleCallbacks PP;
+  if (auto NewPreamble = PrecompiledPreamble::Build(
+          CI, Buf.get(), Bounds, *DE, FS, session.PCH, true, PP)) {
+    std::lock_guard lock(session.mutex);
+    session.preamble = std::make_shared<PreambleData>(
+        std::move(*NewPreamble), DC.Take(), std::move(stat_cache));
+  }
+}
+
 void *CompletionPreloadMain(void *manager_) {
   auto *manager = static_cast<CompletionManager*>(manager_);
   set_thread_name("comp-preload");
@@ -224,9 +345,11 @@ void *CompletionPreloadMain(void *manager_) {
     const auto &args = session->file.args;
     WorkingFiles::Snapshot snapshot =
         session->wfiles->AsSnapshot({StripFileType(session->file.filename)});
+    auto stat_cache = std::make_unique<PreambleStatCache>();
+    IntrusiveRefCntPtr<vfs::FileSystem> FS = stat_cache->Producer(session->FS);
     if (std::unique_ptr<CompilerInvocation> CI =
-            BuildCompilerInvocation(args, session->FS))
-      session->BuildPreamble(*CI, request.path);
+            BuildCompilerInvocation(args, FS))
+      BuildPreamble(*session, *CI, FS, request.path, std::move(stat_cache));
 
     int debounce =
         is_open ? g_config->diagnostics.onOpen : g_config->diagnostics.onSave;
@@ -260,9 +383,11 @@ void *CompletionMain(void *manager_) {
 
     std::shared_ptr<CompletionSession> session =
         manager->TryGetSession(path, false);
-
+    std::shared_ptr<PreambleData> preamble = session->GetPreamble();
+    IntrusiveRefCntPtr<vfs::FileSystem> FS =
+        preamble ? preamble->stat_cache->Consumer(session->FS) : session->FS;
     std::unique_ptr<CompilerInvocation> CI =
-        BuildCompilerInvocation(session->file.args, session->FS);
+        BuildCompilerInvocation(session->file.args, FS);
     if (!CI)
       continue;
     auto &FOpts = CI->getFrontendOpts();
@@ -277,7 +402,8 @@ void *CompletionMain(void *manager_) {
     WorkingFiles::Snapshot snapshot =
       manager->working_files_->AsSnapshot({StripFileType(path)});
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
-    auto Clang = BuildCompilerInstance(*session, std::move(CI), DC, snapshot, Bufs);
+    auto Clang = BuildCompilerInstance(*session, std::move(CI), FS, DC,
+                                       preamble.get(), snapshot, Bufs);
     if (!Clang)
       continue;
 
@@ -337,9 +463,11 @@ void *DiagnosticMain(void *manager_) {
 
     std::shared_ptr<CompletionSession> session =
         manager->TryGetSession(path, false);
-
+    std::shared_ptr<PreambleData> preamble = session->GetPreamble();
+    IntrusiveRefCntPtr<vfs::FileSystem> FS =
+        preamble ? preamble->stat_cache->Consumer(session->FS) : session->FS;
     std::unique_ptr<CompilerInvocation> CI =
-        BuildCompilerInvocation(session->file.args, session->FS);
+        BuildCompilerInvocation(session->file.args, FS);
     if (!CI)
       continue;
     CI->getDiagnosticOpts().IgnoreWarnings = false;
@@ -348,7 +476,8 @@ void *DiagnosticMain(void *manager_) {
     WorkingFiles::Snapshot snapshot =
         manager->working_files_->AsSnapshot({StripFileType(path)});
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
-    auto Clang = BuildCompilerInstance(*session, std::move(CI), DC, snapshot, Bufs);
+    auto Clang = BuildCompilerInstance(*session, std::move(CI), FS, DC,
+                                       preamble.get(), snapshot, Bufs);
     if (!Clang)
       continue;
     if (!Parse(*Clang))
@@ -426,35 +555,6 @@ void *DiagnosticMain(void *manager_) {
 std::shared_ptr<PreambleData> CompletionSession::GetPreamble() {
   std::lock_guard<std::mutex> lock(mutex);
   return preamble;
-}
-
-void CompletionSession::BuildPreamble(CompilerInvocation &CI,
-                                      const std::string &main) {
-  std::shared_ptr<PreambleData> OldP = GetPreamble();
-  std::string content = wfiles->GetContent(main);
-  std::unique_ptr<llvm::MemoryBuffer> Buf =
-      llvm::MemoryBuffer::getMemBuffer(content);
-  auto Bounds = ComputePreambleBounds(*CI.getLangOpts(), Buf.get(), 0);
-  if (OldP && OldP->Preamble.CanReuse(CI, Buf.get(), Bounds, FS.get()))
-    return;
-  CI.getDiagnosticOpts().IgnoreWarnings = false;
-  CI.getFrontendOpts().SkipFunctionBodies = true;
-  CI.getLangOpts()->RetainCommentsFromSystemHeaders = true;
-  CI.getLangOpts()->CommentOpts.ParseAllComments = true;
-#if LLVM_VERSION_MAJOR >= 7
-  CI.getPreprocessorOpts().WriteCommentListToPCH = false;
-#endif
-
-  StoreDiags DC(main);
-  IntrusiveRefCntPtr<DiagnosticsEngine> DE =
-      CompilerInstance::createDiagnostics(&CI.getDiagnosticOpts(), &DC, false);
-  PreambleCallbacks PP;
-  if (auto NewPreamble = PrecompiledPreamble::Build(CI, Buf.get(), Bounds,
-      *DE, FS, PCH, true, PP)) {
-    std::lock_guard<std::mutex> lock(mutex);
-    preamble =
-        std::make_shared<PreambleData>(std::move(*NewPreamble), DC.Take());
-  }
 }
 
 } // namespace ccls
