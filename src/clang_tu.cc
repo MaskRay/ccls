@@ -10,8 +10,6 @@
 #include <clang/Lex/Lexer.h>
 #include <llvm/Support/Path.h>
 
-#include <mutex>
-
 using namespace clang;
 
 std::string PathFromFileEntry(const FileEntry &file) {
