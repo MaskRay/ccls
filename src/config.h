@@ -130,6 +130,9 @@ struct Config {
     // that implement their own filtering and sorting logic.
     bool filterAndSort = true;
 
+    // Maxmum number of results.
+    int maxNum = 100;
+
     struct Include {
       // Regex patterns to match include completion candidates against. They
       // receive the absolute file path.
@@ -260,7 +263,8 @@ MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
 MAKE_REFLECT_STRUCT(Config::Completion::Include, blacklist, maxPathSize,
                     suffixWhitelist, whitelist);
 MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
-                    dropOldRequests, duplicateOptional, filterAndSort, include);
+                    dropOldRequests, duplicateOptional, filterAndSort, include,
+                    maxNum);
 MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
                     spellChecking, whitelist)
 MAKE_REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist,

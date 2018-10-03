@@ -182,9 +182,9 @@ void FilterAndSortCompletionResponse(
   auto &items = complete_response->result.items;
 
   auto finalize = [&]() {
-    const size_t kMaxResultSize = 100u;
-    if (items.size() > kMaxResultSize) {
-      items.resize(kMaxResultSize);
+    int max_num = g_config->completion.maxNum;
+    if (items.size() > max_num) {
+      items.resize(max_num);
       complete_response->result.isIncomplete = true;
     }
 
