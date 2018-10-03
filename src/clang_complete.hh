@@ -21,6 +21,8 @@
 #include <string>
 
 namespace ccls {
+struct PreambleData;
+
 struct DiagBase {
   Range range;
   std::string message;
@@ -33,13 +35,6 @@ struct Note : DiagBase {};
 struct Diag : DiagBase {
   std::vector<Note> notes;
   std::vector<lsTextEdit> edits;
-};
-
-struct PreambleData {
-  PreambleData(clang::PrecompiledPreamble P, std::vector<Diag> diags)
-      : Preamble(std::move(P)), diags(std::move(diags)) {}
-  clang::PrecompiledPreamble Preamble;
-  std::vector<Diag> diags;
 };
 
 struct CompletionSession
@@ -61,7 +56,6 @@ struct CompletionSession
       : file(file), wfiles(wfiles), PCH(PCH) {}
 
   std::shared_ptr<PreambleData> GetPreamble();
-  void BuildPreamble(clang::CompilerInvocation &CI, const std::string &main);
 };
 }
 
