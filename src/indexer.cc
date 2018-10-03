@@ -606,6 +606,30 @@ public:
     }
   }
 
+  void CollectRecordMembers(IndexType &type, const RecordDecl *RD) {
+    SmallVector<std::pair<const RecordDecl *, int>, 2> Stack{{RD, 0}};
+    llvm::DenseSet<const RecordDecl *> Seen;
+    Seen.insert(RD);
+    while (Stack.size()) {
+      int offset;
+      std::tie(RD, offset) = Stack.back();
+      Stack.pop_back();
+      if (!RD->isCompleteDefinition() || RD->isDependentType() ||
+          RD->isInvalidDecl() || !ValidateRecord(RD))
+        offset = -1;
+      for (FieldDecl *FD : RD->fields()) {
+        int offset1 = offset < 0 ? -1 : offset + Ctx->getFieldOffset(FD);
+        if (FD->getIdentifier())
+          type.def.vars.emplace_back(GetUsr(FD), offset1);
+        else if (const auto *RT1 = FD->getType()->getAs<RecordType>()) {
+          if (const RecordDecl *RD1 = RT1->getDecl())
+            if (Seen.insert(RD1).second)
+              Stack.push_back({RD1, offset1});
+        }
+      }
+    }
+  }
+
 public:
   IndexDataConsumer(IndexParam &param) : param(param) {}
   void initialize(ASTContext &Ctx) override { this->Ctx = param.Ctx = &Ctx; }
@@ -929,35 +953,17 @@ public:
             type->def.short_name_size = name.size();
           }
         }
-        if (is_def) {
-          SmallVector<std::pair<const RecordDecl *, int>, 2> Stack{{RD, 0}};
-          llvm::DenseSet<const RecordDecl *> Seen;
-          Seen.insert(RD);
-          while (Stack.size()) {
-            int offset;
-            std::tie(RD, offset) = Stack.back();
-            Stack.pop_back();
-            if (!RD->isCompleteDefinition() || RD->isDependentType() ||
-                RD->isInvalidDecl() || !ValidateRecord(RD))
-              offset = -1;
-            for (FieldDecl *FD : RD->fields()) {
-              int offset1 = offset < 0 ? -1 : offset + Ctx->getFieldOffset(FD);
-              if (FD->getIdentifier())
-                type->def.vars.emplace_back(GetUsr(FD), offset1);
-              else if (const auto *RT1 = FD->getType()->getAs<RecordType>()) {
-                if (const RecordDecl *RD1 = RT1->getDecl())
-                  if (Seen.insert(RD1).second)
-                    Stack.push_back({RD1, offset1});
-              }
-            }
-          }
-        }
+        if (is_def)
+          if (auto *ORD = dyn_cast<RecordDecl>(OrigD))
+            CollectRecordMembers(*type, ORD);
       }
       break;
     case Decl::ClassTemplateSpecialization:
     case Decl::ClassTemplatePartialSpecialization:
       type->def.kind = lsSymbolKind::Class;
-      if (is_def || is_decl) {
+      if (is_def) {
+        if (auto *ORD = dyn_cast<RecordDecl>(OrigD))
+          CollectRecordMembers(*type, ORD);
         if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
           Decl *D1 = nullptr;
           if (auto *SD = dyn_cast<ClassTemplatePartialSpecializationDecl>(RD))
