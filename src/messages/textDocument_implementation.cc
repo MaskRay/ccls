@@ -47,13 +47,13 @@ struct Handler_TextDocumentImplementation
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       if (sym.kind == SymbolKind::Type) {
         QueryType &type = db->GetType(sym);
-        out.result = GetLsLocationExs(db, working_files,
-                                      GetTypeDeclarations(db, type.derived));
+        out.result = GetLsLocations(db, working_files,
+                                    GetTypeDeclarations(db, type.derived));
         break;
       } else if (sym.kind == SymbolKind::Func) {
         QueryFunc &func = db->GetFunc(sym);
-        out.result = GetLsLocationExs(db, working_files,
-                                      GetFuncDeclarations(db, func.derived));
+        out.result = GetLsLocations(db, working_files,
+                                    GetFuncDeclarations(db, func.derived));
         break;
       }
     }

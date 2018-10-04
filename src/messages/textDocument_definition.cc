@@ -33,13 +33,6 @@ struct In_TextDocumentDefinition : public RequestInMessage {
 MAKE_REFLECT_STRUCT(In_TextDocumentDefinition, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentDefinition);
 
-struct Out_TextDocumentDefinition
-    : public lsOutMessage<Out_TextDocumentDefinition> {
-  lsRequestId id;
-  std::vector<lsLocationEx> result;
-};
-MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
-
 std::vector<Use> GetNonDefDeclarationTargets(DB *db, SymbolRef sym) {
   switch (sym.kind) {
   case SymbolKind::Var: {
@@ -73,7 +66,7 @@ struct Handler_TextDocumentDefinition
                         params.textDocument.uri.GetPath(), &file, &file_id))
       return;
 
-    Out_TextDocumentDefinition out;
+    Out_LocationList out;
     out.id = request->id;
 
     Maybe<Use> on_def;
@@ -110,7 +103,7 @@ struct Handler_TextDocumentDefinition
         if (uses.empty() && on_def)
           uses.push_back(*on_def);
       }
-      auto locs = GetLsLocationExs(db, working_files, uses);
+      auto locs = GetLsLocations(db, working_files, uses);
       out.result.insert(out.result.end(), locs.begin(), locs.end());
     }
 
@@ -123,9 +116,8 @@ struct Handler_TextDocumentDefinition
       // Check #include
       for (const IndexInclude &include : file->def->includes) {
         if (include.line == ls_pos.line) {
-          lsLocationEx result;
-          result.uri = lsDocumentUri::FromPath(include.resolved_path);
-          out.result.push_back(result);
+          out.result.push_back(
+              lsLocation{lsDocumentUri::FromPath(include.resolved_path)});
           range = {{0, 0}, {0, 0}};
           break;
         }
@@ -184,9 +176,8 @@ struct Handler_TextDocumentDefinition
         if (best_sym.kind != SymbolKind::Invalid) {
           Maybe<Use> use = GetDefinitionSpell(db, best_sym);
           assert(use);
-          if (auto ls_loc = GetLsLocationEx(db, working_files, *use,
-                                            g_config->xref.container))
-            out.result.push_back(*ls_loc);
+          if (auto loc = GetLsLocation(db, working_files, *use))
+            out.result.push_back(*loc);
         }
       }
     }

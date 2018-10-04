@@ -249,8 +249,6 @@ struct Config {
   } workspaceSymbol;
 
   struct Xref {
-    // If true, |Location[]| response will include lexical container.
-    bool container = false;
     // Maximum number of definition/reference/... results.
     int maxNum = 2000;
   } xref;
@@ -274,7 +272,7 @@ MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, initialBlacklist,
                     multiVersionWhitelist, onChange, threads, trackDependency,
                     whitelist);
 MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
-MAKE_REFLECT_STRUCT(Config::Xref, container, maxNum);
+MAKE_REFLECT_STRUCT(Config::Xref, maxNum);
 MAKE_REFLECT_STRUCT(Config, compilationDatabaseCommand,
                     compilationDatabaseDirectory, cacheDirectory, cacheFormat,
                     clang, client, codeLens, completion, diagnostics, highlight,

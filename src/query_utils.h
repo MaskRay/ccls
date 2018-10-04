@@ -39,12 +39,11 @@ std::optional<lsRange> GetLsRange(WorkingFile *working_file,
 lsDocumentUri GetLsDocumentUri(DB *db, int file_id, std::string *path);
 lsDocumentUri GetLsDocumentUri(DB *db, int file_id);
 
-std::optional<lsLocation> GetLsLocation(DB *db, WorkingFiles *working_files,
-                                        Use use);
-std::optional<lsLocationEx> GetLsLocationEx(DB *db, WorkingFiles *working_files,
-                                            Use use, bool container);
-std::vector<lsLocationEx> GetLsLocationExs(DB *db, WorkingFiles *working_files,
-                                           const std::vector<Use> &refs);
+std::optional<lsLocation> GetLsLocation(DB *db, WorkingFiles *wfiles, Use use);
+std::optional<lsLocation> GetLsLocation(DB *db, WorkingFiles *wfiles,
+                                        SymbolRef sym, int file_id);
+std::vector<lsLocation> GetLsLocations(DB *db, WorkingFiles *wfiles,
+                                           const std::vector<Use> &uses);
 // Returns a symbol. The symbol will *NOT* have a location assigned.
 std::optional<lsSymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
                                                  bool detailed);

@@ -85,17 +85,17 @@ struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
   Usr usr;
   llvm::SmallVector<Def, 1> def;
   std::vector<DeclRef> declarations;
-  std::vector<Use> uses;
   std::vector<Usr> derived;
+  std::vector<Use> uses;
 };
 
 struct QueryType : QueryEntity<QueryType, TypeDef> {
   Usr usr;
   llvm::SmallVector<Def, 1> def;
   std::vector<DeclRef> declarations;
-  std::vector<Use> uses;
   std::vector<Usr> derived;
   std::vector<Usr> instances;
+  std::vector<Use> uses;
 };
 
 struct QueryVar : QueryEntity<QueryVar, VarDef> {

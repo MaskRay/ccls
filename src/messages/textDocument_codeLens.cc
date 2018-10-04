@@ -117,19 +117,19 @@ struct Handler_TextDocumentCodeLens
       code_lens.command->arguments.push_back(ToString(show));
     };
 
-    auto ToSpell = [&](Use use) {
-      Maybe<Use> def = GetDefinitionSpell(db, use);
-      if (def && def->file_id == use.file_id &&
-          def->range.start.line == use.range.start.line)
+    auto ToSpell = [&](SymbolRef sym, int file_id) -> Use {
+      Maybe<Use> def = GetDefinitionSpell(db, sym);
+      if (def && def->file_id == file_id &&
+          def->range.start.line == sym.range.start.line)
         return *def;
-      return use;
+      return {{sym.range, sym.role}, file_id};
     };
 
     std::unordered_set<Range> seen;
     for (auto [sym, refcnt] : file->outline2refcnt) {
       if (refcnt <= 0 || !seen.insert(sym.range).second)
         continue;
-      Use use = ToSpell({{sym.range, sym.usr, sym.kind, sym.role}, file->id});
+      Use use = ToSpell(sym, file->id);
       switch (sym.kind) {
       case SymbolKind::Func: {
         QueryFunc &func = db->GetFunc(sym);

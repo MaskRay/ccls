@@ -255,45 +255,49 @@ template <typename Def> void ReflectShortName(Writer &visitor, Def &def) {
   }
 }
 
-template <typename TVisitor> void Reflect(TVisitor &visitor, IndexType &value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER2("usr", value.usr);
-  REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
-  REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
-  ReflectShortName(visitor, value.def);
-  REFLECT_MEMBER2("kind", value.def.kind);
-  ReflectHoverAndComments(visitor, value.def);
-  REFLECT_MEMBER2("declarations", value.declarations);
-  REFLECT_MEMBER2("spell", value.def.spell);
-  REFLECT_MEMBER2("extent", value.def.extent);
-  REFLECT_MEMBER2("alias_of", value.def.alias_of);
-  REFLECT_MEMBER2("bases", value.def.bases);
-  REFLECT_MEMBER2("derived", value.derived);
-  REFLECT_MEMBER2("types", value.def.types);
-  REFLECT_MEMBER2("funcs", value.def.funcs);
-  REFLECT_MEMBER2("vars", value.def.vars);
-  REFLECT_MEMBER2("instances", value.instances);
-  REFLECT_MEMBER2("uses", value.uses);
-  REFLECT_MEMBER_END();
-}
-
 template <typename TVisitor> void Reflect(TVisitor &visitor, IndexFunc &value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
   REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
   ReflectShortName(visitor, value.def);
-  REFLECT_MEMBER2("kind", value.def.kind);
-  REFLECT_MEMBER2("storage", value.def.storage);
+  REFLECT_MEMBER2("spell", value.def.spell);
+  REFLECT_MEMBER2("extent", value.def.extent);
   ReflectHoverAndComments(visitor, value.def);
+  REFLECT_MEMBER2("bases", value.def.bases);
+  REFLECT_MEMBER2("vars", value.def.vars);
+  REFLECT_MEMBER2("callees", value.def.callees);
+  REFLECT_MEMBER2("kind", value.def.kind);
+  REFLECT_MEMBER2("parent_kind", value.def.parent_kind);
+  REFLECT_MEMBER2("storage", value.def.storage);
+
   REFLECT_MEMBER2("declarations", value.declarations);
+  REFLECT_MEMBER2("derived", value.derived);
+  REFLECT_MEMBER2("uses", value.uses);
+  REFLECT_MEMBER_END();
+}
+
+template <typename TVisitor> void Reflect(TVisitor &visitor, IndexType &value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER2("usr", value.usr);
+  REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
+  REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
+  ReflectShortName(visitor, value.def);
+  ReflectHoverAndComments(visitor, value.def);
   REFLECT_MEMBER2("spell", value.def.spell);
   REFLECT_MEMBER2("extent", value.def.extent);
   REFLECT_MEMBER2("bases", value.def.bases);
-  REFLECT_MEMBER2("derived", value.derived);
+  REFLECT_MEMBER2("funcs", value.def.funcs);
+  REFLECT_MEMBER2("types", value.def.types);
   REFLECT_MEMBER2("vars", value.def.vars);
+  REFLECT_MEMBER2("alias_of", value.def.alias_of);
+  REFLECT_MEMBER2("kind", value.def.kind);
+  REFLECT_MEMBER2("parent_kind", value.def.parent_kind);
+
+  REFLECT_MEMBER2("declarations", value.declarations);
+  REFLECT_MEMBER2("derived", value.derived);
+  REFLECT_MEMBER2("instances", value.instances);
   REFLECT_MEMBER2("uses", value.uses);
-  REFLECT_MEMBER2("callees", value.def.callees);
   REFLECT_MEMBER_END();
 }
 
@@ -304,13 +308,15 @@ template <typename TVisitor> void Reflect(TVisitor &visitor, IndexVar &value) {
   REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
   ReflectShortName(visitor, value.def);
   ReflectHoverAndComments(visitor, value.def);
-  REFLECT_MEMBER2("declarations", value.declarations);
   REFLECT_MEMBER2("spell", value.def.spell);
   REFLECT_MEMBER2("extent", value.def.extent);
   REFLECT_MEMBER2("type", value.def.type);
-  REFLECT_MEMBER2("uses", value.uses);
   REFLECT_MEMBER2("kind", value.def.kind);
+  REFLECT_MEMBER2("parent_kind", value.def.parent_kind);
   REFLECT_MEMBER2("storage", value.def.storage);
+
+  REFLECT_MEMBER2("declarations", value.declarations);
+  REFLECT_MEMBER2("uses", value.uses);
   REFLECT_MEMBER_END();
 }
 

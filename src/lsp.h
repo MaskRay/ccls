@@ -198,15 +198,6 @@ enum class lsSymbolKind : uint8_t {
 };
 MAKE_REFLECT_TYPE_PROXY(lsSymbolKind);
 
-// ccls extension
-struct lsLocationEx : lsLocation {
-  std::optional<std::string_view> containerName;
-  std::optional<lsSymbolKind> parentKind;
-  // Avoid circular dependency on symbol.h
-  std::optional<uint16_t> role;
-};
-MAKE_REFLECT_STRUCT(lsLocationEx, uri, range, containerName, parentKind, role);
-
 struct lsTextDocumentIdentifier {
   lsDocumentUri uri;
 };
@@ -346,6 +337,6 @@ void Reflect(TVisitor &visitor, Out_ShowLogMessage &value) {
 
 struct Out_LocationList : public lsOutMessage<Out_LocationList> {
   lsRequestId id;
-  std::vector<lsLocationEx> result;
+  std::vector<lsLocation> result;
 };
 MAKE_REFLECT_STRUCT(Out_LocationList, jsonrpc, id, result);

@@ -61,8 +61,7 @@ Maybe<Use> GetDefinitionSpell(DB *db, SymbolIdx sym) {
 Maybe<Use> GetDefinitionExtent(DB *db, SymbolIdx sym) {
   // Used to jump to file.
   if (sym.kind == SymbolKind::File)
-    return Use{{Range{{0, 0}, {0, 0}}, sym.usr, sym.kind, Role::None},
-               int(sym.usr)};
+    return Use{{Range{{0, 0}, {0, 0}}, Role::None}, int(sym.usr)};
   Maybe<Use> ret;
   EachEntityDef(db, sym, [&](const auto &def) { return !(ret = def.extent); });
   return ret;
@@ -216,40 +215,27 @@ lsDocumentUri GetLsDocumentUri(DB *db, int file_id) {
   }
 }
 
-std::optional<lsLocation> GetLsLocation(DB *db, WorkingFiles *working_files,
+std::optional<lsLocation> GetLsLocation(DB *db, WorkingFiles *wfiles,
                                         Use use) {
   std::string path;
   lsDocumentUri uri = GetLsDocumentUri(db, use.file_id, &path);
   std::optional<lsRange> range =
-      GetLsRange(working_files->GetFileByFilename(path), use.range);
+      GetLsRange(wfiles->GetFileByFilename(path), use.range);
   if (!range)
     return std::nullopt;
   return lsLocation{uri, *range};
 }
 
-std::optional<lsLocationEx> GetLsLocationEx(DB *db, WorkingFiles *working_files,
-                                            Use use, bool container) {
-  std::optional<lsLocation> ls_loc = GetLsLocation(db, working_files, use);
-  if (!ls_loc)
-    return std::nullopt;
-  lsLocationEx ret;
-  ret.lsLocation::operator=(*ls_loc);
-  if (container) {
-    ret.role = uint16_t(use.role);
-    EachEntityDef(db, use, [&](const auto &def) {
-      ret.containerName = std::string_view(def.detailed_name);
-      return false;
-    });
-  }
-  return ret;
+std::optional<lsLocation> GetLsLocation(DB *db, WorkingFiles *wfiles,
+                                        SymbolRef sym, int file_id) {
+  return GetLsLocation(db, wfiles, Use{{sym.range, sym.role}, file_id});
 }
 
-std::vector<lsLocationEx> GetLsLocationExs(DB *db, WorkingFiles *working_files,
-                                           const std::vector<Use> &uses) {
-  std::vector<lsLocationEx> ret;
+std::vector<lsLocation> GetLsLocations(DB *db, WorkingFiles *wfiles,
+                                       const std::vector<Use> &uses) {
+  std::vector<lsLocation> ret;
   for (Use use : uses)
-    if (auto loc =
-            GetLsLocationEx(db, working_files, use, g_config->xref.container))
+    if (auto loc = GetLsLocation(db, wfiles, use))
       ret.push_back(*loc);
   std::sort(ret.begin(), ret.end());
   ret.erase(std::unique(ret.begin(), ret.end()), ret.end());

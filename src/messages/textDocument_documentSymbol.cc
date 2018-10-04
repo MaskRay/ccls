@@ -107,10 +107,8 @@ struct Handler_TextDocumentDocumentSymbol
       for (auto [sym, refcnt] : symbol2refcnt)
         if (refcnt > 0 && params.startLine <= sym.range.start.line &&
             sym.range.start.line <= params.endLine)
-          if (auto ls_loc = GetLsLocation(
-                  db, working_files,
-                  Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id}))
-            out.result.push_back(ls_loc->range);
+          if (auto loc = GetLsLocation(db, working_files, sym, file_id))
+            out.result.push_back(loc->range);
       std::sort(out.result.begin(), out.result.end());
       pipeline::WriteStdout(kMethodType, out);
     } else if (g_config->client.hierarchicalDocumentSymbolSupport) {
@@ -213,10 +211,8 @@ struct Handler_TextDocumentDocumentSymbol
               (sym.kind == SymbolKind::Var &&
                IgnoreVar(db->GetVar(sym).AnyDef())))
             continue;
-          if (std::optional<lsLocation> location = GetLsLocation(
-                  db, working_files,
-                  Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id})) {
-            info->location = *location;
+          if (auto loc = GetLsLocation(db, working_files, sym, file_id)) {
+            info->location = *loc;
             out.result.push_back(*info);
           }
         }

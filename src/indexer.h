@@ -49,28 +49,36 @@ struct SymbolIdx {
 };
 MAKE_REFLECT_STRUCT(SymbolIdx, usr, kind);
 
-struct Reference {
+// |id,kind| refer to the referenced entity.
+struct SymbolRef {
   Range range;
   Usr usr;
   SymbolKind kind;
   Role role;
-
-  bool Valid() const { return range.Valid(); }
   operator SymbolIdx() const { return {usr, kind}; }
   std::tuple<Range, Usr, SymbolKind, Role> ToTuple() const {
     return std::make_tuple(range, usr, kind, role);
   }
-  bool operator==(const Reference &o) const { return ToTuple() == o.ToTuple(); }
-  bool operator<(const Reference &o) const { return ToTuple() < o.ToTuple(); }
+  bool operator==(const SymbolRef &o) const { return ToTuple() == o.ToTuple(); }
+  bool Valid() const { return range.Valid(); }
 };
-
-// |id,kind| refer to the referenced entity.
-struct SymbolRef : Reference {};
 MAKE_HASHABLE(SymbolRef, t.range, t.usr, t.kind, t.role);
+
+struct Ref {
+  Range range;
+  Role role;
+
+  bool Valid() const { return range.Valid(); }
+  std::tuple<Range, Role> ToTuple() const {
+    return std::make_tuple(range, role);
+  }
+  bool operator==(const Ref &o) const { return ToTuple() == o.ToTuple(); }
+  bool operator<(const Ref &o) const { return ToTuple() < o.ToTuple(); }
+};
 
 // Represents an occurrence of a variable/type, |usr,kind| refer to the lexical
 // parent.
-struct Use : Reference {
+struct Use : Ref {
   // |file| is used in Query* but not in Index*
   int file_id = -1;
   bool operator==(const Use &o) const {
@@ -85,8 +93,8 @@ struct DeclRef : Use {
 };
 MAKE_HASHABLE(DeclRef, t.range, t.file_id)
 
-void Reflect(Reader &visitor, Reference &value);
-void Reflect(Writer &visitor, Reference &value);
+void Reflect(Reader &visitor, SymbolRef &value);
+void Reflect(Writer &visitor, SymbolRef &value);
 void Reflect(Reader &visitor, Use &value);
 void Reflect(Writer &visitor, Use &value);
 void Reflect(Reader &visitor, DeclRef &value);
@@ -115,74 +123,71 @@ struct FuncDef : NameMixin<FuncDef> {
 
   // Method this method overrides.
   std::vector<Usr> bases;
-
   // Local variables or parameters.
   std::vector<Usr> vars;
-
   // Functions that this function calls.
   std::vector<SymbolRef> callees;
 
-  int file_id = -1;
+  int file_id = -1; // not serialized
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
   lsSymbolKind kind = lsSymbolKind::Unknown;
+  lsSymbolKind parent_kind = lsSymbolKind::Unknown;
   uint8_t storage = clang::SC_None;
 
   std::vector<Usr> GetBases() const { return bases; }
 };
-MAKE_REFLECT_STRUCT(FuncDef, detailed_name, qual_name_offset, short_name_offset,
-                    short_name_size, kind, storage, hover, comments, spell,
-                    extent, bases, vars, callees);
+MAKE_REFLECT_STRUCT(FuncDef, detailed_name, hover, comments, spell, extent,
+                    bases, vars, callees, qual_name_offset, short_name_offset,
+                    short_name_size, kind, parent_kind, storage);
 
 struct IndexFunc : NameMixin<IndexFunc> {
   using Def = FuncDef;
   Usr usr;
   Def def;
   std::vector<DeclRef> declarations;
-  std::vector<Use> uses;
   std::vector<Usr> derived;
+  std::vector<Use> uses;
 };
 
 struct TypeDef : NameMixin<TypeDef> {
   const char *detailed_name = "";
   const char *hover = "";
   const char *comments = "";
-
   Maybe<Use> spell;
   Maybe<Use> extent;
 
   std::vector<Usr> bases;
-
   // Types, functions, and variables defined in this type.
-  std::vector<Usr> types;
   std::vector<Usr> funcs;
+  std::vector<Usr> types;
   std::vector<std::pair<Usr, int64_t>> vars;
 
   // If set, then this is the same underlying type as the given value (ie, this
   // type comes from a using or typedef statement).
   Usr alias_of = 0;
-
-  int file_id = -1;
+  int file_id = -1; // not serialized
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
   lsSymbolKind kind = lsSymbolKind::Unknown;
+  lsSymbolKind parent_kind = lsSymbolKind::Unknown;
 
   std::vector<Usr> GetBases() const { return bases; }
 };
-MAKE_REFLECT_STRUCT(TypeDef, detailed_name, qual_name_offset, short_name_offset,
-                    short_name_size, kind, hover, comments, spell, extent,
-                    alias_of, bases, types, funcs, vars);
+MAKE_REFLECT_STRUCT(TypeDef, detailed_name, hover, comments, spell, extent,
+                    bases, funcs, types, vars, alias_of, qual_name_offset,
+                    short_name_offset, short_name_size, kind, parent_kind);
 
 struct IndexType {
   using Def = TypeDef;
   Usr usr;
   Def def;
   std::vector<DeclRef> declarations;
-  std::vector<Use> uses;
   std::vector<Usr> derived;
   std::vector<Usr> instances;
+  std::vector<Use> uses;
 };
 
 struct VarDef : NameMixin<VarDef> {
@@ -195,27 +200,29 @@ struct VarDef : NameMixin<VarDef> {
 
   // Type of the variable.
   Usr type = 0;
-
-  int file_id = -1;
+  int file_id = -1; // not serialized
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
-
   lsSymbolKind kind = lsSymbolKind::Unknown;
+  lsSymbolKind parent_kind = lsSymbolKind::Unknown;
   // Note a variable may have instances of both |None| and |Extern|
   // (declaration).
   uint8_t storage = clang::SC_None;
 
   bool is_local() const {
-    return spell && spell->kind == SymbolKind::Func &&
+    return spell &&
+           (parent_kind == lsSymbolKind::Function ||
+            parent_kind == lsSymbolKind::Method ||
+            parent_kind == lsSymbolKind::StaticMethod) &&
            storage == clang::SC_None;
   }
 
   std::vector<Usr> GetBases() const { return {}; }
 };
-MAKE_REFLECT_STRUCT(VarDef, detailed_name, qual_name_offset, short_name_offset,
-                    short_name_size, hover, comments, spell, extent, type, kind,
-                    storage);
+MAKE_REFLECT_STRUCT(VarDef, detailed_name, hover, comments, spell, extent, type,
+                    qual_name_offset, short_name_offset, short_name_size, kind,
+                    parent_kind, storage);
 
 struct IndexVar {
   using Def = VarDef;

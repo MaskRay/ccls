@@ -50,13 +50,6 @@ MAKE_REFLECT_STRUCT(In_TextDocumentReferences::Params, textDocument, position,
 MAKE_REFLECT_STRUCT(In_TextDocumentReferences, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentReferences);
 
-struct Out_TextDocumentReferences
-    : public lsOutMessage<Out_TextDocumentReferences> {
-  lsRequestId id;
-  std::vector<lsLocationEx> result;
-};
-MAKE_REFLECT_STRUCT(Out_TextDocumentReferences, jsonrpc, id, result);
-
 struct Handler_TextDocumentReferences
     : BaseMessageHandler<In_TextDocumentReferences> {
   MethodType GetMethodType() const override { return kMethodType; }
@@ -67,7 +60,7 @@ struct Handler_TextDocumentReferences
     if (!FindFileOrFail(db, project, request->id,
                         params.textDocument.uri.GetPath(), &file))
       return;
-    Out_TextDocumentReferences out;
+    Out_LocationList out;
     out.id = request->id;
     WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
     if (!file) {
@@ -75,7 +68,6 @@ struct Handler_TextDocumentReferences
       return;
     }
 
-    bool container = g_config->xref.container;
     std::unordered_set<Use> seen_uses;
     int line = params.position.line;
 
@@ -93,11 +85,8 @@ struct Handler_TextDocumentReferences
           if (Role(use.role & params.context.role) == params.context.role &&
               !(use.role & params.context.excludeRole) &&
               seen_uses.insert(use).second)
-            if (std::optional<lsLocationEx> ls_loc =
-                    GetLsLocationEx(db, working_files, use, container)) {
-              if (container)
-                ls_loc->parentKind = parent_kind;
-              out.result.push_back(*ls_loc);
+            if (auto loc = GetLsLocation(db, working_files, use)) {
+              out.result.push_back(*loc);
             }
         };
         WithEntity(db, sym, [&](const auto &entity) {
@@ -145,10 +134,9 @@ struct Handler_TextDocumentReferences
             for (const IndexInclude &include : file1.def->includes)
               if (include.resolved_path == path) {
                 // Another file |file1| has the same include line.
-                lsLocationEx result;
-                result.uri = lsDocumentUri::FromPath(file1.def->path);
-                result.range.start.line = result.range.end.line = include.line;
-                out.result.push_back(std::move(result));
+                lsLocation &loc = out.result.emplace_back();
+                loc.uri = lsDocumentUri::FromPath(file1.def->path);
+                loc.range.start.line = loc.range.end.line = include.line;
                 break;
               }
     }

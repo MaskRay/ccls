@@ -34,8 +34,6 @@ void AssignFileId(const Lid2file_id &lid2file_id, int file_id, Use &use) {
     use.file_id = file_id;
   else
     use.file_id = lid2file_id.find(use.file_id)->second;
-  if (use.kind == SymbolKind::File)
-    use.usr = use.file_id;
 }
 
 template <typename T>
@@ -238,7 +236,7 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
                  SymbolKind kind, Use &use, int delta, int k = 1) {
     use.file_id =
         use.file_id == -1 ? u->file_id : lid2fid.find(use.file_id)->second;
-    SymbolRef sym{{use.range, usr, kind, use.role}};
+    SymbolRef sym{use.range, usr, kind, use.role};
     if (k & 1) {
       int &v = files[use.file_id].symbol2refcnt[sym];
       v += delta;
@@ -258,7 +256,7 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
                      SymbolKind kind, DeclRef &dr, int delta) {
     Ref(lid2fid, usr, kind, dr, delta, 1);
     files[dr.file_id]
-        .outline2refcnt[SymbolRef{{dr.extent, usr, kind, dr.role}}] += delta;
+        .outline2refcnt[SymbolRef{dr.extent, usr, kind, dr.role}] += delta;
   };
 
   auto UpdateUses =
@@ -401,12 +399,12 @@ void DB::Update(const Lid2file_id &lid2file_id, int file_id,
     if (def.spell) {
       AssignFileId(lid2file_id, file_id, *def.spell);
       files[def.spell->file_id].symbol2refcnt[{
-          {def.spell->range, u.first, SymbolKind::Func, def.spell->role}}]++;
+          def.spell->range, u.first, SymbolKind::Func, def.spell->role}]++;
     }
     if (def.extent) {
       AssignFileId(lid2file_id, file_id, *def.extent);
       files[def.extent->file_id].outline2refcnt[{
-          {def.extent->range, u.first, SymbolKind::Func, def.extent->role}}]++;
+          def.extent->range, u.first, SymbolKind::Func, def.extent->role}]++;
     }
 
     auto R = func_usr.try_emplace({u.first}, func_usr.size());
@@ -428,12 +426,12 @@ void DB::Update(const Lid2file_id &lid2file_id, int file_id,
     if (def.spell) {
       AssignFileId(lid2file_id, file_id, *def.spell);
       files[def.spell->file_id].symbol2refcnt[{
-          {def.spell->range, u.first, SymbolKind::Type, def.spell->role}}]++;
+          def.spell->range, u.first, SymbolKind::Type, def.spell->role}]++;
     }
     if (def.extent) {
       AssignFileId(lid2file_id, file_id, *def.extent);
       files[def.extent->file_id].outline2refcnt[{
-          {def.extent->range, u.first, SymbolKind::Type, def.extent->role}}]++;
+          def.extent->range, u.first, SymbolKind::Type, def.extent->role}]++;
     }
     auto R = type_usr.try_emplace({u.first}, type_usr.size());
     if (R.second)
@@ -454,12 +452,12 @@ void DB::Update(const Lid2file_id &lid2file_id, int file_id,
     if (def.spell) {
       AssignFileId(lid2file_id, file_id, *def.spell);
       files[def.spell->file_id].symbol2refcnt[{
-          {def.spell->range, u.first, SymbolKind::Var, def.spell->role}}]++;
+          def.spell->range, u.first, SymbolKind::Var, def.spell->role}]++;
     }
     if (def.extent) {
       AssignFileId(lid2file_id, file_id, *def.extent);
       files[def.extent->file_id].outline2refcnt[{
-          {def.extent->range, u.first, SymbolKind::Var, def.extent->role}}]++;
+          def.extent->range, u.first, SymbolKind::Var, def.extent->role}]++;
     }
     auto R = var_usr.try_emplace({u.first}, var_usr.size());
     if (R.second)

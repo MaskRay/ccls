@@ -77,6 +77,8 @@ struct Out_CclsCall : public lsOutMessage<Out_CclsCall> {
     int numChildren;
     // Empty if the |levels| limit is reached.
     std::vector<Entry> children;
+    bool operator==(const Entry &o) const { return location == o.location; }
+    bool operator<(const Entry &o) const { return location < o.location; }
   };
 
   lsRequestId id;
@@ -94,13 +96,14 @@ bool Expand(MessageHandler *m, Out_CclsCall::Entry *entry, bool callee,
   entry->numChildren = 0;
   if (!def)
     return false;
-  auto handle = [&](Use use, CallType call_type1) {
+  auto handle = [&](SymbolRef sym, int file_id, CallType call_type1) {
     entry->numChildren++;
     if (levels > 0) {
       Out_CclsCall::Entry entry1;
-      entry1.id = std::to_string(use.usr);
-      entry1.usr = use.usr;
-      if (auto loc = GetLsLocation(m->db, m->working_files, use))
+      entry1.id = std::to_string(sym.usr);
+      entry1.usr = sym.usr;
+      if (auto loc = GetLsLocation(m->db, m->working_files,
+                                   Use{{sym.range, sym.role}, file_id}))
         entry1.location = *loc;
       entry1.callType = call_type1;
       if (Expand(m, &entry1, callee, call_type, qualified, levels - 1))
@@ -110,14 +113,22 @@ bool Expand(MessageHandler *m, Out_CclsCall::Entry *entry, bool callee,
   auto handle_uses = [&](const QueryFunc &func, CallType call_type) {
     if (callee) {
       if (const auto *def = func.AnyDef())
-        for (SymbolRef ref : def->callees)
-          if (ref.kind == SymbolKind::Func)
-            handle(Use{{ref.range, ref.usr, ref.kind, ref.role}, def->file_id},
-                   call_type);
+        for (SymbolRef sym : def->callees)
+          if (sym.kind == SymbolKind::Func)
+            handle(sym, def->file_id, call_type);
     } else {
-      for (Use use : func.uses)
-        if (use.kind == SymbolKind::Func)
-          handle(use, call_type);
+      for (Use use : func.uses) {
+        const QueryFile &file1 = m->db->files[use.file_id];
+        Maybe<SymbolRef> best_sym;
+        for (auto [sym, refcnt] : file1.outline2refcnt)
+          if (refcnt > 0 && sym.kind == SymbolKind::Func &&
+              sym.range.start <= use.range.start &&
+              use.range.end <= sym.range.end &&
+              (!best_sym || best_sym->range.start < sym.range.start))
+            best_sym = sym;
+        if (best_sym)
+          handle(*best_sym, use.file_id, call_type);
+      }
     }
   };
 
@@ -160,6 +171,11 @@ bool Expand(MessageHandler *m, Out_CclsCall::Entry *entry, bool callee,
       });
     }
   }
+
+  std::sort(entry->children.begin(), entry->children.end());
+  entry->children.erase(
+      std::unique(entry->children.begin(), entry->children.end()),
+      entry->children.end());
   return true;
 }
 

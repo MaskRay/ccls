@@ -80,11 +80,9 @@ struct Handler_TextDocumentDocumentHighlight
             return usr == sym1.usr && kind == sym1.kind;
           }))
         continue;
-      if (auto ls_loc =
-              GetLsLocation(db, working_files,
-                            Use{{sym.range, usr, kind, sym.role}, file_id})) {
+      if (auto loc = GetLsLocation(db, working_files, sym, file_id)) {
         lsDocumentHighlight highlight;
-        highlight.range = ls_loc->range;
+        highlight.range = loc->range;
         if (sym.role & Role::Write)
           highlight.kind = lsDocumentHighlight::Write;
         else if (sym.role & Role::Read)
