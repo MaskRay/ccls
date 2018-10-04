@@ -52,18 +52,9 @@ GetDeclarations(llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
 
 } // namespace
 
-Maybe<Use> GetDefinitionSpell(DB *db, SymbolIdx sym) {
-  Maybe<Use> ret;
+Maybe<DeclRef> GetDefinitionSpell(DB *db, SymbolIdx sym) {
+  Maybe<DeclRef> ret;
   EachEntityDef(db, sym, [&](const auto &def) { return !(ret = def.spell); });
-  return ret;
-}
-
-Maybe<Use> GetDefinitionExtent(DB *db, SymbolIdx sym) {
-  // Used to jump to file.
-  if (sym.kind == SymbolKind::File)
-    return Use{{Range{{0, 0}, {0, 0}}, Role::None}, int(sym.usr)};
-  Maybe<Use> ret;
-  EachEntityDef(db, sym, [&](const auto &def) { return !(ret = def.extent); });
   return ret;
 }
 

@@ -20,8 +20,7 @@ limitations under the License.
 
 #include <optional>
 
-Maybe<Use> GetDefinitionSpell(DB *db, SymbolIdx sym);
-Maybe<Use> GetDefinitionExtent(DB *db, SymbolIdx sym);
+Maybe<DeclRef> GetDefinitionSpell(DB *db, SymbolIdx sym);
 
 // Get defining declaration (if exists) or an arbitrary declaration (otherwise)
 // for each id.

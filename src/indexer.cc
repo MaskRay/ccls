@@ -777,12 +777,10 @@ public:
 
     auto do_def_decl = [&](auto *entity) {
       if (is_def) {
-        entity->def.spell = {{loc, role}, lid};
         SourceRange R = OrigD->getSourceRange();
-        entity->def.extent = {
-            {R.getBegin().isFileID() ? FromTokenRange(SM, Lang, R) : loc,
-             Role::None},
-            lid};
+        entity->def.spell = {
+            Use{{loc, role}, lid},
+            R.getBegin().isFileID() ? FromTokenRange(SM, Lang, R) : loc};
         GetSymbolKind(cast<Decl>(SemDC), entity->def.parent_kind);
       } else if (is_decl) {
         DeclRef &dr = entity->declarations.emplace_back();
@@ -876,10 +874,9 @@ public:
                 IndexType &type1 = db->ToType(usr1);
                 SourceLocation L1 = D1->getLocation();
                 type1.def.spell = {
-                    {FromTokenRange(SM, Lang, {L1, L1}), Role::Definition},
-                    lid};
-                type1.def.extent = {{FromTokenRange(SM, Lang, R1), Role::None},
-                                    lid};
+                    Use{{FromTokenRange(SM, Lang, {L1, L1}), Role::Definition},
+                        lid},
+                    FromTokenRange(SM, Lang, R1)};
                 type1.def.detailed_name = Intern(info1->short_name);
                 type1.def.short_name_size = int16_t(info1->short_name.size());
                 type1.def.kind = lsSymbolKind::TypeParameter;
@@ -901,9 +898,8 @@ public:
         SourceLocation L = D->getLocation();
         if (SM.getFileID(L) == LocFID) {
           var->def.spell = {
-              {FromTokenRange(SM, Lang, {L, L}), Role::Definition}, lid};
-          var->def.extent = {
-              {FromTokenRange(SM, Lang, D->getSourceRange()), Role::None}, lid};
+              Use{{FromTokenRange(SM, Lang, {L, L}), Role::Definition}, lid},
+              FromTokenRange(SM, Lang, D->getSourceRange())};
           var->def.parent_kind = lsSymbolKind::Method;
         }
       }
@@ -1100,19 +1096,15 @@ public:
     if (IndexFile *db = param.ConsumeFile(*FE)) {
       auto [Name, usr] = GetMacro(Tok);
       IndexVar &var = db->ToVar(usr);
-      auto range = FromTokenRange(SM, Lang, {L, L}, &UniqueID);
+      Range range = FromTokenRange(SM, Lang, {L, L}, &UniqueID);
       var.def.kind = lsSymbolKind::Macro;
       var.def.parent_kind = lsSymbolKind::File;
-      if (var.def.spell) {
-        DeclRef &d = var.declarations.emplace_back();
-        static_cast<Use&>(d) = *var.def.spell;
-        d.extent = var.def.spell->range;
-      }
-      var.def.spell = Use{{range, Role::Definition}};
+      if (var.def.spell)
+        var.declarations.push_back(*var.def.spell);
       const MacroInfo *MI = MD->getMacroInfo();
       SourceRange R(MI->getDefinitionLoc(), MI->getDefinitionEndLoc());
-      range = FromTokenRange(SM, param.Ctx->getLangOpts(), R);
-      var.def.extent = Use{{range, Role::None}};
+      Range extent = FromTokenRange(SM, param.Ctx->getLangOpts(), R);
+      var.def.spell = {Use{{range, Role::Definition}}, extent};
       if (var.def.detailed_name[0] == '\0') {
         var.def.detailed_name = Intern(Name);
         var.def.short_name_size = Name.size();

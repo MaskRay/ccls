@@ -262,7 +262,6 @@ template <typename TVisitor> void Reflect(TVisitor &visitor, IndexFunc &value) {
   REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
   ReflectShortName(visitor, value.def);
   REFLECT_MEMBER2("spell", value.def.spell);
-  REFLECT_MEMBER2("extent", value.def.extent);
   ReflectHoverAndComments(visitor, value.def);
   REFLECT_MEMBER2("bases", value.def.bases);
   REFLECT_MEMBER2("vars", value.def.vars);
@@ -285,7 +284,6 @@ template <typename TVisitor> void Reflect(TVisitor &visitor, IndexType &value) {
   ReflectShortName(visitor, value.def);
   ReflectHoverAndComments(visitor, value.def);
   REFLECT_MEMBER2("spell", value.def.spell);
-  REFLECT_MEMBER2("extent", value.def.extent);
   REFLECT_MEMBER2("bases", value.def.bases);
   REFLECT_MEMBER2("funcs", value.def.funcs);
   REFLECT_MEMBER2("types", value.def.types);
@@ -309,7 +307,6 @@ template <typename TVisitor> void Reflect(TVisitor &visitor, IndexVar &value) {
   ReflectShortName(visitor, value.def);
   ReflectHoverAndComments(visitor, value.def);
   REFLECT_MEMBER2("spell", value.def.spell);
-  REFLECT_MEMBER2("extent", value.def.extent);
   REFLECT_MEMBER2("type", value.def.type);
   REFLECT_MEMBER2("kind", value.def.kind);
   REFLECT_MEMBER2("parent_kind", value.def.parent_kind);

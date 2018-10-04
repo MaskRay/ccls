@@ -41,7 +41,7 @@ std::vector<Use> GetNonDefDeclarationTargets(DB *db, SymbolRef sym) {
     if (ret.empty()) {
       for (auto &def : db->GetVar(sym).def)
         if (def.type) {
-          if (Maybe<Use> use = GetDefinitionSpell(
+          if (Maybe<DeclRef> use = GetDefinitionSpell(
                   db, SymbolIdx{def.type, SymbolKind::Type})) {
             ret.push_back(*use);
             break;
@@ -147,11 +147,11 @@ struct Handler_TextDocumentDefinition
                                       : short_name;
           if (short_name != short_query)
             return;
-          if (Maybe<Use> use = GetDefinitionSpell(db, sym)) {
+          if (Maybe<DeclRef> dr = GetDefinitionSpell(db, sym)) {
             std::tuple<int, int, bool, int> score{
                 int(name.size() - short_query.size()), 0,
-                use->file_id != file_id,
-                std::abs(use->range.start.line - position.line)};
+                dr->file_id != file_id,
+                std::abs(dr->range.start.line - position.line)};
             // Update the score with qualified name if the qualified name
             // occurs in |name|.
             auto pos = name.rfind(query);
@@ -174,9 +174,9 @@ struct Handler_TextDocumentDefinition
             fn({var.usr, SymbolKind::Var});
 
         if (best_sym.kind != SymbolKind::Invalid) {
-          Maybe<Use> use = GetDefinitionSpell(db, best_sym);
-          assert(use);
-          if (auto loc = GetLsLocation(db, working_files, *use))
+          Maybe<DeclRef> dr = GetDefinitionSpell(db, best_sym);
+          assert(dr);
+          if (auto loc = GetLsLocation(db, working_files, *dr))
             out.result.push_back(*loc);
         }
       }

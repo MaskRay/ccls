@@ -132,10 +132,10 @@ struct Handler_TextDocumentDocumentSymbol
           ds.detail = def->Name(true);
           for (auto &def : entity.def)
             if (def.file_id == file_id) {
-              if (!def.spell || !def.extent)
+              if (!def.spell)
                 break;
               ds.kind = def.kind;
-              if (auto ls_range = GetLsRange(wfile, def.extent->range))
+              if (auto ls_range = GetLsRange(wfile, def.spell->extent))
                 ds.range = *ls_range;
               else
                 break;

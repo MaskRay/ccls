@@ -37,8 +37,8 @@ bool AddSymbol(
     return false;
 
   Use loc;
-  if (Maybe<Use> location = GetDefinitionExtent(db, sym))
-    loc = *location;
+  if (Maybe<DeclRef> dr = GetDefinitionSpell(db, sym))
+    loc = *dr;
   else {
     auto decls = GetNonDefDeclarations(db, sym);
     if (decls.empty())

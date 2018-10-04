@@ -118,7 +118,7 @@ struct Handler_TextDocumentCodeLens
     };
 
     auto ToSpell = [&](SymbolRef sym, int file_id) -> Use {
-      Maybe<Use> def = GetDefinitionSpell(db, sym);
+      Maybe<DeclRef> def = GetDefinitionSpell(db, sym);
       if (def && def->file_id == file_id &&
           def->range.start.line == sym.range.start.line)
         return *def;
