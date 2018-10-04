@@ -144,24 +144,15 @@ void EmitSemanticHighlighting(DB *db, WorkingFile *wfile, QueryFile *file) {
       const QueryFunc::Def *def = func.AnyDef();
       if (!def)
         continue; // applies to for loop
-      if (def->spell)
-        parent_kind = GetSymbolKind(db, *def->spell);
-      if (parent_kind == lsSymbolKind::Unknown) {
-        for (Use use : func.declarations) {
-          parent_kind = GetSymbolKind(db, use);
-          break;
-        }
-      }
       // Don't highlight overloadable operators or implicit lambda ->
       // std::function constructor.
       std::string_view short_name = def->Name(false);
       if (short_name.compare(0, 8, "operator") == 0)
         continue; // applies to for loop
-      if (def->spell)
-        parent_kind = GetSymbolKind(db, *def->spell);
       kind = def->kind;
       storage = def->storage;
       detailed_name = short_name;
+      parent_kind = def->parent_kind;
 
       // Check whether the function name is actually there.
       // If not, do not publish the semantic highlight.
@@ -188,7 +179,7 @@ void EmitSemanticHighlighting(DB *db, WorkingFile *wfile, QueryFile *file) {
         kind = def.kind;
         detailed_name = def.detailed_name;
         if (def.spell) {
-          parent_kind = GetSymbolKind(db, *def.spell);
+          parent_kind = def.parent_kind;
           break;
         }
       }
@@ -202,13 +193,7 @@ void EmitSemanticHighlighting(DB *db, WorkingFile *wfile, QueryFile *file) {
         storage = def.storage;
         detailed_name = def.detailed_name;
         if (def.spell) {
-          parent_kind = GetSymbolKind(db, *def.spell);
-          break;
-        }
-      }
-      if (parent_kind == lsSymbolKind::Unknown) {
-        for (Use use : var.declarations) {
-          parent_kind = GetSymbolKind(db, use);
+          parent_kind = def.parent_kind;
           break;
         }
       }
