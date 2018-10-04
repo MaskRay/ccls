@@ -106,8 +106,7 @@ struct FuncDef : NameMixin<FuncDef> {
   const char *detailed_name = "";
   const char *hover = "";
   const char *comments = "";
-  Maybe<Use> spell;
-  Maybe<Use> extent;
+  Maybe<DeclRef> spell;
 
   // Method this method overrides.
   std::vector<Usr> bases;
@@ -126,8 +125,8 @@ struct FuncDef : NameMixin<FuncDef> {
 
   std::vector<Usr> GetBases() const { return bases; }
 };
-MAKE_REFLECT_STRUCT(FuncDef, detailed_name, hover, comments, spell, extent,
-                    bases, vars, callees, qual_name_offset, short_name_offset,
+MAKE_REFLECT_STRUCT(FuncDef, detailed_name, hover, comments, spell, bases, vars,
+                    callees, qual_name_offset, short_name_offset,
                     short_name_size, kind, parent_kind, storage);
 
 struct IndexFunc : NameMixin<IndexFunc> {
@@ -143,8 +142,7 @@ struct TypeDef : NameMixin<TypeDef> {
   const char *detailed_name = "";
   const char *hover = "";
   const char *comments = "";
-  Maybe<Use> spell;
-  Maybe<Use> extent;
+  Maybe<DeclRef> spell;
 
   std::vector<Usr> bases;
   // Types, functions, and variables defined in this type.
@@ -164,8 +162,8 @@ struct TypeDef : NameMixin<TypeDef> {
 
   std::vector<Usr> GetBases() const { return bases; }
 };
-MAKE_REFLECT_STRUCT(TypeDef, detailed_name, hover, comments, spell, extent,
-                    bases, funcs, types, vars, alias_of, qual_name_offset,
+MAKE_REFLECT_STRUCT(TypeDef, detailed_name, hover, comments, spell, bases,
+                    funcs, types, vars, alias_of, qual_name_offset,
                     short_name_offset, short_name_size, kind, parent_kind);
 
 struct IndexType {
@@ -183,8 +181,7 @@ struct VarDef : NameMixin<VarDef> {
   const char *detailed_name = "";
   const char *hover = "";
   const char *comments = "";
-  Maybe<Use> spell;
-  Maybe<Use> extent;
+  Maybe<DeclRef> spell;
 
   // Type of the variable.
   Usr type = 0;
@@ -208,7 +205,7 @@ struct VarDef : NameMixin<VarDef> {
 
   std::vector<Usr> GetBases() const { return {}; }
 };
-MAKE_REFLECT_STRUCT(VarDef, detailed_name, hover, comments, spell, extent, type,
+MAKE_REFLECT_STRUCT(VarDef, detailed_name, hover, comments, spell, type,
                     qual_name_offset, short_name_offset, short_name_size, kind,
                     parent_kind, storage);
 
