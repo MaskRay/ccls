@@ -104,7 +104,7 @@ struct Handler_CclsNavigate : BaseMessageHandler<In_CclsNavigate> {
     out.id = request->id;
     if (res)
       if (auto ls_range = GetLsRange(wfile, *res)) {
-        lsLocationEx &ls_loc = out.result.emplace_back();
+        lsLocation &ls_loc = out.result.emplace_back();
         ls_loc.uri = params.textDocument.uri;
         ls_loc.range = *ls_range;
       }
