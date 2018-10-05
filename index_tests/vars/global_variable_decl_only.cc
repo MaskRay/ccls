@@ -10,14 +10,15 @@ OUTPUT:
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
-      "kind": 0,
-      "declarations": [],
-      "alias_of": 0,
       "bases": [],
-      "derived": [],
-      "types": [],
       "funcs": [],
+      "types": [],
       "vars": [],
+      "alias_of": 0,
+      "kind": 0,
+      "parent_kind": 0,
+      "declarations": [],
+      "derived": [],
       "instances": [9937941849651546906],
       "uses": []
     }],
@@ -26,11 +27,12 @@ OUTPUT:
       "detailed_name": "extern int global",
       "qual_name_offset": 11,
       "short_name": "global",
-      "declarations": ["1:12-1:18|1:1-1:18|0|1|1|-1"],
       "type": 53,
-      "uses": [],
       "kind": 13,
-      "storage": 1
+      "parent_kind": 0,
+      "storage": 1,
+      "declarations": ["1:12-1:18|1:1-1:18|1|-1"],
+      "uses": []
     }]
 }
 */
