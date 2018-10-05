@@ -16,29 +16,30 @@ OUTPUT:
       "detailed_name": "bool called(bool a, bool b)",
       "qual_name_offset": 5,
       "short_name": "called",
-      "kind": 12,
-      "storage": 0,
-      "declarations": ["3:6-3:12|3:1-3:28|0|1|1|-1"],
       "bases": [],
-      "derived": [],
       "vars": [],
-      "uses": ["6:14-6:20|11404881820527069090|3|16420|-1", "6:14-6:20|0|1|64|0"],
-      "callees": []
+      "callees": [],
+      "kind": 12,
+      "parent_kind": 0,
+      "storage": 0,
+      "declarations": ["3:6-3:12|3:1-3:28|1|-1"],
+      "derived": [],
+      "uses": ["6:14-6:20|16420|-1", "6:14-6:20|64|0"]
     }, {
       "usr": 11404881820527069090,
       "detailed_name": "void caller()",
       "qual_name_offset": 5,
       "short_name": "caller",
+      "spell": "5:6-5:12|5:1-7:2|2|-1",
+      "bases": [],
+      "vars": [],
+      "callees": ["6:14-6:20|3787803219955606747|3|16420"],
       "kind": 12,
+      "parent_kind": 0,
       "storage": 0,
       "declarations": [],
-      "spell": "5:6-5:12|0|1|2|-1",
-      "extent": "5:1-7:2|0|1|0|-1",
-      "bases": [],
       "derived": [],
-      "vars": [],
-      "uses": [],
-      "callees": ["6:14-6:20|3787803219955606747|3|16420"]
+      "uses": []
     }],
   "usr2type": [],
   "usr2var": [{
@@ -47,13 +48,13 @@ OUTPUT:
       "qual_name_offset": 0,
       "short_name": "MACRO_CALL",
       "hover": "#define MACRO_CALL(e) e",
-      "declarations": [],
-      "spell": "1:9-1:19|0|1|2|-1",
-      "extent": "1:9-1:24|0|1|0|-1",
+      "spell": "1:9-1:19|1:9-1:24|2|-1",
       "type": 0,
-      "uses": ["6:3-6:13|0|1|64|-1"],
       "kind": 255,
-      "storage": 0
+      "parent_kind": 1,
+      "storage": 0,
+      "declarations": [],
+      "uses": ["6:3-6:13|64|-1"]
     }]
 }
 */

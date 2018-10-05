@@ -9,16 +9,16 @@ OUTPUT:
       "detailed_name": "void foo(int, int)",
       "qual_name_offset": 5,
       "short_name": "foo",
+      "spell": "1:6-1:9|1:1-1:22|2|-1",
+      "bases": [],
+      "vars": [],
+      "callees": [],
       "kind": 12,
+      "parent_kind": 0,
       "storage": 0,
       "declarations": [],
-      "spell": "1:6-1:9|0|1|2|-1",
-      "extent": "1:1-1:22|0|1|0|-1",
-      "bases": [],
       "derived": [],
-      "vars": [],
-      "uses": [],
-      "callees": []
+      "uses": []
     }],
   "usr2type": [],
   "usr2var": []
