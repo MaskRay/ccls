@@ -14,45 +14,46 @@ OUTPUT:
       "detailed_name": "void foo()",
       "qual_name_offset": 5,
       "short_name": "foo",
+      "spell": "3:6-3:9|3:1-5:2|2|-1",
+      "bases": [],
+      "vars": [13198746475679542317],
+      "callees": [],
       "kind": 12,
+      "parent_kind": 0,
       "storage": 0,
       "declarations": [],
-      "spell": "3:6-3:9|0|1|2|-1",
-      "extent": "3:1-5:2|0|1|0|-1",
-      "bases": [],
       "derived": [],
-      "vars": [13198746475679542317],
-      "uses": [],
-      "callees": []
+      "uses": []
     }],
   "usr2type": [{
       "usr": 15041163540773201510,
       "detailed_name": "struct Foo",
       "qual_name_offset": 7,
       "short_name": "Foo",
-      "kind": 23,
-      "declarations": ["1:8-1:11|1:1-1:11|0|1|1|-1"],
-      "alias_of": 0,
       "bases": [],
-      "derived": [],
-      "types": [],
       "funcs": [],
+      "types": [],
       "vars": [],
+      "alias_of": 0,
+      "kind": 23,
+      "parent_kind": 0,
+      "declarations": ["1:8-1:11|1:1-1:11|1|-1"],
+      "derived": [],
       "instances": [13198746475679542317],
-      "uses": ["4:3-4:6|4259594751088586730|3|4|-1"]
+      "uses": ["4:3-4:6|4|-1"]
     }],
   "usr2var": [{
       "usr": 13198746475679542317,
       "detailed_name": "Foo *a",
       "qual_name_offset": 5,
       "short_name": "a",
-      "declarations": [],
-      "spell": "4:8-4:9|4259594751088586730|3|2|-1",
-      "extent": "4:3-4:9|4259594751088586730|3|0|-1",
+      "spell": "4:8-4:9|4:3-4:9|2|-1",
       "type": 15041163540773201510,
-      "uses": [],
       "kind": 13,
-      "storage": 0
+      "parent_kind": 12,
+      "storage": 0,
+      "declarations": [],
+      "uses": []
     }]
 }
 */

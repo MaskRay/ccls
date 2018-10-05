@@ -140,9 +140,8 @@ void EmitSemanticHighlighting(DB *db, WorkingFile *wfile, QueryFile *file) {
   // Group symbols together.
   std::unordered_map<SymbolIdx, Out_CclsPublishSemanticHighlighting::Symbol>
       grouped_symbols;
-  for (auto &sym_refcnt : file->symbol2refcnt) {
-    if (sym_refcnt.second <= 0) continue;
-    SymbolRef sym = sym_refcnt.first;
+  for (auto &[sym, refcnt] : file->symbol2refcnt) {
+    if (refcnt <= 0) continue;
     std::string_view detailed_name;
     lsSymbolKind parent_kind = lsSymbolKind::Unknown;
     lsSymbolKind kind = lsSymbolKind::Unknown;
