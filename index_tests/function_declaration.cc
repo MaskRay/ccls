@@ -10,14 +10,15 @@ OUTPUT:
       "detailed_name": "void foo(int a, int b)",
       "qual_name_offset": 5,
       "short_name": "foo",
-      "kind": 12,
-      "storage": 0,
-      "declarations": ["1:6-1:9|1:1-1:23|0|1|1|-1"],
       "bases": [],
-      "derived": [],
       "vars": [],
-      "uses": [],
-      "callees": []
+      "callees": [],
+      "kind": 12,
+      "parent_kind": 0,
+      "storage": 0,
+      "declarations": ["1:6-1:9|1:1-1:23|1|-1"],
+      "derived": [],
+      "uses": []
     }],
   "usr2type": [],
   "usr2var": []
