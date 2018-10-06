@@ -59,6 +59,18 @@ struct ProxyFileSystem : FileSystem {
 #endif
 
 namespace ccls {
+
+lsTextEdit ToTextEdit(const clang::SourceManager &SM,
+                      const clang::LangOptions &L,
+                      const clang::FixItHint &FixIt) {
+  lsTextEdit edit;
+  edit.newText = FixIt.CodeToInsert;
+  auto r = FromCharSourceRange(SM, L, FixIt.RemoveRange);
+  edit.range =
+      lsRange{{r.start.line, r.start.column}, {r.end.line, r.end.column}};
+  return edit;
+}
+
 struct PreambleStatCache {
   llvm::StringMap<ErrorOr<vfs::Status>> Cache;
 
@@ -223,12 +235,7 @@ public:
       for (const FixItHint &FixIt : Info.getFixItHints()) {
         if (!IsConcerned(SM, FixIt.RemoveRange.getBegin()))
           return false;
-        lsTextEdit edit;
-        edit.newText = FixIt.CodeToInsert;
-        auto r = FromCharSourceRange(SM, *LangOpts, FixIt.RemoveRange);
-        edit.range =
-            lsRange{{r.start.line, r.start.column}, {r.end.line, r.end.column}};
-        last->edits.push_back(std::move(edit));
+        last->edits.push_back(ToTextEdit(SM, *LangOpts, FixIt));
       }
       return true;
     };
