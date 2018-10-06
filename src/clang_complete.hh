@@ -49,6 +49,10 @@ struct Diag : DiagBase {
   std::vector<lsTextEdit> edits;
 };
 
+lsTextEdit ToTextEdit(const clang::SourceManager &SM,
+                      const clang::LangOptions &L,
+                      const clang::FixItHint &FixIt);
+
 struct CompletionSession
     : public std::enable_shared_from_this<CompletionSession> {
   std::mutex mutex;
@@ -184,9 +188,8 @@ struct CompleteConsumerCache {
     std::lock_guard lock(mutex);
     action();
   }
-  bool IsCacheValid(const lsTextDocumentPositionParams &params) {
+  bool IsCacheValid(const std::string path, lsPosition position) {
     std::lock_guard lock(mutex);
-    return path == params.textDocument.uri.GetPath() &&
-           position == params.position;
+    return this->path == path && this->position == position;
   }
 };
