@@ -184,18 +184,18 @@ struct Handler_TextDocumentSignatureHelp
   void Run(In_TextDocumentSignatureHelp *request) override {
     static CompleteConsumerCache<lsSignatureHelp> cache;
 
-    auto &params = request->params;
+    const auto &params = request->params;
     std::string path = params.textDocument.uri.GetPath();
+    lsPosition begin_pos = params.position;
     if (WorkingFile *file = working_files->GetFileByFilename(path)) {
       std::string completion_text;
       lsPosition end_pos = params.position;
-      params.position = file->FindStableCompletionSource(
+      begin_pos = file->FindStableCompletionSource(
         request->params.position, &completion_text, &end_pos);
     }
 
     CompletionManager::OnComplete callback =
-        [id = request->id,
-         params = request->params](CodeCompleteConsumer *OptConsumer) {
+        [id = request->id, path, begin_pos](CodeCompleteConsumer *OptConsumer) {
           if (!OptConsumer)
             return;
           auto *Consumer = static_cast<SignatureHelpConsumer *>(OptConsumer);
@@ -204,10 +204,9 @@ struct Handler_TextDocumentSignatureHelp
           out.result = Consumer->ls_sighelp;
           pipeline::WriteStdout(kMethodType, out);
           if (!Consumer->from_cache) {
-            std::string path = params.textDocument.uri.GetPath();
             cache.WithLock([&]() {
               cache.path = path;
-              cache.position = params.position;
+              cache.position = begin_pos;
               cache.result = Consumer->ls_sighelp;
             });
           }
@@ -217,7 +216,7 @@ struct Handler_TextDocumentSignatureHelp
     CCOpts.IncludeGlobals = false;
     CCOpts.IncludeMacros = false;
     CCOpts.IncludeBriefComments = false;
-    if (cache.IsCacheValid(params)) {
+    if (cache.IsCacheValid(path, begin_pos)) {
       SignatureHelpConsumer Consumer(CCOpts, true);
       cache.WithLock([&]() { Consumer.ls_sighelp = cache.result; });
       callback(&Consumer);

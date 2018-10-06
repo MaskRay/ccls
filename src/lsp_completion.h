@@ -114,12 +114,12 @@ struct lsCompletionItem {
   //
   // *Note:* The range of the edit must be a single line range and it must
   // contain the position at which completion has been requested.
-  std::optional<lsTextEdit> textEdit;
+  lsTextEdit textEdit;
 
   // An std::optional array of additional text edits that are applied when
   // selecting this completion. Edits must not overlap with the main edit
   // nor with themselves.
-  // std::vector<TextEdit> additionalTextEdits;
+  std::vector<lsTextEdit> additionalTextEdits;
 
   // An std::optional command that is executed *after* inserting this
   // completion. *Note* that additional modifications to the current document
@@ -128,18 +128,7 @@ struct lsCompletionItem {
   // An data entry field that is preserved on a completion item between
   // a completion and a completion resolve request.
   // data ? : any
-
-  // Use this helper to figure out what content the completion item will insert
-  // into the document, as it could live in either |textEdit|, |insertText|, or
-  // |label|.
-  const std::string &InsertedContent() const {
-    if (textEdit)
-      return textEdit->newText;
-    if (!insertText.empty())
-      return insertText;
-    return label;
-  }
 };
 MAKE_REFLECT_STRUCT(lsCompletionItem, label, kind, detail, documentation,
-                    sortText, insertText, filterText, insertTextFormat,
-                    textEdit);
+                    sortText, filterText, insertText, insertTextFormat,
+                    textEdit, additionalTextEdits);
