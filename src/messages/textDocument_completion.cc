@@ -95,8 +95,8 @@ void DecorateIncludePaths(const std::smatch &match,
     else
       quote0 = quote1 = '"';
 
-    item.textEdit->newText =
-        prefix + quote0 + item.textEdit->newText + quote1 + suffix;
+    item.textEdit.newText =
+        prefix + quote0 + item.textEdit.newText + quote1 + suffix;
     item.label = prefix + quote0 + item.label + quote1 + suffix;
     item.filterText = std::nullopt;
   }
@@ -125,27 +125,6 @@ ParseIncludeLineResult ParseIncludeLine(const std::string &line) {
   return {ok, match[3], match[5], match[6], match};
 }
 
-static const std::vector<std::string> preprocessorKeywords = {
-    "define", "undef", "include", "if",   "ifdef", "ifndef",
-    "else",   "elif",  "endif",   "line", "error", "pragma"};
-
-std::vector<lsCompletionItem>
-PreprocessorKeywordCompletionItems(const std::smatch &match) {
-  std::vector<lsCompletionItem> items;
-  for (auto &keyword : preprocessorKeywords) {
-    lsCompletionItem item;
-    item.label = keyword;
-    item.priority_ = (keyword == "include" ? 2 : 1);
-    item.textEdit = lsTextEdit();
-    std::string space = (keyword == "else" || keyword == "endif") ? "" : " ";
-    item.textEdit->newText = match[1].str() + "#" + match[2].str() + keyword +
-                             space + match[6].str();
-    item.insertTextFormat = lsInsertTextFormat::PlainText;
-    items.push_back(item);
-  }
-  return items;
-}
-
 template <typename T> char *tofixedbase64(T input, char *out) {
   const char *digits = "./0123456789"
                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -162,11 +141,9 @@ template <typename T> char *tofixedbase64(T input, char *out) {
 // Pre-filters completion responses before sending to vscode. This results in a
 // significantly snappier completion experience as vscode is easily overloaded
 // when given 1000+ completion items.
-void FilterAndSortCompletionResponse(
-    Out_TextDocumentComplete *complete_response,
-    const std::string &complete_text, bool has_open_paren) {
-  if (!g_config->completion.filterAndSort)
-    return;
+void FilterCandidates(Out_TextDocumentComplete *complete_response,
+                      const std::string &complete_text, lsPosition begin_pos,
+                      lsPosition end_pos, bool has_open_paren) {
   auto &items = complete_response->result.items;
 
   auto finalize = [&]() {
@@ -176,9 +153,21 @@ void FilterAndSortCompletionResponse(
       complete_response->result.isIncomplete = true;
     }
 
-    if (has_open_paren)
-      for (auto &item : items)
-        item.insertText = item.label;
+    for (auto &item : items) {
+      item.textEdit.range = lsRange{begin_pos, end_pos};
+      if (has_open_paren)
+        item.textEdit.newText = item.label;
+      // https://github.com/Microsoft/language-server-protocol/issues/543
+      // Order of textEdit and additionalTextEdits is unspecified.
+      auto &edits = item.additionalTextEdits;
+      if (edits.size() && edits[0].range.end == begin_pos) {
+        item.textEdit.range.start = edits[0].range.start;
+        item.textEdit.newText = edits[0].newText + item.textEdit.newText;
+        edits.erase(edits.begin());
+      }
+      // Compatibility
+      item.insertText = item.textEdit.newText;
+    }
 
     // Set sortText. Note that this happens after resizing - we could do it
     // before, but then we should also sort by priority.
@@ -188,7 +177,7 @@ void FilterAndSortCompletionResponse(
   };
 
   // No complete text; don't run any filtering logic except to trim the items.
-  if (complete_text.empty()) {
+  if (!g_config->completion.filterAndSort || complete_text.empty()) {
     finalize();
     return;
   }
@@ -247,19 +236,6 @@ bool IsOpenParenOrAngle(const std::vector<std::string> &lines,
     }
   }
   return false;
-}
-
-unsigned GetCompletionPriority(const CodeCompletionString &CCS,
-                               CXCursorKind result_kind,
-                               const std::optional<std::string> &typedText) {
-  unsigned priority = CCS.getPriority();
-  if (CCS.getAvailability() != CXAvailability_Available ||
-      result_kind == CXCursor_Destructor ||
-      result_kind == CXCursor_ConversionFunction ||
-      (result_kind == CXCursor_CXXMethod && typedText &&
-       StartsWith(*typedText, "operator")))
-    priority *= 100;
-  return priority;
 }
 
 lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
@@ -354,11 +330,11 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   }
 }
 
-void BuildItem(std::vector<lsCompletionItem> &out,
-               const CodeCompletionString &CCS) {
+void BuildItem(const CodeCompletionResult &R, const CodeCompletionString &CCS,
+               std::vector<lsCompletionItem> &out) {
   assert(!out.empty());
   auto first = out.size() - 1;
-
+  bool ignore = false;
   std::string result_type;
 
   for (const auto &Chunk : CCS) {
@@ -392,7 +368,7 @@ void BuildItem(std::vector<lsCompletionItem> &out,
       // Duplicate last element, the recursive call will complete it.
       if (g_config->completion.duplicateOptional) {
         out.push_back(out.back());
-        BuildItem(out, *Chunk.Optional);
+        BuildItem(R, *Chunk.Optional, out);
       }
       continue;
     }
@@ -403,15 +379,20 @@ void BuildItem(std::vector<lsCompletionItem> &out,
 
     for (auto i = first; i < out.size(); ++i) {
       out[i].label += text;
-      if (!g_config->client.snippetSupport && !out[i].parameters_.empty())
+      if (ignore ||
+          (!g_config->client.snippetSupport && out[i].parameters_.size()))
         continue;
 
       if (Kind == CodeCompletionString::CK_Placeholder) {
-        out[i].insertText +=
+        if (R.Kind == CodeCompletionResult::RK_Pattern) {
+          ignore = true;
+          continue;
+        }
+        out[i].textEdit.newText +=
             "${" + std::to_string(out[i].parameters_.size()) + ":" + text + "}";
         out[i].insertTextFormat = lsInsertTextFormat::Snippet;
       } else if (Kind != CodeCompletionString::CK_Informative) {
-        out[i].insertText += text;
+        out[i].textEdit.newText += text;
       }
     }
   }
@@ -441,12 +422,25 @@ public:
   void ProcessCodeCompleteResults(Sema &S, CodeCompletionContext Context,
                                   CodeCompletionResult *Results,
                                   unsigned NumResults) override {
+    if (Context.getKind() == CodeCompletionContext::CCC_Recovery)
+      return;
     ls_items.reserve(NumResults);
     for (unsigned i = 0; i != NumResults; i++) {
       auto &R = Results[i];
       if (R.Availability == CXAvailability_NotAccessible ||
           R.Availability == CXAvailability_NotAvailable)
         continue;
+      if (R.Declaration) {
+        if (R.Declaration->getKind() == Decl::CXXDestructor)
+          continue;
+        if (auto *RD = dyn_cast<RecordDecl>(R.Declaration))
+          if (RD->isInjectedClassName())
+            continue;
+        auto NK = R.Declaration->getDeclName().getNameKind();
+        if (NK == DeclarationName::CXXOperatorName ||
+            NK == DeclarationName::CXXLiteralOperatorName)
+          continue;
+      }
       CodeCompletionString *CCS = R.CreateCodeCompletionString(
           S, Context, getAllocator(), getCodeCompletionTUInfo(),
           includeBriefComments());
@@ -458,19 +452,27 @@ public:
 
       size_t first_idx = ls_items.size();
       ls_items.push_back(ls_item);
-      BuildItem(ls_items, *CCS);
+      BuildItem(R, *CCS, ls_items);
 
       for (size_t j = first_idx; j < ls_items.size(); j++) {
         if (g_config->client.snippetSupport &&
             ls_items[j].insertTextFormat == lsInsertTextFormat::Snippet)
-          ls_items[j].insertText += "$0";
-        ls_items[j].priority_ = GetCompletionPriority(
-            *CCS, Results[i].CursorKind, ls_items[j].filterText);
+          ls_items[j].textEdit.newText += "$0";
+        ls_items[j].priority_ = CCS->getPriority();
         if (!g_config->completion.detailedLabel) {
           ls_items[j].detail = ls_items[j].label;
           ls_items[j].label = ls_items[j].filterText.value_or("");
         }
       }
+#if LLVM_VERSION_MAJOR >= 7
+      for (const FixItHint &FixIt : R.FixIts) {
+        auto &AST = S.getASTContext();
+        lsTextEdit ls_edit =
+            ccls::ToTextEdit(AST.getSourceManager(), AST.getLangOpts(), FixIt);
+        for (size_t j = first_idx; j < ls_items.size(); j++)
+          ls_items[j].additionalTextEdits.push_back(ls_edit);
+      }
+#endif
     }
   }
 
@@ -485,7 +487,7 @@ struct Handler_TextDocumentCompletion
   void Run(In_TextDocumentComplete *request) override {
     static CompleteConsumerCache<std::vector<lsCompletionItem>> cache;
 
-    auto &params = request->params;
+    const auto &params = request->params;
     Out_TextDocumentComplete out;
     out.id = request->id;
 
@@ -544,55 +546,36 @@ struct Handler_TextDocumentCompletion
 
     std::string completion_text;
     lsPosition end_pos = params.position;
-    params.position = file->FindStableCompletionSource(
-      request->params.position, &completion_text, &end_pos);
+    lsPosition begin_pos = file->FindStableCompletionSource(
+        params.position, &completion_text, &end_pos);
 
-    ParseIncludeLineResult result = ParseIncludeLine(buffer_line);
+    ParseIncludeLineResult preprocess = ParseIncludeLine(buffer_line);
     bool has_open_paren = IsOpenParenOrAngle(file->buffer_lines, end_pos);
 
-    if (result.ok) {
+    if (preprocess.ok && preprocess.keyword.compare("include") == 0) {
       Out_TextDocumentComplete out;
       out.id = request->id;
-
-      if (result.quote.empty() && result.pattern.empty()) {
-        // no quote or path of file, do preprocessor keyword completion
-        if (!std::any_of(preprocessorKeywords.begin(),
-                         preprocessorKeywords.end(),
-                         [&result](std::string_view k) {
-                           return k == result.keyword;
-                         })) {
-          out.result.items = PreprocessorKeywordCompletionItems(result.match);
-          FilterAndSortCompletionResponse(&out, result.keyword, has_open_paren);
-        }
-      } else if (result.keyword.compare("include") == 0) {
-        {
-          // do include completion
-          std::unique_lock<std::mutex> lock(
-              include_complete->completion_items_mutex, std::defer_lock);
-          if (include_complete->is_scanning)
-            lock.lock();
-          std::string quote = result.match[5];
-          for (auto &item : include_complete->completion_items)
-            if (quote.empty() ||
-                quote == (item.use_angle_brackets_ ? "<" : "\""))
-              out.result.items.push_back(item);
-        }
-        FilterAndSortCompletionResponse(&out, result.pattern, has_open_paren);
-        DecorateIncludePaths(result.match, &out.result.items);
+      {
+        std::unique_lock<std::mutex> lock(
+            include_complete->completion_items_mutex, std::defer_lock);
+        if (include_complete->is_scanning)
+          lock.lock();
+        std::string quote = preprocess.match[5];
+        for (auto &item : include_complete->completion_items)
+          if (quote.empty() || quote == (item.use_angle_brackets_ ? "<" : "\""))
+            out.result.items.push_back(item);
       }
-
-      for (lsCompletionItem &item : out.result.items) {
-        item.textEdit->range.start.line = params.position.line;
-        item.textEdit->range.start.character = 0;
-        item.textEdit->range.end.line = params.position.line;
-        item.textEdit->range.end.character = (int)buffer_line.size();
-      }
-
+      begin_pos.character = 0;
+      end_pos.character = (int)buffer_line.size();
+      FilterCandidates(&out, preprocess.pattern, begin_pos, end_pos,
+                       has_open_paren);
+      DecorateIncludePaths(preprocess.match, &out.result.items);
       pipeline::WriteStdout(kMethodType, out);
     } else {
+      std::string path = params.textDocument.uri.GetPath();
       CompletionManager::OnComplete callback =
-          [completion_text, has_open_paren, id = request->id,
-           params = request->params](CodeCompleteConsumer *OptConsumer) {
+          [completion_text, path, begin_pos, end_pos, has_open_paren,
+           id = request->id](CodeCompleteConsumer *OptConsumer) {
             if (!OptConsumer)
               return;
             auto *Consumer = static_cast<CompletionConsumer *>(OptConsumer);
@@ -600,14 +583,13 @@ struct Handler_TextDocumentCompletion
             out.id = id;
             out.result.items = Consumer->ls_items;
 
-            FilterAndSortCompletionResponse(&out, completion_text,
-                                            has_open_paren);
+            FilterCandidates(&out, completion_text, begin_pos, end_pos,
+                             has_open_paren);
             pipeline::WriteStdout(kMethodType, out);
             if (!Consumer->from_cache) {
-              std::string path = params.textDocument.uri.GetPath();
               cache.WithLock([&]() {
                 cache.path = path;
-                cache.position = params.position;
+                cache.position = begin_pos;
                 cache.result = Consumer->ls_items;
               });
             }
@@ -615,18 +597,19 @@ struct Handler_TextDocumentCompletion
 
       clang::CodeCompleteOptions CCOpts;
       CCOpts.IncludeBriefComments = true;
+      CCOpts.IncludeCodePatterns = preprocess.ok; // if there is a #
 #if LLVM_VERSION_MAJOR >= 7
       CCOpts.IncludeFixIts = true;
 #endif
       CCOpts.IncludeMacros = true;
-      if (cache.IsCacheValid(params)) {
+      if (cache.IsCacheValid(path, begin_pos)) {
         CompletionConsumer Consumer(CCOpts, true);
         cache.WithLock([&]() { Consumer.ls_items = cache.result; });
         callback(&Consumer);
       } else {
         clang_complete->completion_request_.PushBack(
           std::make_unique<CompletionManager::CompletionRequest>(
-            request->id, params.textDocument, params.position,
+            request->id, params.textDocument, begin_pos,
             std::make_unique<CompletionConsumer>(CCOpts, false), CCOpts,
             callback));
       }
