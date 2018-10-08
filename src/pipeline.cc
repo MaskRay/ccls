@@ -128,18 +128,17 @@ std::string AppendSerializationFormat(const std::string &base) {
 }
 
 std::string GetCachePath(const std::string &source_file) {
-  std::string cache_file;
-  auto len = g_config->projectRoot.size();
-  if (StartsWith(source_file, g_config->projectRoot)) {
-    cache_file = EscapeFileName(g_config->projectRoot.substr(0, len - 1)) + '/' +
-                 EscapeFileName(source_file.substr(len));
-  } else {
-    cache_file = '@' +
-                 EscapeFileName(g_config->projectRoot.substr(0, len - 1)) + '/' +
-                 EscapeFileName(source_file);
-  }
-
-  return g_config->cacheDirectory + cache_file;
+  for (auto &root : g_config->workspaceFolders)
+    if (StartsWith(source_file, root)) {
+      auto len = root.size();
+      return g_config->cacheDirectory +
+             EscapeFileName(root.substr(0, len - 1)) + '/' +
+             EscapeFileName(source_file.substr(len));
+    }
+  return g_config->cacheDirectory + '@' +
+         EscapeFileName(g_config->fallbackFolder.substr(
+             0, g_config->fallbackFolder.size() - 1)) +
+         '/' + EscapeFileName(source_file);
 }
 
 std::unique_ptr<IndexFile> RawCacheLoad(const std::string &path) {
@@ -280,7 +279,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
           request.mode != IndexMode::NonInteractive);
         if (entry.id >= 0) {
           std::lock_guard lock2(project->mutex_);
-          project->path_to_entry_index[path] = entry.id;
+          project->root2folder[entry.root].path2entry_index[path] = entry.id;
         }
       }
       return true;
@@ -343,8 +342,9 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
       }
       if (entry.id >= 0) {
         std::lock_guard<std::mutex> lock(project->mutex_);
+        auto &folder = project->root2folder[entry.root];
         for (auto &dep : curr->dependencies)
-          project->path_to_entry_index[dep.first.val().str()] = entry.id;
+          folder.path2entry_index[dep.first.val().str()] = entry.id;
       }
     }
   }

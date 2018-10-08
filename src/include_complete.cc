@@ -59,23 +59,27 @@ size_t TrimCommonPathPrefix(const std::string &result,
 }
 
 // Returns true iff angle brackets should be used.
-bool TrimPath(Project *project, const std::string &project_root,
-              std::string *insert_path) {
-  size_t start = TrimCommonPathPrefix(*insert_path, project_root);
+bool TrimPath(Project *project, std::string &path) {
+  size_t pos = 0;
   bool angle = false;
-
-  for (auto &include_dir : project->quote_include_directories)
-    start = std::max(start, TrimCommonPathPrefix(*insert_path, include_dir));
-
-  for (auto &include_dir : project->angle_include_directories) {
-    auto len = TrimCommonPathPrefix(*insert_path, include_dir);
-    if (len > start) {
-      start = len;
+  for (auto &[root, folder] : project->root2folder) {
+    size_t pos1 = 0;
+    for (auto &search : folder.angle_search_list)
+      pos1 = std::max(pos1, TrimCommonPathPrefix(path, search));
+    if (pos1 > pos) {
+      pos = pos1;
       angle = true;
     }
-  }
 
-  *insert_path = insert_path->substr(start);
+    pos1 = TrimCommonPathPrefix(path, root);
+    for (auto &search : folder.quote_search_list)
+      pos1 = std::max(pos1, TrimCommonPathPrefix(path, search));
+    if (pos1 > pos) {
+      pos = pos1;
+      angle = false;
+    }
+  }
+  path = path.substr(pos);
   return angle;
 }
 
@@ -119,13 +123,15 @@ void IncludeComplete::Rescan() {
   is_scanning = true;
   std::thread([this]() {
     set_thread_name("include");
-    Timer timer("include", "scan include paths");
-    TimeRegion region(timer);
-
-    for (const std::string &dir : project_->quote_include_directories)
-      InsertIncludesFromDirectory(dir, false /*use_angle_brackets*/);
-    for (const std::string &dir : project_->angle_include_directories)
-      InsertIncludesFromDirectory(dir, true /*use_angle_brackets*/);
+    std::unordered_set<std::string> angle_set, quote_set;
+    for (auto &[root, folder] : project_->root2folder) {
+      for (const std::string &search : folder.angle_search_list)
+        if (angle_set.insert(search).second)
+          InsertIncludesFromDirectory(search, true);
+      for (const std::string &search : folder.quote_search_list)
+        if (quote_set.insert(search).second)
+          InsertIncludesFromDirectory(search, false);
+    }
 
     is_scanning = false;
   })
@@ -152,22 +158,21 @@ void IncludeComplete::InsertCompletionItem(const std::string &absolute_path,
   }
 }
 
-void IncludeComplete::AddFile(const std::string &absolute_path) {
-  if (!EndsWithAny(absolute_path, g_config->completion.include.suffixWhitelist))
+void IncludeComplete::AddFile(const std::string &path) {
+  if (!EndsWithAny(path, g_config->completion.include.suffixWhitelist))
     return;
-  if (match_ && !match_->IsMatch(absolute_path))
+  if (match_ && !match_->IsMatch(path))
     return;
 
-  std::string trimmed_path = absolute_path;
-  bool use_angle_brackets =
-      TrimPath(project_, g_config->projectRoot, &trimmed_path);
+  std::string trimmed_path = path;
+  bool use_angle_brackets = TrimPath(project_, trimmed_path);
   lsCompletionItem item =
       BuildCompletionItem(trimmed_path, use_angle_brackets, false /*is_stl*/);
 
   std::unique_lock<std::mutex> lock(completion_items_mutex, std::defer_lock);
   if (is_scanning)
     lock.lock();
-  InsertCompletionItem(absolute_path, std::move(item));
+  InsertCompletionItem(path, std::move(item));
 }
 
 void IncludeComplete::InsertIncludesFromDirectory(std::string directory,
