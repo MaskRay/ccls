@@ -16,6 +16,7 @@ struct WorkingFiles;
 
 struct Project {
   struct Entry {
+    std::string root;
     std::string directory;
     std::string filename;
     std::vector<const char *> args;
@@ -24,14 +25,18 @@ struct Project {
     int id = -1;
   };
 
-  // Include directories for "" headers
-  std::vector<std::string> quote_include_directories;
-  // Include directories for <> headers
-  std::vector<std::string> angle_include_directories;
+  struct Folder {
+    std::string name;
+    // Include directories for <> headers
+    std::vector<std::string> angle_search_list;
+    // Include directories for "" headers
+    std::vector<std::string> quote_search_list;
+    std::vector<Entry> entries;
+    std::unordered_map<std::string, int> path2entry_index;
+  };
 
-  std::vector<Entry> entries;
   std::mutex mutex_;
-  std::unordered_map<std::string, int> path_to_entry_index;
+  std::unordered_map<std::string, Folder> root2folder;
 
   // Loads a project for the given |directory|.
   //

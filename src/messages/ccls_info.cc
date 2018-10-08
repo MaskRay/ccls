@@ -49,7 +49,9 @@ struct Handler_cclsInfo : BaseMessageHandler<In_cclsInfo> {
     out.result.db.types = db->types.size();
     out.result.db.vars = db->vars.size();
     out.result.pipeline.pendingIndexRequests = pipeline::pending_index_requests;
-    out.result.project.entries = project->entries.size();
+    out.result.project.entries = 0;
+    for (auto &[_, folder] : project->root2folder)
+      out.result.project.entries += folder.entries.size();
     pipeline::WriteStdout(cclsInfo, out);
   }
 };

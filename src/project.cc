@@ -42,7 +42,7 @@ enum class ProjectMode { CompileCommandsJson, DotCcls, ExternalCommand };
 struct ProjectConfig {
   std::unordered_set<std::string> quote_dirs;
   std::unordered_set<std::string> angle_dirs;
-  std::string project_dir;
+  std::string root;
   ProjectMode mode = ProjectMode::CompileCommandsJson;
 };
 
@@ -171,7 +171,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig *config) {
   std::vector<Project::Entry> result;
   config->mode = ProjectMode::DotCcls;
   SmallString<256> Path;
-  sys::path::append(Path, config->project_dir, ".ccls");
+  sys::path::append(Path, config->root, ".ccls");
   LOG_IF_S(WARNING, !sys::fs::exists(Path) && g_config->clang.extraArgs.empty())
       << "ccls has no clang arguments. Use either "
          "compile_commands.json or .ccls, See ccls README for "
@@ -179,9 +179,9 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig *config) {
 
   std::unordered_map<std::string, std::vector<const char *>> folder_args;
   std::vector<std::string> files;
-  const std::string &project_dir = config->project_dir;
+  const std::string &root = config->root;
 
-  GetFilesInFolder(project_dir, true /*recursive*/,
+  GetFilesInFolder(root, true /*recursive*/,
                    true /*add_folder_to_path*/,
                    [&folder_args, &files](const std::string &path) {
                      if (SourceFileLanguage(path) != LanguageId::Unknown) {
@@ -199,7 +199,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig *config) {
                      }
                    });
 
-  auto GetCompilerArgumentForFile = [&project_dir,
+  auto GetCompilerArgumentForFile = [&root,
                                      &folder_args](std::string cur) {
     while (!(cur = sys::path::parent_path(cur)).empty()) {
       auto it = folder_args.find(cur);
@@ -207,17 +207,18 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig *config) {
         return it->second;
       std::string normalized = NormalizePath(cur);
       // Break if outside of the project root.
-      if (normalized.size() <= project_dir.size() ||
-          normalized.compare(0, project_dir.size(), project_dir) != 0)
+      if (normalized.size() <= root.size() ||
+          normalized.compare(0, root.size(), root) != 0)
         break;
     }
-    return folder_args[project_dir];
+    return folder_args[root];
   };
 
   ProjectProcessor proc(config);
   for (const std::string &file : files) {
     Project::Entry e;
-    e.directory = config->project_dir;
+    e.root = config->root;
+    e.directory = config->root;
     e.filename = file;
     e.args = GetCompilerArgumentForFile(file);
     if (e.args.empty())
@@ -235,7 +236,7 @@ LoadEntriesFromDirectory(ProjectConfig *project,
                          const std::string &opt_compdb_dir) {
   // If there is a .ccls file always load using directory listing.
   SmallString<256> Path;
-  sys::path::append(Path, project->project_dir, ".ccls");
+  sys::path::append(Path, project->root, ".ccls");
   if (sys::fs::exists(Path))
     return LoadFromDirectoryListing(project);
 
@@ -245,8 +246,7 @@ LoadEntriesFromDirectory(ProjectConfig *project,
   if (g_config->compilationDatabaseCommand.empty()) {
     project->mode = ProjectMode::CompileCommandsJson;
     // Try to load compile_commands.json, but fallback to a project listing.
-    comp_db_dir =
-        opt_compdb_dir.empty() ? project->project_dir : opt_compdb_dir;
+    comp_db_dir = opt_compdb_dir.empty() ? project->root : opt_compdb_dir;
     sys::path::append(Path, comp_db_dir, "compile_commands.json");
   } else {
     project->mode = ProjectMode::ExternalCommand;
@@ -264,7 +264,7 @@ LoadEntriesFromDirectory(ProjectConfig *project,
     Reflect(json_writer, *g_config);
     std::string contents = GetExternalCommandOutput(
         std::vector<std::string>{g_config->compilationDatabaseCommand,
-                                 project->project_dir},
+                                 project->root},
         input.GetString());
     FILE *fout = fopen(Path.c_str(), "wb");
     fwrite(contents.c_str(), contents.size(), 1, fout);
@@ -295,6 +295,8 @@ LoadEntriesFromDirectory(ProjectConfig *project,
   ProjectProcessor proc(project);
   for (tooling::CompileCommand &Cmd : CDB->getAllCompileCommands()) {
     Project::Entry entry;
+    entry.root = project->root;
+    DoPathMapping(entry.root);
     entry.directory = NormalizePath(Cmd.Directory);
     DoPathMapping(entry.directory);
     entry.filename =
@@ -330,77 +332,78 @@ int ComputeGuessScore(std::string_view a, std::string_view b) {
 
 } // namespace
 
-void Project::Load(const std::string &root_directory) {
+void Project::Load(const std::string &root) {
+  assert(root.back() == '/');
   ProjectConfig project;
-  project.project_dir = root_directory;
-  entries = LoadEntriesFromDirectory(&project,
-                                     g_config->compilationDatabaseDirectory);
+  project.root = root;
+  Folder &folder = root2folder[root];
 
-  // Cleanup / postprocess include directories.
-  quote_include_directories.assign(project.quote_dirs.begin(),
-                                   project.quote_dirs.end());
-  angle_include_directories.assign(project.angle_dirs.begin(),
-                                   project.angle_dirs.end());
-  for (std::string &path : quote_include_directories) {
+  folder.entries = LoadEntriesFromDirectory(
+      &project, g_config->compilationDatabaseDirectory);
+  folder.quote_search_list.assign(project.quote_dirs.begin(),
+                                  project.quote_dirs.end());
+  folder.angle_search_list.assign(project.angle_dirs.begin(),
+                                  project.angle_dirs.end());
+  for (std::string &path : folder.angle_search_list) {
     EnsureEndsInSlash(path);
-    LOG_S(INFO) << "quote_include_dir: " << path;
+    LOG_S(INFO) << "angle search: " << path;
   }
-  for (std::string &path : angle_include_directories) {
+  for (std::string &path : folder.quote_search_list) {
     EnsureEndsInSlash(path);
-    LOG_S(INFO) << "angle_include_dir: " << path;
+    LOG_S(INFO) << "quote search: " << path;
   }
 
   // Setup project entries.
   std::lock_guard lock(mutex_);
-  path_to_entry_index.reserve(entries.size());
-  for (size_t i = 0; i < entries.size(); ++i) {
-    entries[i].id = i;
-    path_to_entry_index[entries[i].filename] = i;
+  folder.path2entry_index.reserve(folder.entries.size());
+  for (size_t i = 0; i < folder.entries.size(); ++i) {
+    folder.entries[i].id = i;
+    folder.path2entry_index[folder.entries[i].filename] = i;
   }
 }
 
 void Project::SetArgsForFile(const std::vector<const char *> &args,
                              const std::string &path) {
   std::lock_guard<std::mutex> lock(mutex_);
-  auto it = path_to_entry_index.find(path);
-  if (it != path_to_entry_index.end()) {
-    // The entry already exists in the project, just set the flags.
-    this->entries[it->second].args = args;
-  } else {
-    // Entry wasn't found, so we create a new one.
-    Entry entry;
-    entry.is_inferred = false;
-    entry.filename = path;
-    entry.args = args;
-    this->entries.emplace_back(entry);
+  for (auto &[root, folder] : root2folder) {
+    auto it = folder.path2entry_index.find(path);
+    if (it != folder.path2entry_index.end()) {
+      // The entry already exists in the project, just set the flags.
+      folder.entries[it->second].args = args;
+      return;
+    }
   }
 }
 
 Project::Entry Project::FindEntry(const std::string &path,
                                   bool can_be_inferred) {
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = path_to_entry_index.find(path);
-    if (it != path_to_entry_index.end()) {
-      Project::Entry &entry = entries[it->second];
+  std::lock_guard<std::mutex> lock(mutex_);
+  for (auto &[root, folder] : root2folder) {
+    auto it = folder.path2entry_index.find(path);
+    if (it != folder.path2entry_index.end()) {
+      Project::Entry &entry = folder.entries[it->second];
       if (can_be_inferred || entry.filename == path)
         return entry;
     }
   }
 
-  // We couldn't find the file. Try to infer it.
-  // TODO: Cache inferred file in a separate array (using a lock or similar)
-  Entry *best_entry = nullptr;
-  int best_score = INT_MIN;
-  for (Entry &entry : entries) {
-    int score = ComputeGuessScore(path, entry.filename);
-    if (score > best_score) {
-      best_score = score;
-      best_entry = &entry;
-    }
-  }
-
   Project::Entry result;
+  const Entry *best_entry = nullptr;
+  int best_score = INT_MIN;
+  for (auto &[root, folder] : root2folder) {
+    for (const Entry &entry : folder.entries) {
+      int score = ComputeGuessScore(path, entry.filename);
+      if (score > best_score) {
+        best_score = score;
+        best_entry = &entry;
+      }
+    }
+    if (StartsWith(path, root))
+      result.root = root;
+  }
+  if (result.root.empty())
+    result.root = g_config->fallbackFolder;
+
   result.is_inferred = true;
   result.filename = path;
   if (!best_entry) {
@@ -430,18 +433,25 @@ void Project::Index(WorkingFiles *wfiles, lsRequestId id) {
   auto &gi = g_config->index;
   GroupMatch match(gi.whitelist, gi.blacklist),
       match_i(gi.initialWhitelist, gi.initialBlacklist);
-  for (int i = 0; i < entries.size(); ++i) {
-    const Project::Entry &entry = entries[i];
-    std::string reason;
-    if (match.IsMatch(entry.filename, &reason) &&
-        match_i.IsMatch(entry.filename, &reason)) {
-      bool interactive = wfiles->GetFileByFilename(entry.filename) != nullptr;
-      pipeline::Index(
-          entry.filename, entry.args,
-          interactive ? IndexMode::Normal : IndexMode::NonInteractive, id);
-    } else {
-      LOG_V(1) << "[" << i << "/" << entries.size() << "]: " << reason
-               << "; skip " << entry.filename;
+  {
+    std::lock_guard lock(mutex_);
+    for (auto &[root, folder] : root2folder) {
+      int i = 0;
+      for (const Project::Entry &entry : folder.entries) {
+        std::string reason;
+        if (match.IsMatch(entry.filename, &reason) &&
+            match_i.IsMatch(entry.filename, &reason)) {
+          bool interactive =
+              wfiles->GetFileByFilename(entry.filename) != nullptr;
+          pipeline::Index(
+              entry.filename, entry.args,
+              interactive ? IndexMode::Normal : IndexMode::NonInteractive, id);
+        } else {
+          LOG_V(1) << "[" << i << "/" << folder.entries.size() << "]: " << reason
+                   << "; skip " << entry.filename;
+        }
+        i++;
+      }
     }
   }
 

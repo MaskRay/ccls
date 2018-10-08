@@ -18,7 +18,9 @@ std::string PathFromFileEntry(const FileEntry &file) {
     Name = file.getName();
   std::string ret = NormalizePath(Name);
   // Resolve /usr/include/c++/7.3.0 symlink.
-  if (!StartsWith(ret, g_config->projectRoot)) {
+  if (!llvm::any_of(g_config->workspaceFolders, [&](const std::string &root) {
+        return StartsWith(ret, root);
+      })) {
     SmallString<256> dest;
     llvm::sys::fs::real_path(ret, dest);
     ret = llvm::sys::path::convert_to_slash(dest.str());

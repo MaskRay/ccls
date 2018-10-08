@@ -231,7 +231,7 @@ target_sources(ccls PRIVATE
   src/messages/textDocument_rename.cc
   src/messages/textDocument_signatureHelp.cc
   src/messages/textDocument_typeDefinition.cc
-  src/messages/workspace_didChangeConfiguration.cc
+  src/messages/workspace_did.cc
   src/messages/workspace_didChangeWatchedFiles.cc
   src/messages/workspace_symbol.cc
 )
