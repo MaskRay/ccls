@@ -29,8 +29,9 @@ initialization options specified by the client. For example, in shell syntax:
   '--init={"index": {"comments": 2, "whitelist": ["."]}}'
 */
 struct Config {
-  // Root directory of the project. **Not available for configuration**
-  std::string projectRoot;
+  // **Not available for configuration**
+  std::string fallbackFolder;
+  std::vector<std::string> workspaceFolders;
   // If specified, this option overrides compile_commands.json and this
   // external command will be executed with an option |projectRoot|.
   // The initialization options will be provided as stdin.

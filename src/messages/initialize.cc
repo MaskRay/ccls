@@ -176,8 +176,17 @@ struct lsServerCapabilities {
   struct ExecuteCommandOptions {
     std::vector<std::string> commands{std::string(ccls_xref)};
   } executeCommandProvider;
+  struct Workspace {
+    struct WorkspaceFolders {
+      bool supported = true;
+      bool changeNotifications = true;
+    } workspaceFolders;
+  } workspace;
 };
 MAKE_REFLECT_STRUCT(lsServerCapabilities::ExecuteCommandOptions, commands);
+MAKE_REFLECT_STRUCT(lsServerCapabilities::Workspace::WorkspaceFolders,
+                    supported, changeNotifications);
+MAKE_REFLECT_STRUCT(lsServerCapabilities::Workspace, workspaceFolders);
 MAKE_REFLECT_STRUCT(lsServerCapabilities, textDocumentSync, hoverProvider,
                     completionProvider, signatureHelpProvider,
                     definitionProvider, implementationProvider,
@@ -187,7 +196,7 @@ MAKE_REFLECT_STRUCT(lsServerCapabilities, textDocumentSync, hoverProvider,
                     codeLensProvider, documentFormattingProvider,
                     documentRangeFormattingProvider,
                     documentOnTypeFormattingProvider, renameProvider,
-                    documentLinkProvider, executeCommandProvider);
+                    documentLinkProvider, executeCommandProvider, workspace);
 
 // Workspace specific client capabilities.
 struct lsWorkspaceClientCapabilites {
@@ -345,6 +354,8 @@ struct lsInitializeParams {
 
   // The initial trace setting. If omitted trace is disabled ('off').
   lsTrace trace = lsTrace::Off;
+
+  std::vector<lsWorkspaceFolder> workspaceFolders;
 };
 
 void Reflect(Reader &reader, lsInitializeParams::lsTrace &value) {
@@ -378,7 +389,8 @@ void Reflect(Writer& writer, lsInitializeParams::lsTrace& value) {
 #endif
 
 MAKE_REFLECT_STRUCT(lsInitializeParams, processId, rootPath, rootUri,
-                    initializationOptions, capabilities, trace);
+                    initializationOptions, capabilities, trace,
+                    workspaceFolders);
 
 struct lsInitializeError {
   // Indicates whether the client should retry to send the
@@ -484,19 +496,28 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
 
     // Set project root.
     EnsureEndsInSlash(project_path);
-    g_config->projectRoot = project_path;
-    if (g_config->cacheDirectory.size()) {
-      // Create two cache directories for files inside and outside of the
-      // project.
-      auto len = g_config->projectRoot.size();
-      std::string escaped = EscapeFileName(g_config->projectRoot.substr(0, len - 1));
-      sys::fs::create_directories(g_config->cacheDirectory + escaped);
-      sys::fs::create_directories(g_config->cacheDirectory + '@' + escaped);
+    g_config->fallbackFolder = project_path;
+    for (const lsWorkspaceFolder &wf : request->params.workspaceFolders) {
+      std::string path = wf.uri.GetPath();
+      EnsureEndsInSlash(path);
+      g_config->workspaceFolders.push_back(path);
+      LOG_S(INFO) << "add workspace folder " << wf.name << ": " << path;
     }
+    if (request->params.workspaceFolders.empty())
+      g_config->workspaceFolders.push_back(project_path);
+    if (g_config->cacheDirectory.size())
+      for (const std::string &folder : g_config->workspaceFolders) {
+        // Create two cache directories for files inside and outside of the
+        // project.
+        std::string escaped =
+            EscapeFileName(folder.substr(0, folder.size() - 1));
+        sys::fs::create_directories(g_config->cacheDirectory + escaped);
+        sys::fs::create_directories(g_config->cacheDirectory + '@' + escaped);
+      }
 
     idx::Init();
-
-    project->Load(project_path);
+    for (const std::string &folder : g_config->workspaceFolders)
+      project->Load(folder);
 
     // Start indexer threads. Start this after loading the project, as that
     // may take a long time. Indexer threads will emit status/progress

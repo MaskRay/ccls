@@ -90,27 +90,24 @@ bool FindFileOrFail(DB *db, Project *project, std::optional<lsRequestId> id,
   if (out_file_id)
     *out_file_id = -1;
 
-  bool indexing;
+  bool has_entry = false;
   {
     std::lock_guard<std::mutex> lock(project->mutex_);
-    indexing = project->path_to_entry_index.find(absolute_path) !=
-               project->path_to_entry_index.end();
+    for (auto &[root, folder] : project->root2folder)
+      has_entry |= folder.path2entry_index.count(absolute_path);
   }
-  if (indexing)
-    LOG_S(INFO) << "\"" << absolute_path << "\" is being indexed.";
-  else
-    LOG_S(INFO) << "unable to find file \"" << absolute_path << "\"";
 
   if (id) {
     Out_Error out;
     out.id = *id;
-    if (indexing) {
+    if (has_entry) {
       out.error.code = lsErrorCodes::ServerNotInitialized;
-      out.error.message = absolute_path + " is being indexed.";
+      out.error.message = absolute_path + " is being indexed";
     } else {
       out.error.code = lsErrorCodes::InternalError;
       out.error.message = "Unable to find file " + absolute_path;
     }
+    LOG_S(INFO) << out.error.message;
     pipeline::WriteStdout(kMethodType_Unknown, out);
   }
 

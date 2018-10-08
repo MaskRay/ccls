@@ -307,6 +307,12 @@ struct lsTextDocumentDidChangeParams {
 MAKE_REFLECT_STRUCT(lsTextDocumentDidChangeParams, textDocument,
                     contentChanges);
 
+struct lsWorkspaceFolder {
+  lsDocumentUri uri;
+  std::string name;
+};
+MAKE_REFLECT_STRUCT(lsWorkspaceFolder, uri, name);
+
 // Show a message to the user.
 enum class lsMessageType : int { Error = 1, Warning = 2, Info = 3, Log = 4 };
 MAKE_REFLECT_TYPE_PROXY(lsMessageType)
