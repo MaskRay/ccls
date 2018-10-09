@@ -155,10 +155,20 @@ template <typename T> char *tofixedbase64(T input, char *out) {
 // when given 1000+ completion items.
 void FilterCandidates(Out_TextDocumentComplete *complete_response,
                       const std::string &complete_text, lsPosition begin_pos,
-                      lsPosition end_pos, bool has_open_paren,
-                      const std::string &buffer_line) {
+                      lsPosition end_pos, const std::string &buffer_line) {
+  assert(begin_pos.line == end_pos.line);
   auto &items = complete_response->result.items;
 
+  // People usually does not want to insert snippets or parenthesis when
+  // changing function or type names, e.g. "str.|()" or "std::|<int>".
+  bool has_open_paren = false;
+  for (int c = end_pos.character; c < buffer_line.size(); ++c) {
+    if (buffer_line[c] == '(' || buffer_line[c] == '<')
+      has_open_paren = true;
+    if (!isspace(buffer_line[c]))
+      break;
+  }
+  
   auto finalize = [&]() {
     int max_num = g_config->completion.maxNum;
     if (items.size() > max_num) {
@@ -168,8 +178,8 @@ void FilterCandidates(Out_TextDocumentComplete *complete_response,
 
     for (auto &item : items) {
       item.textEdit.range = lsRange{begin_pos, end_pos};
-      if (has_open_paren)
-        item.textEdit.newText = item.label;
+      if (has_open_paren && item.filterText)
+        item.textEdit.newText = item.filterText.value();
       // https://github.com/Microsoft/language-server-protocol/issues/543
       // Order of textEdit and additionalTextEdits is unspecified.
       auto &edits = item.additionalTextEdits;
@@ -235,27 +245,6 @@ void FilterCandidates(Out_TextDocumentComplete *complete_response,
 
   // Trim result.
   finalize();
-}
-
-// Returns true if position is an points to a '(' character in |lines|. Skips
-// whitespace.
-bool IsOpenParenOrAngle(const std::vector<std::string> &lines,
-                        const lsPosition &position) {
-  auto [c, l] = position;
-  while (l < lines.size()) {
-    const auto &line = lines[l];
-    if (c >= line.size())
-      return false;
-    if (line[c] == '(' || line[c] == '<')
-      return true;
-    if (!isspace(line[c]))
-      break;
-    if (++c >= line.size()) {
-      c = 0;
-      l++;
-    }
-  }
-  return false;
 }
 
 lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
@@ -570,7 +559,6 @@ struct Handler_TextDocumentCompletion
         params.position, &completion_text, &end_pos);
 
     ParseIncludeLineResult preprocess = ParseIncludeLine(buffer_line);
-    bool has_open_paren = IsOpenParenOrAngle(file->buffer_lines, end_pos);
 
     if (preprocess.ok && preprocess.keyword.compare("include") == 0) {
       Out_TextDocumentComplete out;
@@ -588,13 +576,13 @@ struct Handler_TextDocumentCompletion
       begin_pos.character = 0;
       end_pos.character = (int)buffer_line.size();
       FilterCandidates(&out, preprocess.pattern, begin_pos, end_pos,
-                       has_open_paren, buffer_line);
+                       buffer_line);
       DecorateIncludePaths(preprocess.match, &out.result.items);
       pipeline::WriteStdout(kMethodType, out);
     } else {
       std::string path = params.textDocument.uri.GetPath();
       CompletionManager::OnComplete callback =
-          [completion_text, path, begin_pos, end_pos, has_open_paren,
+          [completion_text, path, begin_pos, end_pos,
            id = request->id, buffer_line](CodeCompleteConsumer *OptConsumer) {
             if (!OptConsumer)
               return;
@@ -604,7 +592,7 @@ struct Handler_TextDocumentCompletion
             out.result.items = Consumer->ls_items;
 
             FilterCandidates(&out, completion_text, begin_pos, end_pos,
-                             has_open_paren, buffer_line);
+                             buffer_line);
             pipeline::WriteStdout(kMethodType, out);
             if (!Consumer->from_cache) {
               cache.WithLock([&]() {
