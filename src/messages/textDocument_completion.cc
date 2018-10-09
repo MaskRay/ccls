@@ -155,7 +155,8 @@ template <typename T> char *tofixedbase64(T input, char *out) {
 // when given 1000+ completion items.
 void FilterCandidates(Out_TextDocumentComplete *complete_response,
                       const std::string &complete_text, lsPosition begin_pos,
-                      lsPosition end_pos, bool has_open_paren) {
+                      lsPosition end_pos, bool has_open_paren,
+                      const std::string &buffer_line) {
   auto &items = complete_response->result.items;
 
   auto finalize = [&]() {
@@ -173,8 +174,15 @@ void FilterCandidates(Out_TextDocumentComplete *complete_response,
       // Order of textEdit and additionalTextEdits is unspecified.
       auto &edits = item.additionalTextEdits;
       if (edits.size() && edits[0].range.end == begin_pos) {
-        item.textEdit.range.start = edits[0].range.start;
+        lsPosition start = edits[0].range.start, end = edits[0].range.end;
+        item.textEdit.range.start = start;
         item.textEdit.newText = edits[0].newText + item.textEdit.newText;
+        if (start.line == begin_pos.line && item.filterText) {
+          item.filterText =
+              buffer_line.substr(start.character,
+                                 end.character - start.character) +
+              item.filterText.value();
+        }
         edits.erase(edits.begin());
       }
       // Compatibility
@@ -580,14 +588,14 @@ struct Handler_TextDocumentCompletion
       begin_pos.character = 0;
       end_pos.character = (int)buffer_line.size();
       FilterCandidates(&out, preprocess.pattern, begin_pos, end_pos,
-                       has_open_paren);
+                       has_open_paren, buffer_line);
       DecorateIncludePaths(preprocess.match, &out.result.items);
       pipeline::WriteStdout(kMethodType, out);
     } else {
       std::string path = params.textDocument.uri.GetPath();
       CompletionManager::OnComplete callback =
           [completion_text, path, begin_pos, end_pos, has_open_paren,
-           id = request->id](CodeCompleteConsumer *OptConsumer) {
+           id = request->id, buffer_line](CodeCompleteConsumer *OptConsumer) {
             if (!OptConsumer)
               return;
             auto *Consumer = static_cast<CompletionConsumer *>(OptConsumer);
@@ -596,7 +604,7 @@ struct Handler_TextDocumentCompletion
             out.result.items = Consumer->ls_items;
 
             FilterCandidates(&out, completion_text, begin_pos, end_pos,
-                             has_open_paren);
+                             has_open_paren, buffer_line);
             pipeline::WriteStdout(kMethodType, out);
             if (!Consumer->from_cache) {
               cache.WithLock([&]() {
