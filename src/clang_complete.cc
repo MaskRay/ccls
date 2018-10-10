@@ -114,11 +114,11 @@ struct PreambleStatCache {
     return new VFS(std::move(FS), *this);
   }
 
-  IntrusiveRefCntPtr<vfs::FileSystem>
-  Consumer(IntrusiveRefCntPtr<vfs::FileSystem> FS) {
-    struct VFS : vfs::ProxyFileSystem {
+  IntrusiveRefCntPtr<llvm::vfs::FileSystem>
+  Consumer(IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS) {
+    struct VFS : llvm::vfs::ProxyFileSystem {
       const PreambleStatCache &Cache;
-      VFS(IntrusiveRefCntPtr<vfs::FileSystem> FS,
+      VFS(IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS,
           const PreambleStatCache &Cache)
           : ProxyFileSystem(std::move(FS)), Cache(Cache) {}
       llvm::ErrorOr<vfs::Status> status(const Twine &Path) override {

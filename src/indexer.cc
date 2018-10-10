@@ -1225,7 +1225,7 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
       const std::vector<std::pair<std::string, std::string>> &remapped, bool &ok) {
   ok = true;
   auto PCH = std::make_shared<PCHContainerOperations>();
-  llvm::IntrusiveRefCntPtr<vfs::FileSystem> FS = vfs::getRealFileSystem();
+  llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS = llvm::vfs::getRealFileSystem();
   std::shared_ptr<CompilerInvocation> CI = BuildCompilerInvocation(args, FS);
   // e.g. .s
   if (!CI)
