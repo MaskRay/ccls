@@ -211,7 +211,8 @@ struct VarDef : NameMixin<VarDef> {
     return spell &&
            (parent_kind == lsSymbolKind::Function ||
             parent_kind == lsSymbolKind::Method ||
-            parent_kind == lsSymbolKind::StaticMethod) &&
+            parent_kind == lsSymbolKind::StaticMethod ||
+            parent_kind == lsSymbolKind::Constructor) &&
            storage == clang::SC_None;
   }
 
