@@ -76,11 +76,16 @@ struct Out_HierarchicalDocumentSymbol
 };
 MAKE_REFLECT_STRUCT(Out_HierarchicalDocumentSymbol, jsonrpc, id, result);
 
-bool IgnoreType(const QueryType::Def *def) {
+template <typename Def>
+bool Ignore(const Def *def) {
+  return false;
+}
+template <>
+bool Ignore(const QueryType::Def *def) {
   return !def || def->kind == lsSymbolKind::TypeParameter;
 }
-
-bool IgnoreVar(const QueryVar::Def *def) {
+template<>
+bool Ignore(const QueryVar::Def *def) {
   return !def || def->is_local();
 }
 
@@ -112,92 +117,101 @@ struct Handler_TextDocumentDocumentSymbol
       std::sort(out.result.begin(), out.result.end());
       pipeline::WriteStdout(kMethodType, out);
     } else if (g_config->client.hierarchicalDocumentSymbolSupport) {
-      std::unordered_map<
-          SymbolIdx, std::pair<const void *, std::unique_ptr<lsDocumentSymbol>>>
-          sym2ds;
+      std::unordered_map<SymbolIdx, std::unique_ptr<lsDocumentSymbol>> sym2ds;
+      std::vector<std::pair<const QueryFunc::Def *, lsDocumentSymbol *>> funcs;
+      std::vector<std::pair<const QueryType::Def *, lsDocumentSymbol *>> types;
       for (auto [sym, refcnt] : symbol2refcnt) {
         if (refcnt <= 0)
           continue;
         auto r = sym2ds.try_emplace(SymbolIdx{sym.usr, sym.kind});
         if (!r.second)
           continue;
-        auto &kv = r.first->second;
-        kv.second = std::make_unique<lsDocumentSymbol>();
-        lsDocumentSymbol &ds = *kv.second;
+        auto &ds = r.first->second;
+        ds = std::make_unique<lsDocumentSymbol>();
+        const void *def_ptr = nullptr;
         WithEntity(db, sym, [&](const auto &entity) {
           auto *def = entity.AnyDef();
           if (!def)
             return;
-          ds.name = def->Name(false);
-          ds.detail = def->Name(true);
+          ds->name = def->Name(false);
+          ds->detail = def->Name(true);
+
+          // Try to find a definition with spell first.
+          const void *candidate_def_ptr = nullptr;
           for (auto &def : entity.def)
-            if (def.file_id == file_id) {
+            if (def.file_id == file_id && !Ignore(&def)) {
+              ds->kind = def.kind;
+              if (def.kind == lsSymbolKind::Namespace)
+                candidate_def_ptr = &def;
+
               if (!def.spell)
-                break;
-              ds.kind = def.kind;
+                continue;
               if (auto ls_range = GetLsRange(wfile, def.spell->extent))
-                ds.range = *ls_range;
+                ds->range = *ls_range;
               else
-                break;
+                continue;
               if (auto ls_range = GetLsRange(wfile, def.spell->range))
-                ds.selectionRange = *ls_range;
+                ds->selectionRange = *ls_range;
               else
-                break;
-              kv.first = static_cast<const void *>(&def);
+                continue;
+              def_ptr = &def;
+              break;
             }
+
+          // Try to find a declaration.
+          if (!def_ptr && candidate_def_ptr)
+            for (auto &decl : entity.declarations)
+              if (decl.file_id == file_id) {
+                if (auto ls_range = GetLsRange(wfile, decl.extent))
+                  ds->range = *ls_range;
+                else
+                  continue;
+                if (auto ls_range = GetLsRange(wfile, decl.range))
+                  ds->selectionRange = *ls_range;
+                else
+                  continue;
+                def_ptr = candidate_def_ptr;
+                break;
+              }
         });
-        if (kv.first && ((sym.kind == SymbolKind::Type &&
-                          IgnoreType((const QueryType::Def *)kv.first)) ||
-                         (sym.kind == SymbolKind::Var &&
-                          IgnoreVar((const QueryVar::Def *)kv.first))))
-          kv.first = nullptr;
-        if (!kv.first) {
-          kv.second.reset();
+        if (!def_ptr) {
+          ds.reset();
           continue;
         }
+        if (sym.kind == SymbolKind::Func)
+          funcs.emplace_back((const QueryFunc::Def *)def_ptr, ds.get());
+        else if (sym.kind == SymbolKind::Type)
+          types.emplace_back((const QueryType::Def *)def_ptr, ds.get());
       }
-      for (auto &[sym, def_ds] : sym2ds) {
-        if (!def_ds.second)
-          continue;
-        lsDocumentSymbol &ds = *def_ds.second;
-        switch (sym.kind) {
-        case SymbolKind::Func: {
-          auto &def = *static_cast<const QueryFunc::Def *>(def_ds.first);
-          for (Usr usr1 : def.vars) {
-            auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Var});
-            if (it != sym2ds.end() && it->second.second)
-              ds.children.push_back(std::move(it->second.second));
-          }
-          break;
+
+      for (auto &[def, ds] : funcs)
+        for (Usr usr1 : def->vars) {
+          auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Var});
+          if (it != sym2ds.end() && it->second)
+            ds->children.push_back(std::move(it->second));
         }
-        case SymbolKind::Type: {
-          auto &def = *static_cast<const QueryType::Def *>(def_ds.first);
-          for (Usr usr1 : def.funcs) {
-            auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Func});
-            if (it != sym2ds.end() && it->second.second)
-              ds.children.push_back(std::move(it->second.second));
-          }
-          for (Usr usr1 : def.types) {
-            auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Type});
-            if (it != sym2ds.end() && it->second.second)
-              ds.children.push_back(std::move(it->second.second));
-          }
-          for (auto [usr1, _] : def.vars) {
-            auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Var});
-            if (it != sym2ds.end() && it->second.second)
-              ds.children.push_back(std::move(it->second.second));
-          }
-          break;
+      for (auto &[def, ds] : types) {
+        for (Usr usr1 : def->funcs) {
+          auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Func});
+          if (it != sym2ds.end() && it->second)
+            ds->children.push_back(std::move(it->second));
         }
-        default:
-          break;
+        for (Usr usr1 : def->types) {
+          auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Type});
+          if (it != sym2ds.end() && it->second)
+            ds->children.push_back(std::move(it->second));
+        }
+        for (auto [usr1, _] : def->vars) {
+          auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Var});
+          if (it != sym2ds.end() && it->second)
+            ds->children.push_back(std::move(it->second));
         }
       }
       Out_HierarchicalDocumentSymbol out;
       out.id = request->id;
-      for (auto &[sym, def_ds] : sym2ds)
-        if (def_ds.second)
-          out.result.push_back(std::move(def_ds.second));
+      for (auto &[_, ds] : sym2ds)
+        if (ds)
+          out.result.push_back(std::move(ds));
       pipeline::WriteStdout(kMethodType, out);
     } else {
       Out_TextDocumentDocumentSymbol out;
@@ -207,9 +221,9 @@ struct Handler_TextDocumentDocumentSymbol
         if (std::optional<lsSymbolInformation> info =
                 GetSymbolInfo(db, sym, false)) {
           if ((sym.kind == SymbolKind::Type &&
-               IgnoreType(db->GetType(sym).AnyDef())) ||
+               Ignore(db->GetType(sym).AnyDef())) ||
               (sym.kind == SymbolKind::Var &&
-               IgnoreVar(db->GetVar(sym).AnyDef())))
+               Ignore(db->GetVar(sym).AnyDef())))
             continue;
           if (auto loc = GetLsLocation(db, working_files, sym, file_id)) {
             info->location = *loc;
