@@ -63,8 +63,8 @@ struct CompletionSession
   bool inferred = false;
 
   // TODO share
-  llvm::IntrusiveRefCntPtr<clang::vfs::FileSystem> FS =
-      clang::vfs::getRealFileSystem();
+  llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
+      llvm::vfs::getRealFileSystem();
   std::shared_ptr<clang::PCHContainerOperations> PCH;
 
   CompletionSession(const Project::Entry &file, WorkingFiles *wfiles,
