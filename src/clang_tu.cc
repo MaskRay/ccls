@@ -71,7 +71,7 @@ Range FromTokenRange(const SourceManager &SM, const LangOptions &LangOpts,
 
 std::unique_ptr<CompilerInvocation>
 BuildCompilerInvocation(std::vector<const char *> args,
-                        IntrusiveRefCntPtr<vfs::FileSystem> VFS) {
+                        IntrusiveRefCntPtr<llvm::vfs::FileSystem> VFS) {
   std::string save = "-resource-dir=" + g_config->clang.resourceDir;
   args.push_back(save.c_str());
   IntrusiveRefCntPtr<DiagnosticsEngine> Diags(

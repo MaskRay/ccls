@@ -10,6 +10,13 @@
 #include <clang/Basic/SourceManager.h>
 #include <clang/Frontend/CompilerInstance.h>
 
+#if LLVM_VERSION_MAJOR < 8
+// D52783 Lift VFS from clang to llvm
+namespace llvm {
+namespace vfs = clang::vfs;
+}
+#endif
+
 std::string PathFromFileEntry(const clang::FileEntry &file);
 
 Range FromCharSourceRange(const clang::SourceManager &SM,
@@ -27,6 +34,6 @@ Range FromTokenRange(const clang::SourceManager &SM,
 
 std::unique_ptr<clang::CompilerInvocation>
 BuildCompilerInvocation(std::vector<const char *> args,
-                        llvm::IntrusiveRefCntPtr<clang::vfs::FileSystem> VFS);
+                        llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> VFS);
 
 const char *ClangBuiltinTypeName(int);

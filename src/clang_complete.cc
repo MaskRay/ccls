@@ -72,20 +72,21 @@ lsTextEdit ToTextEdit(const clang::SourceManager &SM,
 }
 
 struct PreambleStatCache {
-  llvm::StringMap<ErrorOr<vfs::Status>> Cache;
+  llvm::StringMap<ErrorOr<llvm::vfs::Status>> Cache;
 
-  void Update(Twine Path, ErrorOr<vfs::Status> S) {
+  void Update(Twine Path, ErrorOr<llvm::vfs::Status> S) {
     Cache.try_emplace(Path.str(), std::move(S));
   }
 
-  IntrusiveRefCntPtr<vfs::FileSystem>
-  Producer(IntrusiveRefCntPtr<vfs::FileSystem> FS) {
-    struct VFS : vfs::ProxyFileSystem {
+  IntrusiveRefCntPtr<llvm::vfs::FileSystem>
+  Producer(IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS) {
+    struct VFS : llvm::vfs::ProxyFileSystem {
       PreambleStatCache &Cache;
 
-      VFS(IntrusiveRefCntPtr<vfs::FileSystem> FS, PreambleStatCache &Cache)
+      VFS(IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS,
+          PreambleStatCache &Cache)
           : ProxyFileSystem(std::move(FS)), Cache(Cache) {}
-      llvm::ErrorOr<std::unique_ptr<vfs::File>>
+      llvm::ErrorOr<std::unique_ptr<llvm::vfs::File>>
       openFileForRead(const Twine &Path) override {
         auto File = getUnderlyingFS().openFileForRead(Path);
         if (!File || !*File)
@@ -93,7 +94,7 @@ struct PreambleStatCache {
         Cache.Update(Path, File->get()->status());
         return File;
       }
-      llvm::ErrorOr<vfs::Status> status(const Twine &Path) override {
+      llvm::ErrorOr<llvm::vfs::Status> status(const Twine &Path) override {
         auto S = getUnderlyingFS().status(Path);
         Cache.Update(Path, S);
         return S;
@@ -102,14 +103,14 @@ struct PreambleStatCache {
     return new VFS(std::move(FS), *this);
   }
 
-  IntrusiveRefCntPtr<vfs::FileSystem>
-  Consumer(IntrusiveRefCntPtr<vfs::FileSystem> FS) {
-    struct VFS : vfs::ProxyFileSystem {
+  IntrusiveRefCntPtr<llvm::vfs::FileSystem>
+  Consumer(IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS) {
+    struct VFS : llvm::vfs::ProxyFileSystem {
       const PreambleStatCache &Cache;
-      VFS(IntrusiveRefCntPtr<vfs::FileSystem> FS,
+      VFS(IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS,
           const PreambleStatCache &Cache)
           : ProxyFileSystem(std::move(FS)), Cache(Cache) {}
-      llvm::ErrorOr<vfs::Status> status(const Twine &Path) override {
+      llvm::ErrorOr<llvm::vfs::Status> status(const Twine &Path) override {
         auto I = Cache.Cache.find(Path.str());
         if (I != Cache.Cache.end())
           return I->getValue();
@@ -259,7 +260,7 @@ public:
 
 std::unique_ptr<CompilerInstance> BuildCompilerInstance(
     CompletionSession &session, std::unique_ptr<CompilerInvocation> CI,
-    IntrusiveRefCntPtr<vfs::FileSystem> FS, DiagnosticConsumer &DC,
+    IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS, DiagnosticConsumer &DC,
     const PreambleData *preamble, const WorkingFiles::Snapshot &snapshot,
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> &Bufs) {
   std::string main = ResolveIfRelative(
@@ -307,7 +308,7 @@ bool Parse(CompilerInstance &Clang) {
 }
 
 void BuildPreamble(CompletionSession &session, CompilerInvocation &CI,
-                   IntrusiveRefCntPtr<vfs::FileSystem> FS,
+                   IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS,
                    const std::string &main,
                    std::unique_ptr<PreambleStatCache> stat_cache) {
   std::shared_ptr<PreambleData> OldP = session.GetPreamble();
@@ -353,7 +354,8 @@ void *CompletionPreloadMain(void *manager_) {
     WorkingFiles::Snapshot snapshot =
         session->wfiles->AsSnapshot({StripFileType(session->file.filename)});
     auto stat_cache = std::make_unique<PreambleStatCache>();
-    IntrusiveRefCntPtr<vfs::FileSystem> FS = stat_cache->Producer(session->FS);
+    IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
+        stat_cache->Producer(session->FS);
     if (std::unique_ptr<CompilerInvocation> CI =
             BuildCompilerInvocation(args, FS))
       BuildPreamble(*session, *CI, FS, request.path, std::move(stat_cache));
@@ -391,7 +393,7 @@ void *CompletionMain(void *manager_) {
     std::shared_ptr<CompletionSession> session =
         manager->TryGetSession(path, false);
     std::shared_ptr<PreambleData> preamble = session->GetPreamble();
-    IntrusiveRefCntPtr<vfs::FileSystem> FS =
+    IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
         preamble ? preamble->stat_cache->Consumer(session->FS) : session->FS;
     std::unique_ptr<CompilerInvocation> CI =
         BuildCompilerInvocation(session->file.args, FS);
@@ -471,7 +473,7 @@ void *DiagnosticMain(void *manager_) {
     std::shared_ptr<CompletionSession> session =
         manager->TryGetSession(path, false);
     std::shared_ptr<PreambleData> preamble = session->GetPreamble();
-    IntrusiveRefCntPtr<vfs::FileSystem> FS =
+    IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
         preamble ? preamble->stat_cache->Consumer(session->FS) : session->FS;
     std::unique_ptr<CompilerInvocation> CI =
         BuildCompilerInvocation(session->file.args, FS);
