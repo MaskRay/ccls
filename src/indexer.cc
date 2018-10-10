@@ -734,8 +734,17 @@ public:
 
     // spell, extent, comments use OrigD while most others use adjusted |D|.
     const Decl *OrigD = ASTNode.OrigD;
-    const DeclContext *SemDC = OrigD->getDeclContext();
-    const DeclContext *LexDC = ASTNode.ContainerDC;
+    const DeclContext *SemDC = OrigD->getDeclContext()->getRedeclContext();
+    const DeclContext *LexDC = ASTNode.ContainerDC->getRedeclContext();
+    {
+      const NamespaceDecl *ND;
+      while ((ND = dyn_cast<NamespaceDecl>(cast<Decl>(SemDC))) &&
+             ND->isAnonymousNamespace())
+        SemDC = ND->getDeclContext()->getRedeclContext();
+      while ((ND = dyn_cast<NamespaceDecl>(cast<Decl>(LexDC))) &&
+             ND->isAnonymousNamespace())
+        LexDC = ND->getDeclContext()->getRedeclContext();
+    }
     Role role = static_cast<Role>(Roles);
     db->language = LanguageId((int)db->language | (int)GetDeclLanguage(D));
 

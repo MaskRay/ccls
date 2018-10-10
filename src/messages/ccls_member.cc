@@ -145,14 +145,16 @@ bool Expand(MessageHandler *m, Out_CclsMember::Entry *entry,
       type = stack.back();
       stack.pop_back();
       const auto *def = type->AnyDef();
-      if (!def) continue;
-      for (Usr usr : def->bases) {
-        auto &type1 = m->db->Type(usr);
-        if (type1.def.size()) {
-          seen.insert(type1.usr);
-          stack.push_back(&type1);
+      if (!def)
+        continue;
+      if (def->kind != lsSymbolKind::Namespace)
+        for (Usr usr : def->bases) {
+          auto &type1 = m->db->Type(usr);
+          if (type1.def.size()) {
+            seen.insert(type1.usr);
+            stack.push_back(&type1);
+          }
         }
-      }
       if (def->alias_of) {
         const QueryType::Def *def1 = m->db->Type(def->alias_of).AnyDef();
         Out_CclsMember::Entry entry1;
