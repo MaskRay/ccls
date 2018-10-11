@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#define __STDC_FORMAT_MACROS
+
 #include "indexer.h"
 
 #include "clang_complete.hh"
@@ -762,8 +764,8 @@ public:
       switch (D->getKind()) {
       case Decl::CXXConversion: // *operator* int => *operator int*
       case Decl::CXXDestructor: // *~*A => *~A*
-      case Decl::CXXMethod: // *operator*= => *operator=*
-      case Decl::Function: // operator delete
+      case Decl::CXXMethod:     // *operator*= => *operator=*
+      case Decl::Function:      // operator delete
         if (Loc.isFileID()) {
           SourceRange R =
               cast<FunctionDecl>(OrigD)->getNameInfo().getSourceRange();
@@ -793,7 +795,7 @@ public:
         GetSymbolKind(cast<Decl>(SemDC), entity->def.parent_kind);
       } else if (is_decl) {
         DeclRef &dr = entity->declarations.emplace_back();
-        static_cast<Use&>(dr) = {{loc, role}, lid};
+        static_cast<Use &>(dr) = {{loc, role}, lid};
         SourceRange R = OrigD->getSourceRange();
         dr.extent = R.getBegin().isFileID() ? FromTokenRange(SM, Lang, R) : loc;
       } else {
@@ -1303,13 +1305,13 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
   {
     llvm::CrashRecoveryContext CRC;
     auto parse = [&]() {
-                   if (!Action->BeginSourceFile(*Clang, Clang->getFrontendOpts().Inputs[0]))
-                     return;
-                   if (!Action->Execute())
-                     return;
-                   Action->EndSourceFile();
-                   ok = true;
-                 };
+      if (!Action->BeginSourceFile(*Clang, Clang->getFrontendOpts().Inputs[0]))
+        return;
+      if (!Action->Execute())
+        return;
+      Action->EndSourceFile();
+      ok = true;
+    };
     if (!CRC.RunSafely(parse)) {
       LOG_S(ERROR) << "clang crashed for " << file;
       return {};
