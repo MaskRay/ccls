@@ -332,10 +332,7 @@ void BuildPreamble(CompletionSession &session, CompilerInvocation &CI,
     return;
   CI.getDiagnosticOpts().IgnoreWarnings = false;
   CI.getFrontendOpts().SkipFunctionBodies = true;
-  CI.getLangOpts()->CommentOpts.ParseAllComments = true;
-#if LLVM_VERSION_MAJOR >= 7
-  CI.getPreprocessorOpts().WriteCommentListToPCH = false;
-#endif
+  CI.getLangOpts()->CommentOpts.ParseAllComments = g_config->index.comments > 1;
 
   StoreDiags DC(main);
   IntrusiveRefCntPtr<DiagnosticsEngine> DE =
