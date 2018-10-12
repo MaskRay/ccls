@@ -6,7 +6,7 @@
 # Downloads 7-Zip to extract Clang if it isn't available in the PATH
 function(download_and_extract_clang CLANG_DOWNLOAD_LOCATION)
 
-set(CLANG_VERSION 6.0.1)
+set(CLANG_VERSION 7.0.0)
 set(CLANG_ARCHIVE_EXT .tar.xz)
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
@@ -17,8 +17,6 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
 
-  # No Darwin binaries were released for LLVM 6.0.1
-  set(CLANG_VERSION 6.0.0)
   set(CLANG_ARCHIVE_NAME clang+llvm-${CLANG_VERSION}-x86_64-apple-darwin)
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
@@ -28,7 +26,7 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL FreeBSD)
 
-  set(CLANG_ARCHIVE_NAME clang+llvm-${CLANG_VERSION}-amd64-unknown-freebsd10)
+  set(CLANG_ARCHIVE_NAME clang+llvm-${CLANG_VERSION}-amd64-unknown-freebsd11)
 
 endif()
 
@@ -93,7 +91,7 @@ if(${CLANG_ARCHIVE_EXT} STREQUAL .exe)
     include(DownloadAndExtract7zip)
     download_and_extract_7zip(${CLANG_DOWNLOAD_LOCATION})
     find_program(7ZIP_EXECUTABLE
-      NAMES 7z 
+      NAMES 7z
       NO_DEFAULT_PATH
       PATHS ${DOWNLOADED_7ZIP_DIR}
     )
