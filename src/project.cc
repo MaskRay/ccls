@@ -124,7 +124,7 @@ struct ProjectProcessor {
     const driver::JobList &Jobs = C->getJobs();
     if (Jobs.size() != 1)
       return;
-    const driver::ArgStringList &CCArgs = Jobs.begin()->getArguments();
+    const auto &CCArgs = Jobs.begin()->getArguments();
 
     auto CI = std::make_unique<CompilerInvocation>();
     CompilerInvocation::CreateFromArgs(*CI, CCArgs.data(),
