@@ -103,7 +103,7 @@ public:
 
       const char *ret_type = nullptr;
       SignatureInformation &ls_sig = ls_sighelp.signatures.emplace_back();
-#if LLVM_VERSION_MAJOR >= 8
+#if LLVM_VERSION_MAJOR >= 7
       const RawComment *RC = getCompletionComment(S.getASTContext(), Cand.getFunction());
       ls_sig.documentation = RC ? RC->getBriefText(S.getASTContext()) : "";
 #endif
@@ -183,7 +183,7 @@ void MessageHandler::textDocument_signatureHelp(
   CodeCompleteOptions CCOpts;
   CCOpts.IncludeGlobals = false;
   CCOpts.IncludeMacros = false;
-  CCOpts.IncludeBriefComments = false;
+  CCOpts.IncludeBriefComments = true;
   if (cache.IsCacheValid(path, begin_pos)) {
     SignatureHelpConsumer Consumer(CCOpts, true);
     cache.WithLock([&]() { Consumer.ls_sighelp = cache.result; });
