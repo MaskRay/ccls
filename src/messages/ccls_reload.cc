@@ -28,7 +28,7 @@ using namespace ccls;
 namespace {
 MethodType kMethodType = "$ccls/reload";
 
-struct In_CclsReload : public NotificationInMessage {
+struct In_cclsReload : public NotificationMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     bool dependencies = true;
@@ -36,14 +36,13 @@ struct In_CclsReload : public NotificationInMessage {
     std::vector<std::string> blacklist;
   } params;
 };
-MAKE_REFLECT_STRUCT(In_CclsReload::Params, dependencies, whitelist,
-                    blacklist);
-MAKE_REFLECT_STRUCT(In_CclsReload, params);
-REGISTER_IN_MESSAGE(In_CclsReload);
+MAKE_REFLECT_STRUCT(In_cclsReload::Params, dependencies, whitelist, blacklist);
+MAKE_REFLECT_STRUCT(In_cclsReload, params);
+REGISTER_IN_MESSAGE(In_cclsReload);
 
-struct Handler_CclsReload : BaseMessageHandler<In_CclsReload> {
+struct Handler_cclsReload : BaseMessageHandler<In_cclsReload> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_CclsReload *request) override {
+  void Run(In_cclsReload *request) override {
     const auto &params = request->params;
     // Send index requests for every file.
     if (params.whitelist.empty() && params.blacklist.empty()) {
@@ -91,5 +90,5 @@ struct Handler_CclsReload : BaseMessageHandler<In_CclsReload> {
     }
   }
 };
-REGISTER_MESSAGE_HANDLER(Handler_CclsReload);
+REGISTER_MESSAGE_HANDLER(Handler_cclsReload);
 } // namespace

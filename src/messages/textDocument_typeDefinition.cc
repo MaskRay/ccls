@@ -21,7 +21,7 @@ using namespace ccls;
 namespace {
 MethodType kMethodType = "textDocument/typeDefinition";
 
-struct In_TextDocumentTypeDefinition : public RequestInMessage {
+struct In_TextDocumentTypeDefinition : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };
@@ -40,18 +40,17 @@ struct Handler_TextDocumentTypeDefinition
     WorkingFile *working_file =
         working_files->GetFileByFilename(file->def->path);
 
-    Out_LocationList out;
-    out.id = request->id;
+    std::vector<lsLocation> result;
     auto Add = [&](const QueryType &type) {
       for (const auto &def : type.def)
         if (def.spell) {
           if (auto ls_loc = GetLsLocation(db, working_files, *def.spell))
-            out.result.push_back(*ls_loc);
+            result.push_back(*ls_loc);
         }
-      if (out.result.empty())
+      if (result.empty())
         for (const DeclRef &dr : type.declarations)
           if (auto ls_loc = GetLsLocation(db, working_files, dr))
-            out.result.push_back(*ls_loc);
+            result.push_back(*ls_loc);
     };
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
@@ -75,7 +74,7 @@ struct Handler_TextDocumentTypeDefinition
       }
     }
 
-    pipeline::WriteStdout(kMethodType, out);
+    pipeline::Reply(request->id, result);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentTypeDefinition);

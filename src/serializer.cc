@@ -32,7 +32,13 @@ using namespace llvm;
 
 bool gTestOutputMode = false;
 
-//// Elementary types
+Reader::~Reader() {}
+BinaryReader::~BinaryReader() {}
+JsonReader::~JsonReader() {}
+
+Writer::~Writer() {}
+BinaryWriter::~BinaryWriter() {}
+JsonWriter::~JsonWriter() {}
 
 void Reflect(Reader &visitor, uint8_t &value) { value = visitor.GetUInt8(); }
 void Reflect(Writer &visitor, uint8_t &value) { visitor.UInt8(value); }

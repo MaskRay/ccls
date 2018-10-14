@@ -54,7 +54,7 @@ bool AddSymbol(
   return true;
 }
 
-struct In_WorkspaceSymbol : public RequestInMessage {
+struct In_WorkspaceSymbol : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     std::string query;
@@ -65,20 +65,11 @@ MAKE_REFLECT_STRUCT(In_WorkspaceSymbol::Params, query);
 MAKE_REFLECT_STRUCT(In_WorkspaceSymbol, id, params);
 REGISTER_IN_MESSAGE(In_WorkspaceSymbol);
 
-struct Out_WorkspaceSymbol : public lsOutMessage<Out_WorkspaceSymbol> {
-  lsRequestId id;
-  std::vector<lsSymbolInformation> result;
-};
-MAKE_REFLECT_STRUCT(Out_WorkspaceSymbol, jsonrpc, id, result);
-
-///// Fuzzy matching
 
 struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
   MethodType GetMethodType() const override { return kMethodType; }
   void Run(In_WorkspaceSymbol *request) override {
-    Out_WorkspaceSymbol out;
-    out.id = request->id;
-
+    std::vector<lsSymbolInformation> result;
     std::string query = request->params.query;
 
     // {symbol info, matching detailed_name or short_name, index}
@@ -128,20 +119,20 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
       std::sort(cands.begin(), cands.end(), [](const auto &l, const auto &r) {
         return std::get<1>(l) > std::get<1>(r);
       });
-      out.result.reserve(cands.size());
+      result.reserve(cands.size());
       for (auto &cand : cands) {
         // Discard awful candidates.
         if (std::get<1>(cand) <= FuzzyMatcher::kMinScore)
           break;
-        out.result.push_back(std::get<0>(cand));
+        result.push_back(std::get<0>(cand));
       }
     } else {
-      out.result.reserve(cands.size());
+      result.reserve(cands.size());
       for (auto &cand : cands)
-        out.result.push_back(std::get<0>(cand));
+        result.push_back(std::get<0>(cand));
     }
 
-    pipeline::WriteStdout(kMethodType, out);
+    pipeline::Reply(request->id, result);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_WorkspaceSymbol);

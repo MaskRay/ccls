@@ -26,7 +26,7 @@ using namespace ccls;
 namespace {
 MethodType kMethodType = "textDocument/definition";
 
-struct In_TextDocumentDefinition : public RequestInMessage {
+struct In_TextDocumentDefinition : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };
@@ -66,9 +66,7 @@ struct Handler_TextDocumentDefinition
                         params.textDocument.uri.GetPath(), &file, &file_id))
       return;
 
-    Out_LocationList out;
-    out.id = request->id;
-
+    std::vector<lsLocation> result;
     Maybe<Use> on_def;
     WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
     lsPosition &ls_pos = params.position;
@@ -104,19 +102,18 @@ struct Handler_TextDocumentDefinition
           uses.push_back(*on_def);
       }
       auto locs = GetLsLocations(db, working_files, uses);
-      out.result.insert(out.result.end(), locs.begin(), locs.end());
+      result.insert(result.end(), locs.begin(), locs.end());
     }
 
-    if (out.result.size()) {
-      std::sort(out.result.begin(), out.result.end());
-      out.result.erase(std::unique(out.result.begin(), out.result.end()),
-                       out.result.end());
+    if (result.size()) {
+      std::sort(result.begin(), result.end());
+      result.erase(std::unique(result.begin(), result.end()), result.end());
     } else {
       Maybe<Range> range;
       // Check #include
       for (const IndexInclude &include : file->def->includes) {
         if (include.line == ls_pos.line) {
-          out.result.push_back(
+          result.push_back(
               lsLocation{lsDocumentUri::FromPath(include.resolved_path)});
           range = {{0, 0}, {0, 0}};
           break;
@@ -177,12 +174,12 @@ struct Handler_TextDocumentDefinition
           Maybe<DeclRef> dr = GetDefinitionSpell(db, best_sym);
           assert(dr);
           if (auto loc = GetLsLocation(db, working_files, *dr))
-            out.result.push_back(*loc);
+            result.push_back(*loc);
         }
       }
     }
 
-    pipeline::WriteStdout(kMethodType, out);
+    pipeline::Reply(request->id, result);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDefinition);

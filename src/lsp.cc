@@ -18,9 +18,44 @@ limitations under the License.
 #include "log.hh"
 #include "serializers/json.h"
 
-#include <rapidjson/writer.h>
+#include <rapidjson/document.h>
 
 #include <stdio.h>
+
+MethodType kMethodType_Exit = "exit";
+
+void Reflect(Reader &visitor, lsRequestId &value) {
+  if (visitor.IsInt64()) {
+    value.type = lsRequestId::kInt;
+    value.value = int(visitor.GetInt64());
+  } else if (visitor.IsInt()) {
+    value.type = lsRequestId::kInt;
+    value.value = visitor.GetInt();
+  } else if (visitor.IsString()) {
+    value.type = lsRequestId::kString;
+    value.value = atoll(visitor.GetString());
+  } else {
+    value.type = lsRequestId::kNone;
+    value.value = -1;
+  }
+}
+
+void Reflect(Writer &visitor, lsRequestId &value) {
+  switch (value.type) {
+  case lsRequestId::kNone:
+    visitor.Null();
+    break;
+  case lsRequestId::kInt:
+    visitor.Int(value.value);
+    break;
+  case lsRequestId::kString:
+    auto s = std::to_string(value.value);
+    visitor.String(s.c_str(), s.length());
+    break;
+  }
+}
+
+InMessage::~InMessage() {}
 
 MessageRegistry *MessageRegistry::instance_ = nullptr;
 
@@ -145,29 +180,6 @@ MessageRegistry *MessageRegistry::instance() {
   return instance_;
 }
 
-lsBaseOutMessage::~lsBaseOutMessage() = default;
-
-void lsBaseOutMessage::Write(std::ostream &out) {
-  rapidjson::StringBuffer output;
-  rapidjson::Writer<rapidjson::StringBuffer> writer(output);
-  JsonWriter json_writer{&writer};
-  ReflectWriter(json_writer);
-
-  out << "Content-Length: " << output.GetSize() << "\r\n\r\n"
-      << output.GetString();
-  out.flush();
-}
-
-void lsResponseError::Write(Writer &visitor) {
-  auto &value = *this;
-  int code2 = static_cast<int>(this->code);
-
-  visitor.StartObject();
-  REFLECT_MEMBER2("code", code2);
-  REFLECT_MEMBER(message);
-  visitor.EndObject();
-}
-
 lsDocumentUri lsDocumentUri::FromPath(const std::string &path) {
   lsDocumentUri result;
   result.SetPath(path);
@@ -271,10 +283,4 @@ void Reflect(Writer &visitor, lsMarkedString &value) {
   } else {
     Reflect(visitor, value.value);
   }
-}
-
-std::string Out_ShowLogMessage::method() {
-  if (display_type == DisplayType::Log)
-    return "window/logMessage";
-  return "window/showMessage";
 }
