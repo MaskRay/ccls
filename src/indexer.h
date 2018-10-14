@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "language.h"
 #include "lsp.h"
 #include "lsp_diagnostic.h"
 #include "maybe.h"
@@ -23,6 +22,7 @@
 #include <vector>
 
 using Usr = uint64_t;
+enum class LanguageId;
 
 struct SymbolIdx {
   Usr usr;

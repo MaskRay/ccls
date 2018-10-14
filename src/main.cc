@@ -30,17 +30,19 @@ using namespace llvm::cl;
 std::string g_init_options;
 
 namespace {
-opt<bool> opt_help("h", desc("Alias for -help"));
-opt<int> opt_verbose("v", desc("verbosity"), init(0));
+OptionCategory C("ccls options");
+
+opt<bool> opt_help("h", desc("Alias for -help"), cat(C));
+opt<int> opt_verbose("v", desc("verbosity"), init(0), cat(C));
 opt<std::string> opt_test_index("test-index", ValueOptional, init("!"),
-                                desc("run index tests"));
+                                desc("run index tests"), cat(C));
 
-opt<std::string> opt_init("init", desc("extra initialization options"));
-opt<std::string> opt_log_file("log-file", desc("log"), value_desc("filename"));
+opt<std::string> opt_init("init", desc("extra initialization options in JSON"),
+                          cat(C));
+opt<std::string> opt_log_file("log-file", desc("log"), value_desc("filename"),
+                              cat(C));
 opt<std::string> opt_log_file_append("log-file-append", desc("log"),
-                                     value_desc("filename"));
-
-list<std::string> opt_extra(Positional, ZeroOrMore, desc("extra"));
+                                     value_desc("filename"), cat(C));
 
 void CloseLog() { fclose(ccls::log::file); }
 
@@ -49,6 +51,10 @@ void CloseLog() { fclose(ccls::log::file); }
 int main(int argc, char **argv) {
   TraceMe();
   sys::PrintStackTraceOnErrorSignal(argv[0]);
+
+  for (auto &I : TopLevelSubCommand->OptionsMap)
+    if (I.second->Category != &C)
+      I.second->setHiddenFlag(ReallyHidden);
 
   ParseCommandLineOptions(argc, argv,
                           "C/C++/Objective-C language server\n\n"
