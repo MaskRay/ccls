@@ -4,6 +4,7 @@
 #pragma once
 
 #include "config.h"
+#include "lsp.h"
 #include "method.h"
 
 #include <functional>
@@ -13,6 +14,8 @@
 #include <vector>
 
 struct WorkingFiles;
+
+std::pair<LanguageId, bool> lookupExtension(std::string_view filename);
 
 struct Project {
   struct Entry {

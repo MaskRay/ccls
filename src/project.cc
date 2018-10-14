@@ -4,7 +4,6 @@
 #include "project.h"
 
 #include "filesystem.hh"
-#include "language.h"
 #include "log.hh"
 #include "match.h"
 #include "pipeline.hh"
@@ -15,6 +14,7 @@
 
 #include <clang/Driver/Compilation.h>
 #include <clang/Driver/Driver.h>
+#include <clang/Driver/Types.h>
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Tooling/CompilationDatabase.h>
 #include <llvm/ADT/STLExtras.h>
@@ -34,6 +34,25 @@
 using namespace ccls;
 using namespace clang;
 using namespace llvm;
+
+std::pair<LanguageId, bool> lookupExtension(std::string_view filename) {
+  using namespace clang::driver;
+  auto I = types::lookupTypeForExtension(
+      sys::path::extension({filename.data(), filename.size()}).substr(1));
+  bool header = I == types::TY_CHeader || I == types::TY_CXXHeader ||
+                I == types::TY_ObjCXXHeader;
+  bool objc = types::isObjC(I);
+  LanguageId ret;
+  if (types::isCXX(I))
+    ret = objc ? LanguageId::ObjCpp : LanguageId::Cpp;
+  else if (objc)
+    ret = LanguageId::ObjC;
+  else if (I == types::TY_C || I == types::TY_CHeader)
+    ret = LanguageId::C;
+  else
+    ret = LanguageId::Unknown;
+  return {ret, header};
+}
 
 namespace {
 
@@ -64,7 +83,7 @@ struct ProjectProcessor {
     // Expand %c %cpp %clang
     std::vector<const char *> args;
     args.reserve(entry.args.size() + g_config->clang.extraArgs.size() + 1);
-    const LanguageId lang = SourceFileLanguage(entry.filename);
+    const LanguageId lang = lookupExtension(entry.filename).first;
     for (const char *arg : entry.args) {
       if (strncmp(arg, "%c ", 3) == 0) {
         if (lang == LanguageId::C)
@@ -86,7 +105,7 @@ struct ProjectProcessor {
     size_t hash = std::hash<std::string>{}(entry.directory);
     for (auto &arg : args) {
       if (arg[0] != '-' && EndsWith(arg, base_name)) {
-        const LanguageId lang = SourceFileLanguage(arg);
+        LanguageId lang = lookupExtension(arg).first;
         if (lang != LanguageId::Unknown) {
           hash_combine(hash, size_t(lang));
           continue;
@@ -170,12 +189,6 @@ ReadCompilerArgumentsFromFile(const std::string &path) {
 std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig *config) {
   std::vector<Project::Entry> result;
   config->mode = ProjectMode::DotCcls;
-  SmallString<256> Path;
-  sys::path::append(Path, config->root, ".ccls");
-  LOG_IF_S(WARNING, !sys::fs::exists(Path) && g_config->clang.extraArgs.empty())
-      << "ccls has no clang arguments. Use either "
-         "compile_commands.json or .ccls, See ccls README for "
-         "more information.";
 
   std::unordered_map<std::string, std::vector<const char *>> folder_args;
   std::vector<std::string> files;
@@ -184,7 +197,8 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig *config) {
   GetFilesInFolder(root, true /*recursive*/,
                    true /*add_folder_to_path*/,
                    [&folder_args, &files](const std::string &path) {
-                     if (SourceFileLanguage(path) != LanguageId::Unknown) {
+                     std::pair<LanguageId, bool> lang = lookupExtension(path);
+                     if (lang.first != LanguageId::Unknown && !lang.second) {
                        files.push_back(path);
                      } else if (sys::path::filename(path) == ".ccls") {
                        std::vector<const char *> args = ReadCompilerArgumentsFromFile(path);
@@ -235,14 +249,13 @@ std::vector<Project::Entry>
 LoadEntriesFromDirectory(ProjectConfig *project,
                          const std::string &opt_compdb_dir) {
   // If there is a .ccls file always load using directory listing.
-  SmallString<256> Path;
-  sys::path::append(Path, project->root, ".ccls");
-  if (sys::fs::exists(Path))
+  SmallString<256> Path, CclsPath;
+  sys::path::append(CclsPath, project->root, ".ccls");
+  if (sys::fs::exists(CclsPath))
     return LoadFromDirectoryListing(project);
 
   // If |compilationDatabaseCommand| is specified, execute it to get the compdb.
   std::string comp_db_dir;
-  Path.clear();
   if (g_config->compilationDatabaseCommand.empty()) {
     project->mode = ProjectMode::CompileCommandsJson;
     // Try to load compile_commands.json, but fallback to a project listing.
@@ -284,8 +297,8 @@ LoadEntriesFromDirectory(ProjectConfig *project,
 #endif
   }
   if (!CDB) {
-    LOG_S(WARNING) << "failed to load " << Path.c_str() << " " << err_msg;
-    return {};
+    LOG_S(WARNING) << "no .ccls or compile_commands.json . Consider adding one";
+    return LoadFromDirectoryListing(project);
   }
 
   LOG_S(INFO) << "loaded " << Path.c_str();

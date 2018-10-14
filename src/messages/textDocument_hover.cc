@@ -9,6 +9,18 @@ using namespace ccls;
 namespace {
 MethodType kMethodType = "textDocument/hover";
 
+const char *LanguageIdentifier(LanguageId lang) {
+  switch (lang) {
+  // clang-format off
+  case LanguageId::C: return "c";
+  case LanguageId::Cpp: return "cpp";
+  case LanguageId::ObjC: return "objective-c";
+  case LanguageId::ObjCpp: return "objective-cpp";
+  default: return "";
+  // clang-format on
+  }
+}
+
 // Returns the hover or detailed name for `sym`, if any.
 std::pair<std::optional<lsMarkedString>, std::optional<lsMarkedString>>
 GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
