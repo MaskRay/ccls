@@ -188,7 +188,6 @@ target_sources(ccls PRIVATE
   src/include_complete.cc
   src/indexer.cc
   src/method.cc
-  src/language.cc
   src/log.cc
   src/lsp.cc
   src/match.cc

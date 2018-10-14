@@ -127,7 +127,8 @@ struct Handler_TextDocumentDidOpen
 
     // Submit new index request if it is not a header file or there is no
     // pending index request.
-    if (SourceFileLanguage(path) != LanguageId::Unknown ||
+    std::pair<LanguageId, bool> lang = lookupExtension(path);
+    if ((lang.first != LanguageId::Unknown && !lang.second) ||
         !pipeline::pending_index_requests)
       pipeline::Index(path, args, IndexMode::Normal);
 
