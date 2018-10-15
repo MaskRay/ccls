@@ -19,7 +19,6 @@ limitations under the License.
 #include "maybe.h"
 #include "position.h"
 #include "serializer.h"
-#include "symbol.h"
 #include "utils.h"
 
 #include <clang/Basic/FileManager.h>
