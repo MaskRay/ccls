@@ -102,15 +102,16 @@ bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
     } else {
       for (Use use : func.uses) {
         const QueryFile &file1 = m->db->files[use.file_id];
-        Maybe<SymbolRef> best_sym;
-        for (auto [sym, refcnt] : file1.outline2refcnt)
-          if (refcnt > 0 && sym.kind == SymbolKind::Func &&
-              sym.range.start <= use.range.start &&
-              use.range.end <= sym.range.end &&
-              (!best_sym || best_sym->range.start < sym.range.start))
-            best_sym = sym;
-        if (best_sym)
-          handle(*best_sym, use.file_id, call_type);
+        Maybe<ExtentRef> best;
+        for (auto [sym, refcnt] : file1.symbol2refcnt)
+          if (refcnt > 0 && sym.extent.Valid() &&
+              sym.kind == SymbolKind::Func &&
+              sym.extent.start <= use.range.start &&
+              use.range.end <= sym.extent.end &&
+              (!best || best->extent.start < sym.extent.start))
+            best = sym;
+        if (best)
+          handle(*best, use.file_id, call_type);
       }
     }
   };

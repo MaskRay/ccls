@@ -11,17 +11,13 @@
 #include <llvm/ADT/StringMap.h>
 
 namespace llvm {
-template <> struct DenseMapInfo<SymbolRef> {
-  static inline SymbolRef getEmptyKey() { return {}; }
-  static inline SymbolRef getTombstoneKey() {
-    SymbolRef ret{};
-    ret.usr = -1;
-    return ret;
+template <> struct DenseMapInfo<ExtentRef> {
+  static inline ExtentRef getEmptyKey() { return {}; }
+  static inline ExtentRef getTombstoneKey() { return {{Range(), Usr(-1)}}; }
+  static unsigned getHashValue(ExtentRef sym) {
+    return std::hash<ExtentRef>()(sym);
   }
-  static unsigned getHashValue(SymbolRef sym) {
-    return std::hash<SymbolRef>()(sym);
-  }
-  static bool isEqual(SymbolRef l, SymbolRef r) { return l == r; }
+  static bool isEqual(ExtentRef l, ExtentRef r) { return l == r; }
 };
 }
 
@@ -42,8 +38,8 @@ struct QueryFile {
 
   int id = -1;
   std::optional<Def> def;
-  llvm::DenseMap<SymbolRef, int> symbol2refcnt;
-  llvm::DenseMap<SymbolRef, int> outline2refcnt;
+  // `extent` is valid => declaration; invalid => regular reference
+  llvm::DenseMap<ExtentRef, int> symbol2refcnt;
 };
 
 template <typename Q, typename QDef> struct QueryEntity {

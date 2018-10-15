@@ -51,6 +51,15 @@ struct SymbolRef {
 };
 MAKE_HASHABLE(SymbolRef, t.range, t.usr, t.kind, t.role);
 
+struct ExtentRef : SymbolRef {
+  Range extent;
+  std::tuple<Range, Usr, SymbolKind, Role, Range> ToTuple() const {
+    return std::make_tuple(range, usr, kind, role, extent);
+  }
+  bool operator==(const ExtentRef &o) const { return ToTuple() == o.ToTuple(); }
+};
+MAKE_HASHABLE(ExtentRef, t.range, t.usr, t.kind, t.role, t.extent);
+
 struct Ref {
   Range range;
   Role role;

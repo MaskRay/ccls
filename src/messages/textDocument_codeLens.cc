@@ -74,15 +74,15 @@ struct Handler_TextDocumentCodeLens
       return;
     WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
 
-    auto Add = [&](const char *singular, Cmd_xref show, Use use, int num,
+    auto Add = [&](const char *singular, Cmd_xref show, Range range, int num,
                    bool force_display = false) {
       if (!num && !force_display)
         return;
-      std::optional<lsRange> range = GetLsRange(wfile, use.range);
-      if (!range)
+      std::optional<lsRange> ls_range = GetLsRange(wfile, range);
+      if (!ls_range)
         return;
       lsCodeLens &code_lens = result.emplace_back();
-      code_lens.range = *range;
+      code_lens.range = *ls_range;
       code_lens.command = lsCommand();
       code_lens.command->command = std::string(ccls_xref);
       bool plural = num > 1 && singular[strlen(singular) - 1] != 'd';
@@ -91,19 +91,10 @@ struct Handler_TextDocumentCodeLens
       code_lens.command->arguments.push_back(ToString(show));
     };
 
-    auto ToSpell = [&](SymbolRef sym, int file_id) -> Use {
-      Maybe<DeclRef> def = GetDefinitionSpell(db, sym);
-      if (def && def->file_id == file_id &&
-          def->range.start.line == sym.range.start.line)
-        return *def;
-      return {{sym.range, sym.role}, file_id};
-    };
-
     std::unordered_set<Range> seen;
-    for (auto [sym, refcnt] : file->outline2refcnt) {
-      if (refcnt <= 0 || !seen.insert(sym.range).second)
+    for (auto [sym, refcnt] : file->symbol2refcnt) {
+      if (refcnt <= 0 || !sym.extent.Valid() || !seen.insert(sym.range).second)
         continue;
-      Use use = ToSpell(sym, file->id);
       switch (sym.kind) {
       case SymbolKind::Func: {
         QueryFunc &func = db->GetFunc(sym);
@@ -112,28 +103,28 @@ struct Handler_TextDocumentCodeLens
           continue;
         std::vector<Use> base_uses = GetUsesForAllBases(db, func);
         std::vector<Use> derived_uses = GetUsesForAllDerived(db, func);
-        Add("ref", {sym.usr, SymbolKind::Func, "uses"}, use, func.uses.size(),
-            base_uses.empty());
+        Add("ref", {sym.usr, SymbolKind::Func, "uses"}, sym.range,
+            func.uses.size(), base_uses.empty());
         if (base_uses.size())
-          Add("b.ref", {sym.usr, SymbolKind::Func, "bases uses"}, use,
+          Add("b.ref", {sym.usr, SymbolKind::Func, "bases uses"}, sym.range,
               base_uses.size());
         if (derived_uses.size())
-          Add("d.ref", {sym.usr, SymbolKind::Func, "derived uses"}, use,
+          Add("d.ref", {sym.usr, SymbolKind::Func, "derived uses"}, sym.range,
               derived_uses.size());
         if (base_uses.empty())
-          Add("base", {sym.usr, SymbolKind::Func, "bases"}, use,
+          Add("base", {sym.usr, SymbolKind::Func, "bases"}, sym.range,
               def->bases.size());
-        Add("derived", {sym.usr, SymbolKind::Func, "derived"}, use,
+        Add("derived", {sym.usr, SymbolKind::Func, "derived"}, sym.range,
             func.derived.size());
         break;
       }
       case SymbolKind::Type: {
         QueryType &type = db->GetType(sym);
-        Add("ref", {sym.usr, SymbolKind::Type, "uses"}, use, type.uses.size(),
+        Add("ref", {sym.usr, SymbolKind::Type, "uses"}, sym.range, type.uses.size(),
             true);
-        Add("derived", {sym.usr, SymbolKind::Type, "derived"}, use,
+        Add("derived", {sym.usr, SymbolKind::Type, "derived"}, sym.range,
             type.derived.size());
-        Add("var", {sym.usr, SymbolKind::Type, "instances"}, use,
+        Add("var", {sym.usr, SymbolKind::Type, "instances"}, sym.range,
             type.instances.size());
         break;
       }
@@ -142,7 +133,7 @@ struct Handler_TextDocumentCodeLens
         const QueryVar::Def *def = var.AnyDef();
         if (!def || (def->is_local() && !g_config->codeLens.localVariables))
           continue;
-        Add("ref", {sym.usr, SymbolKind::Var, "uses"}, use, var.uses.size(),
+        Add("ref", {sym.usr, SymbolKind::Var, "uses"}, sym.range, var.uses.size(),
             def->kind != lsSymbolKind::Macro);
         break;
       }
