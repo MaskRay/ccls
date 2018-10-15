@@ -43,49 +43,49 @@ struct Handler_CclsNavigate : BaseMessageHandler<In_CclsNavigate> {
     switch (params.direction[0]) {
     case 'D': {
       Maybe<Range> parent;
-      for (auto [sym, refcnt] : file->outline2refcnt)
-        if (refcnt > 0 && sym.range.start <= pos && pos < sym.range.end &&
-            (!parent || parent->start < sym.range.start))
-          parent = sym.range;
-      for (auto [sym, refcnt] : file->outline2refcnt)
-        if (refcnt > 0 && pos < sym.range.start &&
-            (!parent || sym.range.end <= parent->end) &&
-            (!res || sym.range.start < res->start))
-          res = sym.range;
+      for (auto [sym, refcnt] : file->symbol2refcnt)
+        if (refcnt > 0 && sym.extent.Valid() && sym.extent.start <= pos &&
+            pos < sym.extent.end && (!parent || parent->start < sym.extent.start))
+          parent = sym.extent;
+      for (auto [sym, refcnt] : file->symbol2refcnt)
+        if (refcnt > 0 && pos < sym.extent.start &&
+            (!parent || sym.extent.end <= parent->end) &&
+            (!res || sym.extent.start < res->start))
+          res = sym.extent;
       break;
     }
     case 'L':
-      for (auto [sym, refcnt] : file->outline2refcnt)
-        if (refcnt > 0 && sym.range.end <= pos &&
-            (!res || (res->end == sym.range.end ? sym.range.start < res->start
-                                                : res->end < sym.range.end)))
-          res = sym.range;
+      for (auto [sym, refcnt] : file->symbol2refcnt)
+        if (refcnt > 0 && sym.extent.Valid() && sym.extent.end <= pos &&
+            (!res || (res->end == sym.extent.end ? sym.extent.start < res->start
+                                                : res->end < sym.extent.end)))
+          res = sym.extent;
       break;
     case 'R': {
       Maybe<Range> parent;
-      for (auto [sym, refcnt] : file->outline2refcnt)
-        if (refcnt > 0 && sym.range.start <= pos && pos < sym.range.end &&
-            (!parent || parent->start < sym.range.start))
-          parent = sym.range;
+      for (auto [sym, refcnt] : file->symbol2refcnt)
+        if (refcnt > 0 && sym.extent.Valid() && sym.extent.start <= pos &&
+            pos < sym.extent.end && (!parent || parent->start < sym.extent.start))
+          parent = sym.extent;
       if (parent && parent->start.line == pos.line && pos < parent->end) {
         pos = parent->end;
         if (pos.column)
           pos.column--;
       }
-      for (auto [sym, refcnt] : file->outline2refcnt)
-        if (refcnt > 0 && pos < sym.range.start &&
+      for (auto [sym, refcnt] : file->symbol2refcnt)
+        if (refcnt > 0 && sym.extent.Valid() && pos < sym.extent.start &&
             (!res ||
-             (sym.range.start == res->start ? res->end < sym.range.end
-                                            : sym.range.start < res->start)))
-          res = sym.range;
+             (sym.extent.start == res->start ? res->end < sym.extent.end
+                                            : sym.extent.start < res->start)))
+          res = sym.extent;
       break;
     }
     case 'U':
     default:
-      for (auto [sym, refcnt] : file->outline2refcnt)
-        if (refcnt > 0 && sym.range.start < pos && pos < sym.range.end &&
-            (!res || res->start < sym.range.start))
-          res = sym.range;
+      for (auto [sym, refcnt] : file->symbol2refcnt)
+        if (refcnt > 0 && sym.extent.Valid() && sym.extent.start < pos &&
+            pos < sym.extent.end && (!res || res->start < sym.extent.start))
+          res = sym.extent;
       break;
     }
     std::vector<lsLocation> result;
