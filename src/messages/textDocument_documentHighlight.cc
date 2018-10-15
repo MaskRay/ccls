@@ -16,7 +16,6 @@ limitations under the License.
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "query_utils.h"
-#include "symbol.h"
 
 #include <algorithm>
 using namespace ccls;
