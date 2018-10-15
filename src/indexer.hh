@@ -244,7 +244,8 @@ struct VarDef : NameMixin<VarDef> {
             parent_kind == SymbolKind::Method ||
             parent_kind == SymbolKind::StaticMethod ||
             parent_kind == SymbolKind::Constructor) &&
-           storage == clang::SC_None;
+           (storage == clang::SC_None || storage == clang::SC_Auto ||
+            storage == clang::SC_Register);
   }
 
   std::vector<Usr> GetBases() const { return {}; }
