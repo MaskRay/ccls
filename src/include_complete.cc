@@ -72,20 +72,15 @@ bool TrimPath(Project *project, std::string &path) {
 }
 
 lsCompletionItem BuildCompletionItem(const std::string &path,
-                                     bool use_angle_brackets, bool is_stl) {
+                                     bool use_angle_brackets) {
   lsCompletionItem item;
   item.label = ElideLongPath(path);
   item.detail = path; // the include path, used in de-duplicating
   item.textEdit.newText = path;
   item.insertTextFormat = lsInsertTextFormat::PlainText;
   item.use_angle_brackets_ = use_angle_brackets;
-  if (is_stl) {
-    item.kind = lsCompletionItemKind::Module;
-    item.priority_ = 2;
-  } else {
-    item.kind = lsCompletionItemKind::File;
-    item.priority_ = 1;
-  }
+  item.kind = lsCompletionItemKind::File;
+  item.priority_ = 0;
   return item;
 }
 
@@ -154,8 +149,7 @@ void IncludeComplete::AddFile(const std::string &path) {
 
   std::string trimmed_path = path;
   bool use_angle_brackets = TrimPath(project_, trimmed_path);
-  lsCompletionItem item =
-      BuildCompletionItem(trimmed_path, use_angle_brackets, false /*is_stl*/);
+  lsCompletionItem item = BuildCompletionItem(trimmed_path, use_angle_brackets);
 
   std::unique_lock<std::mutex> lock(completion_items_mutex, std::defer_lock);
   if (is_scanning)
@@ -184,7 +178,7 @@ void IncludeComplete::InsertIncludesFromDirectory(std::string directory,
         CompletionCandidate candidate;
         candidate.absolute_path = directory + path;
         candidate.completion_item =
-            BuildCompletionItem(path, use_angle_brackets, false /*is_stl*/);
+            BuildCompletionItem(path, use_angle_brackets);
         results.push_back(candidate);
       });
 
