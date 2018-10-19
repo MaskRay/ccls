@@ -33,6 +33,18 @@ MAKE_REFLECT_STRUCT(In_CclsNavigate::Params, textDocument, position, direction);
 MAKE_REFLECT_STRUCT(In_CclsNavigate, id, params);
 REGISTER_IN_MESSAGE(In_CclsNavigate);
 
+Maybe<Range> FindParent(QueryFile *file, Position pos) {
+  Maybe<Range> parent;
+  for (auto [sym, refcnt] : file->symbol2refcnt)
+    if (refcnt > 0 && sym.extent.Valid() && sym.extent.start <= pos &&
+        pos < sym.extent.end &&
+        (!parent || (parent->start == sym.extent.start
+                         ? parent->end < sym.extent.end
+                         : parent->start < sym.extent.start)))
+      parent = sym.extent;
+  return parent;
+}
+
 struct Handler_CclsNavigate : BaseMessageHandler<In_CclsNavigate> {
   MethodType GetMethodType() const override { return kMethodType; }
   void Run(In_CclsNavigate *request) override {
@@ -54,11 +66,7 @@ struct Handler_CclsNavigate : BaseMessageHandler<In_CclsNavigate> {
     Maybe<Range> res;
     switch (params.direction[0]) {
     case 'D': {
-      Maybe<Range> parent;
-      for (auto [sym, refcnt] : file->symbol2refcnt)
-        if (refcnt > 0 && sym.extent.Valid() && sym.extent.start <= pos &&
-            pos < sym.extent.end && (!parent || parent->start < sym.extent.start))
-          parent = sym.extent;
+      Maybe<Range> parent = FindParent(file, pos);
       for (auto [sym, refcnt] : file->symbol2refcnt)
         if (refcnt > 0 && pos < sym.extent.start &&
             (!parent || sym.extent.end <= parent->end) &&
@@ -74,11 +82,7 @@ struct Handler_CclsNavigate : BaseMessageHandler<In_CclsNavigate> {
           res = sym.extent;
       break;
     case 'R': {
-      Maybe<Range> parent;
-      for (auto [sym, refcnt] : file->symbol2refcnt)
-        if (refcnt > 0 && sym.extent.Valid() && sym.extent.start <= pos &&
-            pos < sym.extent.end && (!parent || parent->start < sym.extent.start))
-          parent = sym.extent;
+      Maybe<Range> parent = FindParent(file, pos);
       if (parent && parent->start.line == pos.line && pos < parent->end) {
         pos = parent->end;
         if (pos.column)

@@ -40,45 +40,54 @@ std::string PathFromFileEntry(const FileEntry &file) {
   return ret;
 }
 
+static Position Decomposed2LineAndCol(const SourceManager &SM,
+                               std::pair<FileID, unsigned> I) {
+  int l = SM.getLineNumber(I.first, I.second) - 1,
+      c = SM.getColumnNumber(I.first, I.second) - 1;
+  return {(int16_t)std::min(l, INT16_MAX), (int16_t)std::min(c, INT16_MAX)};
+}
+
 Range FromCharSourceRange(const SourceManager &SM, const LangOptions &LangOpts,
                           CharSourceRange R,
                           llvm::sys::fs::UniqueID *UniqueID) {
   SourceLocation BLoc = R.getBegin(), ELoc = R.getEnd();
-  std::pair<FileID, unsigned> BInfo = SM.getDecomposedLoc(BLoc);
-  std::pair<FileID, unsigned> EInfo = SM.getDecomposedLoc(ELoc);
+  std::pair<FileID, unsigned> BInfo = SM.getDecomposedLoc(BLoc),
+                              EInfo = SM.getDecomposedLoc(ELoc);
   if (R.isTokenRange())
     EInfo.second += Lexer::MeasureTokenLength(ELoc, SM, LangOpts);
-  unsigned l0 = SM.getLineNumber(BInfo.first, BInfo.second) - 1,
-           c0 = SM.getColumnNumber(BInfo.first, BInfo.second) - 1,
-           l1 = SM.getLineNumber(EInfo.first, EInfo.second) - 1,
-           c1 = SM.getColumnNumber(EInfo.first, EInfo.second) - 1;
-  if (l0 > INT16_MAX)
-    l0 = 0;
-  if (c0 > INT16_MAX)
-    c0 = 0;
-  if (l1 > INT16_MAX)
-    l1 = 0;
-  if (c1 > INT16_MAX)
-    c1 = 0;
   if (UniqueID) {
     if (const FileEntry *F = SM.getFileEntryForID(BInfo.first))
       *UniqueID = F->getUniqueID();
     else
       *UniqueID = llvm::sys::fs::UniqueID(0, 0);
   }
-  return {{int16_t(l0), int16_t(c0)}, {int16_t(l1), int16_t(c1)}};
+  return {Decomposed2LineAndCol(SM, BInfo), Decomposed2LineAndCol(SM, EInfo)};
 }
 
-Range FromCharRange(const SourceManager &SM, const LangOptions &LangOpts,
+Range FromCharRange(const SourceManager &SM, const LangOptions &Lang,
                     SourceRange R, llvm::sys::fs::UniqueID *UniqueID) {
-  return FromCharSourceRange(SM, LangOpts, CharSourceRange::getCharRange(R),
+  return FromCharSourceRange(SM, Lang, CharSourceRange::getCharRange(R),
                              UniqueID);
 }
 
-Range FromTokenRange(const SourceManager &SM, const LangOptions &LangOpts,
+Range FromTokenRange(const SourceManager &SM, const LangOptions &Lang,
                      SourceRange R, llvm::sys::fs::UniqueID *UniqueID) {
-  return FromCharSourceRange(SM, LangOpts, CharSourceRange::getTokenRange(R),
+  return FromCharSourceRange(SM, Lang, CharSourceRange::getTokenRange(R),
                              UniqueID);
+}
+
+Range FromTokenRangeDefaulted(const SourceManager &SM, const LangOptions &Lang,
+                              SourceRange R, const FileEntry *FE, Range range) {
+  auto I = SM.getDecomposedLoc(SM.getExpansionLoc(R.getBegin()));
+  if (SM.getFileEntryForID(I.first) == FE)
+    range.start = Decomposed2LineAndCol(SM, I);
+  SourceLocation L = SM.getExpansionLoc(R.getEnd());
+  I = SM.getDecomposedLoc(L);
+  if (SM.getFileEntryForID(I.first) == FE) {
+    I.second += Lexer::MeasureTokenLength(L, SM, Lang);
+    range.end = Decomposed2LineAndCol(SM, I);
+  }
+  return range;
 }
 
 std::unique_ptr<CompilerInvocation>

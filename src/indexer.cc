@@ -785,19 +785,18 @@ public:
     Usr usr = GetUsr(D, &info);
 
     auto do_def_decl = [&](auto *entity) {
+      Use use{{loc, role}, lid};
       if (is_def) {
         SourceRange R = OrigD->getSourceRange();
-        entity->def.spell = {
-            Use{{loc, role}, lid},
-            R.getBegin().isFileID() ? FromTokenRange(SM, Lang, R) : loc};
+        entity->def.spell = {use,
+                             FromTokenRangeDefaulted(SM, Lang, R, FE, loc)};
         GetSymbolKind(cast<Decl>(SemDC), entity->def.parent_kind);
       } else if (is_decl) {
-        DeclRef &dr = entity->declarations.emplace_back();
-        static_cast<Use&>(dr) = {{loc, role}, lid};
         SourceRange R = OrigD->getSourceRange();
-        dr.extent = R.getBegin().isFileID() ? FromTokenRange(SM, Lang, R) : loc;
+        entity->declarations.push_back(
+            {use, FromTokenRangeDefaulted(SM, Lang, R, FE, loc)});
       } else {
-        entity->uses.push_back({{loc, role}, lid});
+        entity->uses.push_back(use);
         return;
       }
       if (entity->def.comments[0] == '\0' && g_config->index.comments)
