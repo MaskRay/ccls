@@ -62,6 +62,8 @@ struct Handler_TextDocumentTypeDefinition
       }
     }
 
+    std::sort(result.begin(), result.end());
+    result.erase(std::unique(result.begin(), result.end()), result.end());
     pipeline::Reply(request->id, result);
   }
 };
