@@ -565,9 +565,7 @@ public:
       T = BD->getType();
       binding = true;
     }
-    auto BT = GetBaseType(T, false);
-    if (!BT.isNull() &&
-        (binding || BT.getUnqualifiedType()->getAs<AutoType>())) {
+    if (!T.isNull() && (binding || T->getContainedDeducedType())) {
       SmallString<256> Str;
       llvm::raw_svector_ostream OS(Str);
       PrintingPolicy PP = GetDefaultPolicy();
