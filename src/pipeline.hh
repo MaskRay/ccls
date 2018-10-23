@@ -45,6 +45,7 @@ void LaunchStdout();
 void Indexer_Main(CompletionManager *completion, VFS *vfs, Project *project,
                   WorkingFiles *wfiles);
 void MainLoop();
+void Standalone(const std::string &root);
 
 void Index(const std::string &path, const std::vector<const char *> &args,
            IndexMode mode, lsRequestId id = {});
