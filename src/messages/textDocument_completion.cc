@@ -227,6 +227,10 @@ void FilterCandidates(lsCompletionList &result,
               items.end());
   std::sort(items.begin(), items.end(),
             [](const lsCompletionItem &lhs, const lsCompletionItem &rhs) {
+              int t = int(lhs.additionalTextEdits.size() -
+                          rhs.additionalTextEdits.size());
+              if (t)
+                return t < 0;
               if (lhs.score_ != rhs.score_)
                 return lhs.score_ > rhs.score_;
               if (lhs.priority_ != rhs.priority_)
