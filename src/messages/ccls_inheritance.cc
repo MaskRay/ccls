@@ -185,10 +185,17 @@ struct Handler_textDocumentImplementation
     : BaseMessageHandler<In_textDocumentImplementation> {
   MethodType GetMethodType() const override { return implementation; }
   void Run(In_textDocumentImplementation *request) override {
+    Handler_cclsInheritance handler;
+    handler.db = db;
+    handler.project = project;
+    handler.working_files = working_files;
+
     In_cclsInheritance request1;
+    request1.id = request->id;
     request1.params.textDocument = request->params.textDocument;
     request1.params.position = request->params.position;
-    Handler_cclsInheritance().Run(&request1);
+    request1.params.derived = true;
+    handler.Run(&request1);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_textDocumentImplementation);
