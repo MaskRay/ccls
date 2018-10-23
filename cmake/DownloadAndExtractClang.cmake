@@ -12,8 +12,41 @@ set(CLANG_ARCHIVE_EXT .tar.xz)
 if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
 
   # Default to Ubuntu 16.04
-  set(CLANG_ARCHIVE_NAME
-      clang+llvm-${CLANG_VERSION}-x86_64-linux-gnu-ubuntu-16.04)
+  set(DEFAULT_UBUNTU_VERSION_NUMBER 16.04)
+
+  # Select a Clang archive for other Ubuntu releases if the current platform
+  # differs from the default one
+  set(UBUNTU_VERSION_NUMBER ${DEFAULT_UBUNTU_VERSION_NUMBER})
+  find_program(LSB_RELEASE_EXECUTABLE lsb_release)
+
+  if(NOT LSB_RELEASE_EXECUTABLE)
+    message(WARNING "Could not find lsb_release executable. \
+Falling back to default Linux platform: Clang/LLVM archive for \
+Ubuntu ${DEFAULT_UBUNTU_VERSION_NUMBER}.")
+
+  else()
+    execute_process(COMMAND ${LSB_RELEASE_EXECUTABLE} -si
+      OUTPUT_VARIABLE LSB_RELEASE_ID
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+
+    if(${LSB_RELEASE_ID} STREQUAL Ubuntu)
+      execute_process(COMMAND ${LSB_RELEASE_EXECUTABLE} -sr
+        OUTPUT_VARIABLE LSB_RELEASE_NUMBER
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+
+      set(UBUNTU_VERSION_NUMBER ${LSB_RELEASE_NUMBER})
+
+    else()
+      message(WARNING "Identified other Linux platform than Ubuntu. Falling \
+back to default: Clang/LLVM for Ubuntu ${DEFAULT_UBUNTU_VERSION_NUMBER}.")
+
+    endif()
+  endif()
+
+  set(CLANG_ARCHIVE_NAME "clang+llvm-${CLANG_VERSION}-x86_64-\
+linux-gnu-ubuntu-${UBUNTU_VERSION_NUMBER}")
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
 
