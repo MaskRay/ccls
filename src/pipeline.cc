@@ -30,6 +30,7 @@ limitations under the License.
 
 #include <rapidjson/writer.h>
 
+#include <llvm/Support/Process.h>
 #include <llvm/Support/Threading.h>
 #include <llvm/Support/Timer.h>
 using namespace llvm;
@@ -41,6 +42,9 @@ using namespace llvm;
 #ifndef _WIN32
 #include <unistd.h>
 #endif
+
+void StandaloneInitialize(const std::string &, Project &, WorkingFiles &, VFS &,
+                          IncludeComplete &);
 
 void VFS::Clear() {
   std::lock_guard lock(mutex);
@@ -533,6 +537,35 @@ void MainLoop() {
       main_waiter->Wait(on_indexed, on_request);
     }
   }
+}
+
+void Standalone(const std::string &root) {
+  Project project;
+  WorkingFiles wfiles;
+  VFS vfs;
+  IncludeComplete complete(&project);
+  StandaloneInitialize(root, project, wfiles, vfs, complete);
+  bool tty = sys::Process::StandardOutIsDisplayed();
+
+  if (tty) {
+    int entries = 0;
+    for (auto &[_, folder] : project.root2folder)
+      entries += folder.entries.size();
+      printf("entries: %5d\n", entries);
+  }
+  while (1) {
+    (void)on_indexed->DequeueAll();
+    int pending = pending_index_requests;
+    if (tty) {
+      printf("\rpending: %5d", pending);
+      fflush(stdout);
+    }
+    if (!pending)
+      break;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+  if (tty)
+    puts("");
 }
 
 void Index(const std::string &path, const std::vector<const char *> &args,

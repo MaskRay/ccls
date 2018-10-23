@@ -322,25 +322,13 @@ struct lsClientCapabilities {
 MAKE_REFLECT_STRUCT(lsClientCapabilities, workspace, textDocument);
 
 struct lsInitializeParams {
-  // The process Id of the parent process that started
-  // the server. Is null if the process has not been started by another process.
-  // If the parent process is not alive then the server should exit (see exit
-  // notification) its process.
-  std::optional<int> processId;
-
-  // The rootPath of the workspace. Is null
-  // if no folder is open.
-  //
-  // @deprecated in favour of rootUri.
-  std::optional<std::string> rootPath;
-
   // The rootUri of the workspace. Is null if no
   // folder is open. If both `rootPath` and `rootUri` are set
   // `rootUri` wins.
   std::optional<lsDocumentUri> rootUri;
 
   // User provided initialization options.
-  std::optional<Config> initializationOptions;
+  Config initializationOptions;
 
   // The capabilities provided by the client (editor or tool)
   lsClientCapabilities capabilities;
@@ -372,33 +360,8 @@ void Reflect(Reader &reader, lsInitializeParams::lsTrace &value) {
     value = lsInitializeParams::lsTrace::Verbose;
 }
 
-#if 0 // unused
-void Reflect(Writer& writer, lsInitializeParams::lsTrace& value) {
-  switch (value) {
-    case lsInitializeParams::lsTrace::Off:
-      writer.String("off");
-      break;
-    case lsInitializeParams::lsTrace::Messages:
-      writer.String("messages");
-      break;
-    case lsInitializeParams::lsTrace::Verbose:
-      writer.String("verbose");
-      break;
-  }
-}
-#endif
-
-MAKE_REFLECT_STRUCT(lsInitializeParams, processId, rootPath, rootUri,
-                    initializationOptions, capabilities, trace,
-                    workspaceFolders);
-
-struct lsInitializeError {
-  // Indicates whether the client should retry to send the
-  // initilize request after showing the message provided
-  // in the ResponseError.
-  bool retry;
-};
-MAKE_REFLECT_STRUCT(lsInitializeError, retry);
+MAKE_REFLECT_STRUCT(lsInitializeParams, rootUri, initializationOptions,
+                    capabilities, trace, workspaceFolders);
 
 struct In_InitializeRequest : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
@@ -438,10 +401,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
                 << params.rootUri->raw_uri;
 
     {
-      if (params.initializationOptions)
-        g_config = new Config(*params.initializationOptions);
-      else
-        g_config = new Config;
+      g_config = new Config(params.initializationOptions);
       rapidjson::Document reader;
       reader.Parse(g_init_options.c_str());
       if (!reader.HasParseError()) {
@@ -531,3 +491,17 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
 };
 REGISTER_MESSAGE_HANDLER(Handler_Initialize);
 } // namespace
+
+void StandaloneInitialize(const std::string &root, Project &project,
+                          WorkingFiles &wfiles, VFS &vfs,
+                          IncludeComplete &complete) {
+  Handler_Initialize handler;
+  handler.project = &project;
+  handler.working_files = &wfiles;
+  handler.vfs = &vfs;
+  handler.include_complete = &complete;
+
+  In_InitializeRequest request;
+  request.params.rootUri = lsDocumentUri::FromPath(root);
+  handler.Run(&request);
+}
