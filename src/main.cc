@@ -11,6 +11,7 @@
 
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/CrashRecoveryContext.h>
+#include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Process.h>
 #include <llvm/Support/Program.h>
 #include <llvm/Support/Signals.h>
@@ -37,6 +38,9 @@ opt<int> opt_verbose("v", desc("verbosity"), init(0), cat(C));
 opt<std::string> opt_test_index("test-index", ValueOptional, init("!"),
                                 desc("run index tests"), cat(C));
 
+opt<std::string> opt_index("index",
+                           desc("standalone mode: index a project and exit"),
+                           value_desc("root"), cat(C));
 opt<std::string> opt_init("init", desc("extra initialization options in JSON"),
                           cat(C));
 opt<std::string> opt_log_file("log-file", desc("log"), value_desc("filename"),
@@ -118,14 +122,20 @@ int main(int argc, char **argv) {
 
     sys::ChangeStdinToBinary();
     sys::ChangeStdoutToBinary();
-    // The thread that reads from stdin and dispatchs commands to the main
-    // thread.
-    pipeline::LaunchStdin();
-    // The thread that writes responses from the main thread to stdout.
-    pipeline::LaunchStdout();
-    // Main thread which also spawns indexer threads upon the "initialize"
-    // request.
-    pipeline::MainLoop();
+    if (opt_index.size()) {
+      SmallString<256> Root(opt_index);
+      sys::fs::make_absolute(Root);
+      pipeline::Standalone(Root.str());
+    } else {
+      // The thread that reads from stdin and dispatchs commands to the main
+      // thread.
+      pipeline::LaunchStdin();
+      // The thread that writes responses from the main thread to stdout.
+      pipeline::LaunchStdout();
+      // Main thread which also spawns indexer threads upon the "initialize"
+      // request.
+      pipeline::MainLoop();
+    }
   }
 
   return 0;
