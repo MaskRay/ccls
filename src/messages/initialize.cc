@@ -74,13 +74,6 @@ struct lsDocumentOnTypeFormattingOptions {
 MAKE_REFLECT_STRUCT(lsDocumentOnTypeFormattingOptions, firstTriggerCharacter,
                     moreTriggerCharacter);
 
-// Document link options
-struct lsDocumentLinkOptions {
-  // Document links have a resolve provider as well.
-  bool resolveProvider = false;
-};
-MAKE_REFLECT_STRUCT(lsDocumentLinkOptions, resolveProvider);
-
 // Save options.
 struct lsSaveOptions {
   // The client is supposed to include the content on save.
@@ -170,8 +163,6 @@ struct lsServerCapabilities {
   lsDocumentOnTypeFormattingOptions documentOnTypeFormattingProvider;
   // The server provides rename support.
   bool renameProvider = true;
-  // The server provides document link support.
-  lsDocumentLinkOptions documentLinkProvider;
   bool foldingRangeProvider = true;
   // The server provides execute command support.
   struct ExecuteCommandOptions {
@@ -197,8 +188,7 @@ MAKE_REFLECT_STRUCT(lsServerCapabilities, textDocumentSync, hoverProvider,
                     codeLensProvider, documentFormattingProvider,
                     documentRangeFormattingProvider,
                     documentOnTypeFormattingProvider, renameProvider,
-                    documentLinkProvider, foldingRangeProvider,
-                    executeCommandProvider, workspace);
+                    foldingRangeProvider, executeCommandProvider, workspace);
 
 // Workspace specific client capabilities.
 struct lsWorkspaceClientCapabilites {
