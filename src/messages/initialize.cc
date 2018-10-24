@@ -160,6 +160,7 @@ struct lsServerCapabilities {
   bool renameProvider = true;
   // The server provides document link support.
   lsDocumentLinkOptions documentLinkProvider;
+  bool foldingRangeProvider = true;
   // The server provides execute command support.
   struct ExecuteCommandOptions {
     std::vector<std::string> commands{std::string(ccls_xref)};
@@ -184,7 +185,8 @@ MAKE_REFLECT_STRUCT(lsServerCapabilities, textDocumentSync, hoverProvider,
                     codeLensProvider, documentFormattingProvider,
                     documentRangeFormattingProvider,
                     documentOnTypeFormattingProvider, renameProvider,
-                    documentLinkProvider, executeCommandProvider, workspace);
+                    documentLinkProvider, foldingRangeProvider,
+                    executeCommandProvider, workspace);
 
 // Workspace specific client capabilities.
 struct lsWorkspaceClientCapabilites {
