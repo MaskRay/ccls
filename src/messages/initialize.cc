@@ -74,12 +74,6 @@ struct lsDocumentOnTypeFormattingOptions {
 MAKE_REFLECT_STRUCT(lsDocumentOnTypeFormattingOptions, firstTriggerCharacter,
                     moreTriggerCharacter);
 
-// Document link options
-struct lsDocumentLinkOptions {
-  // Document links have a resolve provider as well.
-  bool resolveProvider = false;
-};
-MAKE_REFLECT_STRUCT(lsDocumentLinkOptions, resolveProvider);
 
 // Save options.
 struct lsSaveOptions {
@@ -144,34 +138,22 @@ struct lsServerCapabilities {
   lsCompletionOptions completionProvider;
   // The server provides signature help support.
   lsSignatureHelpOptions signatureHelpProvider;
-  // The server provides goto definition support.
   bool definitionProvider = true;
-  // The server provides Goto Type Definition support.
   bool typeDefinitionProvider = true;
-  // The server provides Goto Implementation support.
   bool implementationProvider = true;
-  // The server provides find references support.
   bool referencesProvider = true;
-  // The server provides document highlight support.
   bool documentHighlightProvider = true;
-  // The server provides document symbol support.
   bool documentSymbolProvider = true;
-  // The server provides workspace symbol support.
   bool workspaceSymbolProvider = true;
-  // The server provides code actions.
   bool codeActionProvider = true;
-  // The server provides code lens.
   lsCodeLensOptions codeLensProvider;
-  // The server provides document formatting.
   bool documentFormattingProvider = true;
-  // The server provides document range formatting.
   bool documentRangeFormattingProvider = true;
-  // The server provides document formatting on typing.
   lsDocumentOnTypeFormattingOptions documentOnTypeFormattingProvider;
-  // The server provides rename support.
   bool renameProvider = true;
-  // The server provides document link support.
-  lsDocumentLinkOptions documentLinkProvider;
+  struct DocumentLinkOptions {
+    bool resolveProvider = true;
+  } documentLinkProvider;
   bool foldingRangeProvider = true;
   // The server provides execute command support.
   struct ExecuteCommandOptions {
@@ -184,6 +166,7 @@ struct lsServerCapabilities {
     } workspaceFolders;
   } workspace;
 };
+MAKE_REFLECT_STRUCT(lsServerCapabilities::DocumentLinkOptions, resolveProvider);
 MAKE_REFLECT_STRUCT(lsServerCapabilities::ExecuteCommandOptions, commands);
 MAKE_REFLECT_STRUCT(lsServerCapabilities::Workspace::WorkspaceFolders,
                     supported, changeNotifications);
