@@ -16,16 +16,116 @@ limitations under the License.
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "query_utils.h"
-using namespace ccls;
-using namespace clang;
+
+#include <algorithm>
 
 MAKE_HASHABLE(SymbolIdx, t.usr, t.kind);
 
+namespace ccls {
 namespace {
-MethodType kMethodType = "textDocument/documentSymbol";
+MethodType documentHighlight = "textDocument/documentHighlight",
+           documentLink = "textDocument/documentLink",
+           documentSymbol = "textDocument/documentSymbol";
 
-struct In_TextDocumentDocumentSymbol : public RequestMessage {
-  MethodType GetMethodType() const override { return kMethodType; }
+struct lsDocumentHighlight {
+  enum Kind { Text = 1, Read = 2, Write = 3 };
+
+  lsRange range;
+  int kind = 1;
+
+  // ccls extension
+  Role role = Role::None;
+
+  bool operator<(const lsDocumentHighlight &o) const {
+    return !(range == o.range) ? range < o.range : kind < o.kind;
+  }
+};
+MAKE_REFLECT_STRUCT(lsDocumentHighlight, range, kind, role);
+
+struct In_TextDocumentDocumentHighlight : public RequestMessage {
+  MethodType GetMethodType() const override { return documentHighlight; }
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(In_TextDocumentDocumentHighlight, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentDocumentHighlight);
+
+struct Handler_TextDocumentDocumentHighlight
+    : BaseMessageHandler<In_TextDocumentDocumentHighlight> {
+  MethodType GetMethodType() const override { return documentHighlight; }
+  void Run(In_TextDocumentDocumentHighlight *request) override {
+    int file_id;
+    QueryFile *file;
+    if (!FindFileOrFail(db, project, request->id,
+                        request->params.textDocument.uri.GetPath(), &file,
+                        &file_id))
+      return;
+
+    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+    std::vector<lsDocumentHighlight> result;
+
+    std::vector<SymbolRef> syms =
+        FindSymbolsAtLocation(wfile, file, request->params.position, true);
+    for (auto [sym, refcnt] : file->symbol2refcnt) {
+      if (refcnt <= 0)
+        continue;
+      Usr usr = sym.usr;
+      SymbolKind kind = sym.kind;
+      if (std::none_of(syms.begin(), syms.end(), [&](auto &sym1) {
+            return usr == sym1.usr && kind == sym1.kind;
+          }))
+        continue;
+      if (auto loc = GetLsLocation(db, working_files, sym, file_id)) {
+        lsDocumentHighlight highlight;
+        highlight.range = loc->range;
+        if (sym.role & Role::Write)
+          highlight.kind = lsDocumentHighlight::Write;
+        else if (sym.role & Role::Read)
+          highlight.kind = lsDocumentHighlight::Read;
+        else
+          highlight.kind = lsDocumentHighlight::Text;
+        highlight.role = sym.role;
+        result.push_back(highlight);
+      }
+    }
+    std::sort(result.begin(), result.end());
+    pipeline::Reply(request->id, result);
+  }
+};
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDocumentHighlight);
+
+struct In_textDocumentDocumentLink : public RequestMessage {
+  MethodType GetMethodType() const override { return documentLink; }
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(In_textDocumentDocumentLink, id, params);
+REGISTER_IN_MESSAGE(In_textDocumentDocumentLink);
+
+struct lsDocumentLink {
+  lsRange range;
+  lsDocumentUri target;
+};
+MAKE_REFLECT_STRUCT(lsDocumentLink, range, target);
+
+struct Handler_textDocumentDocumentLink
+    : BaseMessageHandler<In_textDocumentDocumentLink> {
+  MethodType GetMethodType() const override { return documentLink; }
+  void Run(In_textDocumentDocumentLink *request) override {
+    QueryFile *file;
+    if (!FindFileOrFail(db, project, request->id,
+                        request->params.textDocument.uri.GetPath(), &file))
+      return;
+
+    std::vector<lsDocumentLink> result;
+    for (const IndexInclude &include : file->def->includes)
+      result.push_back({lsRange{{include.line, 0}, {include.line + 1, 0}},
+                        lsDocumentUri::FromPath(include.resolved_path)});
+    pipeline::Reply(request->id, result);
+  }
+};
+REGISTER_MESSAGE_HANDLER(Handler_textDocumentDocumentLink);
+
+struct In_textDocumentDocumentSymbol : public RequestMessage {
+  MethodType GetMethodType() const override { return documentSymbol; }
   struct Params {
     lsTextDocumentIdentifier textDocument;
     // false: outline; true: all symbols
@@ -35,10 +135,10 @@ struct In_TextDocumentDocumentSymbol : public RequestMessage {
     int endLine = -1;
   } params;
 };
-MAKE_REFLECT_STRUCT(In_TextDocumentDocumentSymbol::Params, textDocument, all,
+MAKE_REFLECT_STRUCT(In_textDocumentDocumentSymbol::Params, textDocument, all,
                     startLine, endLine);
-MAKE_REFLECT_STRUCT(In_TextDocumentDocumentSymbol, id, params);
-REGISTER_IN_MESSAGE(In_TextDocumentDocumentSymbol);
+MAKE_REFLECT_STRUCT(In_textDocumentDocumentSymbol, id, params);
+REGISTER_IN_MESSAGE(In_textDocumentDocumentSymbol);
 
 struct lsDocumentSymbol {
   std::string name;
@@ -68,10 +168,10 @@ bool Ignore(const QueryVar::Def *def) {
   return !def || def->is_local();
 }
 
-struct Handler_TextDocumentDocumentSymbol
-    : BaseMessageHandler<In_TextDocumentDocumentSymbol> {
-  MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_TextDocumentDocumentSymbol *request) override {
+struct Handler_textDocumentDocumentSymbol
+    : BaseMessageHandler<In_textDocumentDocumentSymbol> {
+  MethodType GetMethodType() const override { return documentSymbol; }
+  void Run(In_textDocumentDocumentSymbol *request) override {
     auto &params = request->params;
 
     QueryFile *file;
@@ -192,5 +292,6 @@ struct Handler_TextDocumentDocumentSymbol
     }
   }
 };
-REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDocumentSymbol);
+REGISTER_MESSAGE_HANDLER(Handler_textDocumentDocumentSymbol);
 } // namespace
+} // namespace ccls
