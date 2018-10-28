@@ -13,17 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "lsp.h"
+#include "lsp.hh"
 
 #include "log.hh"
 #include "serializers/json.h"
 
-#include <rapidjson/document.h>
-
 #include <stdio.h>
 
-MethodType kMethodType_Exit = "exit";
-
+namespace ccls {
 void Reflect(Reader &visitor, lsRequestId &value) {
   if (visitor.IsInt64()) {
     value.type = lsRequestId::kInt;
@@ -55,129 +52,11 @@ void Reflect(Writer &visitor, lsRequestId &value) {
   }
 }
 
-InMessage::~InMessage() {}
-
-MessageRegistry *MessageRegistry::instance_ = nullptr;
-
 lsTextDocumentIdentifier
 lsVersionedTextDocumentIdentifier::AsTextDocumentIdentifier() const {
   lsTextDocumentIdentifier result;
   result.uri = uri;
   return result;
-}
-
-// Reads a JsonRpc message. |read| returns the next input character.
-std::optional<std::string>
-ReadJsonRpcContentFrom(std::function<std::optional<char>()> read) {
-  // Read the content length. It is terminated by the "\r\n" sequence.
-  int exit_seq = 0;
-  std::string stringified_content_length;
-  while (true) {
-    std::optional<char> opt_c = read();
-    if (!opt_c) {
-      LOG_S(INFO) << "No more input when reading content length header";
-      return std::nullopt;
-    }
-    char c = *opt_c;
-
-    if (exit_seq == 0 && c == '\r')
-      ++exit_seq;
-    if (exit_seq == 1 && c == '\n')
-      break;
-
-    stringified_content_length += c;
-  }
-  const char *kContentLengthStart = "Content-Length: ";
-  assert(StartsWith(stringified_content_length, kContentLengthStart));
-  int content_length =
-      atoi(stringified_content_length.c_str() + strlen(kContentLengthStart));
-
-  // There is always a "\r\n" sequence before the actual content.
-  auto expect_char = [&](char expected) {
-    std::optional<char> opt_c = read();
-    return opt_c && *opt_c == expected;
-  };
-  if (!expect_char('\r') || !expect_char('\n')) {
-    LOG_S(INFO) << "Unexpected token (expected \\r\\n sequence)";
-    return std::nullopt;
-  }
-
-  // Read content.
-  std::string content;
-  content.reserve(content_length);
-  for (int i = 0; i < content_length; ++i) {
-    std::optional<char> c = read();
-    if (!c) {
-      LOG_S(INFO) << "No more input when reading content body";
-      return std::nullopt;
-    }
-    content += *c;
-  }
-
-  return content;
-}
-
-std::optional<char> ReadCharFromStdinBlocking() {
-  // We do not use std::cin because it does not read bytes once stuck in
-  // cin.bad(). We can call cin.clear() but C++ iostream has other annoyance
-  // like std::{cin,cout} is tied by default, which causes undesired cout flush
-  // for cin operations.
-  int c = getchar();
-  if (c >= 0)
-    return c;
-  return std::nullopt;
-}
-
-std::optional<std::string>
-MessageRegistry::ReadMessageFromStdin(std::unique_ptr<InMessage> *message) {
-  std::optional<std::string> content =
-      ReadJsonRpcContentFrom(&ReadCharFromStdinBlocking);
-  if (!content) {
-    LOG_S(ERROR) << "Failed to read JsonRpc input; exiting";
-    exit(1);
-  }
-
-  rapidjson::Document document;
-  document.Parse(content->c_str(), content->length());
-  assert(!document.HasParseError());
-
-  JsonReader json_reader{&document};
-  return Parse(json_reader, message);
-}
-
-std::optional<std::string>
-MessageRegistry::Parse(Reader &visitor, std::unique_ptr<InMessage> *message) {
-  if (!visitor.HasMember("jsonrpc") ||
-      std::string(visitor["jsonrpc"]->GetString()) != "2.0") {
-    LOG_S(FATAL) << "Bad or missing jsonrpc version";
-    exit(1);
-  }
-
-  std::string method;
-  ReflectMember(visitor, "method", method);
-
-  if (allocators.find(method) == allocators.end())
-    return std::string("Unable to find registered handler for method '") +
-           method + "'";
-
-  Allocator &allocator = allocators[method];
-  try {
-    allocator(visitor, message);
-    return std::nullopt;
-  } catch (std::invalid_argument &e) {
-    // *message is partially deserialized but some field (e.g. |id|) are likely
-    // available.
-    return std::string("Fail to parse '") + method + "' " +
-           static_cast<JsonReader &>(visitor).GetPath() + ", expected " +
-           e.what();
-  }
-}
-
-MessageRegistry *MessageRegistry::instance() {
-  if (!instance_)
-    instance_ = new MessageRegistry();
-
-  return instance_;
 }
 
 lsDocumentUri lsDocumentUri::FromPath(const std::string &path) {
@@ -271,16 +150,4 @@ std::string lsPosition::ToString() const {
 bool lsTextEdit::operator==(const lsTextEdit &that) {
   return range == that.range && newText == that.newText;
 }
-
-void Reflect(Writer &visitor, lsMarkedString &value) {
-  // If there is a language, emit a `{language:string, value:string}` object. If
-  // not, emit a string.
-  if (value.language) {
-    REFLECT_MEMBER_START();
-    REFLECT_MEMBER(language);
-    REFLECT_MEMBER(value);
-    REFLECT_MEMBER_END();
-  } else {
-    Reflect(visitor, value.value);
-  }
-}
+} // namespace ccls

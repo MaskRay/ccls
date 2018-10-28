@@ -212,11 +212,8 @@ target_sources(ccls PRIVATE
   src/messages/ccls_navigate.cc
   src/messages/ccls_reload.cc
   src/messages/ccls_vars.cc
-  src/messages/exit.cc
   src/messages/initialize.cc
-  src/messages/shutdown.cc
-  src/messages/textDocument_codeAction.cc
-  src/messages/textDocument_codeLens.cc
+  src/messages/textDocument_code.cc
   src/messages/textDocument_completion.cc
   src/messages/textDocument_definition.cc
   src/messages/textDocument_did.cc
@@ -227,7 +224,5 @@ target_sources(ccls PRIVATE
   src/messages/textDocument_references.cc
   src/messages/textDocument_rename.cc
   src/messages/textDocument_signatureHelp.cc
-  src/messages/textDocument_typeDefinition.cc
-  src/messages/workspace_did.cc
-  src/messages/workspace_symbol.cc
+  src/messages/workspace.cc
 )

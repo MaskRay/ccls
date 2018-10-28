@@ -21,6 +21,7 @@ limitations under the License.
 #include <stdint.h>
 #include <string>
 
+namespace ccls {
 struct Position {
   int16_t line = -1;
   int16_t column = -1;
@@ -42,7 +43,6 @@ struct Position {
   }
   bool operator<=(const Position &o) const { return !(o < *this); }
 };
-MAKE_HASHABLE(Position, t.line, t.column);
 
 struct Range {
   Position start;
@@ -64,20 +64,6 @@ struct Range {
   }
 };
 
-namespace std {
-template <> struct hash<Range> {
-  std::size_t operator()(Range x) const {
-    union U {
-      Range range = {};
-      uint64_t u64;
-    } u;
-    static_assert(sizeof(Range) == 8);
-    u.range = x;
-    return hash<uint64_t>()(u.u64);
-  }
-};
-} // namespace std
-
 // Reflection
 class Reader;
 class Writer;
@@ -85,3 +71,20 @@ void Reflect(Reader &visitor, Position &value);
 void Reflect(Writer &visitor, Position &value);
 void Reflect(Reader &visitor, Range &value);
 void Reflect(Writer &visitor, Range &value);
+} // namespace ccls
+
+namespace std {
+template <> struct hash<ccls::Range> {
+  std::size_t operator()(ccls::Range x) const {
+    union U {
+      ccls::Range range = {};
+      uint64_t u64;
+    } u;
+    static_assert(sizeof(ccls::Range) == 8);
+    u.range = x;
+    return hash<uint64_t>()(u.u64);
+  }
+};
+} // namespace std
+
+MAKE_HASHABLE(ccls::Position, t.line, t.column);

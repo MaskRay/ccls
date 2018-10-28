@@ -18,15 +18,18 @@ limitations under the License.
 #include "filesystem.hh"
 #include "match.h"
 #include "platform.h"
-#include "project.h"
+#include "project.hh"
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
 #include <llvm/Support/Timer.h>
+
+#include <unordered_set>
 using namespace llvm;
 
 #include <thread>
 
+namespace ccls {
 namespace {
 
 struct CompletionCandidate {
@@ -95,7 +98,6 @@ lsCompletionItem BuildCompletionItem(const std::string &path,
   item.priority_ = 0;
   return item;
 }
-
 } // namespace
 
 IncludeComplete::IncludeComplete(Project *project)
@@ -210,3 +212,4 @@ IncludeComplete::FindCompletionItemForAbsolutePath(
     return std::nullopt;
   return completion_items[it->second];
 }
+} // namespace ccls

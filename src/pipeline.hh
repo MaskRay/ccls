@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lsp.h"
+#include "lsp.hh"
 #include "query.h"
 
 #include <atomic>
@@ -9,9 +9,9 @@
 #include <unordered_map>
 #include <vector>
 
+namespace ccls {
 struct CompletionManager;
 struct GroupMatch;
-struct VFS;
 struct Project;
 struct WorkingFiles;
 
@@ -29,7 +29,6 @@ struct VFS {
   bool Stamp(const std::string &path, int64_t ts, int step);
 };
 
-namespace ccls {
 enum class IndexMode {
   NonInteractive,
   OnChange,

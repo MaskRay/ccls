@@ -16,7 +16,7 @@ limitations under the License.
 #include "query.h"
 
 #include "indexer.h"
-#include "serializer.h"
+#include "serializer.hh"
 #include "serializers/json.h"
 
 #include <cassert>
@@ -27,8 +27,8 @@ limitations under the License.
 #include <unordered_map>
 #include <unordered_set>
 
+namespace ccls {
 namespace {
-
 void AssignFileId(const Lid2file_id &lid2file_id, int file_id, Use &use) {
   if (use.file_id == -1)
     use.file_id = file_id;
@@ -468,3 +468,4 @@ std::string_view DB::GetSymbolName(SymbolIdx sym, bool qualified) {
   }
   return "";
 }
+} // namespace ccls

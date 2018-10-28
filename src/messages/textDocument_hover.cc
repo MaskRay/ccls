@@ -13,13 +13,33 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "message_handler.h"
-#include "pipeline.hh"
+#include "message_handler.hh"
 #include "query_utils.h"
-using namespace ccls;
 
+namespace ccls {
 namespace {
-MethodType kMethodType = "textDocument/hover";
+struct lsMarkedString {
+  std::optional<std::string> language;
+  std::string value;
+};
+struct Hover {
+  std::vector<lsMarkedString> contents;
+  std::optional<lsRange> range;
+};
+
+void Reflect(Writer &visitor, lsMarkedString &value) {
+  // If there is a language, emit a `{language:string, value:string}` object. If
+  // not, emit a string.
+  if (value.language) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(language);
+    REFLECT_MEMBER(value);
+    REFLECT_MEMBER_END();
+  } else {
+    Reflect(visitor, value.value);
+  }
+}
+MAKE_REFLECT_STRUCT(Hover, contents, range);
 
 const char *LanguageIdentifier(LanguageId lang) {
   switch (lang) {
@@ -69,51 +89,34 @@ GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
   });
   return {hover, ls_comments};
 }
-
-struct In_TextDocumentHover : public RequestMessage {
-  MethodType GetMethodType() const override { return kMethodType; }
-  lsTextDocumentPositionParams params;
-};
-MAKE_REFLECT_STRUCT(In_TextDocumentHover, id, params);
-REGISTER_IN_MESSAGE(In_TextDocumentHover);
-
-struct lsHover {
-  std::vector<lsMarkedString> contents;
-  std::optional<lsRange> range;
-};
-MAKE_REFLECT_STRUCT(lsHover, contents, range);
-
-struct Handler_TextDocumentHover : BaseMessageHandler<In_TextDocumentHover> {
-  MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_TextDocumentHover *request) override {
-    auto &params = request->params;
-    QueryFile *file;
-    if (!FindFileOrFail(db, project, request->id,
-                        params.textDocument.uri.GetPath(), &file))
-      return;
-
-    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
-    lsHover result;
-
-    for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, params.position)) {
-      std::optional<lsRange> ls_range = GetLsRange(
-          working_files->GetFileByFilename(file->def->path), sym.range);
-      if (!ls_range)
-        continue;
-
-      auto [hover, comments] = GetHover(db, file->def->language, sym, file->id);
-      if (comments || hover) {
-        result.range = *ls_range;
-        if (comments)
-          result.contents.push_back(*comments);
-        if (hover)
-          result.contents.push_back(*hover);
-        break;
-      }
-    }
-
-    pipeline::Reply(request->id, result);
-  }
-};
-REGISTER_MESSAGE_HANDLER(Handler_TextDocumentHover);
 } // namespace
+
+void MessageHandler::textDocument_hover(TextDocumentPositionParam &param,
+                                        ReplyOnce &reply) {
+  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+  if (!file)
+    return;
+
+  WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+  Hover result;
+
+  for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, param.position)) {
+    std::optional<lsRange> ls_range = GetLsRange(
+        working_files->GetFileByFilename(file->def->path), sym.range);
+    if (!ls_range)
+      continue;
+
+    auto [hover, comments] = GetHover(db, file->def->language, sym, file->id);
+    if (comments || hover) {
+      result.range = *ls_range;
+      if (comments)
+        result.contents.push_back(*comments);
+      if (hover)
+        result.contents.push_back(*hover);
+      break;
+    }
+  }
+
+  reply(result);
+}
+} // namespace ccls

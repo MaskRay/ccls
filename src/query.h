@@ -16,22 +16,25 @@ limitations under the License.
 #pragma once
 
 #include "indexer.h"
-#include "serializer.h"
+#include "serializer.hh"
 
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallVector.h>
 
 namespace llvm {
-template <> struct DenseMapInfo<ExtentRef> {
-  static inline ExtentRef getEmptyKey() { return {}; }
-  static inline ExtentRef getTombstoneKey() { return {{Range(), Usr(-1)}}; }
-  static unsigned getHashValue(ExtentRef sym) {
-    return std::hash<ExtentRef>()(sym);
+template <> struct DenseMapInfo<ccls::ExtentRef> {
+  static inline ccls::ExtentRef getEmptyKey() { return {}; }
+  static inline ccls::ExtentRef getTombstoneKey() {
+    return {{ccls::Range(), ccls::Usr(-1)}};
   }
-  static bool isEqual(ExtentRef l, ExtentRef r) { return l == r; }
+  static unsigned getHashValue(ccls::ExtentRef sym) {
+    return std::hash<ccls::ExtentRef>()(sym);
+  }
+  static bool isEqual(ccls::ExtentRef l, ccls::ExtentRef r) { return l == r; }
 };
-}
+} // namespace llvm
 
+namespace ccls {
 struct QueryFile {
   struct Def {
     std::string path;
@@ -192,3 +195,4 @@ struct DB {
   QueryType &GetType(SymbolIdx ref) { return Type(ref.usr); }
   QueryVar &GetVar(SymbolIdx ref) { return Var(ref.usr); }
 };
+} // namespace ccls

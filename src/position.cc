@@ -15,12 +15,13 @@ limitations under the License.
 
 #include "position.h"
 
-#include "serializer.h"
+#include "serializer.hh"
 
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+namespace ccls {
 Position Position::FromString(const std::string &encoded) {
   char *p = const_cast<char *>(encoded.c_str());
   int16_t line = int16_t(strtol(p, &p, 10)) - 1;
@@ -112,3 +113,4 @@ void Reflect(Writer &visitor, Range &value) {
     Reflect(visitor, value.end.column);
   }
 }
+} // namespace ccls

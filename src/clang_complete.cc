@@ -574,8 +574,6 @@ std::shared_ptr<PreambleData> CompletionSession::GetPreamble() {
   return preamble;
 }
 
-} // namespace ccls
-
 CompletionManager::CompletionManager(Project *project,
                                      WorkingFiles *working_files,
                                      OnDiagnostic on_diagnostic,
@@ -685,3 +683,4 @@ void CompletionManager::FlushAllSessions() {
   preloads.Clear();
   sessions.Clear();
 }
+} // namespace ccls

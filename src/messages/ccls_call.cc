@@ -14,17 +14,15 @@ limitations under the License.
 ==============================================================================*/
 
 #include "hierarchy.hh"
-#include "message_handler.h"
+#include "message_handler.hh"
 #include "pipeline.hh"
 #include "query_utils.h"
 
 #include <unordered_set>
 
-using namespace ccls;
+namespace ccls {
 
 namespace {
-
-MethodType kMethodType = "$ccls/call";
 
 enum class CallType : uint8_t {
   Direct = 0,
@@ -38,34 +36,24 @@ bool operator&(CallType lhs, CallType rhs) {
   return uint8_t(lhs) & uint8_t(rhs);
 }
 
-struct In_cclsCall : public RequestMessage {
-  MethodType GetMethodType() const override { return kMethodType; }
+struct Param : TextDocumentPositionParam {
+  // If id is specified, expand a node; otherwise textDocument+position should
+  // be specified for building the root and |levels| of nodes below.
+  Usr usr;
+  std::string id;
 
-  struct Params {
-    // If id is specified, expand a node; otherwise textDocument+position should
-    // be specified for building the root and |levels| of nodes below.
-    lsTextDocumentIdentifier textDocument;
-    lsPosition position;
-
-    Usr usr;
-    std::string id;
-
-    // true: callee tree (functions called by this function); false: caller tree
-    // (where this function is called)
-    bool callee = false;
-    // Base: include base functions; All: include both base and derived
-    // functions.
-    CallType callType = CallType::All;
-    bool qualified = true;
-    int levels = 1;
-    bool hierarchy = false;
-  };
-  Params params;
+  // true: callee tree (functions called by this function); false: caller tree
+  // (where this function is called)
+  bool callee = false;
+  // Base: include base functions; All: include both base and derived
+  // functions.
+  CallType callType = CallType::All;
+  bool qualified = true;
+  int levels = 1;
+  bool hierarchy = false;
 };
-MAKE_REFLECT_STRUCT(In_cclsCall::Params, textDocument, position, id, callee,
-                    callType, qualified, levels, hierarchy);
-MAKE_REFLECT_STRUCT(In_cclsCall, id, params);
-REGISTER_IN_MESSAGE(In_cclsCall);
+MAKE_REFLECT_STRUCT(Param, textDocument, position, id, callee, callType,
+                    qualified, levels, hierarchy);
 
 struct Out_cclsCall {
   Usr usr;
@@ -175,70 +163,64 @@ bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
   return true;
 }
 
-struct Handler_cclsCall : BaseMessageHandler<In_cclsCall> {
-  MethodType GetMethodType() const override { return kMethodType; }
+std::optional<Out_cclsCall> BuildInitial(MessageHandler *m, Usr root_usr,
+                                         bool callee, CallType call_type,
+                                         bool qualified, int levels) {
+  const auto *def = m->db->Func(root_usr).AnyDef();
+  if (!def)
+    return {};
 
-  std::optional<Out_cclsCall> BuildInitial(Usr root_usr, bool callee,
-                                           CallType call_type, bool qualified,
-                                           int levels) {
-    const auto *def = db->Func(root_usr).AnyDef();
-    if (!def)
-      return {};
-
-    Out_cclsCall entry;
-    entry.id = std::to_string(root_usr);
-    entry.usr = root_usr;
-    entry.callType = CallType::Direct;
-    if (def->spell) {
-      if (std::optional<lsLocation> loc =
-              GetLsLocation(db, working_files, *def->spell))
-        entry.location = *loc;
-    }
-    Expand(this, &entry, callee, call_type, qualified, levels);
-    return entry;
+  Out_cclsCall entry;
+  entry.id = std::to_string(root_usr);
+  entry.usr = root_usr;
+  entry.callType = CallType::Direct;
+  if (def->spell) {
+    if (auto loc = GetLsLocation(m->db, m->working_files, *def->spell))
+      entry.location = *loc;
   }
-
-  void Run(In_cclsCall *request) override {
-    auto &params = request->params;
-    std::optional<Out_cclsCall> result;
-    if (params.id.size()) {
-      try {
-        params.usr = std::stoull(params.id);
-      } catch (...) {
-        return;
-      }
-      result.emplace();
-      result->id = std::to_string(params.usr);
-      result->usr = params.usr;
-      result->callType = CallType::Direct;
-      if (db->HasFunc(params.usr))
-        Expand(this, &*result, params.callee, params.callType, params.qualified,
-               params.levels);
-    } else {
-      QueryFile *file;
-      if (!FindFileOrFail(db, project, request->id,
-                          params.textDocument.uri.GetPath(), &file))
-        return;
-      WorkingFile *working_file =
-          working_files->GetFileByFilename(file->def->path);
-      for (SymbolRef sym :
-           FindSymbolsAtLocation(working_file, file, params.position)) {
-        if (sym.kind == SymbolKind::Func) {
-          result = BuildInitial(sym.usr, params.callee, params.callType,
-                                params.qualified, params.levels);
-          break;
-        }
-      }
-    }
-
-    if (params.hierarchy)
-      pipeline::Reply(request->id, result);
-    else {
-      auto out = FlattenHierarchy(result);
-      pipeline::Reply(request->id, out);
-    }
-  }
-};
-REGISTER_MESSAGE_HANDLER(Handler_cclsCall);
-
+  Expand(m, &entry, callee, call_type, qualified, levels);
+  return entry;
+}
 } // namespace
+
+void MessageHandler::ccls_call(Reader &reader, ReplyOnce &reply) {
+  Param param;
+  Reflect(reader, param);
+  std::optional<Out_cclsCall> result;
+  if (param.id.size()) {
+    try {
+      param.usr = std::stoull(param.id);
+    } catch (...) {
+      return;
+    }
+    result.emplace();
+    result->id = std::to_string(param.usr);
+    result->usr = param.usr;
+    result->callType = CallType::Direct;
+    if (db->HasFunc(param.usr))
+      Expand(this, &*result, param.callee, param.callType, param.qualified,
+             param.levels);
+  } else {
+    QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+    if (!file)
+      return;
+    WorkingFile *working_file =
+        working_files->GetFileByFilename(file->def->path);
+    for (SymbolRef sym :
+         FindSymbolsAtLocation(working_file, file, param.position)) {
+      if (sym.kind == SymbolKind::Func) {
+        result = BuildInitial(this, sym.usr, param.callee, param.callType,
+                              param.qualified, param.levels);
+        break;
+      }
+    }
+  }
+
+  if (param.hierarchy)
+    reply(result);
+  else {
+    auto out = FlattenHierarchy(result);
+    reply(out);
+  }
+}
+} // namespace ccls

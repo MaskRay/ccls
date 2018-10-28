@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "serializer.h"
+#include "serializer.hh"
 
 #include "filesystem.hh"
 #include "indexer.h"
@@ -27,11 +27,11 @@ limitations under the License.
 #include <mutex>
 #include <stdexcept>
 
-using namespace ccls;
 using namespace llvm;
 
 bool gTestOutputMode = false;
 
+namespace ccls {
 Reader::~Reader() {}
 BinaryReader::~BinaryReader() {}
 JsonReader::~JsonReader() {}
@@ -362,7 +362,6 @@ void Reflect(Writer &visitor, SerializeFormat &value) {
   }
 }
 
-namespace ccls {
 static BumpPtrAllocator Alloc;
 static DenseSet<CachedHashStringRef> Strings;
 static std::mutex AllocMutex;
