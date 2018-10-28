@@ -33,6 +33,7 @@ using namespace llvm;
 #include <string.h>
 #include <unordered_map>
 
+namespace ccls {
 uint64_t HashUsr(std::string_view s) {
   union {
     uint64_t ret;
@@ -174,3 +175,4 @@ int ReverseSubseqMatch(std::string_view pat, std::string_view text,
 }
 
 std::string GetDefaultResourceDirectory() { return DEFAULT_RESOURCE_DIRECTORY; }
+}

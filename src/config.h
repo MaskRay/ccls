@@ -15,10 +15,11 @@ limitations under the License.
 
 #pragma once
 
-#include "serializer.h"
+#include "serializer.hh"
 
 #include <string>
 
+namespace ccls {
 /*
 The language client plugin needs to send initialization options in the
 `initialize` request to the ccls language server.
@@ -281,6 +282,5 @@ MAKE_REFLECT_STRUCT(Config, compilationDatabaseCommand,
 
 extern Config *g_config;
 
-namespace ccls {
 void DoPathMapping(std::string &arg);
 }

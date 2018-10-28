@@ -15,10 +15,10 @@ limitations under the License.
 
 #pragma once
 
-#include "lsp.h"
+#include "lsp.hh"
 #include "maybe.h"
 #include "position.h"
-#include "serializer.h"
+#include "serializer.hh"
 #include "utils.h"
 
 #include <clang/Basic/FileManager.h>
@@ -31,6 +31,17 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
+namespace std {
+template <> struct hash<llvm::sys::fs::UniqueID> {
+  std::size_t operator()(llvm::sys::fs::UniqueID ID) const {
+    size_t ret = ID.getDevice();
+    ccls::hash_combine(ret, ID.getFile());
+    return ret;
+  }
+};
+} // namespace std
+
+namespace ccls {
 using Usr = uint64_t;
 enum class LanguageId;
 
@@ -60,7 +71,6 @@ struct SymbolRef {
   bool operator==(const SymbolRef &o) const { return ToTuple() == o.ToTuple(); }
   bool Valid() const { return range.Valid(); }
 };
-MAKE_HASHABLE(SymbolRef, t.range, t.usr, t.kind, t.role);
 
 struct ExtentRef : SymbolRef {
   Range extent;
@@ -69,7 +79,6 @@ struct ExtentRef : SymbolRef {
   }
   bool operator==(const ExtentRef &o) const { return ToTuple() == o.ToTuple(); }
 };
-MAKE_HASHABLE(ExtentRef, t.range, t.usr, t.kind, t.role, t.extent);
 
 struct Ref {
   Range range;
@@ -93,12 +102,10 @@ struct Use : Ref {
     return range == o.range && file_id == o.file_id;
   }
 };
-MAKE_HASHABLE(Use, t.range, t.file_id)
 
 struct DeclRef : Use {
   Range extent;
 };
-MAKE_HASHABLE(DeclRef, t.range, t.file_id)
 
 void Reflect(Reader &visitor, SymbolRef &value);
 void Reflect(Writer &visitor, SymbolRef &value);
@@ -245,16 +252,6 @@ struct IndexInclude {
   const char *resolved_path;
 };
 
-namespace std {
-template <> struct hash<llvm::sys::fs::UniqueID> {
-  std::size_t operator()(llvm::sys::fs::UniqueID ID) const {
-    size_t ret = ID.getDevice();
-    hash_combine(ret, ID.getFile());
-    return ret;
-  }
-};
-} // namespace std
-
 struct IndexFile {
   // For both JSON and MessagePack cache files.
   static const int kMajorVersion;
@@ -308,7 +305,7 @@ struct CompletionManager;
 struct WorkingFiles;
 struct VFS;
 
-namespace ccls::idx {
+namespace idx {
 void Init();
 std::vector<std::unique_ptr<IndexFile>>
 Index(CompletionManager *complete, WorkingFiles *wfiles, VFS *vfs,
@@ -316,4 +313,10 @@ Index(CompletionManager *complete, WorkingFiles *wfiles, VFS *vfs,
       const std::vector<const char *> &args,
       const std::vector<std::pair<std::string, std::string>> &remapped,
       bool &ok);
-} // namespace ccls::idx
+} // namespace idx
+} // namespace ccls
+
+MAKE_HASHABLE(ccls::SymbolRef, t.range, t.usr, t.kind, t.role);
+MAKE_HASHABLE(ccls::ExtentRef, t.range, t.usr, t.kind, t.role, t.extent);
+MAKE_HASHABLE(ccls::Use, t.range, t.file_id)
+MAKE_HASHABLE(ccls::DeclRef, t.range, t.file_id)

@@ -13,23 +13,55 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "message_handler.h"
+#include "message_handler.hh"
 
 #include "log.hh"
 #include "match.h"
 #include "pipeline.hh"
-#include "project.h"
+#include "project.hh"
 #include "query_utils.h"
-using namespace ccls;
+#include "serializers/json.h"
 
 using namespace clang;
 
 #include <algorithm>
 
-MAKE_HASHABLE(SymbolIdx, t.usr, t.kind);
+MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
+
+namespace ccls {
+MAKE_REFLECT_STRUCT(EmptyParam, placeholder);
+MAKE_REFLECT_STRUCT(TextDocumentParam, textDocument);
+MAKE_REFLECT_STRUCT(DidOpenTextDocumentParam, textDocument);
+MAKE_REFLECT_STRUCT(TextDocumentContentChangeEvent, range, rangeLength, text);
+MAKE_REFLECT_STRUCT(TextDocumentDidChangeParam, textDocument, contentChanges);
+MAKE_REFLECT_STRUCT(TextDocumentPositionParam, textDocument, position);
+MAKE_REFLECT_STRUCT(RenameParam, textDocument, position, newName);
+
+// code*
+MAKE_REFLECT_STRUCT(CodeActionParam::Context, diagnostics);
+MAKE_REFLECT_STRUCT(CodeActionParam, textDocument, range, context);
+
+// completion
+MAKE_REFLECT_TYPE_PROXY(lsCompletionTriggerKind);
+MAKE_REFLECT_STRUCT(lsCompletionContext, triggerKind, triggerCharacter);
+MAKE_REFLECT_STRUCT(lsCompletionParams, textDocument, position, context);
+
+// formatting
+MAKE_REFLECT_STRUCT(FormattingOptions, tabSize, insertSpaces);
+MAKE_REFLECT_STRUCT(DocumentFormattingParam, textDocument, options);
+MAKE_REFLECT_STRUCT(DocumentOnTypeFormattingParam, textDocument, position,
+                    ch, options);
+MAKE_REFLECT_STRUCT(DocumentRangeFormattingParam, textDocument, range, options);
+
+// workspace
+MAKE_REFLECT_TYPE_PROXY(FileChangeType);
+MAKE_REFLECT_STRUCT(DidChangeWatchedFilesParam::Event, uri, type);
+MAKE_REFLECT_STRUCT(DidChangeWatchedFilesParam, changes);
+MAKE_REFLECT_STRUCT(DidChangeWorkspaceFoldersParam::Event, added, removed);
+MAKE_REFLECT_STRUCT(DidChangeWorkspaceFoldersParam, event);
+MAKE_REFLECT_STRUCT(WorkspaceSymbolParam, query);
 
 namespace {
-
 struct CclsSemanticHighlightSymbol {
   int id = 0;
   lsSymbolKind parentKind;
@@ -55,6 +87,7 @@ struct CclsSetSkippedRangesParams {
 };
 MAKE_REFLECT_STRUCT(CclsSetSkippedRangesParams, uri, skippedRanges);
 
+
 struct ScanLineEvent {
   lsPosition pos;
   lsPosition end_pos; // Second key when there is a tie for insertion events.
@@ -73,55 +106,161 @@ struct ScanLineEvent {
 };
 } // namespace
 
-MessageHandler::MessageHandler() {
-  // Dynamically allocate |message_handlers|, otherwise there will be static
-  // initialization order races.
-  if (!message_handlers)
-    message_handlers = new std::vector<MessageHandler *>();
-  message_handlers->push_back(this);
+void MessageHandler::Bind(const char *method, void (MessageHandler::*handler)(Reader &)) {
+  method2notification[method] = [this, handler](Reader &reader) {
+    (this->*handler)(reader);
+  };
 }
 
-std::vector<MessageHandler *> *MessageHandler::message_handlers = nullptr;
+template <typename Param>
+void MessageHandler::Bind(const char *method,
+                          void (MessageHandler::*handler)(Param &)) {
+  method2notification[method] = [this, handler](Reader &reader) {
+    Param param{};
+    Reflect(reader, param);
+    (this->*handler)(param);
+  };
+}
 
-bool FindFileOrFail(DB *db, Project *project, std::optional<lsRequestId> id,
-                    const std::string &absolute_path,
-                    QueryFile **out_query_file, int *out_file_id) {
-  *out_query_file = nullptr;
+void MessageHandler::Bind(const char *method,
+                          void (MessageHandler::*handler)(Reader &,
+                                                          ReplyOnce &)) {
+  method2request[method] = [this, handler](Reader &reader, ReplyOnce &reply) {
+    (this->*handler)(reader, reply);
+  };
+}
 
-  auto it = db->name2file_id.find(LowerPathIfInsensitive(absolute_path));
+template <typename Param>
+void MessageHandler::Bind(const char *method,
+                          void (MessageHandler::*handler)(Param &,
+                                                          ReplyOnce &)) {
+  method2request[method] = [this, handler](Reader &reader, ReplyOnce &reply) {
+    Param param{};
+    Reflect(reader, param);
+    (this->*handler)(param, reply);
+  };
+}
+
+MessageHandler::MessageHandler() {
+  Bind("$ccls/call", &MessageHandler::ccls_call);
+  Bind("$ccls/fileInfo", &MessageHandler::ccls_fileInfo);
+  Bind("$ccls/info", &MessageHandler::ccls_info);
+  Bind("$ccls/inheritance", &MessageHandler::ccls_inheritance);
+  Bind("$ccls/member", &MessageHandler::ccls_member);
+  Bind("$ccls/navigate", &MessageHandler::ccls_navigate);
+  Bind("$ccls/reload", &MessageHandler::ccls_reload);
+  Bind("$ccls/vars", &MessageHandler::ccls_vars);
+  Bind("exit", &MessageHandler::exit);
+  Bind("initialize", &MessageHandler::initialize);
+  Bind("shutdown", &MessageHandler::shutdown);
+  Bind("textDocument/codeAction", &MessageHandler::textDocument_codeAction);
+  Bind("textDocument/codeLens", &MessageHandler::textDocument_codeLens);
+  Bind("textDocument/completion", &MessageHandler::textDocument_completion);
+  Bind("textDocument/definition", &MessageHandler::textDocument_definition);
+  Bind("textDocument/didChange", &MessageHandler::textDocument_didChange);
+  Bind("textDocument/didClose", &MessageHandler::textDocument_didClose);
+  Bind("textDocument/didOpen", &MessageHandler::textDocument_didOpen);
+  Bind("textDocument/didSave", &MessageHandler::textDocument_didSave);
+  Bind("textDocument/documentHighlight",
+       &MessageHandler::textDocument_documentHighlight);
+  Bind("textDocument/documentLink", &MessageHandler::textDocument_documentLink);
+  Bind("textDocument/documentSymbol",
+       &MessageHandler::textDocument_documentSymbol);
+  Bind("textDocument/foldingRange", &MessageHandler::textDocument_foldingRange);
+  Bind("textDocument/formatting", &MessageHandler::textDocument_formatting);
+  Bind("textDocument/hover", &MessageHandler::textDocument_hover);
+  Bind("textDocument/implementation",
+       &MessageHandler::textDocument_implementation);
+  Bind("textDocument/onTypeFormatting",
+       &MessageHandler::textDocument_onTypeFormatting);
+  Bind("textDocument/rangeFormatting",
+       &MessageHandler::textDocument_rangeFormatting);
+  Bind("textDocument/references", &MessageHandler::textDocument_references);
+  Bind("textDocument/rename", &MessageHandler::textDocument_rename);
+  Bind("textDocument/signatureHelp",
+       &MessageHandler::textDocument_signatureHelp);
+  Bind("textDocument/typeDefinition",
+       &MessageHandler::textDocument_typeDefinition);
+  Bind("workspace/didChangeConfiguration",
+       &MessageHandler::workspace_didChangeConfiguration);
+  Bind("workspace/didChangeWatchedFiles",
+       &MessageHandler::workspace_didChangeWatchedFiles);
+  Bind("workspace/didChangeWorkspaceFolders",
+       &MessageHandler::workspace_didChangeWorkspaceFolders);
+  Bind("workspace/executeCommand", &MessageHandler::workspace_executeCommand);
+  Bind("workspace/symbol", &MessageHandler::workspace_symbol);
+}
+
+void MessageHandler::Run(InMessage &msg) {
+  rapidjson::Document &doc = *msg.document;
+  rapidjson::Value param;
+  auto it = doc.FindMember("params");
+  if (it != doc.MemberEnd())
+    param = it->value;
+  JsonReader reader(&param);
+  if (msg.id.Valid()) {
+    ReplyOnce reply{msg.id};
+    auto it = method2request.find(msg.method);
+    if (it != method2request.end()) {
+      try {
+        it->second(reader, reply);
+      } catch (...) {
+        LOG_S(ERROR) << "failed to process request " << msg.method;
+      }
+    } else {
+      lsResponseError err;
+      err.code = lsErrorCodes::MethodNotFound;
+      err.message = "unknown request " + msg.method;
+      reply.Error(err);
+    }
+  } else {
+    auto it = method2notification.find(msg.method);
+    if (it != method2notification.end())
+      try {
+        it->second(reader);
+      } catch (...) {
+        LOG_S(ERROR) << "failed to process " << msg.method;
+      }
+  }
+}
+
+QueryFile *MessageHandler::FindFile(ReplyOnce &reply,
+                                    const std::string &path,
+                                    int *out_file_id) {
+  QueryFile *ret = nullptr;
+  auto it = db->name2file_id.find(LowerPathIfInsensitive(path));
   if (it != db->name2file_id.end()) {
     QueryFile &file = db->files[it->second];
     if (file.def) {
-      *out_query_file = &file;
+      ret = &file;
       if (out_file_id)
         *out_file_id = it->second;
-      return true;
+      return ret;
     }
   }
 
   if (out_file_id)
     *out_file_id = -1;
 
-  bool has_entry = false;
-  {
-    std::lock_guard<std::mutex> lock(project->mutex_);
-    for (auto &[root, folder] : project->root2folder)
-      has_entry |= folder.path2entry_index.count(absolute_path);
-  }
-
-  if (id) {
+  if (reply.id.Valid()) {
+    bool has_entry = false;
+    {
+      std::lock_guard<std::mutex> lock(project->mutex_);
+      for (auto &[root, folder] : project->root2folder)
+        has_entry |= folder.path2entry_index.count(path);
+    }
     lsResponseError err;
     if (has_entry) {
       err.code = lsErrorCodes::ServerNotInitialized;
-      err.message = absolute_path + " is being indexed";
+      err.message = path + " is being indexed";
     } else {
       err.code = lsErrorCodes::InternalError;
-      err.message = "unable to find " + absolute_path;
+      err.message = "unable to find " + path;
     }
-    pipeline::ReplyError(*id, err);
+    reply.Error(err);
   }
 
-  return false;
+  return ret;
 }
 
 void EmitSkippedRanges(WorkingFile *wfile, QueryFile &file) {
@@ -322,3 +461,4 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
       params.symbols.push_back(std::move(entry.second));
   pipeline::Notify("$ccls/publishSemanticHighlight", params);
 }
+} // namespace ccls

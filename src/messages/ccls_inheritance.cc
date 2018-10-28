@@ -14,41 +14,30 @@ limitations under the License.
 ==============================================================================*/
 
 #include "hierarchy.hh"
-#include "message_handler.h"
+#include "message_handler.hh"
 #include "pipeline.hh"
 #include "query_utils.h"
-using namespace ccls;
 
 #include <unordered_set>
 
+namespace ccls {
 namespace {
-MethodType kMethodType = "$ccls/inheritance",
-           implementation = "textDocument/implementation";
+struct Param : TextDocumentPositionParam {
+  // If id+kind are specified, expand a node; otherwise textDocument+position
+  // should be specified for building the root and |levels| of nodes below.
+  Usr usr;
+  std::string id;
+  SymbolKind kind = SymbolKind::Invalid;
 
-struct In_cclsInheritance : public RequestMessage {
-  MethodType GetMethodType() const override { return kMethodType; }
-  struct Params {
-    // If id+kind are specified, expand a node; otherwise textDocument+position
-    // should be specified for building the root and |levels| of nodes below.
-    lsTextDocumentIdentifier textDocument;
-    lsPosition position;
-
-    Usr usr;
-    std::string id;
-    SymbolKind kind = SymbolKind::Invalid;
-
-    // true: derived classes/functions; false: base classes/functions
-    bool derived = false;
-    bool qualified = true;
-    int levels = 1;
-    bool hierarchy = false;
-  } params;
+  // true: derived classes/functions; false: base classes/functions
+  bool derived = false;
+  bool qualified = true;
+  int levels = 1;
+  bool hierarchy = false;
 };
 
-MAKE_REFLECT_STRUCT(In_cclsInheritance::Params, textDocument, position, id,
-                    kind, derived, qualified, levels, hierarchy);
-MAKE_REFLECT_STRUCT(In_cclsInheritance, id, params);
-REGISTER_IN_MESSAGE(In_cclsInheritance);
+MAKE_REFLECT_STRUCT(Param, textDocument, position, id, kind, derived, qualified,
+                    levels, hierarchy);
 
 struct Out_cclsInheritance {
   Usr usr;
@@ -130,85 +119,68 @@ bool Expand(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
                         m->db->Type(entry->usr));
 }
 
-struct Handler_cclsInheritance : BaseMessageHandler<In_cclsInheritance> {
-  MethodType GetMethodType() const override { return kMethodType; }
+std::optional<Out_cclsInheritance> BuildInitial(MessageHandler *m, SymbolRef sym, bool derived,
+                                                bool qualified, int levels) {
+  Out_cclsInheritance entry;
+  entry.id = std::to_string(sym.usr);
+  entry.usr = sym.usr;
+  entry.kind = sym.kind;
+  Expand(m, &entry, derived, qualified, levels);
+  return entry;
+}
 
-  std::optional<Out_cclsInheritance> BuildInitial(SymbolRef sym, bool derived,
-                                                  bool qualified, int levels) {
-    Out_cclsInheritance entry;
-    entry.id = std::to_string(sym.usr);
-    entry.usr = sym.usr;
-    entry.kind = sym.kind;
-    Expand(this, &entry, derived, qualified, levels);
-    return entry;
-  }
+void Inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
+  std::optional<Out_cclsInheritance> result;
+  if (param.id.size()) {
+    try {
+      param.usr = std::stoull(param.id);
+    } catch (...) {
+      return;
+    }
+    result.emplace();
+    result->id = std::to_string(param.usr);
+    result->usr = param.usr;
+    result->kind = param.kind;
+    if (!(((param.kind == SymbolKind::Func && m->db->HasFunc(param.usr)) ||
+           (param.kind == SymbolKind::Type && m->db->HasType(param.usr))) &&
+          Expand(m, &*result, param.derived, param.qualified,
+                 param.levels)))
+      result.reset();
+  } else {
+    QueryFile *file = m->FindFile(reply, param.textDocument.uri.GetPath());
+    if (!file)
+      return;
+    WorkingFile *wfile = m->working_files->GetFileByFilename(file->def->path);
 
-  void Run(In_cclsInheritance *request) override {
-    auto &params = request->params;
-    std::optional<Out_cclsInheritance> result;
-    if (params.id.size()) {
-      try {
-        params.usr = std::stoull(params.id);
-      } catch (...) {
-        return;
+    for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, param.position))
+      if (sym.kind == SymbolKind::Func || sym.kind == SymbolKind::Type) {
+        result = BuildInitial(m, sym, param.derived, param.qualified,
+                              param.levels);
+        break;
       }
-      result.emplace();
-      result->id = std::to_string(params.usr);
-      result->usr = params.usr;
-      result->kind = params.kind;
-      if (!(((params.kind == SymbolKind::Func && db->HasFunc(params.usr)) ||
-             (params.kind == SymbolKind::Type && db->HasType(params.usr))) &&
-            Expand(this, &*result, params.derived, params.qualified,
-                   params.levels)))
-        result.reset();
-    } else {
-      QueryFile *file;
-      if (!FindFileOrFail(db, project, request->id,
-                          params.textDocument.uri.GetPath(), &file))
-        return;
-      WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
-
-      for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, params.position))
-        if (sym.kind == SymbolKind::Func || sym.kind == SymbolKind::Type) {
-          result = BuildInitial(sym, params.derived, params.qualified,
-                                params.levels);
-          break;
-        }
-    }
-
-    if (params.hierarchy)
-      pipeline::Reply(request->id, result);
-    else {
-      auto out = FlattenHierarchy(result);
-      pipeline::Reply(request->id, out);
-    }
   }
-};
-REGISTER_MESSAGE_HANDLER(Handler_cclsInheritance);
 
-struct In_textDocumentImplementation : public RequestMessage {
-  MethodType GetMethodType() const override { return implementation; }
-  lsTextDocumentPositionParams params;
-};
-MAKE_REFLECT_STRUCT(In_textDocumentImplementation, id, params);
-REGISTER_IN_MESSAGE(In_textDocumentImplementation);
-
-struct Handler_textDocumentImplementation
-    : BaseMessageHandler<In_textDocumentImplementation> {
-  MethodType GetMethodType() const override { return implementation; }
-  void Run(In_textDocumentImplementation *request) override {
-    Handler_cclsInheritance handler;
-    handler.db = db;
-    handler.project = project;
-    handler.working_files = working_files;
-
-    In_cclsInheritance request1;
-    request1.id = request->id;
-    request1.params.textDocument = request->params.textDocument;
-    request1.params.position = request->params.position;
-    request1.params.derived = true;
-    handler.Run(&request1);
+  if (param.hierarchy)
+    reply(result);
+  else {
+    auto out = FlattenHierarchy(result);
+    reply(out);
   }
-};
-REGISTER_MESSAGE_HANDLER(Handler_textDocumentImplementation);
+}
 } // namespace
+
+void MessageHandler::ccls_inheritance(Reader &reader, ReplyOnce &reply) {
+  Param param;
+  Reflect(reader, param);
+  Inheritance(this, param, reply);
+}
+
+void MessageHandler::textDocument_implementation(
+    TextDocumentPositionParam &param, ReplyOnce &reply) {
+  Param param1;
+  param1.textDocument = param.textDocument;
+  param1.position = param.position;
+  param1.derived = true;
+  Inheritance(this, param1, reply);
+}
+} // namespace ccls

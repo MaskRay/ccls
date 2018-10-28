@@ -13,14 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "message_handler.h"
-#include "pipeline.hh"
+#include "message_handler.hh"
 #include "query_utils.h"
-using namespace ccls;
 
+namespace ccls {
 namespace {
-MethodType kMethodType = "textDocument/rename";
-
 lsWorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *working_files,
                                    SymbolRef sym, const std::string &new_text) {
   std::unordered_map<int, lsTextDocumentEdit> path_to_edit;
@@ -62,49 +59,21 @@ lsWorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *working_files,
     edit.documentChanges.push_back(changes.second);
   return edit;
 }
-
-struct In_TextDocumentRename : public RequestMessage {
-  MethodType GetMethodType() const override { return kMethodType; }
-  struct Params {
-    // The document to format.
-    lsTextDocumentIdentifier textDocument;
-
-    // The position at which this request was sent.
-    lsPosition position;
-
-    // The new name of the symbol. If the given name is not valid the
-    // request must return a [ResponseError](#ResponseError) with an
-    // appropriate message set.
-    std::string newName;
-  };
-  Params params;
-};
-MAKE_REFLECT_STRUCT(In_TextDocumentRename::Params, textDocument, position,
-                    newName);
-MAKE_REFLECT_STRUCT(In_TextDocumentRename, id, params);
-REGISTER_IN_MESSAGE(In_TextDocumentRename);
-
-struct Handler_TextDocumentRename : BaseMessageHandler<In_TextDocumentRename> {
-  MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_TextDocumentRename *request) override {
-    int file_id;
-    QueryFile *file;
-    if (!FindFileOrFail(db, project, request->id,
-                        request->params.textDocument.uri.GetPath(), &file,
-                        &file_id))
-      return;
-
-    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
-    lsWorkspaceEdit result;
-    for (SymbolRef sym :
-         FindSymbolsAtLocation(wfile, file, request->params.position)) {
-      result =
-          BuildWorkspaceEdit(db, working_files, sym, request->params.newName);
-      break;
-    }
-
-    pipeline::Reply(request->id, result);
-  }
-};
-REGISTER_MESSAGE_HANDLER(Handler_TextDocumentRename);
 } // namespace
+
+void MessageHandler::textDocument_rename(RenameParam &param, ReplyOnce &reply) {
+  int file_id;
+  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath(), &file_id);
+  if (!file)
+    return;
+
+  WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+  lsWorkspaceEdit result;
+  for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, param.position)) {
+    result = BuildWorkspaceEdit(db, working_files, sym, param.newName);
+    break;
+  }
+
+  reply(result);
+}
+} // namespace ccls

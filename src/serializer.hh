@@ -35,6 +35,7 @@ class CachedHashStringRef;
 class StringRef;
 }
 
+namespace ccls {
 enum class SerializeFormat { Binary, Json };
 
 struct JsonNull {};
@@ -103,12 +104,12 @@ struct IndexFile;
 #define MAKE_REFLECT_TYPE_PROXY2(type, as_type)                                \
   LLVM_ATTRIBUTE_UNUSED inline void Reflect(Reader &visitor, type &value) {    \
     as_type value0;                                                            \
-    ::Reflect(visitor, value0);                                                \
+    ::ccls::Reflect(visitor, value0);                                          \
     value = static_cast<type>(value0);                                         \
   }                                                                            \
   LLVM_ATTRIBUTE_UNUSED inline void Reflect(Writer &visitor, type &value) {    \
     auto value0 = static_cast<as_type>(value);                                 \
-    ::Reflect(visitor, value0);                                                \
+    ::ccls::Reflect(visitor, value0);                                          \
   }
 
 #define _MAPPABLE_REFLECT_MEMBER(name) REFLECT_MEMBER(name);
@@ -305,7 +306,6 @@ template <typename T> void ReflectMember(Writer &vis, const char *name, T &v) {
 
 // API
 
-namespace ccls {
 const char *Intern(llvm::StringRef str);
 llvm::CachedHashStringRef InternH(llvm::StringRef str);
 std::string Serialize(SerializeFormat format, IndexFile &file);

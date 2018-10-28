@@ -17,28 +17,27 @@ limitations under the License.
 #include "filesystem.hh"
 #include "include_complete.h"
 #include "log.hh"
-#include "message_handler.h"
+#include "message_handler.hh"
 #include "pipeline.hh"
 #include "platform.h"
-#include "project.h"
+#include "project.hh"
 #include "serializers/json.h"
 #include "working_files.h"
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
 
+#include <stdlib.h>
 #include <stdexcept>
 #include <thread>
 
-using namespace ccls;
+namespace ccls {
 using namespace llvm;
 
 // TODO Cleanup global variables
 extern std::string g_init_options;
 
 namespace {
-
-MethodType kMethodType = "initialize";
 
 // Code Lens options.
 struct lsCodeLensOptions {
@@ -328,7 +327,7 @@ struct lsInitializeParams {
   // The initial trace setting. If omitted trace is disabled ('off').
   lsTrace trace = lsTrace::Off;
 
-  std::vector<lsWorkspaceFolder> workspaceFolders;
+  std::vector<WorkspaceFolder> workspaceFolders;
 };
 
 void Reflect(Reader &reader, lsInitializeParams::lsTrace &value) {
@@ -348,14 +347,6 @@ void Reflect(Reader &reader, lsInitializeParams::lsTrace &value) {
 MAKE_REFLECT_STRUCT(lsInitializeParams, rootUri, initializationOptions,
                     capabilities, trace, workspaceFolders);
 
-struct In_InitializeRequest : public RequestMessage {
-  MethodType GetMethodType() const override { return kMethodType; }
-
-  lsInitializeParams params;
-};
-MAKE_REFLECT_STRUCT(In_InitializeRequest, id, params);
-REGISTER_IN_MESSAGE(In_InitializeRequest);
-
 struct lsInitializeResult {
   lsServerCapabilities capabilities;
 };
@@ -373,120 +364,124 @@ void *Indexer(void *arg_) {
                          h->working_files);
   return nullptr;
 }
-
-struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
-  MethodType GetMethodType() const override { return kMethodType; }
-
-  void Run(In_InitializeRequest *request) override {
-    auto &params = request->params;
-    if (!params.rootUri)
-      return;
-    std::string project_path = NormalizePath(params.rootUri->GetPath());
-    LOG_S(INFO) << "initialize in directory " << project_path << " with uri "
-                << params.rootUri->raw_uri;
-
-    {
-      g_config = new Config(params.initializationOptions);
-      rapidjson::Document reader;
-      reader.Parse(g_init_options.c_str());
-      if (!reader.HasParseError()) {
-        JsonReader json_reader{&reader};
-        try {
-          Reflect(json_reader, *g_config);
-        } catch (std::invalid_argument &) {
-          // This will not trigger because parse error is handled in
-          // MessageRegistry::Parse in lsp.cc
-        }
-      }
-
-      rapidjson::StringBuffer output;
-      rapidjson::Writer<rapidjson::StringBuffer> writer(output);
-      JsonWriter json_writer(&writer);
-      Reflect(json_writer, *g_config);
-      LOG_S(INFO) << "initializationOptions: " << output.GetString();
-
-      if (g_config->cacheDirectory.size()) {
-        g_config->cacheDirectory = NormalizePath(g_config->cacheDirectory);
-        EnsureEndsInSlash(g_config->cacheDirectory);
-      }
-    }
-
-    // Client capabilities
-    const auto &capabilities = params.capabilities;
-    g_config->client.snippetSupport &=
-        capabilities.textDocument.completion.completionItem.snippetSupport;
-    g_config->client.hierarchicalDocumentSymbolSupport &=
-        capabilities.textDocument.documentSymbol.hierarchicalDocumentSymbolSupport;
-
-    // Ensure there is a resource directory.
-    if (g_config->clang.resourceDir.empty())
-      g_config->clang.resourceDir = GetDefaultResourceDirectory();
-    DoPathMapping(g_config->clang.resourceDir);
-    LOG_S(INFO) << "Using -resource-dir=" << g_config->clang.resourceDir;
-
-    // Send initialization before starting indexers, so we don't send a
-    // status update too early.
-    {
-      lsInitializeResult result;
-      pipeline::Reply(request->id, result);
-    }
-
-    // Set project root.
-    EnsureEndsInSlash(project_path);
-    g_config->fallbackFolder = project_path;
-    for (const lsWorkspaceFolder &wf : request->params.workspaceFolders) {
-      std::string path = wf.uri.GetPath();
-      EnsureEndsInSlash(path);
-      g_config->workspaceFolders.push_back(path);
-      LOG_S(INFO) << "add workspace folder " << wf.name << ": " << path;
-    }
-    if (request->params.workspaceFolders.empty())
-      g_config->workspaceFolders.push_back(project_path);
-    if (g_config->cacheDirectory.size())
-      for (const std::string &folder : g_config->workspaceFolders) {
-        // Create two cache directories for files inside and outside of the
-        // project.
-        std::string escaped =
-            EscapeFileName(folder.substr(0, folder.size() - 1));
-        sys::fs::create_directories(g_config->cacheDirectory + escaped);
-        sys::fs::create_directories(g_config->cacheDirectory + '@' + escaped);
-      }
-
-    idx::Init();
-    for (const std::string &folder : g_config->workspaceFolders)
-      project->Load(folder);
-
-    // Start indexer threads. Start this after loading the project, as that
-    // may take a long time. Indexer threads will emit status/progress
-    // reports.
-    if (g_config->index.threads == 0)
-      g_config->index.threads = std::thread::hardware_concurrency();
-
-    LOG_S(INFO) << "start " << g_config->index.threads << " indexers";
-    for (int i = 0; i < g_config->index.threads; i++)
-      SpawnThread(Indexer, new std::pair<MessageHandler *, int>{this, i});
-
-    // Start scanning include directories before dispatching project
-    // files, because that takes a long time.
-    include_complete->Rescan();
-
-    LOG_S(INFO) << "dispatch initial index requests";
-    project->Index(working_files, request->id);
-  }
-};
-REGISTER_MESSAGE_HANDLER(Handler_Initialize);
 } // namespace
 
-void StandaloneInitialize(const std::string &root, Project &project,
-                          WorkingFiles &wfiles, VFS &vfs,
-                          IncludeComplete &complete) {
-  Handler_Initialize handler;
-  handler.project = &project;
-  handler.working_files = &wfiles;
-  handler.vfs = &vfs;
-  handler.include_complete = &complete;
+void Initialize(MessageHandler *m, lsInitializeParams &param, ReplyOnce &reply) {
+  std::string project_path = NormalizePath(param.rootUri->GetPath());
+  LOG_S(INFO) << "initialize in directory " << project_path << " with uri "
+              << param.rootUri->raw_uri;
 
-  In_InitializeRequest request;
-  request.params.rootUri = lsDocumentUri::FromPath(root);
-  handler.Run(&request);
+  {
+    g_config = new Config(param.initializationOptions);
+    rapidjson::Document reader;
+    reader.Parse(g_init_options.c_str());
+    if (!reader.HasParseError()) {
+      JsonReader json_reader{&reader};
+      try {
+        Reflect(json_reader, *g_config);
+      } catch (std::invalid_argument &) {
+        // This will not trigger because parse error is handled in
+        // MessageRegistry::Parse in lsp.cc
+      }
+    }
+
+    rapidjson::StringBuffer output;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(output);
+    JsonWriter json_writer(&writer);
+    Reflect(json_writer, *g_config);
+    LOG_S(INFO) << "initializationOptions: " << output.GetString();
+
+    if (g_config->cacheDirectory.size()) {
+      g_config->cacheDirectory = NormalizePath(g_config->cacheDirectory);
+      EnsureEndsInSlash(g_config->cacheDirectory);
+    }
+  }
+
+  // Client capabilities
+  const auto &capabilities = param.capabilities;
+  g_config->client.snippetSupport &=
+      capabilities.textDocument.completion.completionItem.snippetSupport;
+  g_config->client.hierarchicalDocumentSymbolSupport &=
+      capabilities.textDocument.documentSymbol
+          .hierarchicalDocumentSymbolSupport;
+
+  // Ensure there is a resource directory.
+  if (g_config->clang.resourceDir.empty())
+    g_config->clang.resourceDir = GetDefaultResourceDirectory();
+  DoPathMapping(g_config->clang.resourceDir);
+  LOG_S(INFO) << "use -resource-dir=" << g_config->clang.resourceDir;
+
+  // Send initialization before starting indexers, so we don't send a
+  // status update too early.
+  {
+    lsInitializeResult result;
+    reply(result);
+  }
+
+  // Set project root.
+  EnsureEndsInSlash(project_path);
+  g_config->fallbackFolder = project_path;
+  for (const WorkspaceFolder &wf : param.workspaceFolders) {
+    std::string path = wf.uri.GetPath();
+    EnsureEndsInSlash(path);
+    g_config->workspaceFolders.push_back(path);
+    LOG_S(INFO) << "add workspace folder " << wf.name << ": " << path;
+  }
+  if (param.workspaceFolders.empty())
+    g_config->workspaceFolders.push_back(project_path);
+  if (g_config->cacheDirectory.size())
+    for (const std::string &folder : g_config->workspaceFolders) {
+      // Create two cache directories for files inside and outside of the
+      // project.
+      std::string escaped = EscapeFileName(folder.substr(0, folder.size() - 1));
+      sys::fs::create_directories(g_config->cacheDirectory + escaped);
+      sys::fs::create_directories(g_config->cacheDirectory + '@' + escaped);
+    }
+
+  idx::Init();
+  for (const std::string &folder : g_config->workspaceFolders)
+    m->project->Load(folder);
+
+  // Start indexer threads. Start this after loading the project, as that
+  // may take a long time. Indexer threads will emit status/progress
+  // reports.
+  if (g_config->index.threads == 0)
+    g_config->index.threads = std::thread::hardware_concurrency();
+
+  LOG_S(INFO) << "start " << g_config->index.threads << " indexers";
+  for (int i = 0; i < g_config->index.threads; i++)
+    SpawnThread(Indexer, new std::pair<MessageHandler *, int>{m, i});
+
+  // Start scanning include directories before dispatching project
+  // files, because that takes a long time.
+  m->include_complete->Rescan();
+
+  LOG_S(INFO) << "dispatch initial index requests";
+  m->project->Index(m->working_files, reply.id);
 }
+
+void MessageHandler::initialize(Reader &reader, ReplyOnce &reply) {
+  lsInitializeParams param;
+  Reflect(reader, param);
+  if (!param.rootUri)
+    return;
+  Initialize(this, param, reply);
+}
+
+void StandaloneInitialize(MessageHandler &handler, const std::string &root) {
+  lsInitializeParams param;
+  param.rootUri = lsDocumentUri::FromPath(root);
+  ReplyOnce reply;
+  Initialize(&handler, param, reply);
+}
+
+void MessageHandler::shutdown(EmptyParam &, ReplyOnce &reply) {
+  JsonNull result;
+  reply(result);
+}
+
+void MessageHandler::exit(EmptyParam &) {
+  // FIXME cancel threads
+  ::exit(0);
+}
+} // namespace ccls

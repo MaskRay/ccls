@@ -20,6 +20,7 @@ limitations under the License.
 #include <limits.h>
 #include <unordered_set>
 
+namespace ccls {
 namespace {
 
 // Computes roughly how long |range| is.
@@ -342,3 +343,4 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *wfile,
 
   return symbols;
 }
+} // namespace ccls
