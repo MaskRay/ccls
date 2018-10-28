@@ -16,7 +16,7 @@ limitations under the License.
 #pragma once
 
 #include "config.h"
-#include "lsp.h"
+#include "lsp.hh"
 
 #include <functional>
 #include <mutex>
@@ -24,6 +24,7 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
+namespace ccls {
 struct WorkingFiles;
 
 std::pair<LanguageId, bool> lookupExtension(std::string_view filename);
@@ -76,3 +77,4 @@ struct Project {
 
   void Index(WorkingFiles *wfiles, lsRequestId id);
 };
+} // namespace ccls

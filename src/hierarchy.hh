@@ -15,11 +15,12 @@ limitations under the License.
 
 #pragma once
 
-#include "lsp.h"
+#include "lsp.hh"
 
 #include <algorithm>
 #include <queue>
 
+namespace ccls {
 template <typename Node>
 std::vector<lsLocation> FlattenHierarchy(const std::optional<Node> &root) {
   if (!root)
@@ -40,3 +41,4 @@ std::vector<lsLocation> FlattenHierarchy(const std::optional<Node> &root) {
   ret.erase(std::unique(ret.begin(), ret.end()), ret.end());
   return ret;
 }
+} // namespace ccls

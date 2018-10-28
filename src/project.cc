@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "project.h"
+#include "project.hh"
 
 #include "filesystem.hh"
 #include "log.hh"
@@ -43,10 +43,10 @@ limitations under the License.
 #include <unordered_set>
 #include <vector>
 
-using namespace ccls;
 using namespace clang;
 using namespace llvm;
 
+namespace ccls {
 std::pair<LanguageId, bool> lookupExtension(std::string_view filename) {
   using namespace clang::driver;
   auto I = types::lookupTypeForExtension(
@@ -485,3 +485,4 @@ void Project::Index(WorkingFiles *wfiles, lsRequestId id) {
   // trigger refreshing semantic highlight for all working files.
   pipeline::Index("", {}, IndexMode::NonInteractive);
 }
+} // namespace ccls

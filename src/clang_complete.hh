@@ -17,9 +17,8 @@ limitations under the License.
 
 #include "clang_tu.hh"
 #include "lru_cache.h"
-#include "lsp.h"
-#include "lsp_completion.h"
-#include "project.h"
+#include "lsp.hh"
+#include "project.hh"
 #include "threaded_queue.h"
 #include "working_files.h"
 
@@ -73,7 +72,6 @@ struct CompletionSession
 
   std::shared_ptr<PreambleData> GetPreamble();
 };
-}
 
 struct CompletionManager {
   using OnDiagnostic = std::function<void(
@@ -193,3 +191,4 @@ struct CompleteConsumerCache {
     return this->path == path && this->position == position;
   }
 };
+} // namespace ccls

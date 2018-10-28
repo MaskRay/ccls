@@ -15,11 +15,12 @@ limitations under the License.
 
 #pragma once
 
-#include "serializer.h"
+#include "serializer.hh"
 
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
 
+namespace ccls {
 class JsonReader : public Reader {
   rapidjson::GenericValue<rapidjson::UTF8<>> *m_;
   std::vector<const char *> path_;
@@ -116,3 +117,4 @@ public:
   void EndObject() override { m_->EndObject(); }
   void Key(const char *name) override { m_->Key(name); }
 };
+} // namespace ccls
