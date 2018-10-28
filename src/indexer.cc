@@ -9,7 +9,7 @@
 #include "match.h"
 #include "pipeline.hh"
 #include "platform.h"
-#include "serializer.h"
+#include "serializer.hh"
 
 #include <clang/AST/AST.h>
 #include <clang/Frontend/FrontendAction.h>
@@ -26,9 +26,9 @@
 #include <map>
 #include <unordered_set>
 
-using namespace ccls;
 using namespace clang;
 
+namespace ccls {
 namespace {
 
 constexpr int kInitializerMaxLines = 3;
@@ -1195,7 +1195,7 @@ template <typename T> void Uniquify(std::vector<T> &a) {
   a.resize(n);
 }
 
-namespace ccls::idx {
+namespace idx {
 void Init() {
   multiVersionMatcher = new GroupMatch(g_config->index.multiVersionWhitelist,
                                        g_config->index.multiVersionBlacklist);
@@ -1334,7 +1334,7 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
 
   return result;
 }
-} // namespace ccls::idx
+} // namespace idx
 
 void Reflect(Reader &vis, SymbolRef &v) {
   if (vis.Format() == SerializeFormat::Json) {
@@ -1422,3 +1422,4 @@ void Reflect(Writer &vis, DeclRef &v) {
     Reflect(vis, v.extent);
   }
 }
+} // namespace ccls

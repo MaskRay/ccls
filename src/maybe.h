@@ -7,6 +7,7 @@
 
 #include <utility>
 
+namespace ccls {
 // Like std::optional, but the stored data is responsible for containing the
 // empty state. T should define a function `bool T::Valid()`.
 template <typename T> class Maybe {
@@ -44,3 +45,4 @@ public:
   bool operator==(const Maybe &o) const { return storage == o.storage; }
   bool operator!=(const Maybe &o) const { return !(*this == o); }
 };
+} // namespace ccls

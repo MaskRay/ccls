@@ -14,6 +14,7 @@ namespace llvm {
 class StringRef;
 }
 
+namespace ccls {
 uint64_t HashUsr(std::string_view s);
 uint64_t HashUsr(llvm::StringRef s);
 
@@ -69,10 +70,11 @@ inline void hash_combine(std::size_t &seed, const T &v, Rest... rest) {
   template <> struct hash<type> {                                              \
     std::size_t operator()(const type &t) const {                              \
       std::size_t ret = 0;                                                     \
-      hash_combine(ret, __VA_ARGS__);                                          \
+      ccls::hash_combine(ret, __VA_ARGS__);                                          \
       return ret;                                                              \
     }                                                                          \
   };                                                                           \
   }
 
 std::string GetDefaultResourceDirectory();
+} // namespace ccls

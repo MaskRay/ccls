@@ -8,7 +8,7 @@
 #include "indexer.h"
 #include "pipeline.hh"
 #include "platform.h"
-#include "serializer.h"
+#include "serializer.hh"
 #include "utils.h"
 
 #include <llvm/Config/llvm-config.h>
@@ -32,6 +32,7 @@ using namespace llvm;
 
 extern bool gTestOutputMode;
 
+namespace ccls {
 std::string ToString(const rapidjson::Document &document) {
   rapidjson::StringBuffer buffer;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
@@ -361,3 +362,4 @@ bool RunIndexTests(const std::string &filter_path, bool enable_update) {
 
   return success;
 }
+} // namespace ccls

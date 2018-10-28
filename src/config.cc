@@ -3,9 +3,9 @@
 
 #include "config.h"
 
+namespace ccls {
 Config *g_config;
 
-namespace ccls {
 void DoPathMapping(std::string &arg) {
   for (const std::string &mapping : g_config->clang.pathMappings) {
     auto sep = mapping.find('>');

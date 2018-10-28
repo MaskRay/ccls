@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+namespace ccls {
 struct Matcher {
   static std::optional<Matcher> Create(const std::string &search);
 
@@ -29,3 +30,4 @@ struct GroupMatch {
   std::vector<Matcher> whitelist;
   std::vector<Matcher> blacklist;
 };
+} // namespace ccls

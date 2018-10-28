@@ -8,6 +8,7 @@
 
 #include <optional>
 
+namespace ccls {
 Maybe<DeclRef> GetDefinitionSpell(DB *db, SymbolIdx sym);
 
 // Get defining declaration (if exists) or an arbitrary declaration (otherwise)
@@ -90,3 +91,4 @@ void EachDefinedFunc(DB *db, const std::vector<Usr> &usrs, Fn &&fn) {
       fn(obj);
   }
 }
+} // namespace ccls

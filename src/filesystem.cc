@@ -11,7 +11,7 @@ using namespace llvm;
 
 void GetFilesInFolder(std::string folder, bool recursive, bool dir_prefix,
                       const std::function<void(const std::string &)> &handler) {
-  EnsureEndsInSlash(folder);
+  ccls::EnsureEndsInSlash(folder);
   sys::fs::file_status Status;
   if (sys::fs::status(folder, Status, true))
     return;

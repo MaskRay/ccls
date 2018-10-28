@@ -3,10 +3,11 @@
 
 #pragma once
 
-#include "serializer.h"
+#include "serializer.hh"
 
 #include <string.h>
 
+namespace ccls {
 class BinaryReader : public Reader {
   const char *p_;
 
@@ -123,3 +124,4 @@ public:
   void EndObject() override {}
   void Key(const char *name) override {}
 };
+} // namespace ccls

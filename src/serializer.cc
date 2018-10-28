@@ -1,7 +1,7 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "serializer.h"
+#include "serializer.hh"
 
 #include "filesystem.hh"
 #include "indexer.h"
@@ -15,11 +15,11 @@
 #include <mutex>
 #include <stdexcept>
 
-using namespace ccls;
 using namespace llvm;
 
 bool gTestOutputMode = false;
 
+namespace ccls {
 Reader::~Reader() {}
 BinaryReader::~BinaryReader() {}
 JsonReader::~JsonReader() {}
@@ -350,7 +350,6 @@ void Reflect(Writer &visitor, SerializeFormat &value) {
   }
 }
 
-namespace ccls {
 static BumpPtrAllocator Alloc;
 static DenseSet<CachedHashStringRef> Strings;
 static std::mutex AllocMutex;
