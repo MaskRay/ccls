@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 
+namespace ccls {
 class FuzzyMatcher {
 public:
   constexpr static int kMaxPat = 100;
@@ -30,3 +31,4 @@ private:
   int MatchScore(int i, int j, bool last);
   int MissScore(int j, bool last);
 };
+} // namespace ccls

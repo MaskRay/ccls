@@ -3,13 +3,14 @@
 
 #pragma once
 
-#include "lsp.h"
+#include "lsp.hh"
 #include "utils.h"
 
 #include <mutex>
 #include <optional>
 #include <string>
 
+namespace ccls {
 struct WorkingFile {
   int version = 0;
   std::string filename;
@@ -105,7 +106,7 @@ struct WorkingFiles {
                       const std::function<void(WorkingFile *file)> &action);
 
   WorkingFile *OnOpen(const lsTextDocumentItem &open);
-  void OnChange(const lsTextDocumentDidChangeParams &change);
+  void OnChange(const TextDocumentDidChangeParam &change);
   void OnClose(const lsTextDocumentIdentifier &close);
 
   // If |filter_paths| is non-empty, only files which contain any of the given
@@ -123,3 +124,4 @@ int GetOffsetForPosition(lsPosition position, std::string_view content);
 
 std::string_view LexIdentifierAroundPos(lsPosition position,
                                         std::string_view content);
+} // namespace ccls

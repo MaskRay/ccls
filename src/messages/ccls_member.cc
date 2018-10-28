@@ -3,7 +3,7 @@
 
 #include "clang_tu.hh"
 #include "hierarchy.hh"
-#include "message_handler.h"
+#include "message_handler.hh"
 #include "pipeline.hh"
 #include "query_utils.h"
 
@@ -12,38 +12,26 @@
 
 #include <unordered_set>
 
-using namespace ccls;
+namespace ccls {
 using namespace clang;
 
 namespace {
-MethodType kMethodType = "$ccls/member";
+struct Param : TextDocumentPositionParam {
+  // If id is specified, expand a node; otherwise textDocument+position should
+  // be specified for building the root and |levels| of nodes below.
+  Usr usr;
+  std::string id;
 
-struct In_cclsMember : public RequestMessage {
-  MethodType GetMethodType() const override { return kMethodType; }
-
-  struct Params {
-    // If id is specified, expand a node; otherwise textDocument+position should
-    // be specified for building the root and |levels| of nodes below.
-    lsTextDocumentIdentifier textDocument;
-    lsPosition position;
-
-    // Type
-    Usr usr;
-    std::string id;
-
-    bool qualified = false;
-    int levels = 1;
-    // If SymbolKind::Func and the point is at a type, list member functions
-    // instead of member variables.
-    SymbolKind kind = SymbolKind::Var;
-    bool hierarchy = false;
-  } params;
+  bool qualified = false;
+  int levels = 1;
+  // If SymbolKind::Func and the point is at a type, list member functions
+  // instead of member variables.
+  SymbolKind kind = SymbolKind::Var;
+  bool hierarchy = false;
 };
 
-MAKE_REFLECT_STRUCT(In_cclsMember::Params, textDocument, position, id,
-                    qualified, levels, kind, hierarchy);
-MAKE_REFLECT_STRUCT(In_cclsMember, id, params);
-REGISTER_IN_MESSAGE(In_cclsMember);
+MAKE_REFLECT_STRUCT(Param, textDocument, position, id, qualified, levels, kind,
+                    hierarchy);
 
 struct Out_cclsMember {
   Usr usr;
@@ -221,106 +209,99 @@ bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
   return true;
 }
 
-struct Handler_cclsMember : BaseMessageHandler<In_cclsMember> {
-  MethodType GetMethodType() const override { return kMethodType; }
-
-  std::optional<Out_cclsMember> BuildInitial(SymbolKind kind, Usr root_usr,
-                                             bool qualified, int levels,
-                                             SymbolKind memberKind) {
-    switch (kind) {
-    default:
+std::optional<Out_cclsMember> BuildInitial(MessageHandler *m, SymbolKind kind,
+                                           Usr root_usr, bool qualified,
+                                           int levels, SymbolKind memberKind) {
+  switch (kind) {
+  default:
+    return {};
+  case SymbolKind::Func: {
+    const auto *def = m->db->Func(root_usr).AnyDef();
+    if (!def)
       return {};
-    case SymbolKind::Func: {
-      const auto *def = db->Func(root_usr).AnyDef();
-      if (!def)
-        return {};
 
-      Out_cclsMember entry;
-      // Not type, |id| is invalid.
-      entry.name = def->Name(qualified);
-      if (def->spell) {
-        if (std::optional<lsLocation> loc =
-                GetLsLocation(db, working_files, *def->spell))
-          entry.location = *loc;
-      }
-      for (Usr usr : def->vars) {
-        auto &var = db->Var(usr);
-        if (var.def.size())
-          DoField(this, &entry, var, -1, qualified, levels - 1);
-      }
-      return entry;
+    Out_cclsMember entry;
+    // Not type, |id| is invalid.
+    entry.name = def->Name(qualified);
+    if (def->spell) {
+      if (auto loc = GetLsLocation(m->db, m->working_files, *def->spell))
+        entry.location = *loc;
     }
-    case SymbolKind::Type: {
-      const auto *def = db->Type(root_usr).AnyDef();
-      if (!def)
-        return {};
-
-      Out_cclsMember entry;
-      entry.id = std::to_string(root_usr);
-      entry.usr = root_usr;
-      if (def->spell) {
-        if (std::optional<lsLocation> loc =
-                GetLsLocation(db, working_files, *def->spell))
-          entry.location = *loc;
-      }
-      Expand(this, &entry, qualified, levels, memberKind);
-      return entry;
+    for (Usr usr : def->vars) {
+      auto &var = m->db->Var(usr);
+      if (var.def.size())
+        DoField(m, &entry, var, -1, qualified, levels - 1);
     }
-    }
+    return entry;
   }
+  case SymbolKind::Type: {
+    const auto *def = m->db->Type(root_usr).AnyDef();
+    if (!def)
+      return {};
 
-  void Run(In_cclsMember *request) override {
-    auto &params = request->params;
-    std::optional<Out_cclsMember> result;
-    if (params.id.size()) {
-      try {
-        params.usr = std::stoull(params.id);
-      } catch (...) {
-        return;
-      }
-      result.emplace();
-      result->id = std::to_string(params.usr);
-      result->usr = params.usr;
-      // entry.name is empty as it is known by the client.
-      if (!(db->HasType(params.usr) && Expand(this, &*result, params.qualified,
-                                              params.levels, params.kind)))
-        result.reset();
-    } else {
-      QueryFile *file;
-      if (!FindFileOrFail(db, project, request->id,
-                          params.textDocument.uri.GetPath(), &file))
-        return;
-      WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
-      for (SymbolRef sym :
-           FindSymbolsAtLocation(wfile, file, params.position)) {
-        switch (sym.kind) {
-        case SymbolKind::Func:
-        case SymbolKind::Type:
-          result = BuildInitial(sym.kind, sym.usr, params.qualified,
-                                params.levels, params.kind);
-          break;
-        case SymbolKind::Var: {
-          const QueryVar::Def *def = db->GetVar(sym).AnyDef();
-          if (def && def->type)
-            result = BuildInitial(SymbolKind::Type, def->type, params.qualified,
-                                  params.levels, params.kind);
-          break;
-        }
-        default:
-          continue;
-        }
+    Out_cclsMember entry;
+    entry.id = std::to_string(root_usr);
+    entry.usr = root_usr;
+    if (def->spell) {
+      if (auto loc = GetLsLocation(m->db, m->working_files, *def->spell))
+        entry.location = *loc;
+    }
+    Expand(m, &entry, qualified, levels, memberKind);
+    return entry;
+  }
+  }
+}
+} // namespace
+
+void MessageHandler::ccls_member(Reader &reader, ReplyOnce &reply) {
+  Param param;
+  Reflect(reader, param);
+  std::optional<Out_cclsMember> result;
+  if (param.id.size()) {
+    try {
+      param.usr = std::stoull(param.id);
+    } catch (...) {
+      return;
+    }
+    result.emplace();
+    result->id = std::to_string(param.usr);
+    result->usr = param.usr;
+    // entry.name is empty as it is known by the client.
+    if (!(db->HasType(param.usr) && Expand(this, &*result, param.qualified,
+                                            param.levels, param.kind)))
+      result.reset();
+  } else {
+    QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+    if (!file)
+      return;
+    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+    for (SymbolRef sym :
+         FindSymbolsAtLocation(wfile, file, param.position)) {
+      switch (sym.kind) {
+      case SymbolKind::Func:
+      case SymbolKind::Type:
+        result = BuildInitial(this, sym.kind, sym.usr, param.qualified,
+                              param.levels, param.kind);
+        break;
+      case SymbolKind::Var: {
+        const QueryVar::Def *def = db->GetVar(sym).AnyDef();
+        if (def && def->type)
+          result = BuildInitial(this, SymbolKind::Type, def->type, param.qualified,
+                                param.levels, param.kind);
         break;
       }
-    }
-
-    if (params.hierarchy)
-      pipeline::Reply(request->id, result);
-    else {
-      auto out = FlattenHierarchy(result);
-      pipeline::Reply(request->id, out);
+      default:
+        continue;
+      }
+      break;
     }
   }
-};
-REGISTER_MESSAGE_HANDLER(Handler_cclsMember);
 
-} // namespace
+  if (param.hierarchy)
+    reply(result);
+  else {
+    auto out = FlattenHierarchy(result);
+    reply(out);
+  }
+}
+} // namespace ccls

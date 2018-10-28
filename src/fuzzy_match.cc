@@ -8,10 +8,11 @@
 #include <stdio.h>
 #include <vector>
 
+namespace ccls {
+namespace {
 enum CharClass { Other, Lower, Upper };
 enum CharRole { None, Tail, Head };
 
-namespace {
 CharClass GetCharClass(int c) {
   if (islower(c))
     return Lower;
@@ -133,6 +134,7 @@ int FuzzyMatcher::Match(std::string_view text) {
     ret = std::max(ret, dp[pat.size() & 1][j][1] - 2 * (n - j));
   return ret;
 }
+} // namespace ccls
 
 #if 0
 TEST_SUITE("fuzzy_match") {

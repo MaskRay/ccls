@@ -13,16 +13,17 @@
 #include <tuple>
 #include <utility>
 
-struct BaseThreadQueue {
-  virtual bool IsEmpty() = 0;
-  virtual ~BaseThreadQueue() = default;
-};
-
 // std::lock accepts two or more arguments. We define an overload for one
 // argument.
 namespace std {
 template <typename Lockable> void lock(Lockable &l) { l.lock(); }
 } // namespace std
+
+namespace ccls {
+struct BaseThreadQueue {
+  virtual bool IsEmpty() = 0;
+  virtual ~BaseThreadQueue() = default;
+};
 
 template <typename... Queue> struct MultiQueueLock {
   MultiQueueLock(Queue... lockable) : tuple_{lockable...} { lock(); }
@@ -161,3 +162,4 @@ private:
   MultiQueueWaiter *waiter_;
   std::unique_ptr<MultiQueueWaiter> owned_waiter_;
 };
+} // namespace ccls

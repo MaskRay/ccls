@@ -15,148 +15,56 @@ limitations under the License.
 
 #include "clang_complete.hh"
 #include "include_complete.h"
-#include "message_handler.h"
+#include "message_handler.hh"
 #include "pipeline.hh"
-#include "project.h"
+#include "project.hh"
 #include "working_files.h"
-using namespace ccls;
 
-namespace {
-MethodType didChange = "textDocument/didChange";
-MethodType didClose = "textDocument/didClose";
-MethodType didOpen = "textDocument/didOpen";
-MethodType didSave = "textDocument/didSave";
+namespace ccls {
+void MessageHandler::textDocument_didChange(TextDocumentDidChangeParam &param) {
+  std::string path = param.textDocument.uri.GetPath();
+  working_files->OnChange(param);
+  if (g_config->index.onChange)
+    pipeline::Index(path, {}, IndexMode::OnChange);
+  clang_complete->NotifyView(path);
+  if (g_config->diagnostics.onChange >= 0)
+    clang_complete->DiagnosticsUpdate(path, g_config->diagnostics.onChange);
+}
 
-struct In_TextDocumentDidChange : public NotificationMessage {
-  MethodType GetMethodType() const override { return didChange; }
-  lsTextDocumentDidChangeParams params;
-};
-MAKE_REFLECT_STRUCT(In_TextDocumentDidChange, params);
-REGISTER_IN_MESSAGE(In_TextDocumentDidChange);
+void MessageHandler::textDocument_didClose(TextDocumentParam &param) {
+  std::string path = param.textDocument.uri.GetPath();
+  working_files->OnClose(param.textDocument);
+  clang_complete->OnClose(path);
+}
 
-struct Handler_TextDocumentDidChange
-    : BaseMessageHandler<In_TextDocumentDidChange> {
-  MethodType GetMethodType() const override { return didChange; }
+void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
+  std::string path = param.textDocument.uri.GetPath();
+  WorkingFile *working_file = working_files->OnOpen(param.textDocument);
+  if (std::optional<std::string> cached_file_contents =
+          pipeline::LoadIndexedContent(path))
+    working_file->SetIndexContent(*cached_file_contents);
 
-  void Run(In_TextDocumentDidChange *request) override {
-    const auto &params = request->params;
-    std::string path = params.textDocument.uri.GetPath();
-    working_files->OnChange(params);
-    if (g_config->index.onChange)
-      pipeline::Index(path, {}, IndexMode::OnChange);
-    clang_complete->NotifyView(path);
-    if (g_config->diagnostics.onChange >= 0)
-      clang_complete->DiagnosticsUpdate(path, g_config->diagnostics.onChange);
+  ReplyOnce reply;
+  QueryFile *file = FindFile(reply, path);
+  if (file) {
+    EmitSkippedRanges(working_file, *file);
+    EmitSemanticHighlight(db, working_file, *file);
   }
-};
-REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidChange);
+  include_complete->AddFile(working_file->filename);
 
-struct In_TextDocumentDidClose : public NotificationMessage {
-  MethodType GetMethodType() const override { return didClose; }
-  struct Params {
-    lsTextDocumentIdentifier textDocument;
-  } params;
-};
-MAKE_REFLECT_STRUCT(In_TextDocumentDidClose::Params, textDocument);
-MAKE_REFLECT_STRUCT(In_TextDocumentDidClose, params);
-REGISTER_IN_MESSAGE(In_TextDocumentDidClose);
-
-struct Handler_TextDocumentDidClose
-    : BaseMessageHandler<In_TextDocumentDidClose> {
-  MethodType GetMethodType() const override { return didClose; }
-
-  void Run(In_TextDocumentDidClose *request) override {
-    std::string path = request->params.textDocument.uri.GetPath();
-
-    working_files->OnClose(request->params.textDocument);
-    clang_complete->OnClose(path);
-  }
-};
-REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidClose);
-
-struct In_TextDocumentDidOpen : public NotificationMessage {
-  MethodType GetMethodType() const override { return didOpen; }
-
-  struct Params {
-    lsTextDocumentItem textDocument;
-
-    // ccls extension
-    // If specified (e.g. ["clang++", "-DM", "a.cc"]), it overrides the project
-    // entry (e.g. loaded from compile_commands.json or .ccls).
-    std::vector<std::string> args;
-  } params;
-};
-MAKE_REFLECT_STRUCT(In_TextDocumentDidOpen::Params, textDocument, args);
-MAKE_REFLECT_STRUCT(In_TextDocumentDidOpen, params);
-REGISTER_IN_MESSAGE(In_TextDocumentDidOpen);
-
-struct Handler_TextDocumentDidOpen
-    : BaseMessageHandler<In_TextDocumentDidOpen> {
-  MethodType GetMethodType() const override { return didOpen; }
-
-  void Run(In_TextDocumentDidOpen *request) override {
-    // NOTE: This function blocks code lens. If it starts taking a long time
-    // we will need to find a way to unblock the code lens request.
-    const auto &params = request->params;
-    const std::string &path = params.textDocument.uri.GetPath();
-
-    WorkingFile *working_file = working_files->OnOpen(params.textDocument);
-    if (std::optional<std::string> cached_file_contents =
-            pipeline::LoadIndexedContent(path))
-      working_file->SetIndexContent(*cached_file_contents);
-
-    QueryFile *file = nullptr;
-    FindFileOrFail(db, project, std::nullopt, path, &file);
-    if (file) {
-      EmitSkippedRanges(working_file, *file);
-      EmitSemanticHighlight(db, working_file, *file);
-    }
-
-    include_complete->AddFile(working_file->filename);
-    std::vector<const char *> args;
-    for (const std::string &arg : params.args)
-      args.push_back(Intern(arg));
-    if (args.size())
-      project->SetArgsForFile(args, path);
-
-    // Submit new index request if it is not a header file or there is no
-    // pending index request.
-    std::pair<LanguageId, bool> lang = lookupExtension(path);
-    if ((lang.first != LanguageId::Unknown && !lang.second) ||
-        !pipeline::pending_index_requests)
-      pipeline::Index(path, args, IndexMode::Normal);
-
-    clang_complete->NotifyView(path);
-  }
-};
-REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidOpen);
-
-struct In_TextDocumentDidSave : public NotificationMessage {
-  MethodType GetMethodType() const override { return didSave; }
-
-  struct Params {
-    // The document that was saved.
-    lsTextDocumentIdentifier textDocument;
-
-    // Optional the content when saved. Depends on the includeText value
-    // when the save notifcation was requested.
-    // std::string text;
-  } params;
-};
-MAKE_REFLECT_STRUCT(In_TextDocumentDidSave::Params, textDocument);
-MAKE_REFLECT_STRUCT(In_TextDocumentDidSave, params);
-REGISTER_IN_MESSAGE(In_TextDocumentDidSave);
-
-struct Handler_TextDocumentDidSave
-    : BaseMessageHandler<In_TextDocumentDidSave> {
-  MethodType GetMethodType() const override { return didSave; }
-
-  void Run(In_TextDocumentDidSave *request) override {
-    const auto &params = request->params;
-    const std::string &path = params.textDocument.uri.GetPath();
+  // Submit new index request if it is not a header file or there is no
+  // pending index request.
+  std::pair<LanguageId, bool> lang = lookupExtension(path);
+  if ((lang.first != LanguageId::Unknown && !lang.second) ||
+      !pipeline::pending_index_requests)
     pipeline::Index(path, {}, IndexMode::Normal);
-    clang_complete->NotifySave(path);
-  }
-};
-REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidSave);
-} // namespace
+
+  clang_complete->NotifyView(path);
+}
+
+void MessageHandler::textDocument_didSave(TextDocumentParam &param) {
+  const std::string &path = param.textDocument.uri.GetPath();
+  pipeline::Index(path, {}, IndexMode::Normal);
+  clang_complete->NotifySave(path);
+}
+} // namespace ccls

@@ -17,6 +17,7 @@ namespace vfs = clang::vfs;
 }
 #endif
 
+namespace ccls {
 std::string PathFromFileEntry(const clang::FileEntry &file);
 
 Range FromCharSourceRange(const clang::SourceManager &SM,
@@ -42,3 +43,4 @@ BuildCompilerInvocation(std::vector<const char *> args,
                         llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> VFS);
 
 const char *ClangBuiltinTypeName(int);
+} // namespace ccls

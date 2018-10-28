@@ -1,7 +1,7 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "project.h"
+#include "project.hh"
 
 #include "filesystem.hh"
 #include "log.hh"
@@ -31,10 +31,10 @@
 #include <unordered_set>
 #include <vector>
 
-using namespace ccls;
 using namespace clang;
 using namespace llvm;
 
+namespace ccls {
 std::pair<LanguageId, bool> lookupExtension(std::string_view filename) {
   using namespace clang::driver;
   auto I = types::lookupTypeForExtension(
@@ -473,3 +473,4 @@ void Project::Index(WorkingFiles *wfiles, lsRequestId id) {
   // trigger refreshing semantic highlight for all working files.
   pipeline::Index("", {}, IndexMode::NonInteractive);
 }
+} // namespace ccls

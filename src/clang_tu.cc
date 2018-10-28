@@ -12,6 +12,7 @@
 
 using namespace clang;
 
+namespace ccls {
 std::string PathFromFileEntry(const FileEntry &file) {
   StringRef Name = file.tryGetRealPathName();
   if (Name.empty())
@@ -241,3 +242,4 @@ const char *ClangBuiltinTypeName(int kind) {
     return "";
   }
 }
+} // namespace ccls

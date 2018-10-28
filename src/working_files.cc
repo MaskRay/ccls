@@ -11,6 +11,7 @@
 #include <numeric>
 #include <sstream>
 
+namespace ccls {
 namespace {
 
 // When finding a best match of buffer line and index line, limit the max edit
@@ -456,7 +457,7 @@ WorkingFile *WorkingFiles::OnOpen(const lsTextDocumentItem &open) {
   return files[files.size() - 1].get();
 }
 
-void WorkingFiles::OnChange(const lsTextDocumentDidChangeParams &change) {
+void WorkingFiles::OnChange(const TextDocumentDidChangeParam &change) {
   std::lock_guard<std::mutex> lock(files_mutex);
 
   std::string filename = change.textDocument.uri.GetPath();
@@ -471,7 +472,7 @@ void WorkingFiles::OnChange(const lsTextDocumentDidChangeParams &change) {
   if (change.textDocument.version)
     file->version = *change.textDocument.version;
 
-  for (const lsTextDocumentContentChangeEvent &diff : change.contentChanges) {
+  for (const TextDocumentContentChangeEvent &diff : change.contentChanges) {
     // Per the spec replace everything if the rangeLength and range are not set.
     // See https://github.com/Microsoft/language-server-protocol/issues/9.
     if (!diff.range) {
@@ -562,4 +563,5 @@ std::string_view LexIdentifierAroundPos(lsPosition position,
       break;
 
   return content.substr(start, end - start);
+}
 }

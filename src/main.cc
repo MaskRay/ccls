@@ -4,7 +4,7 @@
 #include "log.hh"
 #include "pipeline.hh"
 #include "platform.h"
-#include "serializer.h"
+#include "serializer.hh"
 #include "serializers/json.h"
 #include "test.h"
 #include "working_files.h"
@@ -28,7 +28,9 @@ using namespace ccls;
 using namespace llvm;
 using namespace llvm::cl;
 
+namespace ccls {
 std::string g_init_options;
+}
 
 namespace {
 OptionCategory C("ccls options");
@@ -92,7 +94,7 @@ int main(int argc, char **argv) {
 
   if (opt_test_index != "!") {
     language_server = false;
-    if (!RunIndexTests(opt_test_index, sys::Process::StandardInIsUserInput()))
+    if (!ccls::RunIndexTests(opt_test_index, sys::Process::StandardInIsUserInput()))
       return 1;
   }
 

@@ -7,15 +7,16 @@
 #include "config.h"
 #include "include_complete.h"
 #include "log.hh"
-#include "lsp.h"
+#include "lsp.hh"
 #include "match.h"
-#include "message_handler.h"
+#include "message_handler.hh"
 #include "pipeline.hh"
 #include "platform.h"
-#include "project.h"
+#include "project.hh"
 #include "query_utils.h"
 #include "serializers/json.h"
 
+#include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 
 #include <llvm/Support/Process.h>
@@ -31,9 +32,7 @@ using namespace llvm;
 #include <unistd.h>
 #endif
 
-void StandaloneInitialize(const std::string &, Project &, WorkingFiles &, VFS &,
-                          IncludeComplete &);
-
+namespace ccls {
 void VFS::Clear() {
   std::lock_guard lock(mutex);
   state.clear();
@@ -55,7 +54,10 @@ bool VFS::Stamp(const std::string &path, int64_t ts, int step) {
     return false;
 }
 
-namespace ccls::pipeline {
+struct MessageHandler;
+void StandaloneInitialize(MessageHandler &, const std::string &root);
+
+namespace pipeline {
 
 std::atomic<int64_t> loaded_ts = ATOMIC_VAR_INIT(0),
                      pending_index_requests = ATOMIC_VAR_INIT(0);
@@ -74,7 +76,7 @@ struct Index_Request {
 MultiQueueWaiter *main_waiter;
 MultiQueueWaiter *indexer_waiter;
 MultiQueueWaiter *stdout_waiter;
-ThreadedQueue<std::unique_ptr<InMessage>> *on_request;
+ThreadedQueue<InMessage> *on_request;
 ThreadedQueue<Index_Request> *index_request;
 ThreadedQueue<IndexUpdate> *on_indexed;
 ThreadedQueue<std::string> *for_stdout;
@@ -345,7 +347,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
 
 void Init() {
   main_waiter = new MultiQueueWaiter;
-  on_request = new ThreadedQueue<std::unique_ptr<InMessage>>(main_waiter);
+  on_request = new ThreadedQueue<InMessage>(main_waiter);
   on_indexed = new ThreadedQueue<IndexUpdate>(main_waiter);
 
   indexer_waiter = new MultiQueueWaiter;
@@ -402,35 +404,53 @@ void Main_OnIndexed(DB *db, WorkingFiles *working_files, IndexUpdate *update) {
 void LaunchStdin() {
   std::thread([]() {
     set_thread_name("stdin");
+    std::string str;
     while (true) {
-      std::unique_ptr<InMessage> message;
-      std::optional<std::string> error =
-          MessageRegistry::instance()->ReadMessageFromStdin(&message);
-
-      // Message parsing can fail if we don't recognize the method.
-      if (error) {
-        // The message may be partially deserialized.
-        // Emit an error ResponseMessage if |id| is available.
-        if (message) {
-          lsRequestId id = message->GetRequestId();
-          if (id.Valid()) {
-            lsResponseError err;
-            err.code = lsErrorCodes::InvalidParams;
-            err.message = std::move(*error);
-            ReplyError(id, err);
-          }
+      constexpr std::string_view kContentLength("Content-Length: ");
+      int len = 0;
+      str.clear();
+      while (true) {
+        int c = getchar();
+        if (c == EOF)
+          return;
+        if (c == '\n') {
+          if (str.empty())
+            break;
+          if (!str.compare(0, kContentLength.size(), kContentLength))
+            len = atoi(str.c_str() + kContentLength.size());
+          str.clear();
+        } else if (c != '\r') {
+          str += c;
         }
-        continue;
       }
 
-      // Cache |method_id| so we can access it after moving |message|.
-      MethodType method_type = message->GetMethodType();
+      str.resize(len);
+      for (int i = 0; i < len; ++i) {
+        int c = getchar();
+        if (c == EOF)
+          return;
+        str[i] = c;
+      }
 
-      on_request->PushBack(std::move(message));
+      auto message = std::make_unique<char[]>(len);
+      std::copy(str.begin(), str.end(), message.get());
+      auto document = std::make_unique<rapidjson::Document>();
+      document->Parse(message.get(), len);
+      assert(!document->HasParseError());
 
-      // If the message was to exit then querydb will take care of the actual
-      // exit. Stop reading from stdin since it might be detached.
-      if (method_type == kMethodType_Exit)
+      JsonReader reader{document.get()};
+      if (!reader.HasMember("jsonrpc") ||
+          std::string(reader["jsonrpc"]->GetString()) != "2.0")
+        return;
+      lsRequestId id;
+      std::string method;
+      ReflectMember(reader, "id", id);
+      ReflectMember(reader, "method", method);
+      auto param = std::make_unique<rapidjson::Value>();
+      on_request->PushBack(
+          {id, std::move(method), std::move(message), std::move(document)});
+
+      if (method == "exit")
         break;
     }
   })
@@ -479,31 +499,20 @@ void MainLoop() {
   DB db;
 
   // Setup shared references.
-  for (MessageHandler *handler : *MessageHandler::message_handlers) {
-    handler->db = &db;
-    handler->project = &project;
-    handler->vfs = &vfs;
-    handler->working_files = &working_files;
-    handler->clang_complete = &clang_complete;
-    handler->include_complete = &include_complete;
-  }
+  MessageHandler handler;
+  handler.db = &db;
+  handler.project = &project;
+  handler.vfs = &vfs;
+  handler.working_files = &working_files;
+  handler.clang_complete = &clang_complete;
+  handler.include_complete = &include_complete;
 
   bool has_indexed = false;
   while (true) {
-    std::vector<std::unique_ptr<InMessage>> messages = on_request->DequeueAll();
+    std::vector<InMessage> messages = on_request->DequeueAll();
     bool did_work = messages.size();
-    for (auto &message : messages) {
-      // TODO: Consider using std::unordered_map to lookup the handler
-      for (MessageHandler *handler : *MessageHandler::message_handlers) {
-        if (handler->GetMethodType() == message->GetMethodType()) {
-          handler->Run(std::move(message));
-          break;
-        }
-      }
-
-      if (message)
-        LOG_S(ERROR) << "No handler for " << message->GetMethodType();
-    }
+    for (InMessage &message : messages)
+      handler.Run(message);
 
     bool indexed = false;
     for (int i = 20; i--;) {
@@ -532,7 +541,14 @@ void Standalone(const std::string &root) {
   WorkingFiles wfiles;
   VFS vfs;
   IncludeComplete complete(&project);
-  StandaloneInitialize(root, project, wfiles, vfs, complete);
+
+  MessageHandler handler;
+  handler.project = &project;
+  handler.working_files = &wfiles;
+  handler.vfs = &vfs;
+  handler.include_complete = &complete;
+
+  StandaloneInitialize(handler, root);
   bool tty = sys::Process::StandardOutIsDisplayed();
 
   if (tty) {
@@ -622,5 +638,5 @@ void Reply(lsRequestId id, const std::function<void(Writer &)> &fn) {
 void ReplyError(lsRequestId id, const std::function<void(Writer &)> &fn) {
   Reply(id, "error", fn);
 }
-
-} // namespace ccls::pipeline
+} // namespace pipeline
+} // namespace ccls

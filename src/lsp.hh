@@ -4,15 +4,15 @@
 #pragma once
 
 #include "config.h"
-#include "serializer.h"
+#include "serializer.hh"
 #include "utils.h"
+
+#include <rapidjson/fwd.h>
 
 #include <iosfwd>
 #include <unordered_map>
 
-using MethodType = const char *;
-extern MethodType kMethodType_Exit;
-
+namespace ccls {
 struct lsRequestId {
   // The client can send the request id as an int or a string. We should output
   // the same format we received.
@@ -27,47 +27,10 @@ void Reflect(Reader &visitor, lsRequestId &value);
 void Reflect(Writer &visitor, lsRequestId &value);
 
 struct InMessage {
-  virtual ~InMessage();
-
-  virtual MethodType GetMethodType() const = 0;
-  virtual lsRequestId GetRequestId() const { return {}; }
-};
-
-struct NotificationMessage : InMessage {};
-
-struct RequestMessage : public InMessage {
   lsRequestId id;
-  lsRequestId GetRequestId() const override { return id; }
-};
-
-#define REGISTER_IN_MESSAGE(type)                                              \
-  static MessageRegistryRegister<type> type##message_handler_instance_;
-
-struct MessageRegistry {
-  static MessageRegistry *instance_;
-  static MessageRegistry *instance();
-
-  using Allocator =
-      std::function<void(Reader &visitor, std::unique_ptr<InMessage> *)>;
-  std::unordered_map<std::string, Allocator> allocators;
-
-  std::optional<std::string>
-  ReadMessageFromStdin(std::unique_ptr<InMessage> *message);
-  std::optional<std::string> Parse(Reader &visitor,
-                                   std::unique_ptr<InMessage> *message);
-};
-
-template <typename T> struct MessageRegistryRegister {
-  MessageRegistryRegister() {
-    T dummy;
-    std::string method_name = dummy.GetMethodType();
-    MessageRegistry::instance()->allocators[method_name] =
-        [](Reader &visitor, std::unique_ptr<InMessage> *message) {
-          *message = std::make_unique<T>();
-          // Reflect may throw and *message will be partially deserialized.
-          Reflect(visitor, static_cast<T &>(**message));
-        };
-  }
+  std::string method;
+  std::unique_ptr<char[]> message;
+  std::unique_ptr<rapidjson::Document> document;
 };
 
 enum class lsErrorCodes {
@@ -214,7 +177,6 @@ struct lsSymbolInformation {
   lsLocation location;
   std::optional<std::string_view> containerName;
 };
-MAKE_REFLECT_STRUCT(lsSymbolInformation, name, kind, location, containerName);
 
 struct lsTextDocumentIdentifier {
   lsDocumentUri uri;
@@ -229,15 +191,6 @@ struct lsVersionedTextDocumentIdentifier {
   lsTextDocumentIdentifier AsTextDocumentIdentifier() const;
 };
 MAKE_REFLECT_STRUCT(lsVersionedTextDocumentIdentifier, uri, version);
-
-struct lsTextDocumentPositionParams {
-  // The text document.
-  lsTextDocumentIdentifier textDocument;
-
-  // The position inside the text document.
-  lsPosition position;
-};
-MAKE_REFLECT_STRUCT(lsTextDocumentPositionParams, textDocument, position);
 
 struct lsTextEdit {
   // The range of the text document to be manipulated. To insert
@@ -289,26 +242,7 @@ struct lsWorkspaceEdit {
 };
 MAKE_REFLECT_STRUCT(lsWorkspaceEdit, documentChanges);
 
-// MarkedString can be used to render human readable text. It is either a
-// markdown string or a code-block that provides a language and a code snippet.
-// The language identifier is sematically equal to the std::optional language
-// identifier in fenced code blocks in GitHub issues. See
-// https://help.github.com/articles/creating-and-highlighting-code-blocks/#syntax-highlighting
-//
-// The pair of a language and a value is an equivalent to markdown:
-// ```${language}
-// ${value}
-// ```
-//
-// Note that markdown strings will be sanitized - that means html will be
-// escaped.
-struct lsMarkedString {
-  std::optional<std::string> language;
-  std::string value;
-};
-void Reflect(Writer &visitor, lsMarkedString &value);
-
-struct lsTextDocumentContentChangeEvent {
+struct TextDocumentContentChangeEvent {
   // The range of the document that changed.
   std::optional<lsRange> range;
   // The length of the range that got replaced.
@@ -316,24 +250,21 @@ struct lsTextDocumentContentChangeEvent {
   // The new text of the range/document.
   std::string text;
 };
-MAKE_REFLECT_STRUCT(lsTextDocumentContentChangeEvent, range, rangeLength, text);
 
-struct lsTextDocumentDidChangeParams {
+struct TextDocumentDidChangeParam {
   lsVersionedTextDocumentIdentifier textDocument;
-  std::vector<lsTextDocumentContentChangeEvent> contentChanges;
+  std::vector<TextDocumentContentChangeEvent> contentChanges;
 };
-MAKE_REFLECT_STRUCT(lsTextDocumentDidChangeParams, textDocument,
-                    contentChanges);
 
-struct lsWorkspaceFolder {
+struct WorkspaceFolder {
   lsDocumentUri uri;
   std::string name;
 };
-MAKE_REFLECT_STRUCT(lsWorkspaceFolder, uri, name);
+MAKE_REFLECT_STRUCT(WorkspaceFolder, uri, name);
 
 // Show a message to the user.
-enum class lsMessageType : int { Error = 1, Warning = 2, Info = 3, Log = 4 };
-MAKE_REFLECT_TYPE_PROXY(lsMessageType)
+enum class MessageType : int { Error = 1, Warning = 2, Info = 3, Log = 4 };
+MAKE_REFLECT_TYPE_PROXY(MessageType)
 
 enum class lsDiagnosticSeverity {
   // Reports an error.
@@ -380,7 +311,7 @@ struct lsPublishDiagnosticsParams {
 MAKE_REFLECT_STRUCT(lsPublishDiagnosticsParams, uri, diagnostics);
 
 struct lsShowMessageParams {
-  lsMessageType type = lsMessageType::Error;
+  MessageType type = MessageType::Error;
   std::string message;
 };
 MAKE_REFLECT_STRUCT(lsShowMessageParams, type, message);
@@ -418,3 +349,4 @@ inline uint16_t operator&(Role lhs, Role rhs) {
 inline Role operator|(Role lhs, Role rhs) {
   return Role(uint16_t(lhs) | uint16_t(rhs));
 }
+} // namespace ccls

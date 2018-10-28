@@ -5,7 +5,7 @@
 #include "fuzzy_match.h"
 #include "include_complete.h"
 #include "log.hh"
-#include "message_handler.h"
+#include "message_handler.hh"
 #include "pipeline.hh"
 #include "working_files.h"
 
@@ -14,62 +14,23 @@
 
 #include <regex>
 
-using namespace ccls;
+namespace ccls {
 using namespace clang;
 using namespace llvm;
 
-namespace {
-MethodType kMethodType = "textDocument/completion";
-
-// How a completion was triggered
-enum class lsCompletionTriggerKind {
-  // Completion was triggered by typing an identifier (24x7 code
-  // complete), manual invocation (e.g Ctrl+Space) or via API.
-  Invoked = 1,
-  // Completion was triggered by a trigger character specified by
-  // the `triggerCharacters` properties of the `CompletionRegistrationOptions`.
-  TriggerCharacter = 2,
-  // Completion was re-triggered as the current completion list is incomplete.
-  TriggerForIncompleteCompletions = 3,
-};
-MAKE_REFLECT_TYPE_PROXY(lsCompletionTriggerKind);
-
-// Contains additional information about the context in which a completion
-// request is triggered.
-struct lsCompletionContext {
-  // How the completion was triggered.
-  lsCompletionTriggerKind triggerKind = lsCompletionTriggerKind::Invoked;
-
-  // The trigger character (a single character) that has trigger code complete.
-  // Is undefined if `triggerKind !== CompletionTriggerKind.TriggerCharacter`
-  std::optional<std::string> triggerCharacter;
-};
-MAKE_REFLECT_STRUCT(lsCompletionContext, triggerKind, triggerCharacter);
-
-struct lsCompletionParams : lsTextDocumentPositionParams {
-  // The completion context. This is only available it the client specifies to
-  // send this using
-  // `ClientCapabilities.textDocument.completion.contextSupport === true`
-  lsCompletionContext context;
-};
-MAKE_REFLECT_STRUCT(lsCompletionParams, textDocument, position, context);
-
-struct In_TextDocumentComplete : public RequestMessage {
-  MethodType GetMethodType() const override { return kMethodType; }
-  lsCompletionParams params;
-};
-MAKE_REFLECT_STRUCT(In_TextDocumentComplete, id, params);
-REGISTER_IN_MESSAGE(In_TextDocumentComplete);
-
 struct lsCompletionList {
-  // This list it not complete. Further typing should result in recomputing
-  // this list.
   bool isIncomplete = false;
-  // The completion items.
   std::vector<lsCompletionItem> items;
 };
+
+MAKE_REFLECT_TYPE_PROXY(lsInsertTextFormat);
+MAKE_REFLECT_TYPE_PROXY(lsCompletionItemKind);
+MAKE_REFLECT_STRUCT(lsCompletionItem, label, kind, detail, documentation,
+                    sortText, filterText, insertText, insertTextFormat,
+                    textEdit, additionalTextEdits);
 MAKE_REFLECT_STRUCT(lsCompletionList, isIncomplete, items);
 
+namespace {
 void DecorateIncludePaths(const std::smatch &match,
                           std::vector<lsCompletionItem> *items) {
   std::string spaces_after_include = " ";
@@ -473,139 +434,129 @@ public:
   CodeCompletionAllocator &getAllocator() override { return *Alloc; }
   CodeCompletionTUInfo &getCodeCompletionTUInfo() override { return CCTUInfo; }
 };
+} // namespace
 
-struct Handler_TextDocumentCompletion
-    : BaseMessageHandler<In_TextDocumentComplete> {
-  MethodType GetMethodType() const override { return kMethodType; }
+void MessageHandler::textDocument_completion(lsCompletionParams &param,
+                                             ReplyOnce &reply) {
+  static CompleteConsumerCache<std::vector<lsCompletionItem>> cache;
+  lsCompletionList result;
+  std::string path = param.textDocument.uri.GetPath();
+  WorkingFile *file = working_files->GetFileByFilename(path);
+  if (!file) {
+    return;
+  }
 
-  void Run(In_TextDocumentComplete *request) override {
-    static CompleteConsumerCache<std::vector<lsCompletionItem>> cache;
+  // It shouldn't be possible, but sometimes vscode will send queries out
+  // of order, ie, we get completion request before buffer content update.
+  std::string buffer_line;
+  if (param.position.line >= 0 &&
+      param.position.line < file->buffer_lines.size())
+    buffer_line = file->buffer_lines[param.position.line];
 
-    const auto &params = request->params;
-    lsCompletionList result;
+  // Check for - and : before completing -> or ::, since vscode does not
+  // support multi-character trigger characters.
+  if (param.context.triggerKind == lsCompletionTriggerKind::TriggerCharacter &&
+      param.context.triggerCharacter) {
+    bool did_fail_check = false;
 
-    std::string path = params.textDocument.uri.GetPath();
-    WorkingFile *file = working_files->GetFileByFilename(path);
-    if (!file) {
-      pipeline::Reply(request->id, result);
+    std::string character = *param.context.triggerCharacter;
+    int preceding_index = param.position.character - 2;
+
+    // If the character is '"', '<' or '/', make sure that the line starts
+    // with '#'.
+    if (character == "\"" || character == "<" || character == "/") {
+      size_t i = 0;
+      while (i < buffer_line.size() && isspace(buffer_line[i]))
+        ++i;
+      if (i >= buffer_line.size() || buffer_line[i] != '#')
+        did_fail_check = true;
+    }
+    // If the character is > or : and we are at the start of the line, do not
+    // show completion results.
+    else if ((character == ">" || character == ":") && preceding_index < 0) {
+      did_fail_check = true;
+    }
+    // If the character is > but - does not preced it, or if it is : and :
+    // does not preced it, do not show completion results.
+    else if (preceding_index >= 0 &&
+             preceding_index < (int)buffer_line.size()) {
+      char preceding = buffer_line[preceding_index];
+      did_fail_check = (preceding != '-' && character == ">") ||
+                       (preceding != ':' && character == ":");
+    }
+
+    if (did_fail_check) {
+      reply(result);
       return;
     }
+  }
 
-    // It shouldn't be possible, but sometimes vscode will send queries out
-    // of order, ie, we get completion request before buffer content update.
-    std::string buffer_line;
-    if (params.position.line >= 0 &&
-        params.position.line < file->buffer_lines.size())
-      buffer_line = file->buffer_lines[params.position.line];
+  std::string completion_text;
+  lsPosition end_pos = param.position;
+  lsPosition begin_pos = file->FindStableCompletionSource(
+      param.position, &completion_text, &end_pos);
 
-    // Check for - and : before completing -> or ::, since vscode does not
-    // support multi-character trigger characters.
-    if (params.context.triggerKind ==
-            lsCompletionTriggerKind::TriggerCharacter &&
-        params.context.triggerCharacter) {
-      bool did_fail_check = false;
+  ParseIncludeLineResult preprocess = ParseIncludeLine(buffer_line);
 
-      std::string character = *params.context.triggerCharacter;
-      int preceding_index = params.position.character - 2;
-
-      // If the character is '"', '<' or '/', make sure that the line starts
-      // with '#'.
-      if (character == "\"" || character == "<" || character == "/") {
-        size_t i = 0;
-        while (i < buffer_line.size() && isspace(buffer_line[i]))
-          ++i;
-        if (i >= buffer_line.size() || buffer_line[i] != '#')
-          did_fail_check = true;
-      }
-      // If the character is > or : and we are at the start of the line, do not
-      // show completion results.
-      else if ((character == ">" || character == ":") && preceding_index < 0) {
-        did_fail_check = true;
-      }
-      // If the character is > but - does not preced it, or if it is : and :
-      // does not preced it, do not show completion results.
-      else if (preceding_index >= 0 &&
-               preceding_index < (int)buffer_line.size()) {
-        char preceding = buffer_line[preceding_index];
-        did_fail_check = (preceding != '-' && character == ">") ||
-                         (preceding != ':' && character == ":");
-      }
-
-      if (did_fail_check) {
-        pipeline::Reply(request->id, result);
-        return;
-      }
+  if (preprocess.ok && preprocess.keyword.compare("include") == 0) {
+    lsCompletionList result;
+    {
+      std::unique_lock<std::mutex> lock(
+          include_complete->completion_items_mutex, std::defer_lock);
+      if (include_complete->is_scanning)
+        lock.lock();
+      std::string quote = preprocess.match[5];
+      for (auto &item : include_complete->completion_items)
+        if (quote.empty() || quote == (item.use_angle_brackets_ ? "<" : "\""))
+          result.items.push_back(item);
     }
+    begin_pos.character = 0;
+    end_pos.character = (int)buffer_line.size();
+    FilterCandidates(result, preprocess.pattern, begin_pos, end_pos,
+                     buffer_line);
+    DecorateIncludePaths(preprocess.match, &result.items);
+    reply(result);
+  } else {
+    std::string path = param.textDocument.uri.GetPath();
+    CompletionManager::OnComplete callback =
+        [completion_text, path, begin_pos, end_pos, reply,
+         buffer_line](CodeCompleteConsumer *OptConsumer) {
+          if (!OptConsumer)
+            return;
+          auto *Consumer = static_cast<CompletionConsumer *>(OptConsumer);
+          lsCompletionList result;
+          result.items = Consumer->ls_items;
 
-    std::string completion_text;
-    lsPosition end_pos = params.position;
-    lsPosition begin_pos = file->FindStableCompletionSource(
-        params.position, &completion_text, &end_pos);
+          FilterCandidates(result, completion_text, begin_pos, end_pos,
+                           buffer_line);
+          reply(result);
+          if (!Consumer->from_cache) {
+            cache.WithLock([&]() {
+              cache.path = path;
+              cache.position = begin_pos;
+              cache.result = Consumer->ls_items;
+            });
+          }
+        };
 
-    ParseIncludeLineResult preprocess = ParseIncludeLine(buffer_line);
-
-    if (preprocess.ok && preprocess.keyword.compare("include") == 0) {
-      lsCompletionList result;
-      {
-        std::unique_lock<std::mutex> lock(
-            include_complete->completion_items_mutex, std::defer_lock);
-        if (include_complete->is_scanning)
-          lock.lock();
-        std::string quote = preprocess.match[5];
-        for (auto &item : include_complete->completion_items)
-          if (quote.empty() || quote == (item.use_angle_brackets_ ? "<" : "\""))
-            result.items.push_back(item);
-      }
-      begin_pos.character = 0;
-      end_pos.character = (int)buffer_line.size();
-      FilterCandidates(result, preprocess.pattern, begin_pos, end_pos,
-                       buffer_line);
-      DecorateIncludePaths(preprocess.match, &result.items);
-      pipeline::Reply(request->id, result);
-    } else {
-      std::string path = params.textDocument.uri.GetPath();
-      CompletionManager::OnComplete callback =
-          [completion_text, path, begin_pos, end_pos,
-           id = request->id, buffer_line](CodeCompleteConsumer *OptConsumer) {
-            if (!OptConsumer)
-              return;
-            auto *Consumer = static_cast<CompletionConsumer *>(OptConsumer);
-            lsCompletionList result;
-            result.items = Consumer->ls_items;
-
-            FilterCandidates(result, completion_text, begin_pos, end_pos,
-                             buffer_line);
-            pipeline::Reply(id, result);
-            if (!Consumer->from_cache) {
-              cache.WithLock([&]() {
-                cache.path = path;
-                cache.position = begin_pos;
-                cache.result = Consumer->ls_items;
-              });
-            }
-          };
-
-      clang::CodeCompleteOptions CCOpts;
-      CCOpts.IncludeBriefComments = true;
-      CCOpts.IncludeCodePatterns = preprocess.ok; // if there is a #
+    clang::CodeCompleteOptions CCOpts;
+    CCOpts.IncludeBriefComments = true;
+    CCOpts.IncludeCodePatterns = preprocess.ok; // if there is a #
 #if LLVM_VERSION_MAJOR >= 7
-      CCOpts.IncludeFixIts = true;
+    CCOpts.IncludeFixIts = true;
 #endif
-      CCOpts.IncludeMacros = true;
-      if (cache.IsCacheValid(path, begin_pos)) {
-        CompletionConsumer Consumer(CCOpts, true);
-        cache.WithLock([&]() { Consumer.ls_items = cache.result; });
-        callback(&Consumer);
-      } else {
-        clang_complete->completion_request_.PushBack(
+    CCOpts.IncludeMacros = true;
+    if (cache.IsCacheValid(path, begin_pos)) {
+      CompletionConsumer Consumer(CCOpts, true);
+      cache.WithLock([&]() { Consumer.ls_items = cache.result; });
+      callback(&Consumer);
+    } else {
+      clang_complete->completion_request_.PushBack(
           std::make_unique<CompletionManager::CompletionRequest>(
-            request->id, params.textDocument, begin_pos,
-            std::make_unique<CompletionConsumer>(CCOpts, false), CCOpts,
-            callback));
-      }
+              reply.id, param.textDocument, begin_pos,
+              std::make_unique<CompletionConsumer>(CCOpts, false), CCOpts,
+              callback));
     }
   }
-};
-REGISTER_MESSAGE_HANDLER(Handler_TextDocumentCompletion);
-
-} // namespace
+}
+} // namespace ccls

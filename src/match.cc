@@ -3,10 +3,10 @@
 
 #include "match.h"
 
-#include "lsp.h"
+#include "lsp.hh"
 #include "pipeline.hh"
-using namespace ccls;
 
+namespace ccls {
 std::optional<Matcher> Matcher::Create(const std::string &search) {
   try {
     Matcher m;
@@ -19,7 +19,7 @@ std::optional<Matcher> Matcher::Create(const std::string &search) {
     return m;
   } catch (const std::exception &e) {
     lsShowMessageParams params;
-    params.type = lsMessageType::Error;
+    params.type = MessageType::Error;
     params.message =
         "failed to parse EMCAScript regex " + search + " : " + e.what();
     pipeline::Notify(window_showMessage, params);
@@ -62,3 +62,4 @@ bool GroupMatch::IsMatch(const std::string &value,
 
   return true;
 }
+} // namespace ccls
