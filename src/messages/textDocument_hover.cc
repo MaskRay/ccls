@@ -89,8 +89,8 @@ void MessageHandler::textDocument_hover(TextDocumentPositionParam &param,
   Hover result;
 
   for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, param.position)) {
-    std::optional<lsRange> ls_range = GetLsRange(
-        wfiles->GetFileByFilename(file->def->path), sym.range);
+    std::optional<lsRange> ls_range =
+        GetLsRange(wfiles->GetFileByFilename(file->def->path), sym.range);
     if (!ls_range)
       continue;
 

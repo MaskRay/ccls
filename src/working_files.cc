@@ -526,12 +526,13 @@ WorkingFiles::AsSnapshot(const std::vector<std::string> &filter_paths) {
 // text documents.
 // We use a UTF-8 iterator to approximate UTF-16 in the specification (weird).
 // This is good enough and fails only for UTF-16 surrogate pairs.
-int GetOffsetForPosition(lsPosition position, std::string_view content) {
+int GetOffsetForPosition(lsPosition pos, std::string_view content) {
   size_t i = 0;
-  for (; position.line > 0 && i < content.size(); i++)
+  for (; pos.line > 0 && i < content.size(); i++)
     if (content[i] == '\n')
-      position.line--;
-  for (; position.character > 0 && i < content.size(); position.character--)
+      pos.line--;
+  for (; pos.character > 0 && i < content.size() && content[i] != '\n';
+       pos.character--)
     if (uint8_t(content[i++]) >= 128) {
       // Skip 0b10xxxxxx
       while (i < content.size() && uint8_t(content[i]) >= 128 &&
