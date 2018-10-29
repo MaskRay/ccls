@@ -4,7 +4,7 @@
 #pragma once
 
 #include "lsp.hh"
-#include "query.h"
+#include "query.hh"
 
 #include <atomic>
 #include <mutex>

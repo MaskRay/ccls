@@ -15,8 +15,8 @@ limitations under the License.
 
 #include "message_handler.hh"
 #include "pipeline.hh"
-#include "query_utils.h"
-#include "serializers/json.h"
+#include "query_utils.hh"
+#include "serializers/json.hh"
 
 #include <llvm/Support/FormatVariadic.h>
 
@@ -34,13 +34,13 @@ MAKE_REFLECT_STRUCT(CodeAction, title, kind, edit);
 void MessageHandler::textDocument_codeAction(CodeActionParam &param,
                                              ReplyOnce &reply) {
   WorkingFile *wfile =
-      working_files->GetFileByFilename(param.textDocument.uri.GetPath());
+      wfiles->GetFileByFilename(param.textDocument.uri.GetPath());
   if (!wfile) {
     return;
   }
   std::vector<CodeAction> result;
   std::vector<lsDiagnostic> diagnostics;
-  working_files->DoAction([&]() { diagnostics = wfile->diagnostics_; });
+  wfiles->DoAction([&]() { diagnostics = wfile->diagnostics_; });
   for (lsDiagnostic &diag : diagnostics)
     if (diag.fixits_.size()) {
       CodeAction &cmd = result.emplace_back();
@@ -95,7 +95,7 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
 
   QueryFile *file = FindFile(reply, path);
   WorkingFile *wfile =
-      file ? working_files->GetFileByFilename(file->def->path) : nullptr;
+      file ? wfiles->GetFileByFilename(file->def->path) : nullptr;
   if (!wfile) {
     return;
   }
@@ -188,7 +188,7 @@ void MessageHandler::workspace_executeCommand(Reader &reader,
     std::vector<lsLocation> result;
     auto Map = [&](auto &&uses) {
       for (auto &use : uses)
-        if (auto loc = GetLsLocation(db, working_files, use))
+        if (auto loc = GetLsLocation(db, wfiles, use))
           result.push_back(std::move(*loc));
     };
     switch (cmd.kind) {

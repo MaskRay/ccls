@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "query.h"
-#include "working_files.h"
+#include "query.hh"
+#include "working_files.hh"
 
 #include <optional>
 

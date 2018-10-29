@@ -4,11 +4,11 @@
 #pragma once
 
 #include "clang_tu.hh"
-#include "lru_cache.h"
+#include "lru_cache.hh"
 #include "lsp.hh"
 #include "project.hh"
-#include "threaded_queue.h"
-#include "working_files.h"
+#include "threaded_queue.hh"
+#include "working_files.hh"
 
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/FrontendActions.h>
@@ -96,7 +96,7 @@ struct CompletionManager {
     int64_t debounce;
   };
 
-  CompletionManager(Project *project, WorkingFiles *working_files,
+  CompletionManager(Project *project, WorkingFiles *wfiles,
                     OnDiagnostic on_diagnostic, OnDropped on_dropped);
 
   // Request a diagnostics update.
@@ -129,7 +129,7 @@ struct CompletionManager {
 
   // Global state.
   Project *project_;
-  WorkingFiles *working_files_;
+  WorkingFiles *wfiles_;
   OnDiagnostic on_diagnostic_;
   OnDropped on_dropped_;
 

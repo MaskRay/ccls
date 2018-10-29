@@ -1,7 +1,7 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "fuzzy_match.h"
+#include "fuzzy_match.hh"
 
 #include <algorithm>
 #include <ctype.h>

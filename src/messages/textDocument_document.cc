@@ -3,7 +3,7 @@
 
 #include "message_handler.hh"
 #include "pipeline.hh"
-#include "query_utils.h"
+#include "query_utils.hh"
 
 #include <algorithm>
 
@@ -36,7 +36,7 @@ void MessageHandler::textDocument_documentHighlight(
   if (!file)
     return;
 
-  WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   std::vector<DocumentHighlight> result;
 
   std::vector<SymbolRef> syms =
@@ -50,7 +50,7 @@ void MessageHandler::textDocument_documentHighlight(
           return usr == sym1.usr && kind == sym1.kind;
         }))
       continue;
-    if (auto loc = GetLsLocation(db, working_files, sym, file_id)) {
+    if (auto loc = GetLsLocation(db, wfiles, sym, file_id)) {
       DocumentHighlight highlight;
       highlight.range = loc->range;
       if (sym.role & Role::Write)
@@ -136,7 +136,7 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath(), &file_id);
   if (!file)
     return;
-  WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   if (!wfile)
     return;
 
@@ -146,7 +146,7 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
       if (refcnt > 0 && (param.all || sym.extent.Valid()) &&
           param.startLine <= sym.range.start.line &&
           sym.range.start.line <= param.endLine)
-        if (auto loc = GetLsLocation(db, working_files, sym, file_id))
+        if (auto loc = GetLsLocation(db, wfiles, sym, file_id))
           result.push_back(loc->range);
     std::sort(result.begin(), result.end());
     reply(result);
@@ -238,7 +238,7 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
              Ignore(db->GetType(sym).AnyDef())) ||
             (sym.kind == SymbolKind::Var && Ignore(db->GetVar(sym).AnyDef())))
           continue;
-        if (auto loc = GetLsLocation(db, working_files, sym, file_id)) {
+        if (auto loc = GetLsLocation(db, wfiles, sym, file_id)) {
           info->location = *loc;
           result.push_back(*info);
         }

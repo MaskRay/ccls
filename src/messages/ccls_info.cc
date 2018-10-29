@@ -16,7 +16,7 @@ limitations under the License.
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "project.hh"
-#include "query_utils.h"
+#include "query_utils.hh"
 
 namespace ccls {
 MAKE_REFLECT_STRUCT(QueryFile::Def, path, args, language, skipped_ranges,

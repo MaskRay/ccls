@@ -4,10 +4,10 @@
 #pragma once
 
 #include "lsp.hh"
-#include "maybe.h"
-#include "position.h"
+#include "maybe.hh"
+#include "position.hh"
 #include "serializer.hh"
-#include "utils.h"
+#include "utils.hh"
 
 #include <clang/Basic/FileManager.h>
 #include <clang/Basic/Specifiers.h>

@@ -3,14 +3,14 @@
 
 #include "clang_complete.hh"
 #include "filesystem.hh"
-#include "include_complete.h"
+#include "include_complete.hh"
 #include "log.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
-#include "platform.h"
+#include "platform.hh"
 #include "project.hh"
-#include "serializers/json.h"
-#include "working_files.h"
+#include "serializers/json.hh"
+#include "working_files.hh"
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
@@ -349,7 +349,7 @@ void *Indexer(void *arg_) {
   std::string name = "indexer" + std::to_string(idx);
   set_thread_name(name.c_str());
   pipeline::Indexer_Main(h->clang_complete, h->vfs, h->project,
-                         h->working_files);
+                         h->wfiles);
   return nullptr;
 }
 } // namespace
@@ -445,7 +445,7 @@ void Initialize(MessageHandler *m, lsInitializeParams &param, ReplyOnce &reply) 
   m->include_complete->Rescan();
 
   LOG_S(INFO) << "dispatch initial index requests";
-  m->project->Index(m->working_files, reply.id);
+  m->project->Index(m->wfiles, reply.id);
 }
 
 void MessageHandler::initialize(Reader &reader, ReplyOnce &reply) {

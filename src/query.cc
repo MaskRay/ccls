@@ -1,11 +1,11 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "query.h"
+#include "query.hh"
 
-#include "indexer.h"
+#include "indexer.hh"
 #include "serializer.hh"
-#include "serializers/json.h"
+#include "serializers/json.hh"
 
 #include <cassert>
 #include <cstdint>
