@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "match.h"
+#include "match.hh"
 
 #include "lsp.hh"
 #include "pipeline.hh"

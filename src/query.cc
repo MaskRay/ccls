@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "query.h"
+#include "query.hh"
 
-#include "indexer.h"
+#include "indexer.hh"
 #include "serializer.hh"
-#include "serializers/json.h"
+#include "serializers/json.hh"
 
 #include <cassert>
 #include <cstdint>

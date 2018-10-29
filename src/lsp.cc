@@ -16,7 +16,7 @@ limitations under the License.
 #include "lsp.hh"
 
 #include "log.hh"
-#include "serializers/json.h"
+#include "serializers/json.hh"
 
 #include <stdio.h>
 

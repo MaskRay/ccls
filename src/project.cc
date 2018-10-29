@@ -17,12 +17,12 @@ limitations under the License.
 
 #include "filesystem.hh"
 #include "log.hh"
-#include "match.h"
+#include "match.hh"
 #include "pipeline.hh"
-#include "platform.h"
-#include "serializers/json.h"
-#include "utils.h"
-#include "working_files.h"
+#include "platform.hh"
+#include "serializers/json.hh"
+#include "utils.hh"
+#include "working_files.hh"
 
 #include <clang/Driver/Compilation.h>
 #include <clang/Driver/Driver.h>

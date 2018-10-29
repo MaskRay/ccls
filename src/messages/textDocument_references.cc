@@ -14,7 +14,7 @@ limitations under the License.
 ==============================================================================*/
 
 #include "message_handler.hh"
-#include "query_utils.h"
+#include "query_utils.hh"
 
 #include <unordered_set>
 
@@ -43,7 +43,7 @@ void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
   if (!file)
     return;
   std::vector<lsLocation> result;
-  WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   if (!file)
     return;
 
@@ -64,7 +64,7 @@ void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
         if (Role(use.role & param.context.role) == param.context.role &&
             !(use.role & param.context.excludeRole) &&
             seen_uses.insert(use).second)
-          if (auto loc = GetLsLocation(db, working_files, use)) {
+          if (auto loc = GetLsLocation(db, wfiles, use)) {
             result.push_back(*loc);
           }
       };

@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "include_complete.h"
+#include "include_complete.hh"
 
 #include "filesystem.hh"
-#include "match.h"
-#include "platform.h"
+#include "match.hh"
+#include "platform.hh"
 #include "project.hh"
 
 #include <llvm/ADT/Twine.h>

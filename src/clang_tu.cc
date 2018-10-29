@@ -15,8 +15,8 @@ limitations under the License.
 
 #include "clang_tu.hh"
 
-#include "config.h"
-#include "platform.h"
+#include "config.hh"
+#include "platform.hh"
 
 #include <clang/AST/Type.h>
 #include <clang/Lex/Lexer.h>

@@ -18,8 +18,8 @@ limitations under the License.
 #include "clang_tu.hh"
 #include "filesystem.hh"
 #include "log.hh"
-#include "match.h"
-#include "platform.h"
+#include "match.hh"
+#include "platform.hh"
 
 #include <clang/Lex/PreprocessorOptions.h>
 #include <clang/Sema/CodeCompleteConsumer.h>
@@ -417,7 +417,7 @@ void *CompletionMain(void *manager_) {
 
     DiagnosticConsumer DC;
     WorkingFiles::Snapshot snapshot =
-      manager->working_files_->AsSnapshot({StripFileType(path)});
+      manager->wfiles_->AsSnapshot({StripFileType(path)});
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
     auto Clang = BuildCompilerInstance(*session, std::move(CI), FS, DC,
                                        preamble.get(), snapshot, Bufs);
@@ -491,7 +491,7 @@ void *DiagnosticMain(void *manager_) {
     CI->getLangOpts()->SpellChecking = g_config->diagnostics.spellChecking;
     StoreDiags DC(path);
     WorkingFiles::Snapshot snapshot =
-        manager->working_files_->AsSnapshot({StripFileType(path)});
+        manager->wfiles_->AsSnapshot({StripFileType(path)});
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
     auto Clang = BuildCompilerInstance(*session, std::move(CI), FS, DC,
                                        preamble.get(), snapshot, Bufs);
@@ -575,10 +575,10 @@ std::shared_ptr<PreambleData> CompletionSession::GetPreamble() {
 }
 
 CompletionManager::CompletionManager(Project *project,
-                                     WorkingFiles *working_files,
+                                     WorkingFiles *wfiles,
                                      OnDiagnostic on_diagnostic,
                                      OnDropped on_dropped)
-    : project_(project), working_files_(working_files),
+    : project_(project), wfiles_(wfiles),
       on_diagnostic_(on_diagnostic), on_dropped_(on_dropped),
       preloads(kMaxPreloadedSessions),
       sessions(kMaxCompletionSessions),
@@ -637,7 +637,7 @@ bool CompletionManager::EnsureCompletionOrCreatePreloadSession(
 
   // No CompletionSession, create new one.
   auto session = std::make_shared<ccls::CompletionSession>(
-      project_->FindEntry(path, false), working_files_, PCH);
+      project_->FindEntry(path, false), wfiles_, PCH);
   if (session->file.filename != path) {
     session->inferred = true;
     session->file.filename = path;
@@ -666,7 +666,7 @@ CompletionManager::TryGetSession(const std::string &path, bool preload,
   session = sessions.TryGet(path);
   if (!session && !preload) {
     session = std::make_shared<ccls::CompletionSession>(
-        project_->FindEntry(path, false), working_files_, PCH);
+        project_->FindEntry(path, false), wfiles_, PCH);
     sessions.Insert(path, session);
     LOG_S(INFO) << "create session for " << path;
     if (is_open)
