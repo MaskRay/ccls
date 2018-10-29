@@ -14,7 +14,7 @@ limitations under the License.
 ==============================================================================*/
 
 #include "message_handler.hh"
-#include "query_utils.h"
+#include "query_utils.hh"
 
 namespace ccls {
 namespace {
@@ -46,7 +46,7 @@ void MessageHandler::ccls_navigate(Reader &reader,
   if (!file)
     return;
 
-  WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   lsPosition ls_pos = param.position;
   if (wfile && wfile->index_lines.size())
     if (auto line = wfile->GetIndexPosFromBufferPos(ls_pos.line,

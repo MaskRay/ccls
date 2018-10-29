@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "working_files.h"
+#include "working_files.hh"
 
 #include "log.hh"
-#include "position.h"
+#include "position.hh"
 
 #include <algorithm>
 #include <climits>

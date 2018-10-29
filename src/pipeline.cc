@@ -16,17 +16,17 @@ limitations under the License.
 #include "pipeline.hh"
 
 #include "clang_complete.hh"
-#include "config.h"
-#include "include_complete.h"
+#include "config.hh"
+#include "include_complete.hh"
 #include "log.hh"
 #include "lsp.hh"
-#include "match.h"
+#include "match.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
-#include "platform.h"
+#include "platform.hh"
 #include "project.hh"
-#include "query_utils.h"
-#include "serializers/json.h"
+#include "query_utils.hh"
+#include "serializers/json.hh"
 
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
@@ -377,12 +377,12 @@ void Indexer_Main(CompletionManager *completion, VFS *vfs, Project *project,
       indexer_waiter->Wait(index_request);
 }
 
-void Main_OnIndexed(DB *db, WorkingFiles *working_files, IndexUpdate *update) {
+void Main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
   if (update->refresh) {
     LOG_S(INFO)
         << "loaded project. Refresh semantic highlight for all working file.";
-    std::lock_guard<std::mutex> lock(working_files->files_mutex);
-    for (auto &f : working_files->files) {
+    std::lock_guard<std::mutex> lock(wfiles->files_mutex);
+    for (auto &f : wfiles->files) {
       std::string filename = LowerPathIfInsensitive(f->filename);
       if (db->name2file_id.find(filename) == db->name2file_id.end())
         continue;
@@ -401,7 +401,7 @@ void Main_OnIndexed(DB *db, WorkingFiles *working_files, IndexUpdate *update) {
   if (update->files_def_update) {
     auto &def_u = *update->files_def_update;
     if (WorkingFile *wfile =
-            working_files->GetFileByFilename(def_u.first.path)) {
+            wfiles->GetFileByFilename(def_u.first.path)) {
       // FIXME With index.onChange: true, use buffer_content only for
       // request.path
       wfile->SetIndexContent(g_config->index.onChange ? wfile->buffer_content
@@ -487,11 +487,11 @@ void LaunchStdout() {
 
 void MainLoop() {
   Project project;
-  WorkingFiles working_files;
+  WorkingFiles wfiles;
   VFS vfs;
 
   CompletionManager clang_complete(
-      &project, &working_files,
+      &project, &wfiles,
       [&](std::string path, std::vector<lsDiagnostic> diagnostics) {
         lsPublishDiagnosticsParams params;
         params.uri = lsDocumentUri::FromPath(path);
@@ -515,7 +515,7 @@ void MainLoop() {
   handler.db = &db;
   handler.project = &project;
   handler.vfs = &vfs;
-  handler.working_files = &working_files;
+  handler.wfiles = &wfiles;
   handler.clang_complete = &clang_complete;
   handler.include_complete = &include_complete;
 
@@ -533,7 +533,7 @@ void MainLoop() {
         break;
       did_work = true;
       indexed = true;
-      Main_OnIndexed(&db, &working_files, &*update);
+      Main_OnIndexed(&db, &wfiles, &*update);
     }
 
     if (did_work)
@@ -556,7 +556,7 @@ void Standalone(const std::string &root) {
 
   MessageHandler handler;
   handler.project = &project;
-  handler.working_files = &wfiles;
+  handler.wfiles = &wfiles;
   handler.vfs = &vfs;
   handler.include_complete = &complete;
 

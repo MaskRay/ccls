@@ -16,8 +16,8 @@ limitations under the License.
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "project.hh"
-#include "query_utils.h"
-#include "working_files.h"
+#include "query_utils.hh"
+#include "working_files.hh"
 
 namespace ccls {
 namespace {
@@ -34,7 +34,7 @@ void MessageHandler::textDocument_foldingRange(TextDocumentParam &param,
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
   if (!file)
     return;
-  WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   if (!wfile)
     return;
   std::vector<FoldingRange> result;

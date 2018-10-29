@@ -14,12 +14,12 @@ limitations under the License.
 ==============================================================================*/
 
 #include "clang_complete.hh"
-#include "fuzzy_match.h"
-#include "include_complete.h"
+#include "fuzzy_match.hh"
+#include "include_complete.hh"
 #include "log.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
-#include "working_files.h"
+#include "working_files.hh"
 
 #include <clang/Sema/CodeCompleteConsumer.h>
 #include <clang/Sema/Sema.h>
@@ -453,7 +453,7 @@ void MessageHandler::textDocument_completion(lsCompletionParams &param,
   static CompleteConsumerCache<std::vector<lsCompletionItem>> cache;
   lsCompletionList result;
   std::string path = param.textDocument.uri.GetPath();
-  WorkingFile *file = working_files->GetFileByFilename(path);
+  WorkingFile *file = wfiles->GetFileByFilename(path);
   if (!file) {
     return;
   }

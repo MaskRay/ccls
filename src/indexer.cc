@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "indexer.h"
+#include "indexer.hh"
 
 #include "clang_complete.hh"
 #include "clang_tu.hh"
 #include "log.hh"
-#include "match.h"
+#include "match.hh"
 #include "pipeline.hh"
-#include "platform.h"
+#include "platform.hh"
 #include "serializer.hh"
 
 #include <clang/AST/AST.h>

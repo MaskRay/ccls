@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "utils.h"
+#include "utils.hh"
 
 #include "log.hh"
-#include "platform.h"
+#include "platform.hh"
 
 #include <siphash.h>
 

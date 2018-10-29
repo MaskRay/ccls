@@ -15,7 +15,7 @@ limitations under the License.
 
 #pragma once
 
-#include "maybe.h"
+#include "maybe.hh"
 
 #include <llvm/Support/Compiler.h>
 

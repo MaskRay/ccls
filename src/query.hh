@@ -15,7 +15,7 @@ limitations under the License.
 
 #pragma once
 
-#include "indexer.h"
+#include "indexer.hh"
 #include "serializer.hh"
 
 #include <llvm/ADT/DenseMap.h>

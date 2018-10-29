@@ -15,9 +15,9 @@ limitations under the License.
 
 #pragma once
 
-#include "config.h"
+#include "config.hh"
 #include "serializer.hh"
-#include "utils.h"
+#include "utils.hh"
 
 #include <rapidjson/fwd.h>
 
