@@ -204,8 +204,7 @@ void MessageHandler::ccls_call(Reader &reader, ReplyOnce &reply) {
     QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
     if (!file)
       return;
-    WorkingFile *working_file =
-        wfiles->GetFileByFilename(file->def->path);
+    WorkingFile *working_file = wfiles->GetFileByFilename(file->def->path);
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, param.position)) {
       if (sym.kind == SymbolKind::Func) {

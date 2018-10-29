@@ -18,13 +18,12 @@ limitations under the License.
 
 namespace ccls {
 namespace {
-lsWorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *wfiles,
-                                   SymbolRef sym, const std::string &new_text) {
+lsWorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *wfiles, SymbolRef sym,
+                                   const std::string &new_text) {
   std::unordered_map<int, lsTextDocumentEdit> path_to_edit;
 
   EachOccurrence(db, sym, true, [&](Use use) {
-    std::optional<lsLocation> ls_location =
-        GetLsLocation(db, wfiles, use);
+    std::optional<lsLocation> ls_location = GetLsLocation(db, wfiles, use);
     if (!ls_location)
       return;
 

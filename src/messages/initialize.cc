@@ -360,8 +360,7 @@ void *Indexer(void *arg_) {
   delete arg;
   std::string name = "indexer" + std::to_string(idx);
   set_thread_name(name.c_str());
-  pipeline::Indexer_Main(h->clang_complete, h->vfs, h->project,
-                         h->wfiles);
+  pipeline::Indexer_Main(h->clang_complete, h->vfs, h->project, h->wfiles);
   return nullptr;
 }
 } // namespace

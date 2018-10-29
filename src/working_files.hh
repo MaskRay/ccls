@@ -132,7 +132,7 @@ struct WorkingFiles {
   std::mutex files_mutex; // Protects |files|.
 };
 
-int GetOffsetForPosition(lsPosition position, std::string_view content);
+int GetOffsetForPosition(lsPosition pos, std::string_view content);
 
 std::string_view LexIdentifierAroundPos(lsPosition position,
                                         std::string_view content);
