@@ -388,8 +388,7 @@ void Main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
   // Update indexed content, skipped ranges, and semantic highlighting.
   if (update->files_def_update) {
     auto &def_u = *update->files_def_update;
-    if (WorkingFile *wfile =
-            wfiles->GetFileByFilename(def_u.first.path)) {
+    if (WorkingFile *wfile = wfiles->GetFileByFilename(def_u.first.path)) {
       // FIXME With index.onChange: true, use buffer_content only for
       // request.path
       wfile->SetIndexContent(g_config->index.onChange ? wfile->buffer_content

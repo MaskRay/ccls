@@ -406,7 +406,7 @@ void *CompletionMain(void *manager_) {
 
     DiagnosticConsumer DC;
     WorkingFiles::Snapshot snapshot =
-      manager->wfiles_->AsSnapshot({StripFileType(path)});
+        manager->wfiles_->AsSnapshot({StripFileType(path)});
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
     auto Clang = BuildCompilerInstance(*session, std::move(CI), FS, DC,
                                        preamble.get(), snapshot, Bufs);
@@ -563,13 +563,11 @@ std::shared_ptr<PreambleData> CompletionSession::GetPreamble() {
   return preamble;
 }
 
-CompletionManager::CompletionManager(Project *project,
-                                     WorkingFiles *wfiles,
+CompletionManager::CompletionManager(Project *project, WorkingFiles *wfiles,
                                      OnDiagnostic on_diagnostic,
                                      OnDropped on_dropped)
-    : project_(project), wfiles_(wfiles),
-      on_diagnostic_(on_diagnostic), on_dropped_(on_dropped),
-      preloads(kMaxPreloadedSessions),
+    : project_(project), wfiles_(wfiles), on_diagnostic_(on_diagnostic),
+      on_dropped_(on_dropped), preloads(kMaxPreloadedSessions),
       sessions(kMaxCompletionSessions),
       PCH(std::make_shared<PCHContainerOperations>()) {
   SpawnThread(ccls::CompletionMain, this);

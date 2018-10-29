@@ -133,13 +133,13 @@ bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
         if (def1 && def1->spell) {
           // The declaration of target type.
           if (std::optional<lsLocation> loc =
-            GetLsLocation(m->db, m->wfiles, *def1->spell))
+                  GetLsLocation(m->db, m->wfiles, *def1->spell))
             entry1.location = *loc;
         } else if (def->spell) {
           // Builtin types have no declaration but the typedef declaration
           // itself is useful.
           if (std::optional<lsLocation> loc =
-            GetLsLocation(m->db, m->wfiles, *def->spell))
+                  GetLsLocation(m->db, m->wfiles, *def->spell))
             entry1.location = *loc;
         }
         if (def1 && qualified)
@@ -160,8 +160,7 @@ bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
                 Out_cclsMember entry1;
                 entry1.fieldName = def1->Name(false);
                 if (def1->spell) {
-                  if (auto loc =
-                          GetLsLocation(m->db, m->wfiles, *def1->spell))
+                  if (auto loc = GetLsLocation(m->db, m->wfiles, *def1->spell))
                     entry1.location = *loc;
                 } else if (func1.declarations.size()) {
                   if (auto loc = GetLsLocation(m->db, m->wfiles,
@@ -181,12 +180,11 @@ bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
                 Out_cclsMember entry1;
                 entry1.fieldName = def1->Name(false);
                 if (def1->spell) {
-                  if (auto loc =
-                    GetLsLocation(m->db, m->wfiles, *def1->spell))
+                  if (auto loc = GetLsLocation(m->db, m->wfiles, *def1->spell))
                     entry1.location = *loc;
                 } else if (type1.declarations.size()) {
                   if (auto loc = GetLsLocation(m->db, m->wfiles,
-                      type1.declarations[0]))
+                                               type1.declarations[0]))
                     entry1.location = *loc;
                 }
                 entry->children.push_back(std::move(entry1));

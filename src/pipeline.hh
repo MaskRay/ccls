@@ -60,9 +60,6 @@ template <typename T> void Notify(const char *method, T &result) {
 }
 
 void Reply(lsRequestId id, const std::function<void(Writer &)> &fn);
-template <typename T> void Reply(lsRequestId id, T &result) {
-  Reply(id, [&](Writer &w) { Reflect(w, result); });
-}
 
 void ReplyError(lsRequestId id, const std::function<void(Writer &)> &fn);
 template <typename T> void ReplyError(lsRequestId id, T &result) {
