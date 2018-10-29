@@ -15,11 +15,11 @@ limitations under the License.
 
 #include "log.hh"
 #include "pipeline.hh"
-#include "platform.h"
+#include "platform.hh"
 #include "serializer.hh"
-#include "serializers/json.h"
-#include "test.h"
-#include "working_files.h"
+#include "serializers/json.hh"
+#include "test.hh"
+#include "working_files.hh"
 
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/CrashRecoveryContext.h>

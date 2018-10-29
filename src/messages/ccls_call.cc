@@ -16,7 +16,7 @@ limitations under the License.
 #include "hierarchy.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
-#include "query_utils.h"
+#include "query_utils.hh"
 
 #include <unordered_set>
 
@@ -85,7 +85,7 @@ bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
       Out_cclsCall entry1;
       entry1.id = std::to_string(sym.usr);
       entry1.usr = sym.usr;
-      if (auto loc = GetLsLocation(m->db, m->working_files,
+      if (auto loc = GetLsLocation(m->db, m->wfiles,
                                    Use{{sym.range, sym.role}, file_id}))
         entry1.location = *loc;
       entry1.callType = call_type1;
@@ -175,7 +175,7 @@ std::optional<Out_cclsCall> BuildInitial(MessageHandler *m, Usr root_usr,
   entry.usr = root_usr;
   entry.callType = CallType::Direct;
   if (def->spell) {
-    if (auto loc = GetLsLocation(m->db, m->working_files, *def->spell))
+    if (auto loc = GetLsLocation(m->db, m->wfiles, *def->spell))
       entry.location = *loc;
   }
   Expand(m, &entry, callee, call_type, qualified, levels);
@@ -205,7 +205,7 @@ void MessageHandler::ccls_call(Reader &reader, ReplyOnce &reply) {
     if (!file)
       return;
     WorkingFile *working_file =
-        working_files->GetFileByFilename(file->def->path);
+        wfiles->GetFileByFilename(file->def->path);
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, param.position)) {
       if (sym.kind == SymbolKind::Func) {

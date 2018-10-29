@@ -16,7 +16,7 @@ limitations under the License.
 #pragma once
 
 #include "lsp.hh"
-#include "utils.h"
+#include "utils.hh"
 
 #include <mutex>
 #include <optional>

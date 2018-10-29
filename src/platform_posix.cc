@@ -14,9 +14,9 @@ limitations under the License.
 ==============================================================================*/
 
 #if defined(__unix__) || defined(__APPLE__)
-#include "platform.h"
+#include "platform.hh"
 
-#include "utils.h"
+#include "utils.hh"
 
 #include <assert.h>
 #include <limits.h>

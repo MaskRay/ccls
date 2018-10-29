@@ -15,8 +15,8 @@ limitations under the License.
 
 #pragma once
 
-#include "maybe.h"
-#include "utils.h"
+#include "maybe.hh"
+#include "utils.hh"
 
 #include <stdint.h>
 #include <string>

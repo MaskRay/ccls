@@ -15,7 +15,7 @@ limitations under the License.
 
 #pragma once
 
-#include "utils.h"
+#include "utils.hh"
 
 #include <atomic>
 #include <condition_variable>

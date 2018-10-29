@@ -15,7 +15,7 @@ limitations under the License.
 
 #include "message_handler.hh"
 #include "pipeline.hh"
-#include "query_utils.h"
+#include "query_utils.hh"
 
 namespace ccls {
 namespace {
@@ -34,7 +34,7 @@ void MessageHandler::ccls_vars(Reader &reader, ReplyOnce &reply) {
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
   if (!file)
     return;
-  WorkingFile *working_file = working_files->GetFileByFilename(file->def->path);
+  WorkingFile *working_file = wfiles->GetFileByFilename(file->def->path);
 
   std::vector<lsLocation> result;
   for (SymbolRef sym :
@@ -52,7 +52,7 @@ void MessageHandler::ccls_vars(Reader &reader, ReplyOnce &reply) {
     }
     case SymbolKind::Type:
       result = GetLsLocations(
-          db, working_files,
+          db, wfiles,
           GetVarDeclarations(db, db->Type(usr).instances, param.kind));
       break;
     }

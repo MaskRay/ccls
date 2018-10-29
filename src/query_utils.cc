@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "query_utils.h"
+#include "query_utils.hh"
 
 #include "pipeline.hh"
 

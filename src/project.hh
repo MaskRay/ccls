@@ -15,7 +15,7 @@ limitations under the License.
 
 #pragma once
 
-#include "config.h"
+#include "config.hh"
 #include "lsp.hh"
 
 #include <functional>

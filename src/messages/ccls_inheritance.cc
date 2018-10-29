@@ -16,7 +16,7 @@ limitations under the License.
 #include "hierarchy.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
-#include "query_utils.h"
+#include "query_utils.hh"
 
 #include <unordered_set>
 
@@ -64,10 +64,10 @@ bool ExpandHelper(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
   if (def) {
     entry->name = def->Name(qualified);
     if (def->spell) {
-      if (auto loc = GetLsLocation(m->db, m->working_files, *def->spell))
+      if (auto loc = GetLsLocation(m->db, m->wfiles, *def->spell))
         entry->location = *loc;
     } else if (entity.declarations.size()) {
-      if (auto loc = GetLsLocation(m->db, m->working_files, entity.declarations[0]))
+      if (auto loc = GetLsLocation(m->db, m->wfiles, entity.declarations[0]))
         entry->location = *loc;
     }
   } else if (!derived) {
@@ -150,7 +150,7 @@ void Inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
     QueryFile *file = m->FindFile(reply, param.textDocument.uri.GetPath());
     if (!file)
       return;
-    WorkingFile *wfile = m->working_files->GetFileByFilename(file->def->path);
+    WorkingFile *wfile = m->wfiles->GetFileByFilename(file->def->path);
 
     for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, param.position))
       if (sym.kind == SymbolKind::Func || sym.kind == SymbolKind::Type) {

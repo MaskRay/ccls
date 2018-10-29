@@ -15,7 +15,7 @@ limitations under the License.
 
 #include "message_handler.hh"
 #include "pipeline.hh"
-#include "working_files.h"
+#include "working_files.hh"
 
 #include <clang/Format/Format.h>
 #include <clang/Tooling/Core/Replacement.h>
@@ -87,7 +87,7 @@ void MessageHandler::textDocument_formatting(DocumentFormattingParam &param,
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
   if (!file)
     return;
-  WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   if (!wfile)
     return;
   Format(reply, wfile, {0, (unsigned)wfile->buffer_content.size()});
@@ -98,7 +98,7 @@ void MessageHandler::textDocument_onTypeFormatting(
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
   if (!file)
     return;
-  WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   if (!wfile)
     return;
   std::string_view code = wfile->buffer_content;
@@ -114,7 +114,7 @@ void MessageHandler::textDocument_rangeFormatting(
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
   if (!file)
     return;
-  WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   if (!wfile)
     return;
   std::string_view code = wfile->buffer_content;
