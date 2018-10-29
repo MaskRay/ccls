@@ -1,10 +1,10 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "working_files.h"
+#include "working_files.hh"
 
 #include "log.hh"
-#include "position.h"
+#include "position.hh"
 
 #include <algorithm>
 #include <climits>

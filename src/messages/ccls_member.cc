@@ -5,7 +5,7 @@
 #include "hierarchy.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
-#include "query_utils.h"
+#include "query_utils.hh"
 
 #include <clang/AST/Type.h>
 #include <llvm/ADT/DenseSet.h>
@@ -78,7 +78,7 @@ void DoField(MessageHandler *m, Out_cclsMember *entry, const QueryVar &var,
   }
   if (def1->spell) {
     if (std::optional<lsLocation> loc =
-            GetLsLocation(m->db, m->working_files, *def1->spell))
+            GetLsLocation(m->db, m->wfiles, *def1->spell))
       entry1.location = *loc;
   }
   if (def1->type) {
@@ -133,13 +133,13 @@ bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
         if (def1 && def1->spell) {
           // The declaration of target type.
           if (std::optional<lsLocation> loc =
-            GetLsLocation(m->db, m->working_files, *def1->spell))
+            GetLsLocation(m->db, m->wfiles, *def1->spell))
             entry1.location = *loc;
         } else if (def->spell) {
           // Builtin types have no declaration but the typedef declaration
           // itself is useful.
           if (std::optional<lsLocation> loc =
-            GetLsLocation(m->db, m->working_files, *def->spell))
+            GetLsLocation(m->db, m->wfiles, *def->spell))
             entry1.location = *loc;
         }
         if (def1 && qualified)
@@ -161,10 +161,10 @@ bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
                 entry1.fieldName = def1->Name(false);
                 if (def1->spell) {
                   if (auto loc =
-                          GetLsLocation(m->db, m->working_files, *def1->spell))
+                          GetLsLocation(m->db, m->wfiles, *def1->spell))
                     entry1.location = *loc;
                 } else if (func1.declarations.size()) {
-                  if (auto loc = GetLsLocation(m->db, m->working_files,
+                  if (auto loc = GetLsLocation(m->db, m->wfiles,
                                                func1.declarations[0]))
                     entry1.location = *loc;
                 }
@@ -182,10 +182,10 @@ bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
                 entry1.fieldName = def1->Name(false);
                 if (def1->spell) {
                   if (auto loc =
-                    GetLsLocation(m->db, m->working_files, *def1->spell))
+                    GetLsLocation(m->db, m->wfiles, *def1->spell))
                     entry1.location = *loc;
                 } else if (type1.declarations.size()) {
-                  if (auto loc = GetLsLocation(m->db, m->working_files,
+                  if (auto loc = GetLsLocation(m->db, m->wfiles,
                       type1.declarations[0]))
                     entry1.location = *loc;
                 }
@@ -224,7 +224,7 @@ std::optional<Out_cclsMember> BuildInitial(MessageHandler *m, SymbolKind kind,
     // Not type, |id| is invalid.
     entry.name = def->Name(qualified);
     if (def->spell) {
-      if (auto loc = GetLsLocation(m->db, m->working_files, *def->spell))
+      if (auto loc = GetLsLocation(m->db, m->wfiles, *def->spell))
         entry.location = *loc;
     }
     for (Usr usr : def->vars) {
@@ -243,7 +243,7 @@ std::optional<Out_cclsMember> BuildInitial(MessageHandler *m, SymbolKind kind,
     entry.id = std::to_string(root_usr);
     entry.usr = root_usr;
     if (def->spell) {
-      if (auto loc = GetLsLocation(m->db, m->working_files, *def->spell))
+      if (auto loc = GetLsLocation(m->db, m->wfiles, *def->spell))
         entry.location = *loc;
     }
     Expand(m, &entry, qualified, levels, memberKind);
@@ -274,7 +274,7 @@ void MessageHandler::ccls_member(Reader &reader, ReplyOnce &reply) {
     QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
     if (!file)
       return;
-    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+    WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
     for (SymbolRef sym :
          FindSymbolsAtLocation(wfile, file, param.position)) {
       switch (sym.kind) {

@@ -1,15 +1,15 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "test.h"
+#include "test.hh"
 
 #include "clang_complete.hh"
 #include "filesystem.hh"
-#include "indexer.h"
+#include "indexer.hh"
 #include "pipeline.hh"
-#include "platform.h"
+#include "platform.hh"
 #include "serializer.hh"
-#include "utils.h"
+#include "utils.hh"
 
 #include <llvm/Config/llvm-config.h>
 #include <llvm/ADT/StringRef.h>

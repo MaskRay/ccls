@@ -1,14 +1,14 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "indexer.h"
+#include "indexer.hh"
 
 #include "clang_complete.hh"
 #include "clang_tu.hh"
 #include "log.hh"
-#include "match.h"
+#include "match.hh"
 #include "pipeline.hh"
-#include "platform.h"
+#include "platform.hh"
 #include "serializer.hh"
 
 #include <clang/AST/AST.h>

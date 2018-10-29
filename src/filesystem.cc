@@ -4,7 +4,7 @@
 #include "filesystem.hh"
 using namespace llvm;
 
-#include "utils.h"
+#include "utils.hh"
 
 #include <set>
 #include <vector>

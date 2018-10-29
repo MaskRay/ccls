@@ -1,7 +1,7 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "position.h"
+#include "position.hh"
 
 #include "serializer.hh"
 

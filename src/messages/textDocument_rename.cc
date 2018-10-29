@@ -2,17 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "message_handler.hh"
-#include "query_utils.h"
+#include "query_utils.hh"
 
 namespace ccls {
 namespace {
-lsWorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *working_files,
+lsWorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *wfiles,
                                    SymbolRef sym, const std::string &new_text) {
   std::unordered_map<int, lsTextDocumentEdit> path_to_edit;
 
   EachOccurrence(db, sym, true, [&](Use use) {
     std::optional<lsLocation> ls_location =
-        GetLsLocation(db, working_files, use);
+        GetLsLocation(db, wfiles, use);
     if (!ls_location)
       return;
 
@@ -27,7 +27,7 @@ lsWorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *working_files,
       const std::string &path = file.def->path;
       path_to_edit[file_id].textDocument.uri = lsDocumentUri::FromPath(path);
 
-      WorkingFile *working_file = working_files->GetFileByFilename(path);
+      WorkingFile *working_file = wfiles->GetFileByFilename(path);
       if (working_file)
         path_to_edit[file_id].textDocument.version = working_file->version;
     }
@@ -55,10 +55,10 @@ void MessageHandler::textDocument_rename(RenameParam &param, ReplyOnce &reply) {
   if (!file)
     return;
 
-  WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   lsWorkspaceEdit result;
   for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, param.position)) {
-    result = BuildWorkspaceEdit(db, working_files, sym, param.newName);
+    result = BuildWorkspaceEdit(db, wfiles, sym, param.newName);
     break;
   }
 

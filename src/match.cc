@@ -1,7 +1,7 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "match.h"
+#include "match.hh"
 
 #include "lsp.hh"
 #include "pipeline.hh"

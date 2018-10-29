@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "clang_complete.hh"
-#include "fuzzy_match.h"
+#include "fuzzy_match.hh"
 #include "log.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "project.hh"
-#include "query_utils.h"
+#include "query_utils.hh"
 
 #include <llvm/ADT/STLExtras.h>
 
@@ -22,7 +22,7 @@ MAKE_REFLECT_STRUCT(lsSymbolInformation, name, kind, location, containerName);
 void MessageHandler::workspace_didChangeConfiguration(EmptyParam &) {
   for (const std::string &folder : g_config->workspaceFolders)
     project->Load(folder);
-  project->Index(working_files, lsRequestId());
+  project->Index(wfiles, lsRequestId());
 
   clang_complete->FlushAllSessions();
 };
@@ -31,7 +31,7 @@ void MessageHandler::workspace_didChangeWatchedFiles(
     DidChangeWatchedFilesParam &param) {
   for (auto &event : param.changes) {
     std::string path = event.uri.GetPath();
-    IndexMode mode = working_files->GetFileByFilename(path)
+    IndexMode mode = wfiles->GetFileByFilename(path)
                          ? IndexMode::Normal
                          : IndexMode::NonInteractive;
     switch (event.type) {
@@ -76,7 +76,7 @@ void MessageHandler::workspace_didChangeWorkspaceFolders(
     project->Load(root);
   }
 
-  project->Index(working_files, lsRequestId());
+  project->Index(wfiles, lsRequestId());
 
   clang_complete->FlushAllSessions();
 }
@@ -84,7 +84,7 @@ void MessageHandler::workspace_didChangeWorkspaceFolders(
 namespace {
 // Lookup |symbol| in |db| and insert the value into |result|.
 bool AddSymbol(
-    DB *db, WorkingFiles *working_files, SymbolIdx sym, bool use_detailed,
+    DB *db, WorkingFiles *wfiles, SymbolIdx sym, bool use_detailed,
     std::vector<std::tuple<lsSymbolInformation, int, SymbolIdx>> *result) {
   std::optional<lsSymbolInformation> info = GetSymbolInfo(db, sym, true);
   if (!info)
@@ -100,7 +100,7 @@ bool AddSymbol(
     loc = decls[0];
   }
 
-  std::optional<lsLocation> ls_location = GetLsLocation(db, working_files, loc);
+  std::optional<lsLocation> ls_location = GetLsLocation(db, wfiles, loc);
   if (!ls_location)
     return false;
   info->location = *ls_location;
@@ -129,7 +129,7 @@ void MessageHandler::workspace_symbol(WorkspaceSymbolParam &param,
     std::string_view detailed_name = db->GetSymbolName(sym, true);
     int pos = ReverseSubseqMatch(query_without_space, detailed_name, sensitive);
     return pos >= 0 &&
-           AddSymbol(db, working_files, sym,
+           AddSymbol(db, wfiles, sym,
                      detailed_name.find(':', pos) != std::string::npos,
                      &cands) &&
            cands.size() >= g_config->workspaceSymbol.maxNum;

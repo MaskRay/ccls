@@ -1,11 +1,11 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "include_complete.h"
+#include "include_complete.hh"
 
 #include "filesystem.hh"
-#include "match.h"
-#include "platform.h"
+#include "match.hh"
+#include "platform.hh"
 #include "project.hh"
 
 #include <llvm/ADT/Twine.h>

@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #if defined(_WIN32)
-#include "platform.h"
+#include "platform.hh"
 
-#include "utils.h"
+#include "utils.hh"
 
 #include <Windows.h>
 #include <direct.h>

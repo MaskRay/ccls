@@ -144,7 +144,7 @@ void MessageHandler::textDocument_signatureHelp(
 
   std::string path = param.textDocument.uri.GetPath();
   lsPosition begin_pos = param.position;
-  if (WorkingFile *file = working_files->GetFileByFilename(path)) {
+  if (WorkingFile *file = wfiles->GetFileByFilename(path)) {
     std::string completion_text;
     lsPosition end_pos = param.position;
     begin_pos = file->FindStableCompletionSource(param.position,

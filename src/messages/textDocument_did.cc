@@ -2,16 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "clang_complete.hh"
-#include "include_complete.h"
+#include "include_complete.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "project.hh"
-#include "working_files.h"
+#include "working_files.hh"
 
 namespace ccls {
 void MessageHandler::textDocument_didChange(TextDocumentDidChangeParam &param) {
   std::string path = param.textDocument.uri.GetPath();
-  working_files->OnChange(param);
+  wfiles->OnChange(param);
   if (g_config->index.onChange)
     pipeline::Index(path, {}, IndexMode::OnChange);
   clang_complete->NotifyView(path);
@@ -21,13 +21,13 @@ void MessageHandler::textDocument_didChange(TextDocumentDidChangeParam &param) {
 
 void MessageHandler::textDocument_didClose(TextDocumentParam &param) {
   std::string path = param.textDocument.uri.GetPath();
-  working_files->OnClose(param.textDocument);
+  wfiles->OnClose(param.textDocument);
   clang_complete->OnClose(path);
 }
 
 void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
   std::string path = param.textDocument.uri.GetPath();
-  WorkingFile *working_file = working_files->OnOpen(param.textDocument);
+  WorkingFile *working_file = wfiles->OnOpen(param.textDocument);
   if (std::optional<std::string> cached_file_contents =
           pipeline::LoadIndexedContent(path))
     working_file->SetIndexContent(*cached_file_contents);

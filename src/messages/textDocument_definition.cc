@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "message_handler.hh"
-#include "query_utils.h"
+#include "query_utils.hh"
 
 #include <ctype.h>
 #include <limits.h>
@@ -42,7 +42,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
 
   std::vector<lsLocation> result;
   Maybe<Use> on_def;
-  WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   lsPosition &ls_pos = param.position;
 
   for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, ls_pos, true)) {
@@ -75,7 +75,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
       if (uses.empty() && on_def)
         uses.push_back(*on_def);
     }
-    auto locs = GetLsLocations(db, working_files, uses);
+    auto locs = GetLsLocations(db, wfiles, uses);
     result.insert(result.end(), locs.begin(), locs.end());
   }
 
@@ -146,7 +146,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
       if (best_sym.kind != SymbolKind::Invalid) {
         Maybe<DeclRef> dr = GetDefinitionSpell(db, best_sym);
         assert(dr);
-        if (auto loc = GetLsLocation(db, working_files, *dr))
+        if (auto loc = GetLsLocation(db, wfiles, *dr))
           result.push_back(*loc);
       }
     }
@@ -160,18 +160,18 @@ void MessageHandler::textDocument_typeDefinition(
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
   if (!file)
     return;
-  WorkingFile *working_file = working_files->GetFileByFilename(file->def->path);
+  WorkingFile *working_file = wfiles->GetFileByFilename(file->def->path);
 
   std::vector<lsLocation> result;
   auto Add = [&](const QueryType &type) {
     for (const auto &def : type.def)
       if (def.spell) {
-        if (auto ls_loc = GetLsLocation(db, working_files, *def.spell))
+        if (auto ls_loc = GetLsLocation(db, wfiles, *def.spell))
           result.push_back(*ls_loc);
       }
     if (result.empty())
       for (const DeclRef &dr : type.declarations)
-        if (auto ls_loc = GetLsLocation(db, working_files, dr))
+        if (auto ls_loc = GetLsLocation(db, wfiles, dr))
           result.push_back(*ls_loc);
   };
   for (SymbolRef sym :

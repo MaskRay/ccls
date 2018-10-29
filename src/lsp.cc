@@ -4,7 +4,7 @@
 #include "lsp.hh"
 
 #include "log.hh"
-#include "serializers/json.h"
+#include "serializers/json.hh"
 
 #include <algorithm>
 #include <stdio.h>

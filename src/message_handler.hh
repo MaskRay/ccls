@@ -4,7 +4,7 @@
 #pragma once
 
 #include "lsp.hh"
-#include "query.h"
+#include "query.hh"
 
 #include <functional>
 #include <memory>
@@ -184,7 +184,7 @@ struct MessageHandler {
   DB *db = nullptr;
   Project *project = nullptr;
   VFS *vfs = nullptr;
-  WorkingFiles *working_files = nullptr;
+  WorkingFiles *wfiles = nullptr;
   CompletionManager *clang_complete = nullptr;
   IncludeComplete *include_complete = nullptr;
 

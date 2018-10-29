@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "message_handler.hh"
-#include "query_utils.h"
+#include "query_utils.hh"
 
 namespace ccls {
 namespace {
@@ -85,12 +85,12 @@ void MessageHandler::textDocument_hover(TextDocumentPositionParam &param,
   if (!file)
     return;
 
-  WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   Hover result;
 
   for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, param.position)) {
     std::optional<lsRange> ls_range = GetLsRange(
-        working_files->GetFileByFilename(file->def->path), sym.range);
+        wfiles->GetFileByFilename(file->def->path), sym.range);
     if (!ls_range)
       continue;
 

@@ -1,7 +1,7 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "query_utils.h"
+#include "query_utils.hh"
 
 #include "pipeline.hh"
 
