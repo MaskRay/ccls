@@ -83,25 +83,19 @@ std::vector<Use> GetVarDeclarations(DB *db, const std::vector<Usr> &usrs,
   return ret;
 }
 
-std::vector<Use> GetNonDefDeclarations(DB *db, SymbolIdx sym) {
-  std::vector<Use> ret;
+std::vector<DeclRef> &GetNonDefDeclarations(DB *db, SymbolIdx sym) {
+  static std::vector<DeclRef> empty;
   switch (sym.kind) {
   case SymbolKind::Func:
-    for (auto &d : db->GetFunc(sym).declarations)
-      ret.push_back(d);
-    break;
+    return db->GetFunc(sym).declarations;
   case SymbolKind::Type:
-    for (auto &d : db->GetType(sym).declarations)
-      ret.push_back(d);
-    break;
+    return db->GetType(sym).declarations;
   case SymbolKind::Var:
-    for (auto &d : db->GetVar(sym).declarations)
-      ret.push_back(d);
-    break;
+    return db->GetVar(sym).declarations;
   default:
     break;
   }
-  return ret;
+  return empty;
 }
 
 std::vector<Use> GetUsesForAllBases(DB *db, QueryFunc &root) {

@@ -162,6 +162,9 @@ struct DidChangeWorkspaceFoldersParam {
 };
 struct WorkspaceSymbolParam {
   std::string query;
+
+  // ccls extensions
+  std::vector<std::string> folders;
 };
 
 // TODO llvm 8 llvm::unique_function

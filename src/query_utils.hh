@@ -18,7 +18,7 @@ std::vector<Use> GetTypeDeclarations(DB *, const std::vector<Usr> &);
 std::vector<Use> GetVarDeclarations(DB *, const std::vector<Usr> &, unsigned);
 
 // Get non-defining declarations.
-std::vector<Use> GetNonDefDeclarations(DB *db, SymbolIdx sym);
+std::vector<DeclRef> &GetNonDefDeclarations(DB *db, SymbolIdx sym);
 
 std::vector<Use> GetUsesForAllBases(DB *db, QueryFunc &root);
 std::vector<Use> GetUsesForAllDerived(DB *db, QueryFunc &root);
