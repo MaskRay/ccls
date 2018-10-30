@@ -468,4 +468,22 @@ std::string_view DB::GetSymbolName(SymbolIdx sym, bool qualified) {
   }
   return "";
 }
+
+std::vector<uint8_t> DB::GetFileSet(const std::vector<std::string> &folders) {
+  if (folders.empty())
+    return std::vector<uint8_t>(files.size(), 1);
+  std::vector<uint8_t> file_set(files.size());
+  for (QueryFile &file : files)
+    if (file.def) {
+      bool ok = false;
+      for (auto &folder : folders)
+        if (llvm::StringRef(file.def->path).startswith(folder)) {
+          ok = true;
+          break;
+        }
+      if (ok)
+        file_set[file.id] = 1;
+    }
+  return file_set;
+}
 } // namespace ccls

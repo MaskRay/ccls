@@ -22,10 +22,10 @@ limitations under the License.
 
 namespace ccls {
 namespace {
-std::vector<Use> GetNonDefDeclarationTargets(DB *db, SymbolRef sym) {
+std::vector<DeclRef> GetNonDefDeclarationTargets(DB *db, SymbolRef sym) {
   switch (sym.kind) {
   case SymbolKind::Var: {
-    std::vector<Use> ret = GetNonDefDeclarations(db, sym);
+    std::vector<DeclRef> ret = GetNonDefDeclarations(db, sym);
     // If there is no declaration, jump to its type.
     if (ret.empty()) {
       for (auto &def : db->GetVar(sym).def)

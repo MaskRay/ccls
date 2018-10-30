@@ -181,6 +181,7 @@ struct DB {
   void Update(const Lid2file_id &, int file_id,
               std::vector<std::pair<Usr, QueryVar::Def>> &&us);
   std::string_view GetSymbolName(SymbolIdx sym, bool qualified);
+  std::vector<uint8_t> GetFileSet(const std::vector<std::string> &folders);
 
   bool HasFunc(Usr usr) const { return func_usr.count(usr); }
   bool HasType(Usr usr) const { return type_usr.count(usr); }
