@@ -22,6 +22,7 @@ limitations under the License.
 #include "query_utils.hh"
 
 #include <llvm/ADT/STLExtras.h>
+#include <llvm/ADT/StringRef.h>
 
 #include <algorithm>
 #include <ctype.h>
@@ -96,23 +97,35 @@ void MessageHandler::workspace_didChangeWorkspaceFolders(
 namespace {
 // Lookup |symbol| in |db| and insert the value into |result|.
 bool AddSymbol(
-    DB *db, WorkingFiles *wfiles, SymbolIdx sym, bool use_detailed,
+    DB *db, WorkingFiles *wfiles, const std::vector<uint8_t> &file_set,
+    SymbolIdx sym, bool use_detailed,
     std::vector<std::tuple<lsSymbolInformation, int, SymbolIdx>> *result) {
   std::optional<lsSymbolInformation> info = GetSymbolInfo(db, sym, true);
   if (!info)
     return false;
 
-  Use loc;
-  if (Maybe<DeclRef> dr = GetDefinitionSpell(db, sym))
-    loc = *dr;
-  else {
-    auto decls = GetNonDefDeclarations(db, sym);
-    if (decls.empty())
-      return false;
-    loc = decls[0];
+  Maybe<DeclRef> dr;
+  bool in_folder = false;
+  WithEntity(db, sym, [&](const auto &entity) {
+    for (auto &def : entity.def)
+      if (def.spell) {
+        dr = def.spell;
+        if (!in_folder && (in_folder = file_set[def.spell->file_id]))
+          break;
+      }
+  });
+  if (!dr) {
+    auto &decls = GetNonDefDeclarations(db, sym);
+    for (auto &dr1 : decls) {
+      dr = dr1;
+      if (!in_folder && (in_folder = file_set[dr1.file_id]))
+        break;
+    }
   }
+  if (!in_folder)
+    return false;
 
-  std::optional<lsLocation> ls_location = GetLsLocation(db, wfiles, loc);
+  std::optional<lsLocation> ls_location = GetLsLocation(db, wfiles, *dr);
   if (!ls_location)
     return false;
   info->location = *ls_location;
@@ -124,7 +137,10 @@ bool AddSymbol(
 void MessageHandler::workspace_symbol(WorkspaceSymbolParam &param,
                                       ReplyOnce &reply) {
   std::vector<lsSymbolInformation> result;
-  std::string query = param.query;
+  const std::string &query = param.query;
+  for (auto &folder : param.folders)
+    EnsureEndsInSlash(folder);
+  std::vector<uint8_t> file_set = db->GetFileSet(param.folders);
 
   // {symbol info, matching detailed_name or short_name, index}
   std::vector<std::tuple<lsSymbolInformation, int, SymbolIdx>> cands;
@@ -141,7 +157,7 @@ void MessageHandler::workspace_symbol(WorkspaceSymbolParam &param,
     std::string_view detailed_name = db->GetSymbolName(sym, true);
     int pos = ReverseSubseqMatch(query_without_space, detailed_name, sensitive);
     return pos >= 0 &&
-           AddSymbol(db, wfiles, sym,
+           AddSymbol(db, wfiles, file_set, sym,
                      detailed_name.find(':', pos) != std::string::npos,
                      &cands) &&
            cands.size() >= g_config->workspaceSymbol.maxNum;
