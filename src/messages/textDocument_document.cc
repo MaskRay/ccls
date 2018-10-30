@@ -94,9 +94,36 @@ void MessageHandler::textDocument_documentLink(TextDocumentParam &param,
     return;
 
   std::vector<DocumentLink> result;
-  for (const IndexInclude &include : file->def->includes)
-    result.push_back({lsRange{{include.line, 0}, {include.line + 1, 0}},
-                      DocumentUri::FromPath(include.resolved_path)});
+  for (const IndexInclude &include : file->def->includes) {
+    WorkingFile *wf =
+        wfiles->GetFileByFilename(param.textDocument.uri.GetPath());
+    if (!wf)
+      continue;
+    std::optional<int> bpos =
+        wf->GetBufferPosFromIndexPos(include.line, nullptr, false);
+    if (!bpos)
+      continue;
+    
+    auto line = wf->buffer_lines[*bpos];
+    int start_column = -1;
+    int end_column = -1;
+    char quote_type = 0;
+    for (size_t i = 0; i < line.size(); i++) {
+      if (!quote_type && (line[i] == '"' || line[i] == '<')) {
+        start_column = i + 1;
+        quote_type = line[i];
+      } else if ((quote_type == '"' && line[i] == '"') ||
+                 (quote_type == '<' && line[i] == '>')) {
+        end_column = i;
+        break;
+      }
+    }
+    if (!quote_type || start_column == -1 || end_column == -1)
+      continue;
+    result.push_back(
+        {lsRange{{include.line, start_column}, {include.line, end_column}},
+         DocumentUri::FromPath(include.resolved_path)});
+  }
   reply(result);
 } // namespace ccls
 
