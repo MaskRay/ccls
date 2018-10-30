@@ -60,7 +60,7 @@ MAKE_REFLECT_STRUCT(DidChangeWatchedFilesParam::Event, uri, type);
 MAKE_REFLECT_STRUCT(DidChangeWatchedFilesParam, changes);
 MAKE_REFLECT_STRUCT(DidChangeWorkspaceFoldersParam::Event, added, removed);
 MAKE_REFLECT_STRUCT(DidChangeWorkspaceFoldersParam, event);
-MAKE_REFLECT_STRUCT(WorkspaceSymbolParam, query);
+MAKE_REFLECT_STRUCT(WorkspaceSymbolParam, query, folders);
 
 namespace {
 struct CclsSemanticHighlightSymbol {
