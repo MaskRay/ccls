@@ -10,18 +10,23 @@ namespace ccls {
 namespace {
 struct ReferenceParam : public TextDocumentPositionParam {
   struct Context {
-    bool base = true;
-    // Exclude references with any |Role| bits set.
-    Role excludeRole = Role::None;
     // Include the declaration of the current symbol.
     bool includeDeclaration = false;
-    // Include references with all |Role| bits set.
-    Role role = Role::None;
   } context;
+
+  // ccls extension
+  // If not empty, restrict to specified folders.
+  std::vector<std::string> folders;
+  // For Type, also return references of base types.
+  bool base = true;
+  // Exclude references with any |Role| bits set.
+  Role excludeRole = Role::None;
+  // Include references with all |Role| bits set.
+  Role role = Role::None;
 };
-MAKE_REFLECT_STRUCT(ReferenceParam::Context, base, excludeRole,
-                    includeDeclaration, role);
-MAKE_REFLECT_STRUCT(ReferenceParam, textDocument, position, context);
+MAKE_REFLECT_STRUCT(ReferenceParam::Context, includeDeclaration);
+MAKE_REFLECT_STRUCT(ReferenceParam, textDocument, position, context, folders,
+                    base, excludeRole, role);
 } // namespace
 
 void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
@@ -30,10 +35,13 @@ void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
   if (!file)
     return;
-  std::vector<lsLocation> result;
   WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
-  if (!file)
+  if (!wfile)
     return;
+  for (auto &folder : param.folders)
+    EnsureEndsInSlash(folder);
+  std::vector<uint8_t> file_set = db->GetFileSet(param.folders);
+  std::vector<lsLocation> result;
 
   std::unordered_set<Use> seen_uses;
   int line = param.position.line;
@@ -44,24 +52,23 @@ void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
     seen.insert(sym.usr);
     std::vector<Usr> stack{sym.usr};
     if (sym.kind != SymbolKind::Func)
-      param.context.base = false;
+      param.base = false;
     while (stack.size()) {
       sym.usr = stack.back();
       stack.pop_back();
       auto fn = [&](Use use, lsSymbolKind parent_kind) {
-        if (Role(use.role & param.context.role) == param.context.role &&
-            !(use.role & param.context.excludeRole) &&
-            seen_uses.insert(use).second)
-          if (auto loc = GetLsLocation(db, wfiles, use)) {
+        if (file_set[use.file_id] &&
+            Role(use.role & param.role) == param.role &&
+            !(use.role & param.excludeRole) && seen_uses.insert(use).second)
+          if (auto loc = GetLsLocation(db, wfiles, use))
             result.push_back(*loc);
-          }
       };
       WithEntity(db, sym, [&](const auto &entity) {
         lsSymbolKind parent_kind = lsSymbolKind::Unknown;
         for (auto &def : entity.def)
           if (def.spell) {
             parent_kind = GetSymbolKind(db, sym);
-            if (param.context.base)
+            if (param.base)
               for (Usr usr : def.GetBases())
                 if (!seen.count(usr)) {
                   seen.insert(usr);
