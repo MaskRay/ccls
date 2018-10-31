@@ -22,9 +22,10 @@ limitations under the License.
 #include "query_utils.hh"
 #include "serializers/json.hh"
 
-using namespace clang;
-
 #include <algorithm>
+#include <stdexcept>
+
+using namespace clang;
 
 MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
 
@@ -204,8 +205,16 @@ void MessageHandler::Run(InMessage &msg) {
     if (it != method2request.end()) {
       try {
         it->second(reader, reply);
+      } catch (std::invalid_argument &ex) {
+        lsResponseError err;
+        err.code = lsErrorCodes::InvalidParams;
+        err.message = "invalid params of " + msg.method + ": " + ex.what();
+        reply.Error(err);
       } catch (...) {
-        LOG_S(ERROR) << "failed to process request " << msg.method;
+        lsResponseError err;
+        err.code = lsErrorCodes::InternalError;
+        err.message = "failed to process " + msg.method;
+        reply.Error(err);
       }
     } else {
       lsResponseError err;
