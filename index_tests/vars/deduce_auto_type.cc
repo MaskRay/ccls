@@ -45,10 +45,10 @@ OUTPUT:
     }],
   "usr2var": [{
       "usr": 10601729374837386290,
-      "detailed_name": "auto x",
+      "detailed_name": "Foo *x",
       "qual_name_offset": 5,
       "short_name": "x",
-      "hover": "auto x = new Foo()",
+      "hover": "Foo *x = new Foo()",
       "spell": "3:8-3:9|3:3-3:21|2|-1",
       "type": 15041163540773201510,
       "kind": 13,

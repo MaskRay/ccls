@@ -67,7 +67,7 @@ OUTPUT:
       "hover": "static constexpr int Foo::var = 3",
       "type": 53,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 23,
       "storage": 2,
       "declarations": ["3:24-3:27|3:3-3:31|1025|-1"],
       "uses": ["6:19-6:22|12|-1", "7:20-7:23|12|-1"]

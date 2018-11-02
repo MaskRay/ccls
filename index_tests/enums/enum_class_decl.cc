@@ -36,7 +36,13 @@ OUTPUT:
       "bases": [],
       "funcs": [],
       "types": [],
-      "vars": [],
+      "vars": [{
+          "L": 439339022761937396,
+          "R": -1
+        }, {
+          "L": 15962370213938840720,
+          "R": -1
+        }],
       "alias_of": 0,
       "kind": 10,
       "parent_kind": 0,
@@ -52,7 +58,7 @@ OUTPUT:
       "short_name": "A",
       "hover": "Foo::A = 0",
       "spell": "3:3-3:4|3:3-3:4|1026|-1",
-      "type": 0,
+      "type": 16985894625255407295,
       "kind": 22,
       "parent_kind": 10,
       "storage": 0,
@@ -64,7 +70,7 @@ OUTPUT:
       "qual_name_offset": 0,
       "short_name": "B",
       "spell": "4:3-4:4|4:3-4:9|1026|-1",
-      "type": 0,
+      "type": 16985894625255407295,
       "kind": 22,
       "parent_kind": 10,
       "storage": 0,

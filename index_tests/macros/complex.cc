@@ -21,14 +21,14 @@ OUTPUT:
       "detailed_name": "int a()",
       "qual_name_offset": 4,
       "short_name": "a",
-      "spell": "12:1-12:20|12:1-12:20|2|-1",
+      "spell": "12:1-12:20|12:1-12:4|2|-1",
       "bases": [],
       "vars": [],
       "callees": ["12:5-12:10|14400399977994209582|3|16420"],
       "kind": 12,
       "parent_kind": 0,
       "storage": 0,
-      "declarations": ["12:1-12:20|12:1-12:20|1|-1"],
+      "declarations": ["12:1-12:20|12:1-12:4|1|-1"],
       "derived": [],
       "uses": ["2:7-2:8|64|0", "3:7-3:8|64|0"]
     }, {
