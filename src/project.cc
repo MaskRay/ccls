@@ -87,7 +87,11 @@ enum OptionClass {
 struct ProjectProcessor {
   ProjectConfig *config;
   std::unordered_set<size_t> command_set;
-  ProjectProcessor(ProjectConfig *config) : config(config) {}
+  StringSet<> excludeArgs;
+  ProjectProcessor(ProjectConfig *config) : config(config) {
+    for (auto &arg : g_config->clang.excludeArgs)
+      excludeArgs.insert(arg);
+  }
 
   void Process(Project::Entry &entry) {
     const std::string base_name = sys::path::filename(entry.filename);
@@ -105,7 +109,7 @@ struct ProjectProcessor {
           args.push_back(arg + 5);
       } else if (strcmp(arg, "%clang") == 0) {
         args.push_back(lang == LanguageId::Cpp ? "clang++" : "clang");
-      } else if (!llvm::is_contained(g_config->clang.excludeArgs, arg)) {
+      } else if (!excludeArgs.count(arg)) {
         args.push_back(arg);
       }
     }
@@ -115,22 +119,30 @@ struct ProjectProcessor {
       args.push_back(Intern(arg));
 
     size_t hash = std::hash<std::string>{}(entry.directory);
+    bool OPT_o = false;
     for (auto &arg : args) {
-      if (arg[0] != '-' && EndsWith(arg, base_name)) {
+      bool last_o = OPT_o;
+      OPT_o = false;
+      if (arg[0] == '-') {
+        OPT_o = arg[1] == 'o' && arg[2] == '\0';
+        if (OPT_o || arg[1] == 'D' || arg[1] == 'W')
+          continue;
+      } else if (last_o) {
+        continue;
+      } else if (sys::path::filename(arg) == base_name) {
         LanguageId lang = lookupExtension(arg).first;
         if (lang != LanguageId::Unknown) {
-          hash_combine(hash, size_t(lang));
+          hash_combine(hash, (size_t)lang);
           continue;
         }
       }
-      hash_combine(hash, std::hash<std::string>{}(arg));
+      hash_combine(hash, std::hash<std::string_view>{}(arg));
     }
     args.push_back(Intern("-working-directory=" + entry.directory));
-
-    if (!command_set.insert(hash).second) {
-      entry.args = std::move(args);
+    entry.args = args;
+    args.push_back("-fsyntax-only");
+    if (!command_set.insert(hash).second)
       return;
-    }
 
     // a weird C++ deduction guide heap-use-after-free causes libclang to crash.
     IgnoringDiagConsumer DiagC;
@@ -148,8 +160,6 @@ struct ProjectProcessor {
       Driver.setTargetAndMode(TargetAndMode);
     }
     Driver.setCheckInputsExist(false);
-
-    args.push_back("-fsyntax-only");
 
     std::unique_ptr<driver::Compilation> C(Driver.BuildCompilation(args));
     const driver::JobList &Jobs = C->getJobs();
@@ -180,7 +190,6 @@ struct ProjectProcessor {
         break;
       }
     }
-    entry.args = std::move(args);
   }
 };
 
