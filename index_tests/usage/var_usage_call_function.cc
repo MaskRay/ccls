@@ -46,10 +46,10 @@ OUTPUT:
   "usr2type": [],
   "usr2var": [{
       "usr": 9121974011454213596,
-      "detailed_name": "auto x",
-      "qual_name_offset": 5,
+      "detailed_name": "void (*)() x",
+      "qual_name_offset": 11,
       "short_name": "x",
-      "hover": "auto x = &called",
+      "hover": "void (*)() x = &called",
       "spell": "4:8-4:9|4:3-4:19|2|-1",
       "type": 0,
       "kind": 13,

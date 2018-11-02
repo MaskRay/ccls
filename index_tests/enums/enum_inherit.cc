@@ -25,7 +25,13 @@ OUTPUT:
       "bases": [],
       "funcs": [],
       "types": [],
-      "vars": [],
+      "vars": [{
+          "L": 16614320383091394267,
+          "R": -1
+        }, {
+          "L": 16847439761518576294,
+          "R": -1
+        }],
       "alias_of": 0,
       "kind": 10,
       "parent_kind": 0,
@@ -75,9 +81,9 @@ OUTPUT:
       "short_name": "A",
       "hover": "A = 0",
       "spell": "2:3-2:4|2:3-2:4|1026|-1",
-      "type": 0,
+      "type": 16985894625255407295,
       "kind": 22,
-      "parent_kind": 10,
+      "parent_kind": 0,
       "storage": 0,
       "declarations": [],
       "uses": []
@@ -87,9 +93,9 @@ OUTPUT:
       "qual_name_offset": 0,
       "short_name": "B",
       "spell": "3:3-3:4|3:3-3:9|1026|-1",
-      "type": 0,
+      "type": 16985894625255407295,
       "kind": 22,
-      "parent_kind": 10,
+      "parent_kind": 0,
       "storage": 0,
       "declarations": [],
       "uses": []
@@ -100,7 +106,7 @@ OUTPUT:
       "short_name": "E0",
       "hover": "E::E0 = 0",
       "spell": "9:3-9:5|9:3-9:5|1026|-1",
-      "type": 0,
+      "type": 2986879766914123941,
       "kind": 22,
       "parent_kind": 10,
       "storage": 0,
@@ -112,7 +118,7 @@ OUTPUT:
       "qual_name_offset": 0,
       "short_name": "E20",
       "spell": "10:3-10:6|10:3-10:11|1026|-1",
-      "type": 0,
+      "type": 2986879766914123941,
       "kind": 22,
       "parent_kind": 10,
       "storage": 0,
