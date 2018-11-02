@@ -48,7 +48,7 @@ OUTPUT:
       "short_name": "member",
       "type": 53,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 5,
       "storage": 2,
       "declarations": ["2:14-2:20|2:3-2:20|1025|-1"],
       "uses": []

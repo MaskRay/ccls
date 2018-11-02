@@ -34,9 +34,9 @@ OUTPUT:
       "short_name": "A",
       "hover": "A = 0",
       "spell": "2:3-2:4|2:3-2:4|1026|-1",
-      "type": 0,
+      "type": 16985894625255407295,
       "kind": 22,
-      "parent_kind": 10,
+      "parent_kind": 0,
       "storage": 0,
       "declarations": [],
       "uses": []
@@ -46,9 +46,9 @@ OUTPUT:
       "qual_name_offset": 0,
       "short_name": "B",
       "spell": "3:3-3:4|3:3-3:9|1026|-1",
-      "type": 0,
+      "type": 16985894625255407295,
       "kind": 22,
-      "parent_kind": 10,
+      "parent_kind": 0,
       "storage": 0,
       "declarations": [],
       "uses": []
