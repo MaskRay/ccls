@@ -22,23 +22,7 @@ OUTPUT:
       "derived": [],
       "uses": []
     }],
-  "usr2type": [{
-      "usr": 7144845543074395457,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "bases": [],
-      "funcs": [5010253035933134245],
-      "types": [],
-      "vars": [],
-      "alias_of": 0,
-      "kind": 0,
-      "parent_kind": 0,
-      "declarations": [],
-      "derived": [],
-      "instances": [],
-      "uses": []
-    }],
+  "usr2type": [],
   "usr2var": []
 }
 */

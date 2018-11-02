@@ -84,7 +84,7 @@ OUTPUT:
       "short_name": "x",
       "type": 53,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 23,
       "storage": 2,
       "declarations": ["2:14-2:15|2:3-2:15|1025|-1"],
       "uses": ["8:15-8:16|12|-1"]

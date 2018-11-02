@@ -854,21 +854,21 @@ public:
       if (var->def.detailed_name[0] == '\0')
         SetVarName(D, info->short_name, info->qualified, var->def);
       QualType T;
-      if (auto *VD = dyn_cast<VarDecl>(D))
+      if (auto *VD = dyn_cast<ValueDecl>(D))
         T = VD->getType();
-      else if (auto *FD = dyn_cast<FieldDecl>(D))
-        T = FD->getType();
       if (is_def || is_decl) {
         const Decl *DC = cast<Decl>(SemDC);
-        if (GetSymbolKind(DC, ls_kind) == SymbolKind::Func)
+        SymbolKind kind = GetSymbolKind(DC, var->def.parent_kind);
+        if (kind == SymbolKind::Func)
           db->ToFunc(GetUsr(DC)).def.vars.push_back(usr);
-        else if (auto *ND = dyn_cast<NamespaceDecl>(SemDC))
-          db->ToType(GetUsr(ND)).def.vars.emplace_back(usr, -1);
+        else if (kind == SymbolKind::Type && !isa<RecordDecl>(SemDC))
+          db->ToType(GetUsr(DC)).def.vars.emplace_back(usr, -1);
         if (!T.isNull()) {
           if (auto *BT = T->getAs<BuiltinType>()) {
             Usr usr1 = static_cast<Usr>(BT->getKind());
             var->def.type = usr1;
-            db->ToType(usr1).instances.push_back(usr);
+            if (!isa<EnumConstantDecl>(D))
+              db->ToType(usr1).instances.push_back(usr);
           } else if (const Decl *D1 = GetAdjustedDecl(GetTypeDecl(T))) {
             if (isa<TemplateTypeParmDecl>(D1)) {
               // e.g. TemplateTypeParmDecl is not handled by
@@ -896,7 +896,8 @@ public:
             IndexParam::DeclInfo *info1;
             Usr usr1 = GetUsr(D1, &info1);
             var->def.type = usr1;
-            db->ToType(usr1).instances.push_back(usr);
+            if (!isa<EnumConstantDecl>(D))
+              db->ToType(usr1).instances.push_back(usr);
           }
         }
       } else if (!var->def.spell && var->declarations.empty()) {

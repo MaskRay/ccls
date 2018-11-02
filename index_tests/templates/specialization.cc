@@ -349,9 +349,9 @@ OUTPUT:
       "short_name": "Enum1",
       "hover": "Enum1 = 1",
       "spell": "36:10-36:15|36:10-36:15|1026|-1",
-      "type": 0,
+      "type": 9201299975592934124,
       "kind": 22,
-      "parent_kind": 10,
+      "parent_kind": 0,
       "storage": 0,
       "declarations": [],
       "uses": []
@@ -387,9 +387,9 @@ OUTPUT:
       "short_name": "Enum0",
       "hover": "Enum0 = 0",
       "spell": "36:3-36:8|36:3-36:8|1026|-1",
-      "type": 0,
+      "type": 9201299975592934124,
       "kind": 22,
-      "parent_kind": 10,
+      "parent_kind": 0,
       "storage": 0,
       "declarations": [],
       "uses": ["43:20-43:25|4|-1"]
