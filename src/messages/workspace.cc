@@ -30,12 +30,12 @@ limitations under the License.
 #include <limits.h>
 
 namespace ccls {
-MAKE_REFLECT_STRUCT(lsSymbolInformation, name, kind, location, containerName);
+MAKE_REFLECT_STRUCT(SymbolInformation, name, kind, location, containerName);
 
 void MessageHandler::workspace_didChangeConfiguration(EmptyParam &) {
   for (const std::string &folder : g_config->workspaceFolders)
     project->Load(folder);
-  project->Index(wfiles, lsRequestId());
+  project->Index(wfiles, RequestId());
 
   clang_complete->FlushAllSessions();
 };
@@ -89,7 +89,7 @@ void MessageHandler::workspace_didChangeWorkspaceFolders(
     project->Load(root);
   }
 
-  project->Index(wfiles, lsRequestId());
+  project->Index(wfiles, RequestId());
 
   clang_complete->FlushAllSessions();
 }
@@ -99,8 +99,8 @@ namespace {
 bool AddSymbol(
     DB *db, WorkingFiles *wfiles, const std::vector<uint8_t> &file_set,
     SymbolIdx sym, bool use_detailed,
-    std::vector<std::tuple<lsSymbolInformation, int, SymbolIdx>> *result) {
-  std::optional<lsSymbolInformation> info = GetSymbolInfo(db, sym, true);
+    std::vector<std::tuple<SymbolInformation, int, SymbolIdx>> *result) {
+  std::optional<SymbolInformation> info = GetSymbolInfo(db, sym, true);
   if (!info)
     return false;
 
@@ -125,7 +125,7 @@ bool AddSymbol(
   if (!in_folder)
     return false;
 
-  std::optional<lsLocation> ls_location = GetLsLocation(db, wfiles, *dr);
+  std::optional<Location> ls_location = GetLsLocation(db, wfiles, *dr);
   if (!ls_location)
     return false;
   info->location = *ls_location;
@@ -136,14 +136,14 @@ bool AddSymbol(
 
 void MessageHandler::workspace_symbol(WorkspaceSymbolParam &param,
                                       ReplyOnce &reply) {
-  std::vector<lsSymbolInformation> result;
+  std::vector<SymbolInformation> result;
   const std::string &query = param.query;
   for (auto &folder : param.folders)
     EnsureEndsInSlash(folder);
   std::vector<uint8_t> file_set = db->GetFileSet(param.folders);
 
   // {symbol info, matching detailed_name or short_name, index}
-  std::vector<std::tuple<lsSymbolInformation, int, SymbolIdx>> cands;
+  std::vector<std::tuple<SymbolInformation, int, SymbolIdx>> cands;
   bool sensitive = g_config->workspaceSymbol.caseSensitivity;
 
   // Find subsequence matches.
@@ -163,14 +163,13 @@ void MessageHandler::workspace_symbol(WorkspaceSymbolParam &param,
            cands.size() >= g_config->workspaceSymbol.maxNum;
   };
   for (auto &func : db->funcs)
-    if (Add({func.usr, SymbolKind::Func}))
+    if (Add({func.usr, Kind::Func}))
       goto done_add;
   for (auto &type : db->types)
-    if (Add({type.usr, SymbolKind::Type}))
+    if (Add({type.usr, Kind::Type}))
       goto done_add;
   for (auto &var : db->vars)
-    if (var.def.size() && !var.def[0].is_local() &&
-        Add({var.usr, SymbolKind::Var}))
+    if (var.def.size() && !var.def[0].is_local() && Add({var.usr, Kind::Var}))
       goto done_add;
 done_add:
 

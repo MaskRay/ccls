@@ -12,14 +12,14 @@ namespace ccls {
 namespace {
 std::vector<DeclRef> GetNonDefDeclarationTargets(DB *db, SymbolRef sym) {
   switch (sym.kind) {
-  case SymbolKind::Var: {
+  case Kind::Var: {
     std::vector<DeclRef> ret = GetNonDefDeclarations(db, sym);
     // If there is no declaration, jump to its type.
     if (ret.empty()) {
       for (auto &def : db->GetVar(sym).def)
         if (def.type) {
-          if (Maybe<DeclRef> use = GetDefinitionSpell(
-                  db, SymbolIdx{def.type, SymbolKind::Type})) {
+          if (Maybe<DeclRef> use =
+                  GetDefinitionSpell(db, SymbolIdx{def.type, Kind::Type})) {
             ret.push_back(*use);
             break;
           }
@@ -40,7 +40,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
   if (!file)
     return;
 
-  std::vector<lsLocation> result;
+  std::vector<Location> result;
   Maybe<Use> on_def;
   WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   lsPosition &ls_pos = param.position;
@@ -88,7 +88,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
     for (const IndexInclude &include : file->def->includes) {
       if (include.line == ls_pos.line) {
         result.push_back(
-            lsLocation{lsDocumentUri::FromPath(include.resolved_path)});
+            Location{DocumentUri::FromPath(include.resolved_path)});
         range = {{0, 0}, {0, 0}};
         break;
       }
@@ -110,7 +110,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
       // not in the same file, line distance> to find the best match.
       std::tuple<int, int, bool, int> best_score{INT_MAX, 0, true, 0};
       SymbolIdx best_sym;
-      best_sym.kind = SymbolKind::Invalid;
+      best_sym.kind = Kind::Invalid;
       auto fn = [&](SymbolIdx sym) {
         std::string_view short_name = db->GetSymbolName(sym, false),
                          name = short_query.size() < query.size()
@@ -136,14 +136,14 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
         }
       };
       for (auto &func : db->funcs)
-        fn({func.usr, SymbolKind::Func});
+        fn({func.usr, Kind::Func});
       for (auto &type : db->types)
-        fn({type.usr, SymbolKind::Type});
+        fn({type.usr, Kind::Type});
       for (auto &var : db->vars)
         if (var.def.size() && !var.def[0].is_local())
-          fn({var.usr, SymbolKind::Var});
+          fn({var.usr, Kind::Var});
 
-      if (best_sym.kind != SymbolKind::Invalid) {
+      if (best_sym.kind != Kind::Invalid) {
         Maybe<DeclRef> dr = GetDefinitionSpell(db, best_sym);
         assert(dr);
         if (auto loc = GetLsLocation(db, wfiles, *dr))
@@ -162,7 +162,7 @@ void MessageHandler::textDocument_typeDefinition(
     return;
   WorkingFile *working_file = wfiles->GetFileByFilename(file->def->path);
 
-  std::vector<lsLocation> result;
+  std::vector<Location> result;
   auto Add = [&](const QueryType &type) {
     for (const auto &def : type.def)
       if (def.spell) {
@@ -177,13 +177,13 @@ void MessageHandler::textDocument_typeDefinition(
   for (SymbolRef sym :
        FindSymbolsAtLocation(working_file, file, param.position)) {
     switch (sym.kind) {
-    case SymbolKind::Var: {
+    case Kind::Var: {
       const QueryVar::Def *def = db->GetVar(sym).AnyDef();
       if (def && def->type)
         Add(db->Type(def->type));
       break;
     }
-    case SymbolKind::Type: {
+    case Kind::Type: {
       for (auto &def : db->GetType(sym).def)
         if (def.alias_of) {
           Add(db->Type(def.alias_of));

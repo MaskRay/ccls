@@ -64,13 +64,13 @@ std::vector<Use> GetVarDeclarations(DB *db, const std::vector<Usr> &usrs,
       if (def.spell) {
         has_def = true;
         // See messages/ccls_vars.cc
-        if (def.kind == lsSymbolKind::Field) {
+        if (def.kind == SymbolKind::Field) {
           if (!(kind & 1))
             break;
-        } else if (def.kind == lsSymbolKind::Variable) {
+        } else if (def.kind == SymbolKind::Variable) {
           if (!(kind & 2))
             break;
-        } else if (def.kind == lsSymbolKind::Parameter) {
+        } else if (def.kind == SymbolKind::Parameter) {
           if (!(kind & 4))
             break;
         }
@@ -86,11 +86,11 @@ std::vector<Use> GetVarDeclarations(DB *db, const std::vector<Usr> &usrs,
 std::vector<DeclRef> &GetNonDefDeclarations(DB *db, SymbolIdx sym) {
   static std::vector<DeclRef> empty;
   switch (sym.kind) {
-  case SymbolKind::Func:
+  case Kind::Func:
     return db->GetFunc(sym).declarations;
-  case SymbolKind::Type:
+  case Kind::Type:
     return db->GetType(sym).declarations;
-  case SymbolKind::Var:
+  case Kind::Var:
     return db->GetVar(sym).declarations;
   default:
     break;
@@ -169,45 +169,44 @@ std::optional<lsRange> GetLsRange(WorkingFile *wfile,
                  lsPosition{*end, end_column}};
 }
 
-lsDocumentUri GetLsDocumentUri(DB *db, int file_id, std::string *path) {
+DocumentUri GetLsDocumentUri(DB *db, int file_id, std::string *path) {
   QueryFile &file = db->files[file_id];
   if (file.def) {
     *path = file.def->path;
-    return lsDocumentUri::FromPath(*path);
+    return DocumentUri::FromPath(*path);
   } else {
     *path = "";
-    return lsDocumentUri::FromPath("");
+    return DocumentUri::FromPath("");
   }
 }
 
-lsDocumentUri GetLsDocumentUri(DB *db, int file_id) {
+DocumentUri GetLsDocumentUri(DB *db, int file_id) {
   QueryFile &file = db->files[file_id];
   if (file.def) {
-    return lsDocumentUri::FromPath(file.def->path);
+    return DocumentUri::FromPath(file.def->path);
   } else {
-    return lsDocumentUri::FromPath("");
+    return DocumentUri::FromPath("");
   }
 }
 
-std::optional<lsLocation> GetLsLocation(DB *db, WorkingFiles *wfiles,
-                                        Use use) {
+std::optional<Location> GetLsLocation(DB *db, WorkingFiles *wfiles, Use use) {
   std::string path;
-  lsDocumentUri uri = GetLsDocumentUri(db, use.file_id, &path);
+  DocumentUri uri = GetLsDocumentUri(db, use.file_id, &path);
   std::optional<lsRange> range =
       GetLsRange(wfiles->GetFileByFilename(path), use.range);
   if (!range)
     return std::nullopt;
-  return lsLocation{uri, *range};
+  return Location{uri, *range};
 }
 
-std::optional<lsLocation> GetLsLocation(DB *db, WorkingFiles *wfiles,
-                                        SymbolRef sym, int file_id) {
+std::optional<Location> GetLsLocation(DB *db, WorkingFiles *wfiles,
+                                      SymbolRef sym, int file_id) {
   return GetLsLocation(db, wfiles, Use{{sym.range, sym.role}, file_id});
 }
 
-std::vector<lsLocation> GetLsLocations(DB *db, WorkingFiles *wfiles,
-                                       const std::vector<Use> &uses) {
-  std::vector<lsLocation> ret;
+std::vector<Location> GetLsLocations(DB *db, WorkingFiles *wfiles,
+                                     const std::vector<Use> &uses) {
+  std::vector<Location> ret;
   for (Use use : uses)
     if (auto loc = GetLsLocation(db, wfiles, use))
       ret.push_back(*loc);
@@ -218,12 +217,12 @@ std::vector<lsLocation> GetLsLocations(DB *db, WorkingFiles *wfiles,
   return ret;
 }
 
-lsSymbolKind GetSymbolKind(DB *db, SymbolIdx sym) {
-  lsSymbolKind ret;
-  if (sym.kind == SymbolKind::File)
-    ret = lsSymbolKind::File;
+SymbolKind GetSymbolKind(DB *db, SymbolIdx sym) {
+  SymbolKind ret;
+  if (sym.kind == Kind::File)
+    ret = SymbolKind::File;
   else {
-    ret = lsSymbolKind::Unknown;
+    ret = SymbolKind::Unknown;
     WithEntity(db, sym, [&](const auto &entity) {
       for (auto &def : entity.def) {
         ret = def.kind;
@@ -234,23 +233,23 @@ lsSymbolKind GetSymbolKind(DB *db, SymbolIdx sym) {
   return ret;
 }
 
-std::optional<lsSymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
-                                                 bool detailed) {
+std::optional<SymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
+                                               bool detailed) {
   switch (sym.kind) {
-  case SymbolKind::Invalid:
+  case Kind::Invalid:
     break;
-  case SymbolKind::File: {
+  case Kind::File: {
     QueryFile &file = db->GetFile(sym);
     if (!file.def)
       break;
 
-    lsSymbolInformation info;
+    SymbolInformation info;
     info.name = file.def->path;
-    info.kind = lsSymbolKind::File;
+    info.kind = SymbolKind::File;
     return info;
   }
   default: {
-    lsSymbolInformation info;
+    SymbolInformation info;
     EachEntityDef(db, sym, [&](const auto &def) {
       if (detailed)
         info.name = def.detailed_name;
@@ -290,10 +289,10 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *wfile,
   // important for macros which generate code so that we can resolving the
   // macro argument takes priority over the entire macro body.
   //
-  // Order SymbolKind::Var before SymbolKind::Type. Macro calls are treated as
-  // Var currently. If a macro expands to tokens led by a SymbolKind::Type, the
-  // macro and the Type have the same range. We want to find the macro
-  // definition instead of the Type definition.
+  // Order Kind::Var before Kind::Type. Macro calls are treated as Var
+  // currently. If a macro expands to tokens led by a Kind::Type, the macro and
+  // the Type have the same range. We want to find the macro definition instead
+  // of the Type definition.
   //
   // Then order functions before other types, which makes goto definition work
   // better on constructors.

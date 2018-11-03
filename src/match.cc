@@ -18,7 +18,7 @@ std::optional<Matcher> Matcher::Create(const std::string &search) {
     );
     return m;
   } catch (const std::exception &e) {
-    lsShowMessageParams params;
+    ShowMessageParam params;
     params.type = MessageType::Error;
     params.message =
         "failed to parse EMCAScript regex " + search + " : " + e.what();

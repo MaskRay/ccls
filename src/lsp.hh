@@ -13,7 +13,7 @@
 #include <unordered_map>
 
 namespace ccls {
-struct lsRequestId {
+struct RequestId {
   // The client can send the request id as an int or a string. We should output
   // the same format we received.
   enum Type { kNone, kInt, kString };
@@ -23,17 +23,17 @@ struct lsRequestId {
 
   bool Valid() const { return type != kNone; }
 };
-void Reflect(Reader &visitor, lsRequestId &value);
-void Reflect(Writer &visitor, lsRequestId &value);
+void Reflect(Reader &visitor, RequestId &value);
+void Reflect(Writer &visitor, RequestId &value);
 
 struct InMessage {
-  lsRequestId id;
+  RequestId id;
   std::string method;
   std::unique_ptr<char[]> message;
   std::unique_ptr<rapidjson::Document> document;
 };
 
-enum class lsErrorCodes {
+enum class ErrorCode {
   // Defined by JSON RPC
   ParseError = -32700,
   InvalidRequest = -32600,
@@ -48,11 +48,11 @@ enum class lsErrorCodes {
   // Defined by the protocol.
   RequestCancelled = -32800,
 };
-MAKE_REFLECT_TYPE_PROXY(lsErrorCodes);
+MAKE_REFLECT_TYPE_PROXY(ErrorCode);
 
-struct lsResponseError {
+struct ResponseError {
   // A number indicating the error type that occurred.
-  lsErrorCodes code;
+  ErrorCode code;
 
   // A string providing a short description of the error.
   std::string message;
@@ -61,7 +61,7 @@ struct lsResponseError {
   // information about the error. Can be omitted.
   // std::optional<D> data;
 };
-MAKE_REFLECT_STRUCT(lsResponseError, code, message);
+MAKE_REFLECT_STRUCT(ResponseError, code, message);
 
 constexpr char ccls_xref[] = "ccls.xref";
 constexpr char window_showMessage[] = "window/showMessage";
@@ -74,10 +74,10 @@ constexpr char window_showMessage[] = "window/showMessage";
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-struct lsDocumentUri {
-  static lsDocumentUri FromPath(const std::string &path);
+struct DocumentUri {
+  static DocumentUri FromPath(const std::string &path);
 
-  bool operator==(const lsDocumentUri &other) const;
+  bool operator==(const DocumentUri &other) const;
 
   void SetPath(const std::string &path);
   std::string GetPath() const;
@@ -86,7 +86,7 @@ struct lsDocumentUri {
 };
 
 template <typename TVisitor>
-void Reflect(TVisitor &visitor, lsDocumentUri &value) {
+void Reflect(TVisitor &visitor, DocumentUri &value) {
   Reflect(visitor, value.raw_uri);
 }
 
@@ -115,20 +115,20 @@ struct lsRange {
 };
 MAKE_REFLECT_STRUCT(lsRange, start, end);
 
-struct lsLocation {
-  lsDocumentUri uri;
+struct Location {
+  DocumentUri uri;
   lsRange range;
-  bool operator==(const lsLocation &o) const {
+  bool operator==(const Location &o) const {
     return uri == o.uri && range == o.range;
   }
-  bool operator<(const lsLocation &o) const {
+  bool operator<(const Location &o) const {
     return !(uri.raw_uri == o.uri.raw_uri) ? uri.raw_uri < o.uri.raw_uri
                                            : range < o.range;
   }
 };
-MAKE_REFLECT_STRUCT(lsLocation, uri, range);
+MAKE_REFLECT_STRUCT(Location, uri, range);
 
-enum class lsSymbolKind : uint8_t {
+enum class SymbolKind : uint8_t {
   Unknown = 0,
 
   File = 1,
@@ -169,30 +169,28 @@ enum class lsSymbolKind : uint8_t {
   StaticMethod = 254,
   Macro = 255,
 };
-MAKE_REFLECT_TYPE_PROXY(lsSymbolKind);
+MAKE_REFLECT_TYPE_PROXY(SymbolKind);
 
-struct lsSymbolInformation {
+struct SymbolInformation {
   std::string_view name;
-  lsSymbolKind kind;
-  lsLocation location;
+  SymbolKind kind;
+  Location location;
   std::optional<std::string_view> containerName;
 };
 
-struct lsTextDocumentIdentifier {
-  lsDocumentUri uri;
+struct TextDocumentIdentifier {
+  DocumentUri uri;
 };
-MAKE_REFLECT_STRUCT(lsTextDocumentIdentifier, uri);
+MAKE_REFLECT_STRUCT(TextDocumentIdentifier, uri);
 
-struct lsVersionedTextDocumentIdentifier {
-  lsDocumentUri uri;
+struct VersionedTextDocumentIdentifier {
+  DocumentUri uri;
   // The version number of this document.  number | null
   std::optional<int> version;
-
-  lsTextDocumentIdentifier AsTextDocumentIdentifier() const;
 };
-MAKE_REFLECT_STRUCT(lsVersionedTextDocumentIdentifier, uri, version);
+MAKE_REFLECT_STRUCT(VersionedTextDocumentIdentifier, uri, version);
 
-struct lsTextEdit {
+struct TextEdit {
   // The range of the text document to be manipulated. To insert
   // text into a document create a range where start === end.
   lsRange range;
@@ -201,13 +199,13 @@ struct lsTextEdit {
   // empty string.
   std::string newText;
 
-  bool operator==(const lsTextEdit &that);
+  bool operator==(const TextEdit &that);
 };
-MAKE_REFLECT_STRUCT(lsTextEdit, range, newText);
+MAKE_REFLECT_STRUCT(TextEdit, range, newText);
 
-struct lsTextDocumentItem {
+struct TextDocumentItem {
   // The text document's URI.
-  lsDocumentUri uri;
+  DocumentUri uri;
 
   // The text document's language identifier.
   std::string languageId;
@@ -219,28 +217,21 @@ struct lsTextDocumentItem {
   // The content of the opened text document.
   std::string text;
 };
-MAKE_REFLECT_STRUCT(lsTextDocumentItem, uri, languageId, version, text);
+MAKE_REFLECT_STRUCT(TextDocumentItem, uri, languageId, version, text);
 
-struct lsTextDocumentEdit {
+struct TextDocumentEdit {
   // The text document to change.
-  lsVersionedTextDocumentIdentifier textDocument;
+  VersionedTextDocumentIdentifier textDocument;
 
   // The edits to be applied.
-  std::vector<lsTextEdit> edits;
+  std::vector<TextEdit> edits;
 };
-MAKE_REFLECT_STRUCT(lsTextDocumentEdit, textDocument, edits);
+MAKE_REFLECT_STRUCT(TextDocumentEdit, textDocument, edits);
 
-struct lsWorkspaceEdit {
-  // Holds changes to existing resources.
-  // changes ? : { [uri:string]: TextEdit[]; };
-  // std::unordered_map<lsDocumentUri, std::vector<lsTextEdit>> changes;
-
-  // An array of `TextDocumentEdit`s to express changes to specific a specific
-  // version of a text document. Whether a client supports versioned document
-  // edits is expressed via `WorkspaceClientCapabilites.versionedWorkspaceEdit`.
-  std::vector<lsTextDocumentEdit> documentChanges;
+struct WorkspaceEdit {
+  std::vector<TextDocumentEdit> documentChanges;
 };
-MAKE_REFLECT_STRUCT(lsWorkspaceEdit, documentChanges);
+MAKE_REFLECT_STRUCT(WorkspaceEdit, documentChanges);
 
 struct TextDocumentContentChangeEvent {
   // The range of the document that changed.
@@ -252,12 +243,12 @@ struct TextDocumentContentChangeEvent {
 };
 
 struct TextDocumentDidChangeParam {
-  lsVersionedTextDocumentIdentifier textDocument;
+  VersionedTextDocumentIdentifier textDocument;
   std::vector<TextDocumentContentChangeEvent> contentChanges;
 };
 
 struct WorkspaceFolder {
-  lsDocumentUri uri;
+  DocumentUri uri;
   std::string name;
 };
 MAKE_REFLECT_STRUCT(WorkspaceFolder, uri, name);
@@ -266,7 +257,7 @@ MAKE_REFLECT_STRUCT(WorkspaceFolder, uri, name);
 enum class MessageType : int { Error = 1, Warning = 2, Info = 3, Log = 4 };
 MAKE_REFLECT_TYPE_PROXY(MessageType)
 
-enum class lsDiagnosticSeverity {
+enum class DiagnosticSeverity {
   // Reports an error.
   Error = 1,
   // Reports a warning.
@@ -276,15 +267,15 @@ enum class lsDiagnosticSeverity {
   // Reports a hint.
   Hint = 4
 };
-MAKE_REFLECT_TYPE_PROXY(lsDiagnosticSeverity);
+MAKE_REFLECT_TYPE_PROXY(DiagnosticSeverity);
 
-struct lsDiagnostic {
+struct Diagnostic {
   // The range at which the message applies.
   lsRange range;
 
   // The diagnostic's severity. Can be omitted. If omitted it is up to the
   // client to interpret diagnostics as error, warning, info or hint.
-  std::optional<lsDiagnosticSeverity> severity;
+  std::optional<DiagnosticSeverity> severity;
 
   // The diagnostic's code. Can be omitted.
   int code = 0;
@@ -297,24 +288,15 @@ struct lsDiagnostic {
   std::string message;
 
   // Non-serialized set of fixits.
-  std::vector<lsTextEdit> fixits_;
+  std::vector<TextEdit> fixits_;
 };
-MAKE_REFLECT_STRUCT(lsDiagnostic, range, severity, source, message);
+MAKE_REFLECT_STRUCT(Diagnostic, range, severity, source, message);
 
-struct lsPublishDiagnosticsParams {
-  // The URI for which diagnostic information is reported.
-  lsDocumentUri uri;
-
-  // An array of diagnostic information items.
-  std::vector<lsDiagnostic> diagnostics;
-};
-MAKE_REFLECT_STRUCT(lsPublishDiagnosticsParams, uri, diagnostics);
-
-struct lsShowMessageParams {
+struct ShowMessageParam {
   MessageType type = MessageType::Error;
   std::string message;
 };
-MAKE_REFLECT_STRUCT(lsShowMessageParams, type, message);
+MAKE_REFLECT_STRUCT(ShowMessageParam, type, message);
 
 // Used to identify the language at a file level. The ordering is important, as
 // a file previously identified as `C`, will be changed to `Cpp` if it
@@ -324,8 +306,8 @@ MAKE_REFLECT_TYPE_PROXY(LanguageId);
 
 // The order matters. In FindSymbolsAtLocation, we want Var/Func ordered in
 // front of others.
-enum class SymbolKind : uint8_t { Invalid, File, Type, Func, Var };
-MAKE_REFLECT_TYPE_PROXY(SymbolKind);
+enum class Kind : uint8_t { Invalid, File, Type, Func, Var };
+MAKE_REFLECT_TYPE_PROXY(Kind);
 
 enum class Role : uint16_t {
   None = 0,

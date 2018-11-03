@@ -6,16 +6,16 @@
 
 namespace ccls {
 namespace {
-struct lsMarkedString {
+struct MarkedString {
   std::optional<std::string> language;
   std::string value;
 };
 struct Hover {
-  std::vector<lsMarkedString> contents;
+  std::vector<MarkedString> contents;
   std::optional<lsRange> range;
 };
 
-void Reflect(Writer &visitor, lsMarkedString &value) {
+void Reflect(Writer &visitor, MarkedString &value) {
   // If there is a language, emit a `{language:string, value:string}` object. If
   // not, emit a string.
   if (value.language) {
@@ -42,10 +42,10 @@ const char *LanguageIdentifier(LanguageId lang) {
 }
 
 // Returns the hover or detailed name for `sym`, if any.
-std::pair<std::optional<lsMarkedString>, std::optional<lsMarkedString>>
+std::pair<std::optional<MarkedString>, std::optional<MarkedString>>
 GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
   const char *comments = nullptr;
-  std::optional<lsMarkedString> ls_comments, hover;
+  std::optional<MarkedString> ls_comments, hover;
   WithEntity(db, sym, [&](const auto &entity) {
     std::remove_reference_t<decltype(entity.def[0])> *def = nullptr;
     for (auto &d : entity.def) {
@@ -62,7 +62,7 @@ GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
         comments = def->comments;
     }
     if (def) {
-      lsMarkedString m;
+      MarkedString m;
       m.language = LanguageIdentifier(lang);
       if (def->hover[0]) {
         m.value = def->hover;
@@ -72,7 +72,7 @@ GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
         hover = m;
       }
       if (comments)
-        ls_comments = lsMarkedString{std::nullopt, comments};
+        ls_comments = MarkedString{std::nullopt, comments};
     }
   });
   return {hover, ls_comments};

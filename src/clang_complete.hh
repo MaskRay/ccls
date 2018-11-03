@@ -33,10 +33,10 @@ struct DiagBase {
 struct Note : DiagBase {};
 struct Diag : DiagBase {
   std::vector<Note> notes;
-  std::vector<lsTextEdit> edits;
+  std::vector<TextEdit> edits;
 };
 
-lsTextEdit ToTextEdit(const clang::SourceManager &SM,
+TextEdit ToTextEdit(const clang::SourceManager &SM,
                       const clang::LangOptions &L,
                       const clang::FixItHint &FixIt);
 
@@ -63,18 +63,18 @@ struct CompletionSession
 
 struct CompletionManager {
   using OnDiagnostic = std::function<void(
-      std::string path, std::vector<lsDiagnostic> diagnostics)>;
+      std::string path, std::vector<Diagnostic> diagnostics)>;
   // If OptConsumer is nullptr, the request has been cancelled.
   using OnComplete =
       std::function<void(clang::CodeCompleteConsumer *OptConsumer)>;
-  using OnDropped = std::function<void(lsRequestId request_id)>;
+  using OnDropped = std::function<void(RequestId request_id)>;
 
   struct PreloadRequest {
     std::string path;
   };
   struct CompletionRequest {
-    CompletionRequest(const lsRequestId &id,
-                      const lsTextDocumentIdentifier &document,
+    CompletionRequest(const RequestId &id,
+                      const TextDocumentIdentifier &document,
                       const lsPosition &position,
                       std::unique_ptr<clang::CodeCompleteConsumer> Consumer,
                       clang::CodeCompleteOptions CCOpts,
@@ -83,8 +83,8 @@ struct CompletionManager {
           Consumer(std::move(Consumer)), CCOpts(CCOpts),
           on_complete(on_complete) {}
 
-    lsRequestId id;
-    lsTextDocumentIdentifier document;
+    RequestId id;
+    TextDocumentIdentifier document;
     lsPosition position;
     std::unique_ptr<clang::CodeCompleteConsumer> Consumer;
     clang::CodeCompleteOptions CCOpts;

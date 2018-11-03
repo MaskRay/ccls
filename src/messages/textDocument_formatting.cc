@@ -41,9 +41,9 @@ FormatCode(std::string_view code, std::string_view file, tooling::Range Range) {
       File));
 }
 
-std::vector<lsTextEdit>
-ReplacementsToEdits(std::string_view code, const tooling::Replacements &Repls) {
-  std::vector<lsTextEdit> ret;
+std::vector<TextEdit> ReplacementsToEdits(std::string_view code,
+                                          const tooling::Replacements &Repls) {
+  std::vector<TextEdit> ret;
   int i = 0, line = 0, col = 0;
   auto move = [&](int p) {
     for (; i < p; i++)
@@ -74,8 +74,8 @@ void Format(ReplyOnce &reply, WorkingFile *wfile, tooling::Range range) {
     auto result = ReplacementsToEdits(code, *ReplsOrErr);
     reply(result);
   } else {
-    lsResponseError err;
-    err.code = lsErrorCodes::UnknownErrorCode;
+    ResponseError err;
+    err.code = ErrorCode::UnknownErrorCode;
     err.message = llvm::toString(ReplsOrErr.takeError());
     reply.Error(err);
   }

@@ -24,9 +24,9 @@ struct Param : TextDocumentPositionParam {
 
   bool qualified = false;
   int levels = 1;
-  // If SymbolKind::Func and the point is at a type, list member functions
-  // instead of member variables.
-  SymbolKind kind = SymbolKind::Var;
+  // If Kind::Func and the point is at a type, list member functions instead of
+  // member variables.
+  Kind kind = Kind::Var;
   bool hierarchy = false;
 };
 
@@ -38,7 +38,7 @@ struct Out_cclsMember {
   std::string id;
   std::string_view name;
   std::string fieldName;
-  lsLocation location;
+  Location location;
   // For unexpanded nodes, this is an upper bound because some entities may be
   // undefined. If it is 0, there are no members.
   int numChildren = 0;
@@ -49,7 +49,7 @@ MAKE_REFLECT_STRUCT(Out_cclsMember, id, name, fieldName, location, numChildren,
                     children);
 
 bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
-            int levels, SymbolKind memberKind);
+            int levels, Kind memberKind);
 
 // Add a field to |entry| which is a Func/Type.
 void DoField(MessageHandler *m, Out_cclsMember *entry, const QueryVar &var,
@@ -77,14 +77,14 @@ void DoField(MessageHandler *m, Out_cclsMember *entry, const QueryVar &var,
     entry1.fieldName += def1->Name(false);
   }
   if (def1->spell) {
-    if (std::optional<lsLocation> loc =
+    if (std::optional<Location> loc =
             GetLsLocation(m->db, m->wfiles, *def1->spell))
       entry1.location = *loc;
   }
   if (def1->type) {
     entry1.id = std::to_string(def1->type);
     entry1.usr = def1->type;
-    if (Expand(m, &entry1, qualified, levels, SymbolKind::Var))
+    if (Expand(m, &entry1, qualified, levels, Kind::Var))
       entry->children.push_back(std::move(entry1));
   } else {
     entry1.id = "0";
@@ -95,7 +95,7 @@ void DoField(MessageHandler *m, Out_cclsMember *entry, const QueryVar &var,
 
 // Expand a type node by adding members recursively to it.
 bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
-            int levels, SymbolKind memberKind) {
+            int levels, Kind memberKind) {
   if (0 < entry->usr && entry->usr <= BuiltinType::LastKind) {
     entry->name = ClangBuiltinTypeName(int(entry->usr));
     return true;
@@ -117,7 +117,7 @@ bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
       const auto *def = type->AnyDef();
       if (!def)
         continue;
-      if (def->kind != lsSymbolKind::Namespace)
+      if (def->kind != SymbolKind::Namespace)
         for (Usr usr : def->bases) {
           auto &type1 = m->db->Type(usr);
           if (type1.def.size()) {
@@ -132,13 +132,13 @@ bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
         entry1.usr = def->alias_of;
         if (def1 && def1->spell) {
           // The declaration of target type.
-          if (std::optional<lsLocation> loc =
+          if (std::optional<Location> loc =
                   GetLsLocation(m->db, m->wfiles, *def1->spell))
             entry1.location = *loc;
         } else if (def->spell) {
           // Builtin types have no declaration but the typedef declaration
           // itself is useful.
-          if (std::optional<lsLocation> loc =
+          if (std::optional<Location> loc =
                   GetLsLocation(m->db, m->wfiles, *def->spell))
             entry1.location = *loc;
         }
@@ -150,7 +150,7 @@ bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
             entry1.fieldName = std::string(entry1.name);
           entry->children.push_back(std::move(entry1));
         }
-      } else if (memberKind == SymbolKind::Func) {
+      } else if (memberKind == Kind::Func) {
         llvm::DenseSet<Usr, DenseMapInfoForUsr> seen1;
         for (auto &def : type->def)
           for (Usr usr : def.funcs)
@@ -170,7 +170,7 @@ bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
                 entry->children.push_back(std::move(entry1));
               }
             }
-      } else if (memberKind == SymbolKind::Type) {
+      } else if (memberKind == Kind::Type) {
         llvm::DenseSet<Usr, DenseMapInfoForUsr> seen1;
         for (auto &def : type->def)
           for (Usr usr : def.types)
@@ -207,13 +207,13 @@ bool Expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
   return true;
 }
 
-std::optional<Out_cclsMember> BuildInitial(MessageHandler *m, SymbolKind kind,
+std::optional<Out_cclsMember> BuildInitial(MessageHandler *m, Kind kind,
                                            Usr root_usr, bool qualified,
-                                           int levels, SymbolKind memberKind) {
+                                           int levels, Kind memberKind) {
   switch (kind) {
   default:
     return {};
-  case SymbolKind::Func: {
+  case Kind::Func: {
     const auto *def = m->db->Func(root_usr).AnyDef();
     if (!def)
       return {};
@@ -232,7 +232,7 @@ std::optional<Out_cclsMember> BuildInitial(MessageHandler *m, SymbolKind kind,
     }
     return entry;
   }
-  case SymbolKind::Type: {
+  case Kind::Type: {
     const auto *def = m->db->Type(root_usr).AnyDef();
     if (!def)
       return {};
@@ -276,15 +276,15 @@ void MessageHandler::ccls_member(Reader &reader, ReplyOnce &reply) {
     for (SymbolRef sym :
          FindSymbolsAtLocation(wfile, file, param.position)) {
       switch (sym.kind) {
-      case SymbolKind::Func:
-      case SymbolKind::Type:
+      case Kind::Func:
+      case Kind::Type:
         result = BuildInitial(this, sym.kind, sym.usr, param.qualified,
                               param.levels, param.kind);
         break;
-      case SymbolKind::Var: {
+      case Kind::Var: {
         const QueryVar::Def *def = db->GetVar(sym).AnyDef();
         if (def && def->type)
-          result = BuildInitial(this, SymbolKind::Type, def->type, param.qualified,
+          result = BuildInitial(this, Kind::Type, def->type, param.qualified,
                                 param.levels, param.kind);
         break;
       }

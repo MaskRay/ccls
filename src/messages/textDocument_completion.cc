@@ -18,21 +18,21 @@ namespace ccls {
 using namespace clang;
 using namespace llvm;
 
-struct lsCompletionList {
-  bool isIncomplete = false;
-  std::vector<lsCompletionItem> items;
-};
-
-MAKE_REFLECT_TYPE_PROXY(lsInsertTextFormat);
-MAKE_REFLECT_TYPE_PROXY(lsCompletionItemKind);
-MAKE_REFLECT_STRUCT(lsCompletionItem, label, kind, detail, documentation,
+MAKE_REFLECT_TYPE_PROXY(InsertTextFormat);
+MAKE_REFLECT_TYPE_PROXY(CompletionItemKind);
+MAKE_REFLECT_STRUCT(CompletionItem, label, kind, detail, documentation,
                     sortText, filterText, insertText, insertTextFormat,
                     textEdit, additionalTextEdits);
-MAKE_REFLECT_STRUCT(lsCompletionList, isIncomplete, items);
 
 namespace {
+struct CompletionList {
+  bool isIncomplete = false;
+  std::vector<CompletionItem> items;
+};
+MAKE_REFLECT_STRUCT(CompletionList, isIncomplete, items);
+
 void DecorateIncludePaths(const std::smatch &match,
-                          std::vector<lsCompletionItem> *items) {
+                          std::vector<CompletionItem> *items) {
   std::string spaces_after_include = " ";
   if (match[3].compare("include") == 0 && match[5].length())
     spaces_after_include = match[4].str();
@@ -41,7 +41,7 @@ void DecorateIncludePaths(const std::smatch &match,
       match[1].str() + '#' + match[2].str() + "include" + spaces_after_include;
   std::string suffix = match[7].str();
 
-  for (lsCompletionItem &item : *items) {
+  for (CompletionItem &item : *items) {
     char quote0, quote1;
     if (match[5].compare("<") == 0 ||
         (match[5].length() == 0 && item.use_angle_brackets_))
@@ -82,9 +82,9 @@ ParseIncludeLineResult ParseIncludeLine(const std::string &line) {
 // Pre-filters completion responses before sending to vscode. This results in a
 // significantly snappier completion experience as vscode is easily overloaded
 // when given 1000+ completion items.
-void FilterCandidates(lsCompletionList &result,
-                      const std::string &complete_text, lsPosition begin_pos,
-                      lsPosition end_pos, const std::string &buffer_line) {
+void FilterCandidates(CompletionList &result, const std::string &complete_text,
+                      lsPosition begin_pos, lsPosition end_pos,
+                      const std::string &buffer_line) {
   assert(begin_pos.line == end_pos.line);
   auto &items = result.items;
 
@@ -155,12 +155,12 @@ void FilterCandidates(lsCompletionList &result,
             : FuzzyMatcher::kMinScore;
   }
   items.erase(std::remove_if(items.begin(), items.end(),
-                             [](const lsCompletionItem &item) {
+                             [](const CompletionItem &item) {
                                return item.score_ <= FuzzyMatcher::kMinScore;
                              }),
               items.end());
   std::sort(items.begin(), items.end(),
-            [](const lsCompletionItem &lhs, const lsCompletionItem &rhs) {
+            [](const CompletionItem &lhs, const CompletionItem &rhs) {
               int t = int(lhs.additionalTextEdits.size() -
                           rhs.additionalTextEdits.size());
               if (t)
@@ -178,45 +178,45 @@ void FilterCandidates(lsCompletionList &result,
   finalize();
 }
 
-lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
+CompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   switch (cursor_kind) {
   case CXCursor_UnexposedDecl:
-    return lsCompletionItemKind::Text;
+    return CompletionItemKind::Text;
 
   case CXCursor_StructDecl:
   case CXCursor_UnionDecl:
-    return lsCompletionItemKind::Struct;
+    return CompletionItemKind::Struct;
   case CXCursor_ClassDecl:
-    return lsCompletionItemKind::Class;
+    return CompletionItemKind::Class;
   case CXCursor_EnumDecl:
-    return lsCompletionItemKind::Enum;
+    return CompletionItemKind::Enum;
   case CXCursor_FieldDecl:
-    return lsCompletionItemKind::Field;
+    return CompletionItemKind::Field;
   case CXCursor_EnumConstantDecl:
-    return lsCompletionItemKind::EnumMember;
+    return CompletionItemKind::EnumMember;
   case CXCursor_FunctionDecl:
-    return lsCompletionItemKind::Function;
+    return CompletionItemKind::Function;
   case CXCursor_VarDecl:
   case CXCursor_ParmDecl:
-    return lsCompletionItemKind::Variable;
+    return CompletionItemKind::Variable;
   case CXCursor_ObjCInterfaceDecl:
-    return lsCompletionItemKind::Interface;
+    return CompletionItemKind::Interface;
 
   case CXCursor_ObjCInstanceMethodDecl:
   case CXCursor_CXXMethod:
   case CXCursor_ObjCClassMethodDecl:
-    return lsCompletionItemKind::Method;
+    return CompletionItemKind::Method;
 
   case CXCursor_FunctionTemplate:
-    return lsCompletionItemKind::Function;
+    return CompletionItemKind::Function;
 
   case CXCursor_Constructor:
   case CXCursor_Destructor:
   case CXCursor_ConversionFunction:
-    return lsCompletionItemKind::Constructor;
+    return CompletionItemKind::Constructor;
 
   case CXCursor_ObjCIvarDecl:
-    return lsCompletionItemKind::Variable;
+    return CompletionItemKind::Variable;
 
   case CXCursor_ClassTemplate:
   case CXCursor_ClassTemplatePartialSpecialization:
@@ -228,50 +228,43 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   case CXCursor_ObjCProtocolDecl:
   case CXCursor_ObjCImplementationDecl:
   case CXCursor_ObjCCategoryImplDecl:
-    return lsCompletionItemKind::Class;
+    return CompletionItemKind::Class;
 
   case CXCursor_ObjCPropertyDecl:
-    return lsCompletionItemKind::Property;
+    return CompletionItemKind::Property;
 
   case CXCursor_MacroInstantiation:
   case CXCursor_MacroDefinition:
-    return lsCompletionItemKind::Interface;
+    return CompletionItemKind::Interface;
 
   case CXCursor_Namespace:
   case CXCursor_NamespaceAlias:
   case CXCursor_NamespaceRef:
-    return lsCompletionItemKind::Module;
+    return CompletionItemKind::Module;
 
   case CXCursor_MemberRef:
   case CXCursor_TypeRef:
   case CXCursor_ObjCSuperClassRef:
   case CXCursor_ObjCProtocolRef:
   case CXCursor_ObjCClassRef:
-    return lsCompletionItemKind::Reference;
-
-    // return lsCompletionItemKind::Unit;
-    // return lsCompletionItemKind::Value;
-    // return lsCompletionItemKind::Keyword;
-    // return lsCompletionItemKind::Snippet;
-    // return lsCompletionItemKind::Color;
-    // return lsCompletionItemKind::File;
+    return CompletionItemKind::Reference;
 
   case CXCursor_NotImplemented:
   case CXCursor_OverloadCandidate:
-    return lsCompletionItemKind::Text;
+    return CompletionItemKind::Text;
 
   case CXCursor_TemplateTypeParameter:
   case CXCursor_TemplateTemplateParameter:
-    return lsCompletionItemKind::TypeParameter;
+    return CompletionItemKind::TypeParameter;
 
   default:
     LOG_S(WARNING) << "Unhandled completion kind " << cursor_kind;
-    return lsCompletionItemKind::Text;
+    return CompletionItemKind::Text;
   }
 }
 
 void BuildItem(const CodeCompletionResult &R, const CodeCompletionString &CCS,
-               std::vector<lsCompletionItem> &out) {
+               std::vector<CompletionItem> &out) {
   assert(!out.empty());
   auto first = out.size() - 1;
   bool ignore = false;
@@ -330,7 +323,7 @@ void BuildItem(const CodeCompletionResult &R, const CodeCompletionString &CCS,
         }
         out[i].textEdit.newText +=
             "${" + std::to_string(out[i].parameters_.size()) + ":" + text + "}";
-        out[i].insertTextFormat = lsInsertTextFormat::Snippet;
+        out[i].insertTextFormat = InsertTextFormat::Snippet;
       } else if (Kind != CodeCompletionString::CK_Informative) {
         out[i].textEdit.newText += text;
       }
@@ -352,7 +345,7 @@ class CompletionConsumer : public CodeCompleteConsumer {
 
 public:
   bool from_cache;
-  std::vector<lsCompletionItem> ls_items;
+  std::vector<CompletionItem> ls_items;
 
   CompletionConsumer(const CodeCompleteOptions &Opts, bool from_cache)
       : CodeCompleteConsumer(Opts, false),
@@ -384,7 +377,7 @@ public:
       CodeCompletionString *CCS = R.CreateCodeCompletionString(
           S, Context, getAllocator(), getCodeCompletionTUInfo(),
           includeBriefComments());
-      lsCompletionItem ls_item;
+      CompletionItem ls_item;
       ls_item.kind = GetCompletionKind(R.CursorKind);
       if (const char *brief = CCS->getBriefComment())
         ls_item.documentation = brief;
@@ -396,7 +389,7 @@ public:
 
       for (size_t j = first_idx; j < ls_items.size(); j++) {
         if (g_config->client.snippetSupport &&
-            ls_items[j].insertTextFormat == lsInsertTextFormat::Snippet)
+            ls_items[j].insertTextFormat == InsertTextFormat::Snippet)
           ls_items[j].textEdit.newText += "$0";
         ls_items[j].priority_ = CCS->getPriority();
         if (!g_config->completion.detailedLabel) {
@@ -407,7 +400,7 @@ public:
 #if LLVM_VERSION_MAJOR >= 7
       for (const FixItHint &FixIt : R.FixIts) {
         auto &AST = S.getASTContext();
-        lsTextEdit ls_edit =
+        TextEdit ls_edit =
             ccls::ToTextEdit(AST.getSourceManager(), AST.getLangOpts(), FixIt);
         for (size_t j = first_idx; j < ls_items.size(); j++)
           ls_items[j].additionalTextEdits.push_back(ls_edit);
@@ -421,10 +414,10 @@ public:
 };
 } // namespace
 
-void MessageHandler::textDocument_completion(lsCompletionParams &param,
+void MessageHandler::textDocument_completion(CompletionParam &param,
                                              ReplyOnce &reply) {
-  static CompleteConsumerCache<std::vector<lsCompletionItem>> cache;
-  lsCompletionList result;
+  static CompleteConsumerCache<std::vector<CompletionItem>> cache;
+  CompletionList result;
   std::string path = param.textDocument.uri.GetPath();
   WorkingFile *file = wfiles->GetFileByFilename(path);
   if (!file) {
@@ -440,7 +433,7 @@ void MessageHandler::textDocument_completion(lsCompletionParams &param,
 
   // Check for - and : before completing -> or ::, since vscode does not
   // support multi-character trigger characters.
-  if (param.context.triggerKind == lsCompletionTriggerKind::TriggerCharacter &&
+  if (param.context.triggerKind == CompletionTriggerKind::TriggerCharacter &&
       param.context.triggerCharacter) {
     bool did_fail_check = false;
 
@@ -484,7 +477,7 @@ void MessageHandler::textDocument_completion(lsCompletionParams &param,
   ParseIncludeLineResult preprocess = ParseIncludeLine(buffer_line);
 
   if (preprocess.ok && preprocess.keyword.compare("include") == 0) {
-    lsCompletionList result;
+    CompletionList result;
     {
       std::unique_lock<std::mutex> lock(
           include_complete->completion_items_mutex, std::defer_lock);
@@ -509,7 +502,7 @@ void MessageHandler::textDocument_completion(lsCompletionParams &param,
           if (!OptConsumer)
             return;
           auto *Consumer = static_cast<CompletionConsumer *>(OptConsumer);
-          lsCompletionList result;
+          CompletionList result;
           result.items = Consumer->ls_items;
 
           FilterCandidates(result, completion_text, begin_pos, end_pos,
