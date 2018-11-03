@@ -60,10 +60,9 @@ struct ProxyFileSystem : FileSystem {
 
 namespace ccls {
 
-lsTextEdit ToTextEdit(const clang::SourceManager &SM,
-                      const clang::LangOptions &L,
-                      const clang::FixItHint &FixIt) {
-  lsTextEdit edit;
+TextEdit ToTextEdit(const clang::SourceManager &SM, const clang::LangOptions &L,
+                    const clang::FixItHint &FixIt) {
+  TextEdit edit;
   edit.newText = FixIt.CodeToInsert;
   auto r = FromCharSourceRange(SM, L, FixIt.RemoveRange);
   edit.range =
@@ -211,7 +210,7 @@ public:
     Flush();
   }
   void HandleDiagnostic(DiagnosticsEngine::Level Level,
-                        const Diagnostic &Info) override {
+                        const clang::Diagnostic &Info) override {
     DiagnosticConsumer::HandleDiagnostic(Level, Info);
     SourceLocation L = Info.getLocation();
     if (!L.isValid()) return;
@@ -360,8 +359,8 @@ void *CompletionPreloadMain(void *manager_) {
     int debounce =
         is_open ? g_config->diagnostics.onOpen : g_config->diagnostics.onSave;
     if (debounce >= 0) {
-      lsTextDocumentIdentifier document;
-      document.uri = lsDocumentUri::FromPath(request.path);
+      TextDocumentIdentifier document;
+      document.uri = DocumentUri::FromPath(request.path);
       manager->DiagnosticsUpdate(request.path, debounce);
     }
   }
@@ -491,24 +490,24 @@ void *DiagnosticMain(void *manager_) {
     for (auto &Buf : Bufs)
       Buf.release();
 
-    auto Fill = [](const DiagBase &d, lsDiagnostic &ret) {
+    auto Fill = [](const DiagBase &d, Diagnostic &ret) {
       ret.range = lsRange{{d.range.start.line, d.range.start.column},
                           {d.range.end.line, d.range.end.column}};
       switch (d.level) {
       case DiagnosticsEngine::Ignored:
         // llvm_unreachable
       case DiagnosticsEngine::Remark:
-        ret.severity = lsDiagnosticSeverity::Hint;
+        ret.severity = DiagnosticSeverity::Hint;
         break;
       case DiagnosticsEngine::Note:
-        ret.severity = lsDiagnosticSeverity::Information;
+        ret.severity = DiagnosticSeverity::Information;
         break;
       case DiagnosticsEngine::Warning:
-        ret.severity = lsDiagnosticSeverity::Warning;
+        ret.severity = DiagnosticSeverity::Warning;
         break;
       case DiagnosticsEngine::Error:
       case DiagnosticsEngine::Fatal:
-        ret.severity = lsDiagnosticSeverity::Error;
+        ret.severity = DiagnosticSeverity::Error;
         break;
       }
       ret.code = d.category;
@@ -518,13 +517,13 @@ void *DiagnosticMain(void *manager_) {
     std::vector<Diag> diags = DC.Take();
     if (std::shared_ptr<PreambleData> preamble = session->GetPreamble())
       diags.insert(diags.end(), preamble->diags.begin(), preamble->diags.end());
-    std::vector<lsDiagnostic> ls_diags;
+    std::vector<Diagnostic> ls_diags;
     for (auto &d : diags) {
       if (!d.concerned)
         continue;
       std::string buf;
       llvm::raw_string_ostream OS(buf);
-      lsDiagnostic &ls_diag = ls_diags.emplace_back();
+      Diagnostic &ls_diag = ls_diags.emplace_back();
       Fill(d, ls_diag);
       ls_diag.fixits_ = d.edits;
       OS << d.message;
@@ -537,7 +536,7 @@ void *DiagnosticMain(void *manager_) {
       for (auto &n : d.notes) {
         if (!n.concerned)
           continue;
-        lsDiagnostic &ls_diag1 = ls_diags.emplace_back();
+        Diagnostic &ls_diag1 = ls_diags.emplace_back();
         Fill(n, ls_diag1);
         OS << n.message << "\n\n";
         printDiag(OS, d);

@@ -19,14 +19,14 @@ struct SignatureInformation {
   std::optional<std::string> documentation;
   std::vector<ParameterInformation> parameters;
 };
-struct lsSignatureHelp {
+struct SignatureHelp {
   std::vector<SignatureInformation> signatures;
   int activeSignature = 0;
   int activeParameter = 0;
 };
 MAKE_REFLECT_STRUCT(ParameterInformation, label);
 MAKE_REFLECT_STRUCT(SignatureInformation, label, documentation, parameters);
-MAKE_REFLECT_STRUCT(lsSignatureHelp, signatures, activeSignature,
+MAKE_REFLECT_STRUCT(SignatureHelp, signatures, activeSignature,
                     activeParameter);
 
 std::string BuildOptional(const CodeCompletionString &CCS,
@@ -64,7 +64,7 @@ class SignatureHelpConsumer : public CodeCompleteConsumer {
   CodeCompletionTUInfo CCTUInfo;
 public:
   bool from_cache;
-  lsSignatureHelp ls_sighelp;
+  SignatureHelp ls_sighelp;
   SignatureHelpConsumer(const clang::CodeCompleteOptions &CCOpts,
                         bool from_cache)
       : CodeCompleteConsumer(CCOpts, false),
@@ -140,7 +140,7 @@ public:
 
 void MessageHandler::textDocument_signatureHelp(
     TextDocumentPositionParam &param, ReplyOnce &reply) {
-  static CompleteConsumerCache<lsSignatureHelp> cache;
+  static CompleteConsumerCache<SignatureHelp> cache;
 
   std::string path = param.textDocument.uri.GetPath();
   lsPosition begin_pos = param.position;

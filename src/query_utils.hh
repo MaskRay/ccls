@@ -24,16 +24,16 @@ std::vector<Use> GetUsesForAllBases(DB *db, QueryFunc &root);
 std::vector<Use> GetUsesForAllDerived(DB *db, QueryFunc &root);
 std::optional<lsRange> GetLsRange(WorkingFile *working_file,
                                   const Range &location);
-lsDocumentUri GetLsDocumentUri(DB *db, int file_id, std::string *path);
-lsDocumentUri GetLsDocumentUri(DB *db, int file_id);
+DocumentUri GetLsDocumentUri(DB *db, int file_id, std::string *path);
+DocumentUri GetLsDocumentUri(DB *db, int file_id);
 
-std::optional<lsLocation> GetLsLocation(DB *db, WorkingFiles *wfiles, Use use);
-std::optional<lsLocation> GetLsLocation(DB *db, WorkingFiles *wfiles,
+std::optional<Location> GetLsLocation(DB *db, WorkingFiles *wfiles, Use use);
+std::optional<Location> GetLsLocation(DB *db, WorkingFiles *wfiles,
                                         SymbolRef sym, int file_id);
-std::vector<lsLocation> GetLsLocations(DB *db, WorkingFiles *wfiles,
+std::vector<Location> GetLsLocations(DB *db, WorkingFiles *wfiles,
                                            const std::vector<Use> &uses);
 // Returns a symbol. The symbol will *NOT* have a location assigned.
-std::optional<lsSymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
+std::optional<SymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
                                                  bool detailed);
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *working_file,
@@ -43,16 +43,16 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *working_file,
 
 template <typename Fn> void WithEntity(DB *db, SymbolIdx sym, Fn &&fn) {
   switch (sym.kind) {
-  case SymbolKind::Invalid:
-  case SymbolKind::File:
+  case Kind::Invalid:
+  case Kind::File:
     break;
-  case SymbolKind::Func:
+  case Kind::Func:
     fn(db->GetFunc(sym));
     break;
-  case SymbolKind::Type:
+  case Kind::Type:
     fn(db->GetType(sym));
     break;
-  case SymbolKind::Var:
+  case Kind::Var:
     fn(db->GetVar(sym));
     break;
   }
@@ -81,7 +81,7 @@ void EachOccurrence(DB *db, SymbolIdx sym, bool include_decl, Fn &&fn) {
   });
 }
 
-lsSymbolKind GetSymbolKind(DB *db, SymbolIdx sym);
+SymbolKind GetSymbolKind(DB *db, SymbolIdx sym);
 
 template <typename Fn>
 void EachDefinedFunc(DB *db, const std::vector<Usr> &usrs, Fn &&fn) {

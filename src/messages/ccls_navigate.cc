@@ -7,7 +7,7 @@
 namespace ccls {
 namespace {
 struct Param {
-  lsTextDocumentIdentifier textDocument;
+  TextDocumentIdentifier textDocument;
   lsPosition position;
   std::string direction;
 };
@@ -83,10 +83,10 @@ void MessageHandler::ccls_navigate(Reader &reader,
         res = sym.extent;
     break;
   }
-  std::vector<lsLocation> result;
+  std::vector<Location> result;
   if (res)
     if (auto ls_range = GetLsRange(wfile, *res)) {
-      lsLocation &ls_loc = result.emplace_back();
+      Location &ls_loc = result.emplace_back();
       ls_loc.uri = param.textDocument.uri;
       ls_loc.range = *ls_range;
     }

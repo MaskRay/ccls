@@ -30,7 +30,7 @@ void MessageHandler::textDocument_foldingRange(TextDocumentParam &param,
 
   for (auto [sym, refcnt] : file->symbol2refcnt)
     if (refcnt > 0 && sym.extent.Valid() &&
-        (sym.kind == SymbolKind::Func || sym.kind == SymbolKind::Type) &&
+        (sym.kind == Kind::Func || sym.kind == Kind::Type) &&
         (ls_range = GetLsRange(wfile, sym.extent))) {
       FoldingRange &fold = result.emplace_back();
       fold.startLine = ls_range->start.line;

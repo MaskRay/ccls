@@ -31,7 +31,7 @@ struct WorkingFile {
   // A set of diagnostics that have been reported for this file.
   // NOTE: _ is appended because it must be accessed under the WorkingFiles
   // lock!
-  std::vector<lsDiagnostic> diagnostics_;
+  std::vector<Diagnostic> diagnostics_;
 
   WorkingFile(const std::string &filename, const std::string &buffer_content);
 
@@ -105,9 +105,9 @@ struct WorkingFiles {
   void DoActionOnFile(const std::string &filename,
                       const std::function<void(WorkingFile *file)> &action);
 
-  WorkingFile *OnOpen(const lsTextDocumentItem &open);
+  WorkingFile *OnOpen(const TextDocumentItem &open);
   void OnChange(const TextDocumentDidChangeParam &change);
-  void OnClose(const lsTextDocumentIdentifier &close);
+  void OnClose(const TextDocumentIdentifier &close);
 
   // If |filter_paths| is non-empty, only files which contain any of the given
   // strings. For example, {"foo", "bar"} means that every result has either the

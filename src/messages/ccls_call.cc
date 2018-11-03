@@ -47,7 +47,7 @@ struct Out_cclsCall {
   Usr usr;
   std::string id;
   std::string_view name;
-  lsLocation location;
+  Location location;
   CallType callType = CallType::Direct;
   int numChildren;
   // Empty if the |levels| limit is reached.
@@ -85,15 +85,14 @@ bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
     if (callee) {
       if (const auto *def = func.AnyDef())
         for (SymbolRef sym : def->callees)
-          if (sym.kind == SymbolKind::Func)
+          if (sym.kind == Kind::Func)
             handle(sym, def->file_id, call_type);
     } else {
       for (Use use : func.uses) {
         const QueryFile &file1 = m->db->files[use.file_id];
         Maybe<ExtentRef> best;
         for (auto [sym, refcnt] : file1.symbol2refcnt)
-          if (refcnt > 0 && sym.extent.Valid() &&
-              sym.kind == SymbolKind::Func &&
+          if (refcnt > 0 && sym.extent.Valid() && sym.kind == Kind::Func &&
               sym.extent.start <= use.range.start &&
               use.range.end <= sym.extent.end &&
               (!best || best->extent.start < sym.extent.start))
@@ -195,7 +194,7 @@ void MessageHandler::ccls_call(Reader &reader, ReplyOnce &reply) {
     WorkingFile *working_file = wfiles->GetFileByFilename(file->def->path);
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, param.position)) {
-      if (sym.kind == SymbolKind::Func) {
+      if (sym.kind == Kind::Func) {
         result = BuildInitial(this, sym.usr, param.callee, param.callType,
                               param.qualified, param.levels);
         break;

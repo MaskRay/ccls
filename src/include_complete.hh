@@ -26,18 +26,18 @@ struct IncludeComplete {
   void InsertIncludesFromDirectory(std::string directory,
                                    bool use_angle_brackets);
 
-  std::optional<ccls::lsCompletionItem>
+  std::optional<ccls::CompletionItem>
   FindCompletionItemForAbsolutePath(const std::string &absolute_path);
 
   // Insert item to |completion_items|.
   // Update |absolute_path_to_completion_item| and |inserted_paths|.
   void InsertCompletionItem(const std::string &absolute_path,
-                            ccls::lsCompletionItem &&item);
+                            ccls::CompletionItem &&item);
 
   // Guards |completion_items| when |is_scanning| is true.
   std::mutex completion_items_mutex;
   std::atomic<bool> is_scanning;
-  std::vector<ccls::lsCompletionItem> completion_items;
+  std::vector<ccls::CompletionItem> completion_items;
 
   // Absolute file path to the completion item in |completion_items|.
   // Keep the one with shortest include path.

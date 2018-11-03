@@ -157,7 +157,7 @@ struct DB {
   void clear();
 
   template <typename Def>
-  void RemoveUsrs(SymbolKind kind, int file_id,
+  void RemoveUsrs(Kind kind, int file_id,
                   const std::vector<std::pair<Usr, Def>> &to_remove);
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate *update);
