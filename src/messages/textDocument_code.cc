@@ -27,7 +27,7 @@ namespace {
 struct CodeAction {
   std::string title;
   const char *kind = "quickfix";
-  lsWorkspaceEdit edit;
+  WorkspaceEdit edit;
 };
 MAKE_REFLECT_STRUCT(CodeAction, title, kind, edit);
 }
@@ -39,9 +39,9 @@ void MessageHandler::textDocument_codeAction(CodeActionParam &param,
     return;
   }
   std::vector<CodeAction> result;
-  std::vector<lsDiagnostic> diagnostics;
+  std::vector<Diagnostic> diagnostics;
   wfiles->DoAction([&]() { diagnostics = wfile->diagnostics_; });
-  for (lsDiagnostic &diag : diagnostics)
+  for (Diagnostic &diag : diagnostics)
     if (diag.fixits_.size()) {
       CodeAction &cmd = result.emplace_back();
       cmd.title = "FixIt: " + diag.message;
@@ -56,21 +56,21 @@ void MessageHandler::textDocument_codeAction(CodeActionParam &param,
 namespace {
 struct Cmd_xref {
   Usr usr;
-  SymbolKind kind;
+  Kind kind;
   std::string field;
 };
-struct lsCommand {
+struct Command {
   std::string title;
   std::string command;
   std::vector<std::string> arguments;
 };
-struct lsCodeLens {
+struct CodeLens {
   lsRange range;
-  std::optional<lsCommand> command;
+  std::optional<Command> command;
 };
 MAKE_REFLECT_STRUCT(Cmd_xref, usr, kind, field);
-MAKE_REFLECT_STRUCT(lsCommand, title, command, arguments);
-MAKE_REFLECT_STRUCT(lsCodeLens, range, command);
+MAKE_REFLECT_STRUCT(Command, title, command, arguments);
+MAKE_REFLECT_STRUCT(CodeLens, range, command);
 
 template <typename T>
 std::string ToString(T &v) {
@@ -82,7 +82,7 @@ std::string ToString(T &v) {
 }
 
 struct CommonCodeLensParams {
-  std::vector<lsCodeLens> *result;
+  std::vector<CodeLens> *result;
   DB *db;
   WorkingFile *wfile;
 };
@@ -90,7 +90,7 @@ struct CommonCodeLensParams {
 
 void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
                                            ReplyOnce &reply) {
-  std::vector<lsCodeLens> result;
+  std::vector<CodeLens> result;
   std::string path = param.textDocument.uri.GetPath();
 
   QueryFile *file = FindFile(reply, path);
@@ -107,9 +107,9 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
     std::optional<lsRange> ls_range = GetLsRange(wfile, range);
     if (!ls_range)
       return;
-    lsCodeLens &code_lens = result.emplace_back();
+    CodeLens &code_lens = result.emplace_back();
     code_lens.range = *ls_range;
-    code_lens.command = lsCommand();
+    code_lens.command = Command();
     code_lens.command->command = std::string(ccls_xref);
     bool plural = num > 1 && singular[strlen(singular) - 1] != 'd';
     code_lens.command->title =
@@ -122,49 +122,49 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
     if (refcnt <= 0 || !sym.extent.Valid() || !seen.insert(sym.range).second)
       continue;
     switch (sym.kind) {
-    case SymbolKind::Func: {
+    case Kind::Func: {
       QueryFunc &func = db->GetFunc(sym);
       const QueryFunc::Def *def = func.AnyDef();
       if (!def)
         continue;
       std::vector<Use> base_uses = GetUsesForAllBases(db, func);
       std::vector<Use> derived_uses = GetUsesForAllDerived(db, func);
-      Add("ref", {sym.usr, SymbolKind::Func, "uses"}, sym.range,
-          func.uses.size(), base_uses.empty());
+      Add("ref", {sym.usr, Kind::Func, "uses"}, sym.range, func.uses.size(),
+          base_uses.empty());
       if (base_uses.size())
-        Add("b.ref", {sym.usr, SymbolKind::Func, "bases uses"}, sym.range,
+        Add("b.ref", {sym.usr, Kind::Func, "bases uses"}, sym.range,
             base_uses.size());
       if (derived_uses.size())
-        Add("d.ref", {sym.usr, SymbolKind::Func, "derived uses"}, sym.range,
+        Add("d.ref", {sym.usr, Kind::Func, "derived uses"}, sym.range,
             derived_uses.size());
       if (base_uses.empty())
-        Add("base", {sym.usr, SymbolKind::Func, "bases"}, sym.range,
+        Add("base", {sym.usr, Kind::Func, "bases"}, sym.range,
             def->bases.size());
-      Add("derived", {sym.usr, SymbolKind::Func, "derived"}, sym.range,
+      Add("derived", {sym.usr, Kind::Func, "derived"}, sym.range,
           func.derived.size());
       break;
     }
-    case SymbolKind::Type: {
+    case Kind::Type: {
       QueryType &type = db->GetType(sym);
-      Add("ref", {sym.usr, SymbolKind::Type, "uses"}, sym.range,
-          type.uses.size(), true);
-      Add("derived", {sym.usr, SymbolKind::Type, "derived"}, sym.range,
+      Add("ref", {sym.usr, Kind::Type, "uses"}, sym.range, type.uses.size(),
+          true);
+      Add("derived", {sym.usr, Kind::Type, "derived"}, sym.range,
           type.derived.size());
-      Add("var", {sym.usr, SymbolKind::Type, "instances"}, sym.range,
+      Add("var", {sym.usr, Kind::Type, "instances"}, sym.range,
           type.instances.size());
       break;
     }
-    case SymbolKind::Var: {
+    case Kind::Var: {
       QueryVar &var = db->GetVar(sym);
       const QueryVar::Def *def = var.AnyDef();
       if (!def || (def->is_local() && !g_config->codeLens.localVariables))
         continue;
-      Add("ref", {sym.usr, SymbolKind::Var, "uses"}, sym.range, var.uses.size(),
-          def->kind != lsSymbolKind::Macro);
+      Add("ref", {sym.usr, Kind::Var, "uses"}, sym.range, var.uses.size(),
+          def->kind != SymbolKind::Macro);
       break;
     }
-    case SymbolKind::File:
-    case SymbolKind::Invalid:
+    case Kind::File:
+    case Kind::Invalid:
       llvm_unreachable("");
     };
   }
@@ -174,7 +174,7 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
 
 void MessageHandler::workspace_executeCommand(Reader &reader,
                                               ReplyOnce &reply) {
-  lsCommand param;
+  Command param;
   Reflect(reader, param);
   if (param.arguments.empty()) {
     return;
@@ -185,14 +185,14 @@ void MessageHandler::workspace_executeCommand(Reader &reader,
   if (param.command == ccls_xref) {
     Cmd_xref cmd;
     Reflect(json_reader, cmd);
-    std::vector<lsLocation> result;
+    std::vector<Location> result;
     auto Map = [&](auto &&uses) {
       for (auto &use : uses)
         if (auto loc = GetLsLocation(db, wfiles, use))
           result.push_back(std::move(*loc));
     };
     switch (cmd.kind) {
-    case SymbolKind::Func: {
+    case Kind::Func: {
       QueryFunc &func = db->Func(cmd.usr);
       if (cmd.field == "bases") {
         if (auto *def = func.AnyDef())
@@ -208,7 +208,7 @@ void MessageHandler::workspace_executeCommand(Reader &reader,
       }
       break;
     }
-    case SymbolKind::Type: {
+    case Kind::Type: {
       QueryType &type = db->Type(cmd.usr);
       if (cmd.field == "derived") {
         Map(GetTypeDeclarations(db, type.derived));
@@ -219,7 +219,7 @@ void MessageHandler::workspace_executeCommand(Reader &reader,
       }
       break;
     }
-    case SymbolKind::Var: {
+    case Kind::Var: {
       QueryVar &var = db->Var(cmd.usr);
       if (cmd.field == "uses")
         Map(var.uses);

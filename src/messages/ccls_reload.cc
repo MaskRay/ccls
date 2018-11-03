@@ -40,7 +40,7 @@ void MessageHandler::ccls_reload(Reader &reader) {
   if (param.whitelist.empty() && param.blacklist.empty()) {
     vfs->Clear();
     db->clear();
-    project->Index(wfiles, lsRequestId());
+    project->Index(wfiles, RequestId());
     clang_complete->FlushAllSessions();
     return;
   }

@@ -451,7 +451,7 @@ void WorkingFiles::DoActionOnFile(
   action(file);
 }
 
-WorkingFile *WorkingFiles::OnOpen(const lsTextDocumentItem &open) {
+WorkingFile *WorkingFiles::OnOpen(const TextDocumentItem &open) {
   std::lock_guard<std::mutex> lock(files_mutex);
 
   std::string filename = open.uri.GetPath();
@@ -505,7 +505,7 @@ void WorkingFiles::OnChange(const TextDocumentDidChangeParam &change) {
   }
 }
 
-void WorkingFiles::OnClose(const lsTextDocumentIdentifier &close) {
+void WorkingFiles::OnClose(const TextDocumentIdentifier &close) {
   std::lock_guard<std::mutex> lock(files_mutex);
 
   std::string filename = close.uri.GetPath();

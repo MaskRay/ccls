@@ -53,7 +53,7 @@ void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
   for (auto &folder : param.folders)
     EnsureEndsInSlash(folder);
   std::vector<uint8_t> file_set = db->GetFileSet(param.folders);
-  std::vector<lsLocation> result;
+  std::vector<Location> result;
 
   std::unordered_set<Use> seen_uses;
   int line = param.position.line;
@@ -63,12 +63,12 @@ void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
     std::unordered_set<Usr> seen;
     seen.insert(sym.usr);
     std::vector<Usr> stack{sym.usr};
-    if (sym.kind != SymbolKind::Func)
+    if (sym.kind != Kind::Func)
       param.base = false;
     while (stack.size()) {
       sym.usr = stack.back();
       stack.pop_back();
-      auto fn = [&](Use use, lsSymbolKind parent_kind) {
+      auto fn = [&](Use use, SymbolKind parent_kind) {
         if (file_set[use.file_id] &&
             Role(use.role & param.role) == param.role &&
             !(use.role & param.excludeRole) && seen_uses.insert(use).second)
@@ -76,7 +76,7 @@ void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
             result.push_back(*loc);
       };
       WithEntity(db, sym, [&](const auto &entity) {
-        lsSymbolKind parent_kind = lsSymbolKind::Unknown;
+        SymbolKind parent_kind = SymbolKind::Unknown;
         for (auto &def : entity.def)
           if (def.spell) {
             parent_kind = GetSymbolKind(db, sym);
@@ -120,8 +120,8 @@ void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
           for (const IndexInclude &include : file1.def->includes)
             if (include.resolved_path == path) {
               // Another file |file1| has the same include line.
-              lsLocation &loc = result.emplace_back();
-              loc.uri = lsDocumentUri::FromPath(file1.def->path);
+              Location &loc = result.emplace_back();
+              loc.uri = DocumentUri::FromPath(file1.def->path);
               loc.range.start.line = loc.range.end.line = include.line;
               break;
             }

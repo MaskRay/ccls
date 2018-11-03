@@ -38,105 +38,32 @@ using namespace llvm;
 extern std::string g_init_options;
 
 namespace {
+enum class TextDocumentSyncKind { None = 0, Full = 1, Incremental = 2 };
+MAKE_REFLECT_TYPE_PROXY(TextDocumentSyncKind)
 
-// Code Lens options.
-struct lsCodeLensOptions {
-  // Code lens has a resolve provider as well.
-  bool resolveProvider = false;
-};
-MAKE_REFLECT_STRUCT(lsCodeLensOptions, resolveProvider);
-
-// Completion options.
-struct lsCompletionOptions {
-  // The server provides support to resolve additional
-  // information for a completion item.
-  bool resolveProvider = false;
-
-  // The characters that trigger completion automatically.
-  // vscode doesn't support trigger character sequences, so we use ':'
-  // for
-  // '::' and '>' for '->'. See
-  // https://github.com/Microsoft/language-server-protocol/issues/138.
-  std::vector<std::string> triggerCharacters = {".", ":",  ">", "#",
-                                                "<", "\"", "/"};
-};
-MAKE_REFLECT_STRUCT(lsCompletionOptions, resolveProvider, triggerCharacters);
-
-// Format document on type options
-struct lsDocumentOnTypeFormattingOptions {
-  // A character on which formatting should be triggered, like `}`.
-  std::string firstTriggerCharacter = "}";
-
-  // More trigger characters.
-  std::vector<std::string> moreTriggerCharacter;
-};
-MAKE_REFLECT_STRUCT(lsDocumentOnTypeFormattingOptions, firstTriggerCharacter,
-                    moreTriggerCharacter);
-
-
-// Save options.
-struct lsSaveOptions {
-  // The client is supposed to include the content on save.
-  bool includeText = false;
-};
-MAKE_REFLECT_STRUCT(lsSaveOptions, includeText);
-
-// Signature help options.
-struct lsSignatureHelpOptions {
-  // The characters that trigger signature help automatically.
-  // NOTE: If updating signature help tokens make sure to also update
-  // WorkingFile::FindClosestCallNameInBuffer.
-  std::vector<std::string> triggerCharacters = {"(", ","};
-};
-MAKE_REFLECT_STRUCT(lsSignatureHelpOptions, triggerCharacters);
-
-// Defines how the host (editor) should sync document changes to the language
-// server.
-enum class lsTextDocumentSyncKind {
-  // Documents should not be synced at all.
-  None = 0,
-
-  // Documents are synced by always sending the full content
-  // of the document.
-  Full = 1,
-
-  // Documents are synced by sending the full content on open.
-  // After that only incremental updates to the document are
-  // send.
-  Incremental = 2
-};
-MAKE_REFLECT_TYPE_PROXY(lsTextDocumentSyncKind)
-
-struct lsTextDocumentSyncOptions {
-  // Open and close notifications are sent to the server.
-  bool openClose = false;
-  // Change notificatins are sent to the server. See TextDocumentSyncKind.None,
-  // TextDocumentSyncKind.Full and TextDocumentSyncKindIncremental.
-  lsTextDocumentSyncKind change = lsTextDocumentSyncKind::Incremental;
-  // Will save notifications are sent to the server.
-  std::optional<bool> willSave;
-  // Will save wait until requests are sent to the server.
-  std::optional<bool> willSaveWaitUntil;
-  // Save notifications are sent to the server.
-  std::optional<lsSaveOptions> save;
-};
-MAKE_REFLECT_STRUCT(lsTextDocumentSyncOptions, openClose, change, willSave,
-                    willSaveWaitUntil, save);
-
-struct lsServerCapabilities {
-  // Defines how text documents are synced. Is either a detailed structure
-  // defining each notification or for backwards compatibility the
-  // TextDocumentSyncKind number.
-  // TODO: It seems like the new API is broken and doesn't work.
-  // std::optional<lsTextDocumentSyncOptions> textDocumentSync;
-  lsTextDocumentSyncKind textDocumentSync = lsTextDocumentSyncKind::Incremental;
+struct ServerCap {
+  struct TextDocumentSyncOptions {
+    bool openClose = false;
+    TextDocumentSyncKind change = TextDocumentSyncKind::Incremental;
+    bool willSave = false;
+    bool willSaveWaitUntil = false;
+  } textDocumentSync;
 
   // The server provides hover support.
   bool hoverProvider = true;
-  // The server provides completion support.
-  lsCompletionOptions completionProvider;
-  // The server provides signature help support.
-  lsSignatureHelpOptions signatureHelpProvider;
+  struct CompletionOptions {
+    bool resolveProvider = false;
+
+    // The characters that trigger completion automatically.
+    // vscode doesn't support trigger character sequences, so we use ':'
+    // for
+    // '::' and '>' for '->'. See
+    // https://github.com/Microsoft/language-server-protocol/issues/138.
+    std::vector<std::string> triggerCharacters = {".", "::", ">", "<", "\""};
+  } completionProvider;
+  struct SignatureHelpOptions {
+    std::vector<std::string> triggerCharacters = {"(", ","};
+  } signatureHelpProvider;
   bool definitionProvider = true;
   bool typeDefinitionProvider = true;
   bool implementationProvider = true;
@@ -145,10 +72,15 @@ struct lsServerCapabilities {
   bool documentSymbolProvider = true;
   bool workspaceSymbolProvider = true;
   bool codeActionProvider = true;
-  lsCodeLensOptions codeLensProvider;
+  struct CodeLensOptions {
+    bool resolveProvider = false;
+  } codeLensProvider;
   bool documentFormattingProvider = true;
   bool documentRangeFormattingProvider = true;
-  lsDocumentOnTypeFormattingOptions documentOnTypeFormattingProvider;
+  struct DocumentOnTypeFormattingOptions {
+    std::string firstTriggerCharacter = "}";
+    std::vector<std::string> moreTriggerCharacter;
+  } documentOnTypeFormattingProvider;
   bool renameProvider = true;
   struct DocumentLinkOptions {
     bool resolveProvider = true;
@@ -165,12 +97,20 @@ struct lsServerCapabilities {
     } workspaceFolders;
   } workspace;
 };
-MAKE_REFLECT_STRUCT(lsServerCapabilities::DocumentLinkOptions, resolveProvider);
-MAKE_REFLECT_STRUCT(lsServerCapabilities::ExecuteCommandOptions, commands);
-MAKE_REFLECT_STRUCT(lsServerCapabilities::Workspace::WorkspaceFolders,
-                    supported, changeNotifications);
-MAKE_REFLECT_STRUCT(lsServerCapabilities::Workspace, workspaceFolders);
-MAKE_REFLECT_STRUCT(lsServerCapabilities, textDocumentSync, hoverProvider,
+MAKE_REFLECT_STRUCT(ServerCap::CompletionOptions, resolveProvider,
+                    triggerCharacters);
+MAKE_REFLECT_STRUCT(ServerCap::CodeLensOptions, resolveProvider);
+MAKE_REFLECT_STRUCT(ServerCap::DocumentLinkOptions, resolveProvider);
+MAKE_REFLECT_STRUCT(ServerCap::DocumentOnTypeFormattingOptions,
+                    firstTriggerCharacter, moreTriggerCharacter);
+MAKE_REFLECT_STRUCT(ServerCap::ExecuteCommandOptions, commands);
+MAKE_REFLECT_STRUCT(ServerCap::SignatureHelpOptions, triggerCharacters);
+MAKE_REFLECT_STRUCT(ServerCap::TextDocumentSyncOptions, openClose, change,
+                    willSave, willSaveWaitUntil);
+MAKE_REFLECT_STRUCT(ServerCap::Workspace::WorkspaceFolders, supported,
+                    changeNotifications);
+MAKE_REFLECT_STRUCT(ServerCap::Workspace, workspaceFolders);
+MAKE_REFLECT_STRUCT(ServerCap, textDocumentSync, hoverProvider,
                     completionProvider, signatureHelpProvider,
                     definitionProvider, implementationProvider,
                     typeDefinitionProvider, referencesProvider,
@@ -182,72 +122,38 @@ MAKE_REFLECT_STRUCT(lsServerCapabilities, textDocumentSync, hoverProvider,
                     documentLinkProvider, foldingRangeProvider,
                     executeCommandProvider, workspace);
 
+struct DynamicReg {
+  bool dynamicRegistration = false;
+};
+MAKE_REFLECT_STRUCT(DynamicReg, dynamicRegistration);
+
 // Workspace specific client capabilities.
-struct lsWorkspaceClientCapabilites {
+struct WorkspaceClientCap {
   // The client supports applying batch edits to the workspace.
   std::optional<bool> applyEdit;
 
-  struct lsWorkspaceEdit {
+  struct WorkspaceEdit {
     // The client supports versioned document changes in `WorkspaceEdit`s
     std::optional<bool> documentChanges;
   };
 
   // Capabilities specific to `WorkspaceEdit`s
-  std::optional<lsWorkspaceEdit> workspaceEdit;
-
-  struct lsGenericDynamicReg {
-    // Did foo notification supports dynamic registration.
-    std::optional<bool> dynamicRegistration;
-  };
-
-  // Capabilities specific to the `workspace/didChangeConfiguration`
-  // notification.
-  std::optional<lsGenericDynamicReg> didChangeConfiguration;
-
-  // Capabilities specific to the `workspace/didChangeWatchedFiles`
-  // notification.
-  std::optional<lsGenericDynamicReg> didChangeWatchedFiles;
-
-  // Capabilities specific to the `workspace/symbol` request.
-  std::optional<lsGenericDynamicReg> symbol;
-
-  // Capabilities specific to the `workspace/executeCommand` request.
-  std::optional<lsGenericDynamicReg> executeCommand;
+  std::optional<WorkspaceEdit> workspaceEdit;
+  DynamicReg didChangeConfiguration;
+  DynamicReg didChangeWatchedFiles;
+  DynamicReg symbol;
+  DynamicReg executeCommand;
 };
 
-MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites::lsWorkspaceEdit,
-                    documentChanges);
-MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites::lsGenericDynamicReg,
-                    dynamicRegistration);
-MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites, applyEdit, workspaceEdit,
+MAKE_REFLECT_STRUCT(WorkspaceClientCap::WorkspaceEdit, documentChanges);
+MAKE_REFLECT_STRUCT(WorkspaceClientCap, applyEdit, workspaceEdit,
                     didChangeConfiguration, didChangeWatchedFiles, symbol,
                     executeCommand);
 
 // Text document specific client capabilities.
-struct lsTextDocumentClientCapabilities {
-  struct lsSynchronization {
-    // Whether text document synchronization supports dynamic registration.
-    std::optional<bool> dynamicRegistration;
-
-    // The client supports sending will save notifications.
-    std::optional<bool> willSave;
-
-    // The client supports sending a will save request and
-    // waits for a response providing text edits which will
-    // be applied to the document before it is saved.
-    std::optional<bool> willSaveWaitUntil;
-
-    // The client supports did save notifications.
-    std::optional<bool> didSave;
-  };
-
-  lsSynchronization synchronization;
-
-  struct lsCompletion {
-    // Whether completion supports dynamic registration.
-    std::optional<bool> dynamicRegistration;
-
-    struct lsCompletionItem {
+struct TextDocumentClientCap {
+  struct Completion {
+    struct CompletionItem {
       // Client supports snippets as insert text.
       //
       // A snippet can define tab stops and placeholders with `$1`, `$2`
@@ -258,99 +164,65 @@ struct lsTextDocumentClientCapabilities {
     } completionItem;
   } completion;
 
-  struct lsDocumentSymbol {
+  struct DocumentSymbol {
     bool hierarchicalDocumentSymbolSupport = false;
   } documentSymbol;
-
-  struct lsGenericDynamicReg {
-    // Whether foo supports dynamic registration.
-    std::optional<bool> dynamicRegistration;
-  };
-
-  struct CodeLensRegistrationOptions : public lsGenericDynamicReg {
-    // Code lens has a resolve provider as well.
-    bool resolveProvider;
-  };
-
-  // Capabilities specific to the `textDocument/codeLens`
-  std::optional<CodeLensRegistrationOptions> codeLens;
-
-  // Capabilities specific to the `textDocument/rename`
-  std::optional<lsGenericDynamicReg> rename;
 };
 
-MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsSynchronization,
-                    dynamicRegistration, willSave, willSaveWaitUntil, didSave);
-MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsCompletion,
-                    dynamicRegistration, completionItem);
-MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsDocumentSymbol,
+MAKE_REFLECT_STRUCT(TextDocumentClientCap::Completion::CompletionItem,
+                    snippetSupport);
+MAKE_REFLECT_STRUCT(TextDocumentClientCap::Completion, completionItem);
+MAKE_REFLECT_STRUCT(TextDocumentClientCap::DocumentSymbol,
                     hierarchicalDocumentSymbolSupport);
-MAKE_REFLECT_STRUCT(
-    lsTextDocumentClientCapabilities::lsCompletion::lsCompletionItem,
-    snippetSupport);
-MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsGenericDynamicReg,
-                    dynamicRegistration);
-MAKE_REFLECT_STRUCT(
-    lsTextDocumentClientCapabilities::CodeLensRegistrationOptions,
-    dynamicRegistration, resolveProvider);
-MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities, completion,
-                    documentSymbol, rename, synchronization);
+MAKE_REFLECT_STRUCT(TextDocumentClientCap, completion, documentSymbol);
 
-struct lsClientCapabilities {
-  // Workspace specific client capabilities.
-  lsWorkspaceClientCapabilites workspace;
-
-  // Text document specific client capabilities.
-  lsTextDocumentClientCapabilities textDocument;
+struct ClientCap {
+  WorkspaceClientCap workspace;
+  TextDocumentClientCap textDocument;
 };
-MAKE_REFLECT_STRUCT(lsClientCapabilities, workspace, textDocument);
+MAKE_REFLECT_STRUCT(ClientCap, workspace, textDocument);
 
-struct lsInitializeParams {
+struct InitializeParam {
   // The rootUri of the workspace. Is null if no
   // folder is open. If both `rootPath` and `rootUri` are set
   // `rootUri` wins.
-  std::optional<lsDocumentUri> rootUri;
+  std::optional<DocumentUri> rootUri;
 
-  // User provided initialization options.
   Config initializationOptions;
+  ClientCap capabilities;
 
-  // The capabilities provided by the client (editor or tool)
-  lsClientCapabilities capabilities;
-
-  enum class lsTrace {
+  enum class Trace {
     // NOTE: serialized as a string, one of 'off' | 'messages' | 'verbose';
     Off,      // off
     Messages, // messages
     Verbose   // verbose
   };
-
-  // The initial trace setting. If omitted trace is disabled ('off').
-  lsTrace trace = lsTrace::Off;
+  Trace trace = Trace::Off;
 
   std::vector<WorkspaceFolder> workspaceFolders;
 };
 
-void Reflect(Reader &reader, lsInitializeParams::lsTrace &value) {
+void Reflect(Reader &reader, InitializeParam::Trace &value) {
   if (!reader.IsString()) {
-    value = lsInitializeParams::lsTrace::Off;
+    value = InitializeParam::Trace::Off;
     return;
   }
   std::string v = reader.GetString();
   if (v == "off")
-    value = lsInitializeParams::lsTrace::Off;
+    value = InitializeParam::Trace::Off;
   else if (v == "messages")
-    value = lsInitializeParams::lsTrace::Messages;
+    value = InitializeParam::Trace::Messages;
   else if (v == "verbose")
-    value = lsInitializeParams::lsTrace::Verbose;
+    value = InitializeParam::Trace::Verbose;
 }
 
-MAKE_REFLECT_STRUCT(lsInitializeParams, rootUri, initializationOptions,
+MAKE_REFLECT_STRUCT(InitializeParam, rootUri, initializationOptions,
                     capabilities, trace, workspaceFolders);
 
-struct lsInitializeResult {
-  lsServerCapabilities capabilities;
+struct InitializeResult {
+  ServerCap capabilities;
 };
-MAKE_REFLECT_STRUCT(lsInitializeResult, capabilities);
+MAKE_REFLECT_STRUCT(InitializeResult, capabilities);
 
 void *Indexer(void *arg_) {
   MessageHandler *h;
@@ -365,7 +237,7 @@ void *Indexer(void *arg_) {
 }
 } // namespace
 
-void Initialize(MessageHandler *m, lsInitializeParams &param, ReplyOnce &reply) {
+void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
   std::string project_path = NormalizePath(param.rootUri->GetPath());
   LOG_S(INFO) << "initialize in directory " << project_path << " with uri "
               << param.rootUri->raw_uri;
@@ -413,7 +285,7 @@ void Initialize(MessageHandler *m, lsInitializeParams &param, ReplyOnce &reply) 
   // Send initialization before starting indexers, so we don't send a
   // status update too early.
   {
-    lsInitializeResult result;
+    InitializeResult result;
     reply(result);
   }
 
@@ -460,7 +332,7 @@ void Initialize(MessageHandler *m, lsInitializeParams &param, ReplyOnce &reply) 
 }
 
 void MessageHandler::initialize(Reader &reader, ReplyOnce &reply) {
-  lsInitializeParams param;
+  InitializeParam param;
   Reflect(reader, param);
   if (!param.rootUri)
     return;
@@ -468,8 +340,8 @@ void MessageHandler::initialize(Reader &reader, ReplyOnce &reply) {
 }
 
 void StandaloneInitialize(MessageHandler &handler, const std::string &root) {
-  lsInitializeParams param;
-  param.rootUri = lsDocumentUri::FromPath(root);
+  InitializeParam param;
+  param.rootUri = DocumentUri::FromPath(root);
   ReplyOnce reply;
   Initialize(&handler, param, reply);
 }
