@@ -45,6 +45,14 @@ using namespace llvm;
 #endif
 
 namespace ccls {
+namespace {
+struct PublishDiagnosticParam {
+  DocumentUri uri;
+  std::vector<Diagnostic> diagnostics;
+};
+MAKE_REFLECT_STRUCT(PublishDiagnosticParam, uri, diagnostics);
+} // namespace
+
 void VFS::Clear() {
   std::lock_guard lock(mutex);
   state.clear();
@@ -81,7 +89,7 @@ struct Index_Request {
   std::string path;
   std::vector<const char *> args;
   IndexMode mode;
-  lsRequestId id;
+  RequestId id;
   int64_t ts = tick++;
 };
 
@@ -303,8 +311,8 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
 
   if (!ok) {
     if (request.id.Valid()) {
-      lsResponseError err;
-      err.code = lsErrorCodes::InternalError;
+      ResponseError err;
+      err.code = ErrorCode::InternalError;
       err.message = "failed to index " + path_to_index;
       pipeline::ReplyError(request.id, err);
     }
@@ -453,7 +461,7 @@ void LaunchStdin() {
       if (!reader.HasMember("jsonrpc") ||
           std::string(reader["jsonrpc"]->GetString()) != "2.0")
         return;
-      lsRequestId id;
+      RequestId id;
       std::string method;
       ReflectMember(reader, "id", id);
       ReflectMember(reader, "method", method);
@@ -491,16 +499,16 @@ void MainLoop() {
 
   CompletionManager clang_complete(
       &project, &wfiles,
-      [&](std::string path, std::vector<lsDiagnostic> diagnostics) {
-        lsPublishDiagnosticsParams params;
-        params.uri = lsDocumentUri::FromPath(path);
+      [&](std::string path, std::vector<Diagnostic> diagnostics) {
+        PublishDiagnosticParam params;
+        params.uri = DocumentUri::FromPath(path);
         params.diagnostics = diagnostics;
         Notify("textDocument/publishDiagnostics", params);
       },
-      [](lsRequestId id) {
+      [](RequestId id) {
         if (id.Valid()) {
-          lsResponseError err;
-          err.code = lsErrorCodes::InternalError;
+          ResponseError err;
+          err.code = ErrorCode::InternalError;
           err.message = "drop older completion request";
           ReplyError(id, err);
         }
@@ -584,7 +592,7 @@ void Standalone(const std::string &root) {
 }
 
 void Index(const std::string &path, const std::vector<const char *> &args,
-           IndexMode mode, lsRequestId id) {
+           IndexMode mode, RequestId id) {
   pending_index_requests++;
   index_request->PushBack({path, args, mode, id}, mode != IndexMode::NonInteractive);
 }
@@ -615,7 +623,7 @@ void Notify(const char *method, const std::function<void(Writer &)> &fn) {
   for_stdout->PushBack(output.GetString());
 }
 
-static void Reply(lsRequestId id, const char *key,
+static void Reply(RequestId id, const char *key,
                   const std::function<void(Writer &)> &fn) {
   rapidjson::StringBuffer output;
   rapidjson::Writer<rapidjson::StringBuffer> w(output);
@@ -624,13 +632,13 @@ static void Reply(lsRequestId id, const char *key,
   w.String("2.0");
   w.Key("id");
   switch (id.type) {
-  case lsRequestId::kNone:
+  case RequestId::kNone:
     w.Null();
     break;
-  case lsRequestId::kInt:
+  case RequestId::kInt:
     w.Int(id.value);
     break;
-  case lsRequestId::kString:
+  case RequestId::kString:
     auto s = std::to_string(id.value);
     w.String(s.c_str(), s.length());
     break;
@@ -642,11 +650,11 @@ static void Reply(lsRequestId id, const char *key,
   for_stdout->PushBack(output.GetString());
 }
 
-void Reply(lsRequestId id, const std::function<void(Writer &)> &fn) {
+void Reply(RequestId id, const std::function<void(Writer &)> &fn) {
   Reply(id, "result", fn);
 }
 
-void ReplyError(lsRequestId id, const std::function<void(Writer &)> &fn) {
+void ReplyError(RequestId id, const std::function<void(Writer &)> &fn) {
   Reply(id, "error", fn);
 }
 } // namespace pipeline

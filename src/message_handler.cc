@@ -43,9 +43,9 @@ MAKE_REFLECT_STRUCT(CodeActionParam::Context, diagnostics);
 MAKE_REFLECT_STRUCT(CodeActionParam, textDocument, range, context);
 
 // completion
-MAKE_REFLECT_TYPE_PROXY(lsCompletionTriggerKind);
-MAKE_REFLECT_STRUCT(lsCompletionContext, triggerKind, triggerCharacter);
-MAKE_REFLECT_STRUCT(lsCompletionParams, textDocument, position, context);
+MAKE_REFLECT_TYPE_PROXY(CompletionTriggerKind);
+MAKE_REFLECT_STRUCT(CompletionContext, triggerKind, triggerCharacter);
+MAKE_REFLECT_STRUCT(CompletionParam, textDocument, position, context);
 
 // formatting
 MAKE_REFLECT_STRUCT(FormattingOptions, tabSize, insertSpaces);
@@ -65,8 +65,8 @@ MAKE_REFLECT_STRUCT(WorkspaceSymbolParam, query, folders);
 namespace {
 struct CclsSemanticHighlightSymbol {
   int id = 0;
-  lsSymbolKind parentKind;
-  lsSymbolKind kind;
+  SymbolKind parentKind;
+  SymbolKind kind;
   uint8_t storage;
   std::vector<std::pair<int, int>> ranges;
 
@@ -75,7 +75,7 @@ struct CclsSemanticHighlightSymbol {
 };
 
 struct CclsSemanticHighlightParams {
-  lsDocumentUri uri;
+  DocumentUri uri;
   std::vector<CclsSemanticHighlightSymbol> symbols;
 };
 MAKE_REFLECT_STRUCT(CclsSemanticHighlightSymbol, id, parentKind, kind, storage,
@@ -83,7 +83,7 @@ MAKE_REFLECT_STRUCT(CclsSemanticHighlightSymbol, id, parentKind, kind, storage,
 MAKE_REFLECT_STRUCT(CclsSemanticHighlightParams, uri, symbols);
 
 struct CclsSetSkippedRangesParams {
-  lsDocumentUri uri;
+  DocumentUri uri;
   std::vector<lsRange> skippedRanges;
 };
 MAKE_REFLECT_STRUCT(CclsSetSkippedRangesParams, uri, skippedRanges);
@@ -206,19 +206,19 @@ void MessageHandler::Run(InMessage &msg) {
       try {
         it->second(reader, reply);
       } catch (std::invalid_argument &ex) {
-        lsResponseError err;
-        err.code = lsErrorCodes::InvalidParams;
+        ResponseError err;
+        err.code = ErrorCode::InvalidParams;
         err.message = "invalid params of " + msg.method + ": " + ex.what();
         reply.Error(err);
       } catch (...) {
-        lsResponseError err;
-        err.code = lsErrorCodes::InternalError;
+        ResponseError err;
+        err.code = ErrorCode::InternalError;
         err.message = "failed to process " + msg.method;
         reply.Error(err);
       }
     } else {
-      lsResponseError err;
-      err.code = lsErrorCodes::MethodNotFound;
+      ResponseError err;
+      err.code = ErrorCode::MethodNotFound;
       err.message = "unknown request " + msg.method;
       reply.Error(err);
     }
@@ -258,12 +258,12 @@ QueryFile *MessageHandler::FindFile(ReplyOnce &reply,
       for (auto &[root, folder] : project->root2folder)
         has_entry |= folder.path2entry_index.count(path);
     }
-    lsResponseError err;
+    ResponseError err;
     if (has_entry) {
-      err.code = lsErrorCodes::ServerNotInitialized;
+      err.code = ErrorCode::ServerNotInitialized;
       err.message = path + " is being indexed";
     } else {
-      err.code = lsErrorCodes::InternalError;
+      err.code = ErrorCode::InternalError;
       err.message = "unable to find " + path;
     }
     reply.Error(err);
@@ -274,7 +274,7 @@ QueryFile *MessageHandler::FindFile(ReplyOnce &reply,
 
 void EmitSkippedRanges(WorkingFile *wfile, QueryFile &file) {
   CclsSetSkippedRangesParams params;
-  params.uri = lsDocumentUri::FromPath(wfile->filename);
+  params.uri = DocumentUri::FromPath(wfile->filename);
   for (Range skipped : file.def->skipped_ranges)
     if (auto ls_skipped = GetLsRange(wfile, skipped))
       params.skippedRanges.push_back(*ls_skipped);
@@ -294,13 +294,13 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
   for (auto [sym, refcnt] : file.symbol2refcnt) {
     if (refcnt <= 0) continue;
     std::string_view detailed_name;
-    lsSymbolKind parent_kind = lsSymbolKind::Unknown;
-    lsSymbolKind kind = lsSymbolKind::Unknown;
+    SymbolKind parent_kind = SymbolKind::Unknown;
+    SymbolKind kind = SymbolKind::Unknown;
     uint8_t storage = SC_None;
     int idx;
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.kind) {
-    case SymbolKind::Func: {
+    case Kind::Func: {
       idx = db->func_usr[sym.usr];
       const QueryFunc &func = db->funcs[idx];
       const QueryFunc::Def *def = func.AnyDef();
@@ -334,7 +334,7 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
       sym.range.end.column = start_col + concise_name.size();
       break;
     }
-    case SymbolKind::Type: {
+    case Kind::Type: {
       idx = db->type_usr[sym.usr];
       const QueryType &type = db->types[idx];
       for (auto &def : type.def) {
@@ -347,7 +347,7 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
       }
       break;
     }
-    case SymbolKind::Var: {
+    case Kind::Var: {
       idx = db->var_usr[sym.usr];
       const QueryVar &var = db->vars[idx];
       for (auto &def : var.def) {
@@ -422,7 +422,7 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
   }
 
   CclsSemanticHighlightParams params;
-  params.uri = lsDocumentUri::FromPath(wfile->filename);
+  params.uri = DocumentUri::FromPath(wfile->filename);
   // Transform lsRange into pair<int, int> (offset pairs)
   if (!g_config->highlight.lsRanges) {
     std::vector<std::pair<lsRange, CclsSemanticHighlightSymbol *>> scratch;

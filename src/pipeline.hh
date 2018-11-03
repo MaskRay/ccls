@@ -47,7 +47,7 @@ void MainLoop();
 void Standalone(const std::string &root);
 
 void Index(const std::string &path, const std::vector<const char *> &args,
-           IndexMode mode, lsRequestId id = {});
+           IndexMode mode, RequestId id = {});
 
 std::optional<std::string> LoadIndexedContent(const std::string& path);
 
@@ -56,10 +56,10 @@ template <typename T> void Notify(const char *method, T &result) {
   Notify(method, [&](Writer &w) { Reflect(w, result); });
 }
 
-void Reply(lsRequestId id, const std::function<void(Writer &)> &fn);
+void Reply(RequestId id, const std::function<void(Writer &)> &fn);
 
-void ReplyError(lsRequestId id, const std::function<void(Writer &)> &fn);
-template <typename T> void ReplyError(lsRequestId id, T &result) {
+void ReplyError(RequestId id, const std::function<void(Writer &)> &fn);
+template <typename T> void ReplyError(RequestId id, T &result) {
   ReplyError(id, [&](Writer &w) { Reflect(w, result); });
 }
 } // namespace pipeline
