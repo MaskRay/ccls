@@ -79,19 +79,6 @@ ParseIncludeLineResult ParseIncludeLine(const std::string &line) {
   return {ok, match[3], match[5], match[6], match};
 }
 
-template <typename T> char *tofixedbase64(T input, char *out) {
-  const char *digits = "./0123456789"
-                       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                       "abcdefghijklmnopqrstuvwxyz";
-  int len = (sizeof(T) * 8 - 1) / 6 + 1;
-  for (int i = len - 1; i >= 0; i--) {
-    out[i] = digits[input % 64];
-    input /= 64;
-  }
-  out[len] = '\0';
-  return out;
-}
-
 // Pre-filters completion responses before sending to vscode. This results in a
 // significantly snappier completion experience as vscode is easily overloaded
 // when given 1000+ completion items.
@@ -118,6 +105,7 @@ void FilterCandidates(lsCompletionList &result,
       result.isIncomplete = true;
     }
 
+    std::string sort(4, ' ');
     for (auto &item : items) {
       item.textEdit.range = lsRange{begin_pos, end_pos};
       if (has_open_paren && item.filterText)
@@ -137,15 +125,12 @@ void FilterCandidates(lsCompletionList &result,
         }
         edits.erase(edits.begin());
       }
+      for (auto i = sort.size(); i && ++sort[i - 1] == 'A';)
+        sort[--i] = ' ';
+      item.sortText = sort;
       // Compatibility
       item.insertText = item.textEdit.newText;
     }
-
-    // Set sortText. Note that this happens after resizing - we could do it
-    // before, but then we should also sort by priority.
-    char buf[16];
-    for (size_t i = 0; i < items.size(); ++i)
-      items[i].sortText = tofixedbase64(i, buf);
   };
 
   // No complete text; don't run any filtering logic except to trim the items.
