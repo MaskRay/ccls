@@ -463,7 +463,7 @@ Project::Entry Project::FindEntry(const std::string &path,
   return result;
 }
 
-void Project::Index(WorkingFiles *wfiles, lsRequestId id) {
+void Project::Index(WorkingFiles *wfiles, RequestId id) {
   auto &gi = g_config->index;
   GroupMatch match(gi.whitelist, gi.blacklist),
       match_i(gi.initialWhitelist, gi.initialBlacklist);

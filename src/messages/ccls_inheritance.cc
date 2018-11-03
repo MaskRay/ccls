@@ -27,7 +27,7 @@ struct Param : TextDocumentPositionParam {
   // should be specified for building the root and |levels| of nodes below.
   Usr usr;
   std::string id;
-  SymbolKind kind = SymbolKind::Invalid;
+  Kind kind = Kind::Invalid;
 
   // true: derived classes/functions; false: base classes/functions
   bool derived = false;
@@ -42,9 +42,9 @@ MAKE_REFLECT_STRUCT(Param, textDocument, position, id, kind, derived, qualified,
 struct Out_cclsInheritance {
   Usr usr;
   std::string id;
-  SymbolKind kind;
+  Kind kind;
   std::string_view name;
-  lsLocation location;
+  Location location;
   // For unexpanded nodes, this is an upper bound because some entities may be
   // undefined. If it is 0, there are no members.
   int numChildren;
@@ -111,7 +111,7 @@ bool ExpandHelper(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
 
 bool Expand(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
             bool qualified, int levels) {
-  if (entry->kind == SymbolKind::Func)
+  if (entry->kind == Kind::Func)
     return ExpandHelper(m, entry, derived, qualified, levels,
                         m->db->Func(entry->usr));
   else
@@ -141,10 +141,9 @@ void Inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
     result->id = std::to_string(param.usr);
     result->usr = param.usr;
     result->kind = param.kind;
-    if (!(((param.kind == SymbolKind::Func && m->db->HasFunc(param.usr)) ||
-           (param.kind == SymbolKind::Type && m->db->HasType(param.usr))) &&
-          Expand(m, &*result, param.derived, param.qualified,
-                 param.levels)))
+    if (!(((param.kind == Kind::Func && m->db->HasFunc(param.usr)) ||
+           (param.kind == Kind::Type && m->db->HasType(param.usr))) &&
+          Expand(m, &*result, param.derived, param.qualified, param.levels)))
       result.reset();
   } else {
     QueryFile *file = m->FindFile(reply, param.textDocument.uri.GetPath());
@@ -153,7 +152,7 @@ void Inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
     WorkingFile *wfile = m->wfiles->GetFileByFilename(file->def->path);
 
     for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, param.position))
-      if (sym.kind == SymbolKind::Func || sym.kind == SymbolKind::Type) {
+      if (sym.kind == Kind::Func || sym.kind == Kind::Type) {
         result = BuildInitial(m, sym, param.derived, param.qualified,
                               param.levels);
         break;

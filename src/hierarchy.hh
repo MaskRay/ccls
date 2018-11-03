@@ -22,10 +22,10 @@ limitations under the License.
 
 namespace ccls {
 template <typename Node>
-std::vector<lsLocation> FlattenHierarchy(const std::optional<Node> &root) {
+std::vector<Location> FlattenHierarchy(const std::optional<Node> &root) {
   if (!root)
     return {};
-  std::vector<lsLocation> ret;
+  std::vector<Location> ret;
   std::queue<const Node *> q;
   for (auto &entry : root->children)
     q.push(&entry);

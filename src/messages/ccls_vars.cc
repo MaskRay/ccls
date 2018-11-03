@@ -36,21 +36,21 @@ void MessageHandler::ccls_vars(Reader &reader, ReplyOnce &reply) {
     return;
   WorkingFile *working_file = wfiles->GetFileByFilename(file->def->path);
 
-  std::vector<lsLocation> result;
+  std::vector<Location> result;
   for (SymbolRef sym :
        FindSymbolsAtLocation(working_file, file, param.position)) {
     Usr usr = sym.usr;
     switch (sym.kind) {
     default:
       break;
-    case SymbolKind::Var: {
+    case Kind::Var: {
       const QueryVar::Def *def = db->GetVar(sym).AnyDef();
       if (!def || !def->type)
         continue;
       usr = def->type;
       [[fallthrough]];
     }
-    case SymbolKind::Type:
+    case Kind::Type:
       result = GetLsLocations(
           db, wfiles,
           GetVarDeclarations(db, db->Type(usr).instances, param.kind));

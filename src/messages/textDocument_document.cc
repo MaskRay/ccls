@@ -22,7 +22,7 @@ limitations under the License.
 MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
 
 namespace ccls {
-MAKE_REFLECT_STRUCT(lsSymbolInformation, name, kind, location, containerName);
+MAKE_REFLECT_STRUCT(SymbolInformation, name, kind, location, containerName);
 
 namespace {
 struct DocumentHighlight {
@@ -57,7 +57,7 @@ void MessageHandler::textDocument_documentHighlight(
     if (refcnt <= 0)
       continue;
     Usr usr = sym.usr;
-    SymbolKind kind = sym.kind;
+    Kind kind = sym.kind;
     if (std::none_of(syms.begin(), syms.end(), [&](auto &sym1) {
           return usr == sym1.usr && kind == sym1.kind;
         }))
@@ -80,11 +80,11 @@ void MessageHandler::textDocument_documentHighlight(
 }
 
 namespace {
-struct lsDocumentLink {
+struct DocumentLink {
   lsRange range;
-  lsDocumentUri target;
+  DocumentUri target;
 };
-MAKE_REFLECT_STRUCT(lsDocumentLink, range, target);
+MAKE_REFLECT_STRUCT(DocumentLink, range, target);
 } // namespace
 
 void MessageHandler::textDocument_documentLink(TextDocumentParam &param,
@@ -93,10 +93,10 @@ void MessageHandler::textDocument_documentLink(TextDocumentParam &param,
   if (!file)
     return;
 
-  std::vector<lsDocumentLink> result;
+  std::vector<DocumentLink> result;
   for (const IndexInclude &include : file->def->includes)
     result.push_back({lsRange{{include.line, 0}, {include.line + 1, 0}},
-                      lsDocumentUri::FromPath(include.resolved_path)});
+                      DocumentUri::FromPath(include.resolved_path)});
   reply(result);
 } // namespace ccls
 
@@ -110,18 +110,18 @@ struct DocumentSymbolParam : TextDocumentParam {
 };
 MAKE_REFLECT_STRUCT(DocumentSymbolParam, textDocument, all, startLine, endLine);
 
-struct lsDocumentSymbol {
+struct DocumentSymbol {
   std::string name;
   std::string detail;
-  lsSymbolKind kind;
+  SymbolKind kind;
   lsRange range;
   lsRange selectionRange;
-  std::vector<std::unique_ptr<lsDocumentSymbol>> children;
+  std::vector<std::unique_ptr<DocumentSymbol>> children;
 };
-void Reflect(Writer &vis, std::unique_ptr<lsDocumentSymbol> &v);
-MAKE_REFLECT_STRUCT(lsDocumentSymbol, name, detail, kind, range, selectionRange,
+void Reflect(Writer &vis, std::unique_ptr<DocumentSymbol> &v);
+MAKE_REFLECT_STRUCT(DocumentSymbol, name, detail, kind, range, selectionRange,
                     children);
-void Reflect(Writer &vis, std::unique_ptr<lsDocumentSymbol> &v) {
+void Reflect(Writer &vis, std::unique_ptr<DocumentSymbol> &v) {
   Reflect(vis, *v);
 }
 
@@ -131,7 +131,7 @@ bool Ignore(const Def *def) {
 }
 template <>
 bool Ignore(const QueryType::Def *def) {
-  return !def || def->kind == lsSymbolKind::TypeParameter;
+  return !def || def->kind == SymbolKind::TypeParameter;
 }
 template<>
 bool Ignore(const QueryVar::Def *def) {
@@ -163,8 +163,8 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
     std::sort(result.begin(), result.end());
     reply(result);
   } else if (g_config->client.hierarchicalDocumentSymbolSupport) {
-    std::unordered_map<SymbolIdx, std::unique_ptr<lsDocumentSymbol>> sym2ds;
-    std::vector<std::pair<std::vector<const void *>, lsDocumentSymbol *>> funcs,
+    std::unordered_map<SymbolIdx, std::unique_ptr<DocumentSymbol>> sym2ds;
+    std::vector<std::pair<std::vector<const void *>, DocumentSymbol *>> funcs,
         types;
     for (auto [sym, refcnt] : file->symbol2refcnt) {
       if (refcnt <= 0 || !sym.extent.Valid())
@@ -173,7 +173,7 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
       if (!r.second)
         continue;
       auto &ds = r.first->second;
-      ds = std::make_unique<lsDocumentSymbol>();
+      ds = std::make_unique<DocumentSymbol>();
       std::vector<const void *> def_ptrs;
       WithEntity(db, sym, [&, sym = sym](const auto &entity) {
         auto *def = entity.AnyDef();
@@ -192,25 +192,25 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
         for (auto &def : entity.def)
           if (def.file_id == file_id && !Ignore(&def)) {
             ds->kind = def.kind;
-            if (def.spell || def.kind == lsSymbolKind::Namespace)
+            if (def.spell || def.kind == SymbolKind::Namespace)
               def_ptrs.push_back(&def);
           }
       });
       if (def_ptrs.empty() || !(param.all || sym.role & Role::Definition ||
-                                ds->kind == lsSymbolKind::Namespace)) {
+                                ds->kind == SymbolKind::Namespace)) {
         ds.reset();
         continue;
       }
-      if (sym.kind == SymbolKind::Func)
+      if (sym.kind == Kind::Func)
         funcs.emplace_back(std::move(def_ptrs), ds.get());
-      else if (sym.kind == SymbolKind::Type)
+      else if (sym.kind == Kind::Type)
         types.emplace_back(std::move(def_ptrs), ds.get());
     }
 
     for (auto &[def_ptrs, ds] : funcs)
       for (const void *def_ptr : def_ptrs)
         for (Usr usr1 : ((const QueryFunc::Def *)def_ptr)->vars) {
-          auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Var});
+          auto it = sym2ds.find(SymbolIdx{usr1, Kind::Var});
           if (it != sym2ds.end() && it->second)
             ds->children.push_back(std::move(it->second));
         }
@@ -218,37 +218,36 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
       for (const void *def_ptr : def_ptrs) {
         auto *def = (const QueryType::Def *)def_ptr;
         for (Usr usr1 : def->funcs) {
-          auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Func});
+          auto it = sym2ds.find(SymbolIdx{usr1, Kind::Func});
           if (it != sym2ds.end() && it->second)
             ds->children.push_back(std::move(it->second));
         }
         for (Usr usr1 : def->types) {
-          auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Type});
+          auto it = sym2ds.find(SymbolIdx{usr1, Kind::Type});
           if (it != sym2ds.end() && it->second)
             ds->children.push_back(std::move(it->second));
         }
         for (auto [usr1, _] : def->vars) {
-          auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Var});
+          auto it = sym2ds.find(SymbolIdx{usr1, Kind::Var});
           if (it != sym2ds.end() && it->second)
             ds->children.push_back(std::move(it->second));
         }
       }
-    std::vector<std::unique_ptr<lsDocumentSymbol>> result;
+    std::vector<std::unique_ptr<DocumentSymbol>> result;
     for (auto &[_, ds] : sym2ds)
       if (ds)
         result.push_back(std::move(ds));
     reply(result);
   } else {
-    std::vector<lsSymbolInformation> result;
+    std::vector<SymbolInformation> result;
     for (auto [sym, refcnt] : file->symbol2refcnt) {
       if (refcnt <= 0 || !sym.extent.Valid() ||
           !(param.all || sym.role & Role::Definition))
         continue;
-      if (std::optional<lsSymbolInformation> info =
+      if (std::optional<SymbolInformation> info =
               GetSymbolInfo(db, sym, false)) {
-        if ((sym.kind == SymbolKind::Type &&
-             Ignore(db->GetType(sym).AnyDef())) ||
-            (sym.kind == SymbolKind::Var && Ignore(db->GetVar(sym).AnyDef())))
+        if ((sym.kind == Kind::Type && Ignore(db->GetType(sym).AnyDef())) ||
+            (sym.kind == Kind::Var && Ignore(db->GetVar(sym).AnyDef())))
           continue;
         if (auto loc = GetLsLocation(db, wfiles, sym, file_id)) {
           info->location = *loc;

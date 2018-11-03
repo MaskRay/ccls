@@ -21,55 +21,48 @@ limitations under the License.
 #include <stdio.h>
 
 namespace ccls {
-void Reflect(Reader &visitor, lsRequestId &value) {
+void Reflect(Reader &visitor, RequestId &value) {
   if (visitor.IsInt64()) {
-    value.type = lsRequestId::kInt;
+    value.type = RequestId::kInt;
     value.value = int(visitor.GetInt64());
   } else if (visitor.IsInt()) {
-    value.type = lsRequestId::kInt;
+    value.type = RequestId::kInt;
     value.value = visitor.GetInt();
   } else if (visitor.IsString()) {
-    value.type = lsRequestId::kString;
+    value.type = RequestId::kString;
     value.value = atoll(visitor.GetString());
   } else {
-    value.type = lsRequestId::kNone;
+    value.type = RequestId::kNone;
     value.value = -1;
   }
 }
 
-void Reflect(Writer &visitor, lsRequestId &value) {
+void Reflect(Writer &visitor, RequestId &value) {
   switch (value.type) {
-  case lsRequestId::kNone:
+  case RequestId::kNone:
     visitor.Null();
     break;
-  case lsRequestId::kInt:
+  case RequestId::kInt:
     visitor.Int(value.value);
     break;
-  case lsRequestId::kString:
+  case RequestId::kString:
     auto s = std::to_string(value.value);
     visitor.String(s.c_str(), s.length());
     break;
   }
 }
 
-lsTextDocumentIdentifier
-lsVersionedTextDocumentIdentifier::AsTextDocumentIdentifier() const {
-  lsTextDocumentIdentifier result;
-  result.uri = uri;
-  return result;
-}
-
-lsDocumentUri lsDocumentUri::FromPath(const std::string &path) {
-  lsDocumentUri result;
+DocumentUri DocumentUri::FromPath(const std::string &path) {
+  DocumentUri result;
   result.SetPath(path);
   return result;
 }
 
-bool lsDocumentUri::operator==(const lsDocumentUri &other) const {
+bool DocumentUri::operator==(const DocumentUri &other) const {
   return raw_uri == other.raw_uri;
 }
 
-void lsDocumentUri::SetPath(const std::string &path) {
+void DocumentUri::SetPath(const std::string &path) {
   // file:///c%3A/Users/jacob/Desktop/superindex/indexer/full_tests
   raw_uri = path;
 
@@ -110,7 +103,7 @@ void lsDocumentUri::SetPath(const std::string &path) {
   raw_uri = std::move(t);
 }
 
-std::string lsDocumentUri::GetPath() const {
+std::string DocumentUri::GetPath() const {
   if (raw_uri.compare(0, 7, "file://")) {
     LOG_S(WARNING)
         << "Received potentially bad URI (not starting with file://): "
@@ -147,7 +140,7 @@ std::string lsPosition::ToString() const {
   return std::to_string(line) + ":" + std::to_string(character);
 }
 
-bool lsTextEdit::operator==(const lsTextEdit &that) {
+bool TextEdit::operator==(const TextEdit &that) {
   return range == that.range && newText == that.newText;
 }
 } // namespace ccls
