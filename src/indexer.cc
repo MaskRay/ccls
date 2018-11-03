@@ -117,110 +117,110 @@ StringRef GetSourceInRange(const SourceManager &SM, const LangOptions &LangOpts,
                         BInfo.second);
 }
 
-SymbolKind GetSymbolKind(const Decl *D, lsSymbolKind &kind) {
+Kind GetKind(const Decl *D, SymbolKind &kind) {
   switch (D->getKind()) {
   case Decl::LinkageSpec:
-    return SymbolKind::Invalid;
+    return Kind::Invalid;
   case Decl::Namespace:
-    kind = lsSymbolKind::Namespace;
-    return SymbolKind::Type;
+    kind = SymbolKind::Namespace;
+    return Kind::Type;
   case Decl::NamespaceAlias:
-    kind = lsSymbolKind::TypeAlias;
-    return SymbolKind::Type;
+    kind = SymbolKind::TypeAlias;
+    return Kind::Type;
   case Decl::ObjCCategory:
   case Decl::ObjCImplementation:
   case Decl::ObjCInterface:
   case Decl::ObjCProtocol:
-    kind = lsSymbolKind::Interface;
-    return SymbolKind::Type;
+    kind = SymbolKind::Interface;
+    return Kind::Type;
   case Decl::ObjCMethod:
-    kind = lsSymbolKind::Method;
-    return SymbolKind::Func;
+    kind = SymbolKind::Method;
+    return Kind::Func;
   case Decl::ObjCProperty:
-    kind = lsSymbolKind::Property;
-    return SymbolKind::Type;
+    kind = SymbolKind::Property;
+    return Kind::Type;
   case Decl::ClassTemplate:
-    kind = lsSymbolKind::Class;
-    return SymbolKind::Type;
+    kind = SymbolKind::Class;
+    return Kind::Type;
   case Decl::FunctionTemplate:
-    kind = lsSymbolKind::Function;
-    return SymbolKind::Func;
+    kind = SymbolKind::Function;
+    return Kind::Func;
   case Decl::TypeAliasTemplate:
-    kind = lsSymbolKind::TypeAlias;
-    return SymbolKind::Type;
+    kind = SymbolKind::TypeAlias;
+    return Kind::Type;
   case Decl::VarTemplate:
-    kind = lsSymbolKind::Variable;
-    return SymbolKind::Var;
+    kind = SymbolKind::Variable;
+    return Kind::Var;
   case Decl::TemplateTemplateParm:
-    kind = lsSymbolKind::TypeParameter;
-    return SymbolKind::Type;
+    kind = SymbolKind::TypeParameter;
+    return Kind::Type;
   case Decl::Enum:
-    kind = lsSymbolKind::Enum;
-    return SymbolKind::Type;
+    kind = SymbolKind::Enum;
+    return Kind::Type;
   case Decl::CXXRecord:
   case Decl::Record:
-    kind = lsSymbolKind::Class;
+    kind = SymbolKind::Class;
     // spec has no Union, use Class
     if (auto *RD = dyn_cast<RecordDecl>(D))
       if (RD->getTagKind() == TTK_Struct)
-        kind = lsSymbolKind::Struct;
-    return SymbolKind::Type;
+        kind = SymbolKind::Struct;
+    return Kind::Type;
   case Decl::ClassTemplateSpecialization:
   case Decl::ClassTemplatePartialSpecialization:
-    kind = lsSymbolKind::Class;
-    return SymbolKind::Type;
+    kind = SymbolKind::Class;
+    return Kind::Type;
   case Decl::TypeAlias:
   case Decl::Typedef:
   case Decl::UnresolvedUsingTypename:
-    kind = lsSymbolKind::TypeAlias;
-    return SymbolKind::Type;
+    kind = SymbolKind::TypeAlias;
+    return Kind::Type;
   case Decl::Binding:
-    kind = lsSymbolKind::Variable;
-    return SymbolKind::Var;
+    kind = SymbolKind::Variable;
+    return Kind::Var;
   case Decl::Field:
   case Decl::ObjCIvar:
-    kind = lsSymbolKind::Field;
-    return SymbolKind::Var;
+    kind = SymbolKind::Field;
+    return Kind::Var;
   case Decl::Function:
-    kind = lsSymbolKind::Function;
-    return SymbolKind::Func;
+    kind = SymbolKind::Function;
+    return Kind::Func;
   case Decl::CXXMethod: {
     const auto *MD = cast<CXXMethodDecl>(D);
-    kind = MD->isStatic() ? lsSymbolKind::StaticMethod : lsSymbolKind::Method;
-    return SymbolKind::Func;
+    kind = MD->isStatic() ? SymbolKind::StaticMethod : SymbolKind::Method;
+    return Kind::Func;
   }
   case Decl::CXXConstructor:
-    kind = lsSymbolKind::Constructor;
-    return SymbolKind::Func;
+    kind = SymbolKind::Constructor;
+    return Kind::Func;
   case Decl::CXXConversion:
   case Decl::CXXDestructor:
-    kind = lsSymbolKind::Method;
-    return SymbolKind::Func;
+    kind = SymbolKind::Method;
+    return Kind::Func;
   case Decl::Var:
   case Decl::Decomposition:
-    kind = lsSymbolKind::Variable;
-    return SymbolKind::Var;
+    kind = SymbolKind::Variable;
+    return Kind::Var;
   case Decl::ImplicitParam:
   case Decl::ParmVar:
     // ccls extension
-    kind = lsSymbolKind::Parameter;
-    return SymbolKind::Var;
+    kind = SymbolKind::Parameter;
+    return Kind::Var;
   case Decl::VarTemplateSpecialization:
   case Decl::VarTemplatePartialSpecialization:
-    kind = lsSymbolKind::Variable;
-    return SymbolKind::Var;
+    kind = SymbolKind::Variable;
+    return Kind::Var;
   case Decl::EnumConstant:
-    kind = lsSymbolKind::EnumMember;
-    return SymbolKind::Var;
+    kind = SymbolKind::EnumMember;
+    return Kind::Var;
   case Decl::UnresolvedUsingValue:
-    kind = lsSymbolKind::Variable;
-    return SymbolKind::Var;
+    kind = SymbolKind::Variable;
+    return Kind::Var;
   case Decl::TranslationUnit:
-    return SymbolKind::Invalid;
+    return Kind::Invalid;
 
   default:
     LOG_S(INFO) << "unhandled " << int(D->getKind());
-    return SymbolKind::Invalid;
+    return Kind::Invalid;
   }
 }
 
@@ -620,7 +620,7 @@ public:
     return it->second.first;
   }
 
-  void AddMacroUse(IndexFile *db, SourceManager &SM, Usr usr, SymbolKind kind,
+  void AddMacroUse(IndexFile *db, SourceManager &SM, Usr usr, Kind kind,
                    SourceLocation Spell) const {
     const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(Spell));
     if (!FE)
@@ -632,13 +632,13 @@ public:
         FromTokenRange(SM, Ctx->getLangOpts(), SourceRange(Spell, Spell));
     Use use{{spell, Role::Dynamic}, lid};
     switch (kind) {
-    case SymbolKind::Func:
+    case Kind::Func:
       db->ToFunc(usr).uses.push_back(use);
       break;
-    case SymbolKind::Type:
+    case Kind::Type:
       db->ToType(usr).uses.push_back(use);
       break;
-    case SymbolKind::Var:
+    case Kind::Var:
       db->ToVar(usr).uses.push_back(use);
       break;
     default:
@@ -753,8 +753,8 @@ public:
     IndexFunc *func = nullptr;
     IndexType *type = nullptr;
     IndexVar *var = nullptr;
-    lsSymbolKind ls_kind;
-    SymbolKind kind = GetSymbolKind(D, ls_kind);
+    SymbolKind ls_kind;
+    Kind kind = GetKind(D, ls_kind);
 
     if (is_def)
       switch (D->getKind()) {
@@ -788,7 +788,7 @@ public:
         SourceRange R = OrigD->getSourceRange();
         entity->def.spell = {use,
                              FromTokenRangeDefaulted(SM, Lang, R, FE, loc)};
-        GetSymbolKind(cast<Decl>(SemDC), entity->def.parent_kind);
+        GetKind(cast<Decl>(SemDC), entity->def.parent_kind);
       } else if (is_decl) {
         SourceRange R = OrigD->getSourceRange();
         entity->declarations.push_back(
@@ -801,13 +801,13 @@ public:
         entity->def.comments = Intern(GetComment(OrigD));
     };
     switch (kind) {
-    case SymbolKind::Invalid:
+    case Kind::Invalid:
       LOG_S(INFO) << "Unhandled " << int(D->getKind()) << " " << info->qualified
                   << " in " << db->path << ":" << loc.start.line + 1;
       return true;
-    case SymbolKind::File:
+    case Kind::File:
       return true;
-    case SymbolKind::Func:
+    case Kind::Func:
       func = &db->ToFunc(usr);
       func->def.kind = ls_kind;
       // Mark as Role::Implicit to span one more column to the left/right.
@@ -817,40 +817,40 @@ public:
         role = Role(role | Role::Implicit);
       do_def_decl(func);
       if (Spell != Loc)
-        AddMacroUse(db, SM, usr, SymbolKind::Func, Spell);
+        AddMacroUse(db, SM, usr, Kind::Func, Spell);
       if (func->def.detailed_name[0] == '\0')
         SetName(D, info->short_name, info->qualified, func->def);
       if (is_def || is_decl) {
         const Decl *DC = cast<Decl>(SemDC);
-        if (GetSymbolKind(DC, ls_kind) == SymbolKind::Type)
+        if (GetKind(DC, ls_kind) == Kind::Type)
           db->ToType(GetUsr(DC)).def.funcs.push_back(usr);
       } else {
         const Decl *DC = cast<Decl>(LexDC);
-        if (GetSymbolKind(DC, ls_kind) == SymbolKind::Func)
+        if (GetKind(DC, ls_kind) == Kind::Func)
           db->ToFunc(GetUsr(DC))
-              .def.callees.push_back({loc, usr, SymbolKind::Func, role});
+              .def.callees.push_back({loc, usr, Kind::Func, role});
       }
       break;
-    case SymbolKind::Type:
+    case Kind::Type:
       type = &db->ToType(usr);
       type->def.kind = ls_kind;
       do_def_decl(type);
       if (Spell != Loc)
-        AddMacroUse(db, SM, usr, SymbolKind::Type, Spell);
+        AddMacroUse(db, SM, usr, Kind::Type, Spell);
       if (type->def.detailed_name[0] == '\0' && info->short_name.size())
         SetName(D, info->short_name, info->qualified, type->def);
       if (is_def || is_decl) {
         const Decl *DC = cast<Decl>(SemDC);
-        if (GetSymbolKind(DC, ls_kind) == SymbolKind::Type)
+        if (GetKind(DC, ls_kind) == Kind::Type)
           db->ToType(GetUsr(DC)).def.types.push_back(usr);
       }
       break;
-    case SymbolKind::Var:
+    case Kind::Var:
       var = &db->ToVar(usr);
       var->def.kind = ls_kind;
       do_def_decl(var);
       if (Spell != Loc)
-        AddMacroUse(db, SM, usr, SymbolKind::Var, Spell);
+        AddMacroUse(db, SM, usr, Kind::Var, Spell);
       if (var->def.detailed_name[0] == '\0')
         SetVarName(D, info->short_name, info->qualified, var->def);
       QualType T;
@@ -858,10 +858,10 @@ public:
         T = VD->getType();
       if (is_def || is_decl) {
         const Decl *DC = cast<Decl>(SemDC);
-        SymbolKind kind = GetSymbolKind(DC, var->def.parent_kind);
-        if (kind == SymbolKind::Func)
+        Kind kind = GetKind(DC, var->def.parent_kind);
+        if (kind == Kind::Func)
           db->ToFunc(GetUsr(DC)).def.vars.push_back(usr);
-        else if (kind == SymbolKind::Type && !isa<RecordDecl>(SemDC))
+        else if (kind == Kind::Type && !isa<RecordDecl>(SemDC))
           db->ToType(GetUsr(DC)).def.vars.emplace_back(usr, -1);
         if (!T.isNull()) {
           if (auto *BT = T->getAs<BuiltinType>()) {
@@ -885,8 +885,8 @@ public:
                     FromTokenRange(SM, Lang, R1)};
                 type1.def.detailed_name = Intern(info1->short_name);
                 type1.def.short_name_size = int16_t(info1->short_name.size());
-                type1.def.kind = lsSymbolKind::TypeParameter;
-                type1.def.parent_kind = lsSymbolKind::Class;
+                type1.def.kind = SymbolKind::TypeParameter;
+                type1.def.parent_kind = SymbolKind::Class;
                 var->def.type = usr1;
                 type1.instances.push_back(usr);
                 break;
@@ -907,7 +907,7 @@ public:
           var->def.spell = {
               Use{{FromTokenRange(SM, Lang, {L, L}), Role::Definition}, lid},
               FromTokenRange(SM, Lang, D->getSourceRange())};
-          var->def.parent_kind = lsSymbolKind::Method;
+          var->def.parent_kind = SymbolKind::Method;
         }
       }
       break;
@@ -976,7 +976,7 @@ public:
       break;
     case Decl::ClassTemplateSpecialization:
     case Decl::ClassTemplatePartialSpecialization:
-      type->def.kind = lsSymbolKind::Class;
+      type->def.kind = SymbolKind::Class;
       if (is_def) {
         if (auto *ORD = dyn_cast<RecordDecl>(OrigD))
           CollectRecordMembers(*type, ORD);
@@ -1104,8 +1104,8 @@ public:
       auto [Name, usr] = GetMacro(Tok);
       IndexVar &var = db->ToVar(usr);
       Range range = FromTokenRange(SM, Lang, {L, L}, &UniqueID);
-      var.def.kind = lsSymbolKind::Macro;
-      var.def.parent_kind = lsSymbolKind::File;
+      var.def.kind = SymbolKind::Macro;
+      var.def.parent_kind = SymbolKind::File;
       if (var.def.spell)
         var.declarations.push_back(*var.def.spell);
       const MacroInfo *MI = MD->getMacroInfo();
@@ -1368,7 +1368,7 @@ void Reflect(Reader &vis, SymbolRef &v) {
     v.range = Range::FromString(s);
     s = strchr(s, '|');
     v.usr = strtoull(s + 1, &s, 10);
-    v.kind = static_cast<SymbolKind>(strtol(s + 1, &s, 10));
+    v.kind = static_cast<Kind>(strtol(s + 1, &s, 10));
     v.role = static_cast<Role>(strtol(s + 1, &s, 10));
   } else {
     Reflect(vis, v.range);

@@ -47,7 +47,7 @@ enum class LanguageId;
 
 struct SymbolIdx {
   Usr usr;
-  SymbolKind kind;
+  Kind kind;
 
   bool operator==(const SymbolIdx &o) const {
     return usr == o.usr && kind == o.kind;
@@ -62,10 +62,10 @@ MAKE_REFLECT_STRUCT(SymbolIdx, usr, kind);
 struct SymbolRef {
   Range range;
   Usr usr;
-  SymbolKind kind;
+  Kind kind;
   Role role;
   operator SymbolIdx() const { return {usr, kind}; }
-  std::tuple<Range, Usr, SymbolKind, Role> ToTuple() const {
+  std::tuple<Range, Usr, Kind, Role> ToTuple() const {
     return std::make_tuple(range, usr, kind, role);
   }
   bool operator==(const SymbolRef &o) const { return ToTuple() == o.ToTuple(); }
@@ -74,7 +74,7 @@ struct SymbolRef {
 
 struct ExtentRef : SymbolRef {
   Range extent;
-  std::tuple<Range, Usr, SymbolKind, Role, Range> ToTuple() const {
+  std::tuple<Range, Usr, Kind, Role, Range> ToTuple() const {
     return std::make_tuple(range, usr, kind, role, extent);
   }
   bool operator==(const ExtentRef &o) const { return ToTuple() == o.ToTuple(); }
@@ -145,8 +145,8 @@ struct FuncDef : NameMixin<FuncDef> {
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
-  lsSymbolKind kind = lsSymbolKind::Unknown;
-  lsSymbolKind parent_kind = lsSymbolKind::Unknown;
+  SymbolKind kind = SymbolKind::Unknown;
+  SymbolKind parent_kind = SymbolKind::Unknown;
   uint8_t storage = clang::SC_None;
 
   std::vector<Usr> GetBases() const { return bases; }
@@ -183,8 +183,8 @@ struct TypeDef : NameMixin<TypeDef> {
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
-  lsSymbolKind kind = lsSymbolKind::Unknown;
-  lsSymbolKind parent_kind = lsSymbolKind::Unknown;
+  SymbolKind kind = SymbolKind::Unknown;
+  SymbolKind parent_kind = SymbolKind::Unknown;
 
   std::vector<Usr> GetBases() const { return bases; }
 };
@@ -215,18 +215,18 @@ struct VarDef : NameMixin<VarDef> {
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
-  lsSymbolKind kind = lsSymbolKind::Unknown;
-  lsSymbolKind parent_kind = lsSymbolKind::Unknown;
+  SymbolKind kind = SymbolKind::Unknown;
+  SymbolKind parent_kind = SymbolKind::Unknown;
   // Note a variable may have instances of both |None| and |Extern|
   // (declaration).
   uint8_t storage = clang::SC_None;
 
   bool is_local() const {
     return spell &&
-           (parent_kind == lsSymbolKind::Function ||
-            parent_kind == lsSymbolKind::Method ||
-            parent_kind == lsSymbolKind::StaticMethod ||
-            parent_kind == lsSymbolKind::Constructor) &&
+           (parent_kind == SymbolKind::Function ||
+            parent_kind == SymbolKind::Method ||
+            parent_kind == SymbolKind::StaticMethod ||
+            parent_kind == SymbolKind::Constructor) &&
            storage == clang::SC_None;
   }
 

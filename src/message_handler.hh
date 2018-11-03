@@ -32,54 +32,54 @@ struct WorkingFile;
 struct WorkingFiles;
 
 namespace pipeline {
-void Reply(lsRequestId id, const std::function<void(Writer &)> &fn);
-void ReplyError(lsRequestId id, const std::function<void(Writer &)> &fn);
+void Reply(RequestId id, const std::function<void(Writer &)> &fn);
+void ReplyError(RequestId id, const std::function<void(Writer &)> &fn);
 }
 
 struct EmptyParam {
   bool placeholder;
 };
 struct TextDocumentParam {
-  lsTextDocumentIdentifier textDocument;
+  TextDocumentIdentifier textDocument;
 };
 struct DidOpenTextDocumentParam {
-  lsTextDocumentItem textDocument;
+  TextDocumentItem textDocument;
 };
 
 struct TextDocumentPositionParam {
-  lsTextDocumentIdentifier textDocument;
+  TextDocumentIdentifier textDocument;
   lsPosition position;
 };
 
 struct RenameParam {
-  lsTextDocumentIdentifier textDocument;
+  TextDocumentIdentifier textDocument;
   lsPosition position;
   std::string newName;
 };
 
 // code*
 struct CodeActionParam {
-  lsTextDocumentIdentifier textDocument;
+  TextDocumentIdentifier textDocument;
   lsRange range;
   struct Context {
-    std::vector<lsDiagnostic> diagnostics;
+    std::vector<Diagnostic> diagnostics;
   } context;
 };
 
 // completion
-enum class lsCompletionTriggerKind {
+enum class CompletionTriggerKind {
   Invoked = 1,
   TriggerCharacter = 2,
   TriggerForIncompleteCompletions = 3,
 };
-struct lsCompletionContext {
-  lsCompletionTriggerKind triggerKind = lsCompletionTriggerKind::Invoked;
+struct CompletionContext {
+  CompletionTriggerKind triggerKind = CompletionTriggerKind::Invoked;
   std::optional<std::string> triggerCharacter;
 };
-struct lsCompletionParams : TextDocumentPositionParam {
-  lsCompletionContext context;
+struct CompletionParam : TextDocumentPositionParam {
+  CompletionContext context;
 };
-enum class lsCompletionItemKind {
+enum class CompletionItemKind {
   Text = 1,
   Method = 2,
   Function = 3,
@@ -106,21 +106,21 @@ enum class lsCompletionItemKind {
   Operator = 24,
   TypeParameter = 25,
 };
-enum class lsInsertTextFormat {
+enum class InsertTextFormat {
   PlainText = 1,
   Snippet = 2
 };
-struct lsCompletionItem {
+struct CompletionItem {
   std::string label;
-  lsCompletionItemKind kind = lsCompletionItemKind::Text;
+  CompletionItemKind kind = CompletionItemKind::Text;
   std::string detail;
   std::optional<std::string> documentation;
   std::string sortText;
   std::optional<std::string> filterText;
   std::string insertText;
-  lsInsertTextFormat insertTextFormat = lsInsertTextFormat::PlainText;
-  lsTextEdit textEdit;
-  std::vector<lsTextEdit> additionalTextEdits;
+  InsertTextFormat insertTextFormat = InsertTextFormat::PlainText;
+  TextEdit textEdit;
+  std::vector<TextEdit> additionalTextEdits;
 
   std::vector<std::string> parameters_;
   int score_;
@@ -134,17 +134,17 @@ struct FormattingOptions {
   bool insertSpaces;
 };
 struct DocumentFormattingParam {
-  lsTextDocumentIdentifier textDocument;
+  TextDocumentIdentifier textDocument;
   FormattingOptions options;
 };
 struct DocumentOnTypeFormattingParam {
-  lsTextDocumentIdentifier textDocument;
+  TextDocumentIdentifier textDocument;
   lsPosition position;
   std::string ch;
   FormattingOptions options;
 };
 struct DocumentRangeFormattingParam {
-  lsTextDocumentIdentifier textDocument;
+  TextDocumentIdentifier textDocument;
   lsRange range;
   FormattingOptions options;
 };
@@ -157,7 +157,7 @@ enum class FileChangeType {
 };
 struct DidChangeWatchedFilesParam {
   struct Event {
-    lsDocumentUri uri;
+    DocumentUri uri;
     FileChangeType type;
   };
   std::vector<Event> changes;
@@ -179,7 +179,7 @@ template <typename Res>
 using Callback = std::function<void(Res*)>;
 
 struct ReplyOnce {
-  lsRequestId id;
+  RequestId id;
   template <typename Res> void operator()(Res &result) const {
     if (id.Valid())
       pipeline::Reply(id, [&](Writer &w) { Reflect(w, result); });
@@ -229,7 +229,7 @@ private:
   void shutdown(EmptyParam &, ReplyOnce &);
   void textDocument_codeAction(CodeActionParam &, ReplyOnce &);
   void textDocument_codeLens(TextDocumentParam &, ReplyOnce &);
-  void textDocument_completion(lsCompletionParams &, ReplyOnce &);
+  void textDocument_completion(CompletionParam &, ReplyOnce &);
   void textDocument_definition(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_didChange(TextDocumentDidChangeParam &);
   void textDocument_didClose(TextDocumentParam &);
