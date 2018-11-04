@@ -10,7 +10,7 @@
 #include <stdlib.h>
 
 namespace ccls {
-Position Position::FromString(const std::string &encoded) {
+Pos Pos::FromString(const std::string &encoded) {
   char *p = const_cast<char *>(encoded.c_str());
   int16_t line = int16_t(strtol(p, &p, 10)) - 1;
   assert(*p == ':');
@@ -19,14 +19,14 @@ Position Position::FromString(const std::string &encoded) {
   return {line, column};
 }
 
-std::string Position::ToString() {
+std::string Pos::ToString() {
   char buf[99];
   snprintf(buf, sizeof buf, "%d:%d", line + 1, column + 1);
   return buf;
 }
 
 Range Range::FromString(const std::string &encoded) {
-  Position start, end;
+  Pos start, end;
   char *p = const_cast<char *>(encoded.c_str());
   start.line = int16_t(strtol(p, &p, 10)) - 1;
   assert(*p == ':');
@@ -45,11 +45,11 @@ Range Range::FromString(const std::string &encoded) {
 bool Range::Contains(int line, int column) const {
   if (line > INT16_MAX)
     return false;
-  Position p{int16_t(line), int16_t(std::min(column, INT16_MAX))};
+  Pos p{int16_t(line), int16_t(std::min(column, INT16_MAX))};
   return !(p < start) && p < end;
 }
 
-Range Range::RemovePrefix(Position position) const {
+Range Range::RemovePrefix(Pos position) const {
   return {std::min(std::max(position, start), end), end};
 }
 
@@ -61,15 +61,15 @@ std::string Range::ToString() {
 }
 
 // Position
-void Reflect(Reader &visitor, Position &value) {
+void Reflect(Reader &visitor, Pos &value) {
   if (visitor.Format() == SerializeFormat::Json) {
-    value = Position::FromString(visitor.GetString());
+    value = Pos::FromString(visitor.GetString());
   } else {
     Reflect(visitor, value.line);
     Reflect(visitor, value.column);
   }
 }
-void Reflect(Writer &visitor, Position &value) {
+void Reflect(Writer &visitor, Pos &value) {
   if (visitor.Format() == SerializeFormat::Json) {
     std::string output = value.ToString();
     visitor.String(output.c_str(), output.size());

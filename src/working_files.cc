@@ -21,7 +21,7 @@ constexpr int kMaxDiff = 20;
 // |kMaxColumnAlignSize|.
 constexpr int kMaxColumnAlignSize = 200;
 
-lsPosition GetPositionForOffset(const std::string &content, int offset) {
+Position GetPositionForOffset(const std::string &content, int offset) {
   if (offset >= content.size())
     offset = (int)content.size() - 1;
 
@@ -329,9 +329,10 @@ std::optional<int> WorkingFile::GetIndexPosFromBufferPos(int line, int *column,
                           index_lines, is_end);
 }
 
-std::string WorkingFile::FindClosestCallNameInBuffer(
-    lsPosition position, int *active_parameter,
-    lsPosition *completion_position) const {
+std::string
+WorkingFile::FindClosestCallNameInBuffer(Position position,
+                                         int *active_parameter,
+                                         Position *completion_position) const {
   *active_parameter = 0;
 
   int offset = GetOffsetForPosition(position, buffer_content);
@@ -377,10 +378,10 @@ std::string WorkingFile::FindClosestCallNameInBuffer(
   return buffer_content.substr(offset, start_offset - offset + 1);
 }
 
-lsPosition
-WorkingFile::FindStableCompletionSource(lsPosition position,
+Position
+WorkingFile::FindStableCompletionSource(Position position,
                                         std::string *existing_completion,
-                                        lsPosition *replace_end_pos) const {
+                                        Position *replace_end_pos) const {
   int start_offset = GetOffsetForPosition(position, buffer_content);
   int offset = start_offset;
 
@@ -526,7 +527,7 @@ WorkingFiles::AsSnapshot(const std::vector<std::string> &filter_paths) {
 // text documents.
 // We use a UTF-8 iterator to approximate UTF-16 in the specification (weird).
 // This is good enough and fails only for UTF-16 surrogate pairs.
-int GetOffsetForPosition(lsPosition pos, std::string_view content) {
+int GetOffsetForPosition(Position pos, std::string_view content) {
   size_t i = 0;
   for (; pos.line > 0 && i < content.size(); i++)
     if (content[i] == '\n')
@@ -542,7 +543,7 @@ int GetOffsetForPosition(lsPosition pos, std::string_view content) {
   return int(i);
 }
 
-std::string_view LexIdentifierAroundPos(lsPosition position,
+std::string_view LexIdentifierAroundPos(Position position,
                                         std::string_view content) {
   int start = GetOffsetForPosition(position, content);
   int end = start + 1;

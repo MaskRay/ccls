@@ -10,37 +10,37 @@
 #include <string>
 
 namespace ccls {
-struct Position {
+struct Pos {
   int16_t line = -1;
   int16_t column = -1;
 
-  static Position FromString(const std::string &encoded);
+  static Pos FromString(const std::string &encoded);
 
   bool Valid() const { return line >= 0; }
   std::string ToString();
 
   // Compare two Positions and check if they are equal. Ignores the value of
   // |interesting|.
-  bool operator==(const Position &o) const {
+  bool operator==(const Pos &o) const {
     return line == o.line && column == o.column;
   }
-  bool operator<(const Position &o) const {
+  bool operator<(const Pos &o) const {
     if (line != o.line)
       return line < o.line;
     return column < o.column;
   }
-  bool operator<=(const Position &o) const { return !(o < *this); }
+  bool operator<=(const Pos &o) const { return !(o < *this); }
 };
 
 struct Range {
-  Position start;
-  Position end;
+  Pos start;
+  Pos end;
 
   static Range FromString(const std::string &encoded);
 
   bool Valid() const { return start.Valid(); }
   bool Contains(int line, int column) const;
-  Range RemovePrefix(Position position) const;
+  Range RemovePrefix(Pos position) const;
 
   std::string ToString();
 
@@ -55,8 +55,8 @@ struct Range {
 // Reflection
 class Reader;
 class Writer;
-void Reflect(Reader &visitor, Position &value);
-void Reflect(Writer &visitor, Position &value);
+void Reflect(Reader &visitor, Pos &value);
+void Reflect(Writer &visitor, Pos &value);
 void Reflect(Reader &visitor, Range &value);
 void Reflect(Writer &visitor, Range &value);
 } // namespace ccls
@@ -75,4 +75,4 @@ template <> struct hash<ccls::Range> {
 };
 } // namespace std
 
-MAKE_HASHABLE(ccls::Position, t.line, t.column);
+MAKE_HASHABLE(ccls::Pos, t.line, t.column);

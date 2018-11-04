@@ -125,11 +125,7 @@ std::string DocumentUri::GetPath() const {
   return ret;
 }
 
-std::string lsPosition::ToString() const {
+std::string Position::ToString() const {
   return std::to_string(line) + ":" + std::to_string(character);
-}
-
-bool TextEdit::operator==(const TextEdit &that) {
-  return range == that.range && newText == that.newText;
 }
 } // namespace ccls
