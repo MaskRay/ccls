@@ -21,6 +21,7 @@ limitations under the License.
 #include "test.hh"
 #include "working_files.hh"
 
+#include <clang/Basic/Version.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/CrashRecoveryContext.h>
 #include <llvm/Support/FileSystem.h>
@@ -69,6 +70,9 @@ void CloseLog() { fclose(ccls::log::file); }
 int main(int argc, char **argv) {
   TraceMe();
   sys::PrintStackTraceOnErrorSignal(argv[0]);
+  cl::SetVersionPrinter([](raw_ostream &OS) {
+    OS << clang::getClangToolFullVersion("ccls") << "\n";
+  });
 
   for (auto &I : TopLevelSubCommand->OptionsMap)
     if (I.second->Category != &C)
