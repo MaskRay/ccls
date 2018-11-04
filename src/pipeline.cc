@@ -566,7 +566,7 @@ void Standalone(const std::string &root) {
     int entries = 0;
     for (auto &[_, folder] : project.root2folder)
       entries += folder.entries.size();
-      printf("entries: %5d\n", entries);
+    printf("entries: %5d\n", entries);
   }
   while (1) {
     (void)on_indexed->DequeueAll();
