@@ -72,8 +72,8 @@ struct WorkingFile {
   // |completion_position| will be point to a good code completion location to
   // for fetching signatures.
   std::string
-  FindClosestCallNameInBuffer(lsPosition position, int *active_parameter,
-                              lsPosition *completion_position = nullptr) const;
+  FindClosestCallNameInBuffer(Position position, int *active_parameter,
+                              Position *completion_position = nullptr) const;
 
   // Returns a relatively stable completion position (it jumps back until there
   // is a non-alphanumeric character).
@@ -82,9 +82,9 @@ struct WorkingFile {
   // global completion.
   // The out param |existing_completion| is set to any existing completion
   // content the user has entered.
-  lsPosition FindStableCompletionSource(lsPosition position,
+  Position FindStableCompletionSource(Position position,
                                         std::string *existing_completion,
-                                        lsPosition *replace_end_pos) const;
+                                        Position *replace_end_pos) const;
 
 private:
   // Compute index_to_buffer and buffer_to_index.
@@ -132,8 +132,8 @@ struct WorkingFiles {
   std::mutex files_mutex; // Protects |files|.
 };
 
-int GetOffsetForPosition(lsPosition pos, std::string_view content);
+int GetOffsetForPosition(Position pos, std::string_view content);
 
-std::string_view LexIdentifierAroundPos(lsPosition position,
+std::string_view LexIdentifierAroundPos(Position position,
                                         std::string_view content);
 } // namespace ccls

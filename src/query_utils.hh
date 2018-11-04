@@ -50,7 +50,7 @@ std::optional<SymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *working_file,
                                              QueryFile *file,
-                                             lsPosition &ls_pos,
+                                             Position &ls_pos,
                                              bool smallest = false);
 
 template <typename Fn> void WithEntity(DB *db, SymbolIdx sym, Fn &&fn) {

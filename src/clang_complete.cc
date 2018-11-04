@@ -508,17 +508,17 @@ void *DiagnosticMain(void *manager_) {
       case DiagnosticsEngine::Ignored:
         // llvm_unreachable
       case DiagnosticsEngine::Remark:
-        ret.severity = DiagnosticSeverity::Hint;
+        ret.severity = 4;
         break;
       case DiagnosticsEngine::Note:
-        ret.severity = DiagnosticSeverity::Information;
+        ret.severity = 3;
         break;
       case DiagnosticsEngine::Warning:
-        ret.severity = DiagnosticSeverity::Warning;
+        ret.severity = 2;
         break;
       case DiagnosticsEngine::Error:
       case DiagnosticsEngine::Fatal:
-        ret.severity = DiagnosticSeverity::Error;
+        ret.severity = 1;
         break;
       }
       ret.code = d.category;
