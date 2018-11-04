@@ -48,7 +48,6 @@ enum class ErrorCode {
   // Defined by the protocol.
   RequestCancelled = -32800,
 };
-MAKE_REFLECT_TYPE_PROXY(ErrorCode);
 
 struct ResponseError {
   // A number indicating the error type that occurred.
@@ -61,18 +60,9 @@ struct ResponseError {
   // information about the error. Can be omitted.
   // std::optional<D> data;
 };
-MAKE_REFLECT_STRUCT(ResponseError, code, message);
 
 constexpr char ccls_xref[] = "ccls.xref";
 constexpr char window_showMessage[] = "window/showMessage";
-
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-////////////////////////////// PRIMITIVE TYPES //////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
 
 struct DocumentUri {
   static DocumentUri FromPath(const std::string &path);
@@ -90,22 +80,21 @@ void Reflect(TVisitor &visitor, DocumentUri &value) {
   Reflect(visitor, value.raw_uri);
 }
 
-struct lsPosition {
+struct Position {
   int line = 0;
   int character = 0;
-  bool operator==(const lsPosition &o) const {
+  bool operator==(const Position &o) const {
     return line == o.line && character == o.character;
   }
-  bool operator<(const lsPosition &o) const {
+  bool operator<(const Position &o) const {
     return line != o.line ? line < o.line : character < o.character;
   }
   std::string ToString() const;
 };
-MAKE_REFLECT_STRUCT(lsPosition, line, character);
 
 struct lsRange {
-  lsPosition start;
-  lsPosition end;
+  Position start;
+  Position end;
   bool operator==(const lsRange &o) const {
     return start == o.start && end == o.end;
   }
@@ -113,7 +102,6 @@ struct lsRange {
     return !(start == o.start) ? start < o.start : end < o.end;
   }
 };
-MAKE_REFLECT_STRUCT(lsRange, start, end);
 
 struct Location {
   DocumentUri uri;
@@ -126,7 +114,6 @@ struct Location {
                                            : range < o.range;
   }
 };
-MAKE_REFLECT_STRUCT(Location, uri, range);
 
 enum class SymbolKind : uint8_t {
   Unknown = 0,
@@ -169,7 +156,6 @@ enum class SymbolKind : uint8_t {
   StaticMethod = 254,
   Macro = 255,
 };
-MAKE_REFLECT_TYPE_PROXY(SymbolKind);
 
 struct SymbolInformation {
   std::string_view name;
@@ -181,57 +167,24 @@ struct SymbolInformation {
 struct TextDocumentIdentifier {
   DocumentUri uri;
 };
-MAKE_REFLECT_STRUCT(TextDocumentIdentifier, uri);
 
 struct VersionedTextDocumentIdentifier {
   DocumentUri uri;
   // The version number of this document.  number | null
   std::optional<int> version;
 };
-MAKE_REFLECT_STRUCT(VersionedTextDocumentIdentifier, uri, version);
 
 struct TextEdit {
-  // The range of the text document to be manipulated. To insert
-  // text into a document create a range where start === end.
   lsRange range;
-
-  // The string to be inserted. For delete operations use an
-  // empty string.
   std::string newText;
-
-  bool operator==(const TextEdit &that);
 };
-MAKE_REFLECT_STRUCT(TextEdit, range, newText);
 
 struct TextDocumentItem {
-  // The text document's URI.
   DocumentUri uri;
-
-  // The text document's language identifier.
   std::string languageId;
-
-  // The version number of this document (it will strictly increase after each
-  // change, including undo/redo).
   int version;
-
-  // The content of the opened text document.
   std::string text;
 };
-MAKE_REFLECT_STRUCT(TextDocumentItem, uri, languageId, version, text);
-
-struct TextDocumentEdit {
-  // The text document to change.
-  VersionedTextDocumentIdentifier textDocument;
-
-  // The edits to be applied.
-  std::vector<TextEdit> edits;
-};
-MAKE_REFLECT_STRUCT(TextDocumentEdit, textDocument, edits);
-
-struct WorkspaceEdit {
-  std::vector<TextDocumentEdit> documentChanges;
-};
-MAKE_REFLECT_STRUCT(WorkspaceEdit, documentChanges);
 
 struct TextDocumentContentChangeEvent {
   // The range of the document that changed.
@@ -251,84 +204,27 @@ struct WorkspaceFolder {
   DocumentUri uri;
   std::string name;
 };
-MAKE_REFLECT_STRUCT(WorkspaceFolder, uri, name);
 
-// Show a message to the user.
 enum class MessageType : int { Error = 1, Warning = 2, Info = 3, Log = 4 };
 MAKE_REFLECT_TYPE_PROXY(MessageType)
 
-enum class DiagnosticSeverity {
-  // Reports an error.
-  Error = 1,
-  // Reports a warning.
-  Warning = 2,
-  // Reports an information.
-  Information = 3,
-  // Reports a hint.
-  Hint = 4
-};
-MAKE_REFLECT_TYPE_PROXY(DiagnosticSeverity);
-
 struct Diagnostic {
-  // The range at which the message applies.
   lsRange range;
-
-  // The diagnostic's severity. Can be omitted. If omitted it is up to the
-  // client to interpret diagnostics as error, warning, info or hint.
-  std::optional<DiagnosticSeverity> severity;
-
-  // The diagnostic's code. Can be omitted.
+  int severity = 0;
   int code = 0;
-
-  // A human-readable string describing the source of this
-  // diagnostic, e.g. 'typescript' or 'super lint'.
   std::string source = "ccls";
-
-  // The diagnostic's message.
   std::string message;
-
-  // Non-serialized set of fixits.
   std::vector<TextEdit> fixits_;
 };
-MAKE_REFLECT_STRUCT(Diagnostic, range, severity, source, message);
 
 struct ShowMessageParam {
   MessageType type = MessageType::Error;
   std::string message;
 };
-MAKE_REFLECT_STRUCT(ShowMessageParam, type, message);
 
 // Used to identify the language at a file level. The ordering is important, as
 // a file previously identified as `C`, will be changed to `Cpp` if it
 // encounters a c++ declaration.
 enum class LanguageId { Unknown = -1, C = 0, Cpp = 1, ObjC = 2, ObjCpp = 3 };
-MAKE_REFLECT_TYPE_PROXY(LanguageId);
 
-// The order matters. In FindSymbolsAtLocation, we want Var/Func ordered in
-// front of others.
-enum class Kind : uint8_t { Invalid, File, Type, Func, Var };
-MAKE_REFLECT_TYPE_PROXY(Kind);
-
-enum class Role : uint16_t {
-  None = 0,
-  Declaration = 1 << 0,
-  Definition = 1 << 1,
-  Reference = 1 << 2,
-  Read = 1 << 3,
-  Write = 1 << 4,
-  Call = 1 << 5,
-  Dynamic = 1 << 6,
-  Address = 1 << 7,
-  Implicit = 1 << 8,
-  All = (1 << 9) - 1,
-};
-MAKE_REFLECT_TYPE_PROXY(Role);
-
-inline uint16_t operator&(Role lhs, Role rhs) {
-  return uint16_t(lhs) & uint16_t(rhs);
-}
-
-inline Role operator|(Role lhs, Role rhs) {
-  return Role(uint16_t(lhs) | uint16_t(rhs));
-}
 } // namespace ccls

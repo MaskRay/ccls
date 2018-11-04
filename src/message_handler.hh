@@ -24,28 +24,6 @@ void Reply(RequestId id, const std::function<void(Writer &)> &fn);
 void ReplyError(RequestId id, const std::function<void(Writer &)> &fn);
 }
 
-struct EmptyParam {
-  bool placeholder;
-};
-struct TextDocumentParam {
-  TextDocumentIdentifier textDocument;
-};
-struct DidOpenTextDocumentParam {
-  TextDocumentItem textDocument;
-};
-
-struct TextDocumentPositionParam {
-  TextDocumentIdentifier textDocument;
-  lsPosition position;
-};
-
-struct RenameParam {
-  TextDocumentIdentifier textDocument;
-  lsPosition position;
-  std::string newName;
-};
-
-// code*
 struct CodeActionParam {
   TextDocumentIdentifier textDocument;
   lsRange range;
@@ -53,6 +31,33 @@ struct CodeActionParam {
     std::vector<Diagnostic> diagnostics;
   } context;
 };
+struct EmptyParam {
+  bool placeholder;
+};
+struct DidOpenTextDocumentParam {
+  TextDocumentItem textDocument;
+};
+struct RenameParam {
+  TextDocumentIdentifier textDocument;
+  Position position;
+  std::string newName;
+};
+struct TextDocumentParam {
+  TextDocumentIdentifier textDocument;
+};
+struct TextDocumentPositionParam {
+  TextDocumentIdentifier textDocument;
+  Position position;
+};
+struct TextDocumentEdit {
+  VersionedTextDocumentIdentifier textDocument;
+  std::vector<TextEdit> edits;
+};
+MAKE_REFLECT_STRUCT(TextDocumentEdit, textDocument, edits);
+struct WorkspaceEdit {
+  std::vector<TextDocumentEdit> documentChanges;
+};
+MAKE_REFLECT_STRUCT(WorkspaceEdit, documentChanges);
 
 // completion
 enum class CompletionTriggerKind {
@@ -127,7 +132,7 @@ struct DocumentFormattingParam {
 };
 struct DocumentOnTypeFormattingParam {
   TextDocumentIdentifier textDocument;
-  lsPosition position;
+  Position position;
   std::string ch;
   FormattingOptions options;
 };
@@ -161,6 +166,21 @@ struct WorkspaceSymbolParam {
   // ccls extensions
   std::vector<std::string> folders;
 };
+MAKE_REFLECT_STRUCT(WorkspaceFolder, uri, name);
+
+MAKE_REFLECT_TYPE_PROXY(ErrorCode);
+MAKE_REFLECT_STRUCT(ResponseError, code, message);
+MAKE_REFLECT_STRUCT(Position, line, character);
+MAKE_REFLECT_STRUCT(lsRange, start, end);
+MAKE_REFLECT_STRUCT(Location, uri, range);
+MAKE_REFLECT_TYPE_PROXY(SymbolKind);
+MAKE_REFLECT_STRUCT(TextDocumentIdentifier, uri);
+MAKE_REFLECT_STRUCT(TextDocumentItem, uri, languageId, version, text);
+MAKE_REFLECT_STRUCT(TextEdit, range, newText);
+MAKE_REFLECT_STRUCT(VersionedTextDocumentIdentifier, uri, version);
+MAKE_REFLECT_STRUCT(Diagnostic, range, severity, code, source, message);
+MAKE_REFLECT_STRUCT(ShowMessageParam, type, message);
+MAKE_REFLECT_TYPE_PROXY(LanguageId);
 
 // TODO llvm 8 llvm::unique_function
 template <typename Res>

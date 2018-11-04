@@ -18,6 +18,8 @@ using namespace clang;
 MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
 
 namespace ccls {
+MAKE_REFLECT_STRUCT(CodeActionParam::Context, diagnostics);
+MAKE_REFLECT_STRUCT(CodeActionParam, textDocument, range, context);
 MAKE_REFLECT_STRUCT(EmptyParam, placeholder);
 MAKE_REFLECT_STRUCT(TextDocumentParam, textDocument);
 MAKE_REFLECT_STRUCT(DidOpenTextDocumentParam, textDocument);
@@ -25,10 +27,6 @@ MAKE_REFLECT_STRUCT(TextDocumentContentChangeEvent, range, rangeLength, text);
 MAKE_REFLECT_STRUCT(TextDocumentDidChangeParam, textDocument, contentChanges);
 MAKE_REFLECT_STRUCT(TextDocumentPositionParam, textDocument, position);
 MAKE_REFLECT_STRUCT(RenameParam, textDocument, position, newName);
-
-// code*
-MAKE_REFLECT_STRUCT(CodeActionParam::Context, diagnostics);
-MAKE_REFLECT_STRUCT(CodeActionParam, textDocument, range, context);
 
 // completion
 MAKE_REFLECT_TYPE_PROXY(CompletionTriggerKind);
@@ -62,24 +60,23 @@ struct CclsSemanticHighlightSymbol {
   std::vector<lsRange> lsRanges;
 };
 
-struct CclsSemanticHighlightParams {
+struct CclsSemanticHighlight {
   DocumentUri uri;
   std::vector<CclsSemanticHighlightSymbol> symbols;
 };
 MAKE_REFLECT_STRUCT(CclsSemanticHighlightSymbol, id, parentKind, kind, storage,
                     ranges, lsRanges);
-MAKE_REFLECT_STRUCT(CclsSemanticHighlightParams, uri, symbols);
+MAKE_REFLECT_STRUCT(CclsSemanticHighlight, uri, symbols);
 
-struct CclsSetSkippedRangesParams {
+struct CclsSetSkippedRanges {
   DocumentUri uri;
   std::vector<lsRange> skippedRanges;
 };
-MAKE_REFLECT_STRUCT(CclsSetSkippedRangesParams, uri, skippedRanges);
-
+MAKE_REFLECT_STRUCT(CclsSetSkippedRanges, uri, skippedRanges);
 
 struct ScanLineEvent {
-  lsPosition pos;
-  lsPosition end_pos; // Second key when there is a tie for insertion events.
+  Position pos;
+  Position end_pos; // Second key when there is a tie for insertion events.
   int id;
   CclsSemanticHighlightSymbol *symbol;
   bool operator<(const ScanLineEvent &other) const {
@@ -261,7 +258,7 @@ QueryFile *MessageHandler::FindFile(ReplyOnce &reply,
 }
 
 void EmitSkippedRanges(WorkingFile *wfile, QueryFile &file) {
-  CclsSetSkippedRangesParams params;
+  CclsSetSkippedRanges params;
   params.uri = DocumentUri::FromPath(wfile->filename);
   for (Range skipped : file.def->skipped_ranges)
     if (auto ls_skipped = GetLsRange(wfile, skipped))
@@ -353,8 +350,7 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
       continue; // applies to for loop
     }
 
-    std::optional<lsRange> loc = GetLsRange(wfile, sym.range);
-    if (loc) {
+    if (std::optional<lsRange> loc = GetLsRange(wfile, sym.range)) {
       auto it = grouped_symbols.find(sym);
       if (it != grouped_symbols.end()) {
         it->second.lsRanges.push_back(*loc);
@@ -409,7 +405,7 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
       deleted[~events[i].id] = 1;
   }
 
-  CclsSemanticHighlightParams params;
+  CclsSemanticHighlight params;
   params.uri = DocumentUri::FromPath(wfile->filename);
   // Transform lsRange into pair<int, int> (offset pairs)
   if (!g_config->highlight.lsRanges) {

@@ -143,8 +143,8 @@ std::vector<Use> GetUsesForAllDerived(DB *db, QueryFunc &root) {
 std::optional<lsRange> GetLsRange(WorkingFile *wfile,
                                   const Range &location) {
   if (!wfile || wfile->index_lines.empty())
-    return lsRange{lsPosition{location.start.line, location.start.column},
-                   lsPosition{location.end.line, location.end.column}};
+    return lsRange{Position{location.start.line, location.start.column},
+                   Position{location.end.line, location.end.column}};
 
   int start_column = location.start.column, end_column = location.end.column;
   std::optional<int> start = wfile->GetBufferPosFromIndexPos(
@@ -165,8 +165,7 @@ std::optional<lsRange> GetLsRange(WorkingFile *wfile,
   if (*start == *end && start_column > end_column)
     end_column = start_column;
 
-  return lsRange{lsPosition{*start, start_column},
-                 lsPosition{*end, end_column}};
+  return lsRange{Position{*start, start_column}, Position{*end, end_column}};
 }
 
 DocumentUri GetLsDocumentUri(DB *db, int file_id, std::string *path) {
@@ -266,8 +265,7 @@ std::optional<SymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
 }
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *wfile,
-                                             QueryFile *file,
-                                             lsPosition &ls_pos,
+                                             QueryFile *file, Position &ls_pos,
                                              bool smallest) {
   std::vector<SymbolRef> symbols;
   // If multiVersion > 0, index may not exist and thus index_lines is empty.

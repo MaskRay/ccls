@@ -3,7 +3,7 @@
 
 #include "match.hh"
 
-#include "lsp.hh"
+#include "message_handler.hh"
 #include "pipeline.hh"
 
 namespace ccls {

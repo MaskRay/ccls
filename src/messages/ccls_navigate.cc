@@ -8,12 +8,12 @@ namespace ccls {
 namespace {
 struct Param {
   TextDocumentIdentifier textDocument;
-  lsPosition position;
+  Position position;
   std::string direction;
 };
 MAKE_REFLECT_STRUCT(Param, textDocument, position, direction);
 
-Maybe<Range> FindParent(QueryFile *file, Position pos) {
+Maybe<Range> FindParent(QueryFile *file, Pos pos) {
   Maybe<Range> parent;
   for (auto [sym, refcnt] : file->symbol2refcnt)
     if (refcnt > 0 && sym.extent.Valid() && sym.extent.start <= pos &&
@@ -35,12 +35,12 @@ void MessageHandler::ccls_navigate(Reader &reader,
     return;
 
   WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
-  lsPosition ls_pos = param.position;
+  Position ls_pos = param.position;
   if (wfile && wfile->index_lines.size())
     if (auto line = wfile->GetIndexPosFromBufferPos(ls_pos.line,
                                                     &ls_pos.character, false))
       ls_pos.line = *line;
-  Position pos{(int16_t)ls_pos.line, (int16_t)ls_pos.character};
+  Pos pos{(int16_t)ls_pos.line, (int16_t)ls_pos.character};
 
   Maybe<Range> res;
   switch (param.direction[0]) {
