@@ -55,7 +55,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
   std::vector<Location> result;
   Maybe<Use> on_def;
   WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
-  lsPosition &ls_pos = param.position;
+  Position &ls_pos = param.position;
 
   for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, ls_pos, true)) {
     // Special cases which are handled:
@@ -107,7 +107,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
     }
     // Find the best match of the identifier at point.
     if (!range) {
-      lsPosition position = param.position;
+      Position position = param.position;
       const std::string &buffer = wfile->buffer_content;
       std::string_view query = LexIdentifierAroundPos(position, buffer);
       std::string_view short_query = query;

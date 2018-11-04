@@ -155,10 +155,10 @@ void MessageHandler::textDocument_signatureHelp(
   static CompleteConsumerCache<SignatureHelp> cache;
 
   std::string path = param.textDocument.uri.GetPath();
-  lsPosition begin_pos = param.position;
+  Position begin_pos = param.position;
   if (WorkingFile *file = wfiles->GetFileByFilename(path)) {
     std::string completion_text;
-    lsPosition end_pos = param.position;
+    Position end_pos = param.position;
     begin_pos = file->FindStableCompletionSource(param.position,
                                                  &completion_text, &end_pos);
   }
