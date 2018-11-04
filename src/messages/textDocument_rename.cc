@@ -43,14 +43,9 @@ WorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *wfiles, SymbolRef sym,
         path_to_edit[file_id].textDocument.version = working_file->version;
     }
 
-    TextEdit edit;
+    TextEdit &edit = path_to_edit[file_id].edits.emplace_back();
     edit.range = ls_location->range;
     edit.newText = new_text;
-
-    // vscode complains if we submit overlapping text edits.
-    auto &edits = path_to_edit[file_id].edits;
-    if (std::find(edits.begin(), edits.end(), edit) == edits.end())
-      edits.push_back(edit);
   });
 
   WorkspaceEdit edit;

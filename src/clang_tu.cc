@@ -41,8 +41,8 @@ std::string PathFromFileEntry(const FileEntry &file) {
   return ret;
 }
 
-static Position Decomposed2LineAndCol(const SourceManager &SM,
-                               std::pair<FileID, unsigned> I) {
+static Pos Decomposed2LineAndCol(const SourceManager &SM,
+                                 std::pair<FileID, unsigned> I) {
   int l = SM.getLineNumber(I.first, I.second) - 1,
       c = SM.getColumnNumber(I.first, I.second) - 1;
   return {(int16_t)std::min(l, INT16_MAX), (int16_t)std::min(c, INT16_MAX)};

@@ -18,6 +18,7 @@ limitations under the License.
 #include "filesystem.hh"
 #include "indexer.hh"
 #include "log.hh"
+#include "message_handler.hh"
 #include "serializers/binary.hh"
 #include "serializers/json.hh"
 

@@ -87,7 +87,7 @@ struct CompletionManager {
   struct CompletionRequest {
     CompletionRequest(const RequestId &id,
                       const TextDocumentIdentifier &document,
-                      const lsPosition &position,
+                      const Position &position,
                       std::unique_ptr<clang::CodeCompleteConsumer> Consumer,
                       clang::CodeCompleteOptions CCOpts,
                       const OnComplete &on_complete)
@@ -97,7 +97,7 @@ struct CompletionManager {
 
     RequestId id;
     TextDocumentIdentifier document;
-    lsPosition position;
+    Position position;
     std::unique_ptr<clang::CodeCompleteConsumer> Consumer;
     clang::CodeCompleteOptions CCOpts;
     OnComplete on_complete;
@@ -177,7 +177,7 @@ template <typename T>
 struct CompleteConsumerCache {
   // NOTE: Make sure to access these variables under |WithLock|.
   std::optional<std::string> path;
-  std::optional<lsPosition> position;
+  std::optional<Position> position;
   T result;
 
   std::mutex mutex;
@@ -186,7 +186,7 @@ struct CompleteConsumerCache {
     std::lock_guard lock(mutex);
     action();
   }
-  bool IsCacheValid(const std::string path, lsPosition position) {
+  bool IsCacheValid(const std::string path, Position position) {
     std::lock_guard lock(mutex);
     return this->path == path && this->position == position;
   }
