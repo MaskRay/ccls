@@ -95,7 +95,7 @@ ParseIncludeLineResult ParseIncludeLine(const std::string &line) {
 // significantly snappier completion experience as vscode is easily overloaded
 // when given 1000+ completion items.
 void FilterCandidates(CompletionList &result, const std::string &complete_text,
-                      lsPosition begin_pos, lsPosition end_pos,
+                      Position begin_pos, Position end_pos,
                       const std::string &buffer_line) {
   assert(begin_pos.line == end_pos.line);
   auto &items = result.items;
@@ -126,7 +126,7 @@ void FilterCandidates(CompletionList &result, const std::string &complete_text,
       // Order of textEdit and additionalTextEdits is unspecified.
       auto &edits = item.additionalTextEdits;
       if (edits.size() && edits[0].range.end == begin_pos) {
-        lsPosition start = edits[0].range.start, end = edits[0].range.end;
+        Position start = edits[0].range.start, end = edits[0].range.end;
         item.textEdit.range.start = start;
         item.textEdit.newText = edits[0].newText + item.textEdit.newText;
         if (start.line == begin_pos.line && item.filterText) {
@@ -482,8 +482,8 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   }
 
   std::string completion_text;
-  lsPosition end_pos = param.position;
-  lsPosition begin_pos = file->FindStableCompletionSource(
+  Position end_pos = param.position;
+  Position begin_pos = file->FindStableCompletionSource(
       param.position, &completion_text, &end_pos);
 
   ParseIncludeLineResult preprocess = ParseIncludeLine(buffer_line);

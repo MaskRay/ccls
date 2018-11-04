@@ -45,6 +45,32 @@ namespace ccls {
 using Usr = uint64_t;
 enum class LanguageId;
 
+// The order matters. In FindSymbolsAtLocation, we want Var/Func ordered in
+// front of others.
+enum class Kind : uint8_t { Invalid, File, Type, Func, Var };
+MAKE_REFLECT_TYPE_PROXY(Kind);
+
+enum class Role : uint16_t {
+  None = 0,
+  Declaration = 1 << 0,
+  Definition = 1 << 1,
+  Reference = 1 << 2,
+  Read = 1 << 3,
+  Write = 1 << 4,
+  Call = 1 << 5,
+  Dynamic = 1 << 6,
+  Address = 1 << 7,
+  Implicit = 1 << 8,
+  All = (1 << 9) - 1,
+};
+MAKE_REFLECT_TYPE_PROXY(Role);
+inline uint16_t operator&(Role lhs, Role rhs) {
+  return uint16_t(lhs) & uint16_t(rhs);
+}
+inline Role operator|(Role lhs, Role rhs) {
+  return Role(uint16_t(lhs) | uint16_t(rhs));
+}
+
 struct SymbolIdx {
   Usr usr;
   Kind kind;
