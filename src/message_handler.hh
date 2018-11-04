@@ -9,18 +9,13 @@
 #include <functional>
 #include <memory>
 #include <optional>
-#include <unordered_map>
 #include <vector>
 
 namespace ccls {
 struct CompletionManager;
-struct Config;
-struct GroupMatch;
 struct VFS;
 struct IncludeComplete;
-struct MultiQueueWaiter;
 struct Project;
-struct DB;
 struct WorkingFile;
 struct WorkingFiles;
 
@@ -184,12 +179,12 @@ struct ReplyOnce {
 };
 
 struct MessageHandler {
+  CompletionManager *clang_complete = nullptr;
   DB *db = nullptr;
+  IncludeComplete *include_complete = nullptr;
   Project *project = nullptr;
   VFS *vfs = nullptr;
   WorkingFiles *wfiles = nullptr;
-  CompletionManager *clang_complete = nullptr;
-  IncludeComplete *include_complete = nullptr;
 
   llvm::StringMap<std::function<void(Reader &)>> method2notification;
   llvm::StringMap<std::function<void(Reader &, ReplyOnce &)>> method2request;
