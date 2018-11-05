@@ -43,7 +43,7 @@ MAKE_REFLECT_TYPE_PROXY(TextDocumentSyncKind)
 
 struct ServerCap {
   struct TextDocumentSyncOptions {
-    bool openClose = false;
+    bool openClose = true;
     TextDocumentSyncKind change = TextDocumentSyncKind::Incremental;
     bool willSave = false;
     bool willSaveWaitUntil = false;
