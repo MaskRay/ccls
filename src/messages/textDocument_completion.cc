@@ -134,6 +134,23 @@ void FilterCandidates(CompletionList &result, const std::string &complete_text,
       result.isIncomplete = true;
     }
 
+    int overwrite_len = 0;
+    for (auto &item : items) {
+      auto &edits = item.additionalTextEdits;
+      if (edits.size() && edits[0].range.end == begin_pos) {
+        Position start = edits[0].range.start, end = edits[0].range.end;
+        if (start.line == begin_pos.line) {
+          overwrite_len =
+              std::max(overwrite_len, end.character - start.character);
+        } else {
+          overwrite_len = -1;
+          break;
+        }
+      }
+    }
+
+    Position overwrite_begin = {begin_pos.line,
+                                begin_pos.character - overwrite_len};
     std::string sort(4, ' ');
     for (auto &item : items) {
       item.textEdit.range = lsRange{begin_pos, end_pos};
@@ -142,17 +159,20 @@ void FilterCandidates(CompletionList &result, const std::string &complete_text,
       // https://github.com/Microsoft/language-server-protocol/issues/543
       // Order of textEdit and additionalTextEdits is unspecified.
       auto &edits = item.additionalTextEdits;
-      if (edits.size() && edits[0].range.end == begin_pos) {
-        Position start = edits[0].range.start, end = edits[0].range.end;
-        item.textEdit.range.start = start;
-        item.textEdit.newText = edits[0].newText + item.textEdit.newText;
-        if (start.line == begin_pos.line) {
-          item.filterText =
-              buffer_line.substr(start.character,
-                                 end.character - start.character) +
-              item.filterText;
+      if (overwrite_len > 0) {
+        item.textEdit.range.start = overwrite_begin;
+        std::string orig = buffer_line.substr(overwrite_begin.character, overwrite_len);
+        if (edits.size() && edits[0].range.end == begin_pos &&
+            edits[0].range.start.line == begin_pos.line) {
+          int cur_edit_len = edits[0].range.end.character - edits[0].range.start.character;
+          item.textEdit.newText =
+              buffer_line.substr(overwrite_begin.character, overwrite_len - cur_edit_len) +
+              edits[0].newText + item.textEdit.newText;
+          edits.erase(edits.begin());
+        } else {
+          item.textEdit.newText = orig + item.textEdit.newText;
         }
-        edits.erase(edits.begin());
+        item.filterText = orig + item.filterText;
       }
       if (item.filterText == item.label)
         item.filterText.clear();
