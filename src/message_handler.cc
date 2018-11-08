@@ -79,15 +79,19 @@ struct ScanLineEvent {
   Position end_pos; // Second key when there is a tie for insertion events.
   int id;
   CclsSemanticHighlightSymbol *symbol;
-  bool operator<(const ScanLineEvent &other) const {
+  bool operator<(const ScanLineEvent &o) const {
     // See the comments below when insertion/deletion events are inserted.
-    if (!(pos == other.pos))
-      return pos < other.pos;
-    if (!(other.end_pos == end_pos))
-      return other.end_pos < end_pos;
+    if (!(pos == o.pos))
+      return pos < o.pos;
+    if (!(o.end_pos == end_pos))
+      return o.end_pos < end_pos;
     // This comparison essentially order Macro after non-Macro,
     // So that macros will not be rendered as Var/Type/...
-    return symbol->kind < other.symbol->kind;
+    if (symbol->kind != o.symbol->kind)
+      return symbol->kind < o.symbol->kind;
+    // If symbol A and B occupy the same place, we want one to be placed
+    // before the other consistantly.
+    return symbol->id < o.symbol->id;
   }
 };
 } // namespace
