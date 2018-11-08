@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "project.hh"
 
+#include "clang_tu.hh" // llvm::vfs
 #include "filesystem.hh"
 #include "log.hh"
 #include "match.hh"
@@ -328,6 +329,7 @@ LoadEntriesFromDirectory(ProjectConfig *project,
   std::vector<Project::Entry> result;
   ProjectProcessor proc(project);
   for (tooling::CompileCommand &Cmd : CDB->getAllCompileCommands()) {
+    static bool once;
     Project::Entry entry;
     entry.root = project->root;
     DoPathMapping(entry.root);
@@ -342,7 +344,18 @@ LoadEntriesFromDirectory(ProjectConfig *project,
       DoPathMapping(arg);
       entry.args.push_back(Intern(arg));
     }
+
+    // Work around relative --sysroot= as it isn't affected by
+    // -working-directory=. chdir is thread hostile but this function runs
+    // before indexers do actual work and it works when there is only one
+    // workspace folder.
+    if (!once) {
+      once = true;
+      llvm::vfs::getRealFileSystem()->setCurrentWorkingDirectory(
+          entry.directory);
+    }
     proc.Process(entry);
+
     if (Seen.insert(entry.filename).second)
       result.push_back(entry);
   }
