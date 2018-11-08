@@ -257,7 +257,9 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
     LOG_S(INFO) << "initializationOptions: " << output.GetString();
 
     if (g_config->cacheDirectory.size()) {
-      g_config->cacheDirectory = NormalizePath(g_config->cacheDirectory);
+      SmallString<256> Path(g_config->cacheDirectory);
+      sys::fs::make_absolute(Path);
+      g_config->cacheDirectory = Path.str();
       EnsureEndsInSlash(g_config->cacheDirectory);
     }
   }
