@@ -125,7 +125,7 @@ void FilterCandidates(CompletionList &result, const std::string &complete_text,
     for (auto &item : items) {
       item.textEdit.range = lsRange{begin_pos, end_pos};
       if (has_open_paren && item.filterText)
-        item.textEdit.newText = item.filterText.value();
+        item.textEdit.newText = *item.filterText;
       // https://github.com/Microsoft/language-server-protocol/issues/543
       // Order of textEdit and additionalTextEdits is unspecified.
       auto &edits = item.additionalTextEdits;
@@ -137,7 +137,7 @@ void FilterCandidates(CompletionList &result, const std::string &complete_text,
           item.filterText =
               buffer_line.substr(start.character,
                                  end.character - start.character) +
-              item.filterText.value();
+              *item.filterText;
         }
         edits.erase(edits.begin());
       }
