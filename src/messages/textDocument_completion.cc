@@ -24,7 +24,9 @@ limitations under the License.
 #include <clang/Sema/CodeCompleteConsumer.h>
 #include <clang/Sema/Sema.h>
 
+#if LLVM_VERSION_MAJOR < 8
 #include <regex>
+#endif
 
 namespace ccls {
 using namespace clang;
@@ -43,6 +45,7 @@ struct CompletionList {
 };
 MAKE_REFLECT_STRUCT(CompletionList, isIncomplete, items);
 
+#if LLVM_VERSION_MAJOR < 8
 void DecorateIncludePaths(const std::smatch &match,
                           std::vector<CompletionItem> *items) {
   std::string spaces_after_include = " ";
@@ -90,6 +93,7 @@ ParseIncludeLineResult ParseIncludeLine(const std::string &line) {
   bool ok = std::regex_match(line, match, pattern);
   return {ok, match[3], match[5], match[6], match};
 }
+#endif
 
 // Pre-filters completion responses before sending to vscode. This results in a
 // significantly snappier completion experience as vscode is easily overloaded
@@ -121,7 +125,7 @@ void FilterCandidates(CompletionList &result, const std::string &complete_text,
     for (auto &item : items) {
       item.textEdit.range = lsRange{begin_pos, end_pos};
       if (has_open_paren && item.filterText)
-        item.textEdit.newText = item.filterText.value();
+        item.textEdit.newText = *item.filterText;
       // https://github.com/Microsoft/language-server-protocol/issues/543
       // Order of textEdit and additionalTextEdits is unspecified.
       auto &edits = item.additionalTextEdits;
@@ -133,7 +137,7 @@ void FilterCandidates(CompletionList &result, const std::string &complete_text,
           item.filterText =
               buffer_line.substr(start.character,
                                  end.character - start.character) +
-              item.filterText.value();
+              *item.filterText;
         }
         edits.erase(edits.begin());
       }
@@ -391,6 +395,10 @@ public:
           includeBriefComments());
       CompletionItem ls_item;
       ls_item.kind = GetCompletionKind(R.CursorKind);
+#if LLVM_VERSION_MAJOR >= 8
+      if (Context.getKind() == CodeCompletionContext::CCC_IncludedFile)
+        ls_item.kind = CompletionItemKind::File;
+#endif
       if (const char *brief = CCS->getBriefComment())
         ls_item.documentation = brief;
       ls_item.detail = CCS->getParentContextName().str();
@@ -443,51 +451,44 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
       param.position.line < file->buffer_lines.size())
     buffer_line = file->buffer_lines[param.position.line];
 
-  // Check for - and : before completing -> or ::, since vscode does not
-  // support multi-character trigger characters.
+  clang::CodeCompleteOptions CCOpts;
+  CCOpts.IncludeBriefComments = true;
+  CCOpts.IncludeCodePatterns = StringRef(buffer_line).ltrim().startswith("#");
+#if LLVM_VERSION_MAJOR >= 7
+  CCOpts.IncludeFixIts = true;
+#endif
+  CCOpts.IncludeMacros = true;
+
   if (param.context.triggerKind == CompletionTriggerKind::TriggerCharacter &&
       param.context.triggerCharacter) {
-    bool did_fail_check = false;
-
-    std::string character = *param.context.triggerCharacter;
-    int preceding_index = param.position.character - 2;
-
-    // If the character is '"', '<' or '/', make sure that the line starts
-    // with '#'.
-    if (character == "\"" || character == "<" || character == "/") {
-      size_t i = 0;
-      while (i < buffer_line.size() && isspace(buffer_line[i]))
-        ++i;
-      if (i >= buffer_line.size() || buffer_line[i] != '#')
-        did_fail_check = true;
+    bool ok = true;
+    int col = param.position.character - 2;
+    switch ((*param.context.triggerCharacter)[0]) {
+    case '"':
+    case '/':
+    case '<':
+      ok = CCOpts.IncludeCodePatterns; // start with #
+      break;
+    case ':':
+      ok = col >= 0 && buffer_line[col] == ':'; // ::
+      break;
+    case '>':
+      ok = col >= 0 && buffer_line[col] == '-'; // ->
+      break;
     }
-    // If the character is > or : and we are at the start of the line, do not
-    // show completion results.
-    else if ((character == ">" || character == ":") && preceding_index < 0) {
-      did_fail_check = true;
-    }
-    // If the character is > but - does not preced it, or if it is : and :
-    // does not preced it, do not show completion results.
-    else if (preceding_index >= 0 &&
-             preceding_index < (int)buffer_line.size()) {
-      char preceding = buffer_line[preceding_index];
-      did_fail_check = (preceding != '-' && character == ">") ||
-                       (preceding != ':' && character == ":");
-    }
-
-    if (did_fail_check) {
+    if (!ok) {
       reply(result);
       return;
     }
   }
 
-  std::string completion_text;
+  std::string filter;
   Position end_pos = param.position;
-  Position begin_pos = file->FindStableCompletionSource(
-      param.position, &completion_text, &end_pos);
+  Position begin_pos =
+      file->FindStableCompletionSource(param.position, &filter, &end_pos);
 
+#if LLVM_VERSION_MAJOR < 8
   ParseIncludeLineResult preprocess = ParseIncludeLine(buffer_line);
-
   if (preprocess.ok && preprocess.keyword.compare("include") == 0) {
     CompletionList result;
     {
@@ -506,47 +507,40 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
                      buffer_line);
     DecorateIncludePaths(preprocess.match, &result.items);
     reply(result);
-  } else {
-    std::string path = param.textDocument.uri.GetPath();
-    CompletionManager::OnComplete callback =
-        [completion_text, path, begin_pos, end_pos, reply,
-         buffer_line](CodeCompleteConsumer *OptConsumer) {
-          if (!OptConsumer)
-            return;
-          auto *Consumer = static_cast<CompletionConsumer *>(OptConsumer);
-          CompletionList result;
-          result.items = Consumer->ls_items;
-
-          FilterCandidates(result, completion_text, begin_pos, end_pos,
-                           buffer_line);
-          reply(result);
-          if (!Consumer->from_cache) {
-            cache.WithLock([&]() {
-              cache.path = path;
-              cache.position = begin_pos;
-              cache.result = Consumer->ls_items;
-            });
-          }
-        };
-
-    clang::CodeCompleteOptions CCOpts;
-    CCOpts.IncludeBriefComments = true;
-    CCOpts.IncludeCodePatterns = preprocess.ok; // if there is a #
-#if LLVM_VERSION_MAJOR >= 7
-    CCOpts.IncludeFixIts = true;
+    return;
+  }
 #endif
-    CCOpts.IncludeMacros = true;
-    if (cache.IsCacheValid(path, begin_pos)) {
-      CompletionConsumer Consumer(CCOpts, true);
-      cache.WithLock([&]() { Consumer.ls_items = cache.result; });
-      callback(&Consumer);
-    } else {
-      clang_complete->completion_request_.PushBack(
-          std::make_unique<CompletionManager::CompletionRequest>(
-              reply.id, param.textDocument, begin_pos,
-              std::make_unique<CompletionConsumer>(CCOpts, false), CCOpts,
-              callback));
-    }
+
+  CompletionManager::OnComplete callback =
+      [filter, path, begin_pos, end_pos, reply,
+       buffer_line](CodeCompleteConsumer *OptConsumer) {
+        if (!OptConsumer)
+          return;
+        auto *Consumer = static_cast<CompletionConsumer *>(OptConsumer);
+        CompletionList result;
+        result.items = Consumer->ls_items;
+
+        FilterCandidates(result, filter, begin_pos, end_pos, buffer_line);
+        reply(result);
+        if (!Consumer->from_cache) {
+          cache.WithLock([&]() {
+            cache.path = path;
+            cache.position = begin_pos;
+            cache.result = Consumer->ls_items;
+          });
+        }
+      };
+
+  if (cache.IsCacheValid(path, begin_pos)) {
+    CompletionConsumer Consumer(CCOpts, true);
+    cache.WithLock([&]() { Consumer.ls_items = cache.result; });
+    callback(&Consumer);
+  } else {
+    clang_complete->completion_request_.PushBack(
+        std::make_unique<CompletionManager::CompletionRequest>(
+            reply.id, param.textDocument, begin_pos,
+            std::make_unique<CompletionConsumer>(CCOpts, false), CCOpts,
+            callback));
   }
 }
 } // namespace ccls
