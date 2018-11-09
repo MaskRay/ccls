@@ -143,13 +143,6 @@ struct PreambleData {
 };
 
 namespace {
-
-std::string StripFileType(const std::string &path) {
-  SmallString<128> Ret;
-  sys::path::append(Ret, sys::path::parent_path(path), sys::path::stem(path));
-  return sys::path::convert_to_slash(Ret);
-}
-
 bool LocationInRange(SourceLocation L, CharSourceRange R,
                      const SourceManager &M) {
   assert(R.isCharRange());
@@ -272,23 +265,16 @@ public:
 std::unique_ptr<CompilerInstance> BuildCompilerInstance(
     CompletionSession &session, std::unique_ptr<CompilerInvocation> CI,
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS, DiagnosticConsumer &DC,
-    const PreambleData *preamble, const WorkingFiles::Snapshot &snapshot,
-    std::vector<std::unique_ptr<llvm::MemoryBuffer>> &Bufs) {
-  std::string main = ResolveIfRelative(
-      session.file.directory,
-      sys::path::convert_to_slash(CI->getFrontendOpts().Inputs[0].getFile()));
-  for (auto &file : snapshot.files) {
-    Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(file.content));
-    if (preamble && file.filename == main) {
+    const PreambleData *preamble, const std::string &path,
+    std::unique_ptr<llvm::MemoryBuffer> &Buf) {
+  if (preamble) {
 #if LLVM_VERSION_MAJOR >= 7
-      preamble->Preamble.OverridePreamble(*CI, FS, Bufs.back().get());
+    preamble->Preamble.OverridePreamble(*CI, FS, Buf.get());
 #else
-      preamble->Preamble.AddImplicitPreamble(*CI, FS, Bufs.back().get());
+    preamble->Preamble.AddImplicitPreamble(*CI, FS, Buf.get());
 #endif
-      continue;
-    }
-    CI->getPreprocessorOpts().addRemappedFile(file.filename,
-      Bufs.back().get());
+  } else {
+    CI->getPreprocessorOpts().addRemappedFile(path, Buf.get());
   }
 
   auto Clang = std::make_unique<CompilerInstance>(session.PCH);
@@ -358,8 +344,6 @@ void *CompletionPreloadMain(void *manager_) {
       continue;
 
     const auto &args = session->file.args;
-    WorkingFiles::Snapshot snapshot =
-        session->wfiles->AsSnapshot({StripFileType(session->file.filename)});
     auto stat_cache = std::make_unique<PreambleStatCache>();
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
         stat_cache->Producer(session->FS);
@@ -415,19 +399,24 @@ void *CompletionMain(void *manager_) {
     CI->getLangOpts()->CommentOpts.ParseAllComments = true;
 
     DiagnosticConsumer DC;
-    WorkingFiles::Snapshot snapshot =
-        manager->wfiles_->AsSnapshot({StripFileType(path)});
-    std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
+    std::string content = manager->wfiles_->GetContent(path);
+    auto Buf = llvm::MemoryBuffer::getMemBuffer(content);
+    bool in_preamble =
+        GetOffsetForPosition(
+            {request->position.line, request->position.character}, content) <
+        ComputePreambleBounds(*CI->getLangOpts(), Buf.get(), 0).Size;
+    if (in_preamble)
+      preamble.reset();
     auto Clang = BuildCompilerInstance(*session, std::move(CI), FS, DC,
-                                       preamble.get(), snapshot, Bufs);
+                                       preamble.get(), path, Buf);
     if (!Clang)
       continue;
 
+    Clang->getPreprocessorOpts().SingleFileParseMode = in_preamble;
     Clang->setCodeCompletionConsumer(request->Consumer.release());
     if (!Parse(*Clang))
       continue;
-    for (auto &Buf : Bufs)
-      Buf.release();
+    Buf.release();
 
     request->on_complete(&Clang->getCodeCompletionConsumer());
   }
@@ -482,6 +471,7 @@ void *DiagnosticMain(void *manager_) {
     std::shared_ptr<PreambleData> preamble = session->GetPreamble();
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
         preamble ? preamble->stat_cache->Consumer(session->FS) : session->FS;
+
     std::unique_ptr<CompilerInvocation> CI =
         BuildCompilerInvocation(session->file.args, FS);
     if (!CI)
@@ -489,17 +479,15 @@ void *DiagnosticMain(void *manager_) {
     CI->getDiagnosticOpts().IgnoreWarnings = false;
     CI->getLangOpts()->SpellChecking = g_config->diagnostics.spellChecking;
     StoreDiags DC(path);
-    WorkingFiles::Snapshot snapshot =
-        manager->wfiles_->AsSnapshot({StripFileType(path)});
-    std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
+    std::string content = manager->wfiles_->GetContent(path);
+    auto Buf = llvm::MemoryBuffer::getMemBuffer(content);
     auto Clang = BuildCompilerInstance(*session, std::move(CI), FS, DC,
-                                       preamble.get(), snapshot, Bufs);
+                                       preamble.get(), path, Buf);
     if (!Clang)
       continue;
     if (!Parse(*Clang))
       continue;
-    for (auto &Buf : Bufs)
-      Buf.release();
+    Buf.release();
 
     auto Fill = [](const DiagBase &d, Diagnostic &ret) {
       ret.range = lsRange{{d.range.start.line, d.range.start.column},
