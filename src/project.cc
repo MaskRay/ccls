@@ -141,6 +141,7 @@ struct ProjectProcessor {
     }
     args.push_back(Intern("-working-directory=" + entry.directory));
     entry.args = args;
+#if LLVM_VERSION_MAJOR < 8
     args.push_back("-fsyntax-only");
     if (!command_set.insert(hash).second)
       return;
@@ -191,6 +192,7 @@ struct ProjectProcessor {
         break;
       }
     }
+#endif
   }
 };
 

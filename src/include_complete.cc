@@ -104,7 +104,7 @@ IncludeComplete::IncludeComplete(Project *project)
     : is_scanning(false), project_(project) {}
 
 void IncludeComplete::Rescan() {
-  if (is_scanning)
+  if (is_scanning || LLVM_VERSION_MAJOR >= 8)
     return;
 
   completion_items.clear();
