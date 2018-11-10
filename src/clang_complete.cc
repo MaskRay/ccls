@@ -221,7 +221,7 @@ public:
     if (!L.isValid()) return;
     const SourceManager &SM = Info.getSourceManager();
     StringRef Filename = SM.getFilename(Info.getLocation());
-    bool concerned = IsConcerned(SM, Info.getLocation());
+    bool concerned = SM.isInMainFile(L);
     auto fillDiagBase = [&](DiagBase &d) {
       llvm::SmallString<64> Message;
       Info.FormatDiagnostic(Message);
@@ -315,6 +315,11 @@ void BuildPreamble(CompletionSession &session, CompilerInvocation &CI,
   auto Bounds = ComputePreambleBounds(*CI.getLangOpts(), Buf.get(), 0);
   if (OldP && OldP->Preamble.CanReuse(CI, Buf.get(), Bounds, FS.get()))
     return;
+  // -Werror makes warnings issued as errors, which stops parsing
+  // prematurely because of -ferror-limit=. This also works around the issue
+  // of -Werror + -Wunused-parameter in interaction with SkipFunctionBodies.
+  auto &Ws = CI.getDiagnosticOpts().Warnings;
+  Ws.erase(std::remove(Ws.begin(), Ws.end(), "error"), Ws.end());
   CI.getDiagnosticOpts().IgnoreWarnings = false;
   CI.getFrontendOpts().SkipFunctionBodies = true;
   CI.getLangOpts()->CommentOpts.ParseAllComments = g_config->index.comments > 1;
