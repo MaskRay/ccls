@@ -221,7 +221,7 @@ public:
     if (!L.isValid()) return;
     const SourceManager &SM = Info.getSourceManager();
     StringRef Filename = SM.getFilename(Info.getLocation());
-    bool concerned = IsConcerned(SM, Info.getLocation());
+    bool concerned = SM.isInMainFile(L);
     auto fillDiagBase = [&](DiagBase &d) {
       llvm::SmallString<64> Message;
       Info.FormatDiagnostic(Message);
@@ -285,6 +285,10 @@ std::unique_ptr<CompilerInstance> BuildCompilerInstance(
       Clang->getDiagnostics(), Clang->getInvocation().TargetOpts));
   if (!Clang->hasTarget())
     return nullptr;
+  // Otherwise -Werror makes warnings issued as errors, which stops parsing
+  // prematurely when reaching the limit. This also works around the issue of
+  // -Wunused-parameter in interaction with SkipFunctionBodies.
+  Clang->getDiagnostics().setWarningsAsErrors(false);
   // Construct SourceManager with UserFilesAreVolatile: true because otherwise
   // RequiresNullTerminator: true may cause out-of-bounds read when a file is
   // mmap'ed but is saved concurrently.
