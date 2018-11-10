@@ -707,7 +707,7 @@ public:
       if (!db)
         return true;
       param.SeenFile(*FE);
-      if (!SM.isInMainFile(R.getBegin()))
+      if (!SM.isWrittenInMainFile(R.getBegin()))
         lid = GetFileLID(db, SM, *FE);
     } else {
       db = param.ConsumeFile(*FE);
