@@ -174,21 +174,20 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
         continue;
       auto &ds = r.first->second;
       ds = std::make_unique<DocumentSymbol>();
+      if (auto range = GetLsRange(wfile, sym.range)) {
+        ds->selectionRange = *range;
+        ds->range = ds->selectionRange;
+        if (sym.extent.Valid())
+          if (auto range1 = GetLsRange(wfile, sym.extent))
+            ds->range = *range1;
+      }
       std::vector<const void *> def_ptrs;
-      WithEntity(db, sym, [&, sym = sym](const auto &entity) {
+      WithEntity(db, sym, [&](const auto &entity) {
         auto *def = entity.AnyDef();
         if (!def)
           return;
         ds->name = def->Name(false);
         ds->detail = def->Name(true);
-        if (auto ls_range = GetLsRange(wfile, sym.range)) {
-          ds->selectionRange = *ls_range;
-          ds->range = ds->selectionRange;
-          if (sym.extent.Valid())
-            if (auto ls_range1 = GetLsRange(wfile, sym.extent))
-              ds->range = *ls_range1;
-        }
-
         for (auto &def : entity.def)
           if (def.file_id == file_id && !Ignore(&def)) {
             ds->kind = def.kind;
@@ -196,11 +195,14 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
               def_ptrs.push_back(&def);
           }
       });
-      if (def_ptrs.empty() || !(param.all || sym.role & Role::Definition ||
-                                ds->kind == SymbolKind::Namespace)) {
+      if (!(param.all || sym.role & Role::Definition ||
+            ds->kind == SymbolKind::Method ||
+            ds->kind == SymbolKind::Namespace)) {
         ds.reset();
         continue;
       }
+      if (def_ptrs.empty())
+        continue;
       if (sym.kind == Kind::Func)
         funcs.emplace_back(std::move(def_ptrs), ds.get());
       else if (sym.kind == Kind::Type)
