@@ -52,7 +52,6 @@ struct Range {
 
   bool Valid() const { return start.Valid(); }
   bool Contains(int line, int column) const;
-  Range RemovePrefix(Pos position) const;
 
   std::string ToString();
 
@@ -76,12 +75,11 @@ void Reflect(Writer &visitor, Range &value);
 namespace std {
 template <> struct hash<ccls::Range> {
   std::size_t operator()(ccls::Range x) const {
-    union U {
-      ccls::Range range = {};
+    union {
+      ccls::Range range;
       uint64_t u64;
-    } u;
+    } u{x};
     static_assert(sizeof(ccls::Range) == 8);
-    u.range = x;
     return hash<uint64_t>()(u.u64);
   }
 };
