@@ -18,6 +18,7 @@ limitations under the License.
 #include "log.hh"
 #include "serializers/json.hh"
 
+#include <algorithm>
 #include <stdio.h>
 
 namespace ccls {

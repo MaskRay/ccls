@@ -17,6 +17,7 @@ limitations under the License.
 
 #include "serializer.hh"
 
+#include <algorithm>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,12 +58,8 @@ Range Range::FromString(const std::string &encoded) {
 bool Range::Contains(int line, int column) const {
   if (line > INT16_MAX)
     return false;
-  Pos p{int16_t(line), int16_t(std::min(column, INT16_MAX))};
+  Pos p{(int16_t)line, (int16_t)std::min<int>(column, INT16_MAX)};
   return !(p < start) && p < end;
-}
-
-Range Range::RemovePrefix(Pos position) const {
-  return {std::min(std::max(position, start), end), end};
 }
 
 std::string Range::ToString() {
