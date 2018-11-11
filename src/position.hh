@@ -76,13 +76,14 @@ void Reflect(Writer &visitor, Range &value);
 namespace std {
 template <> struct hash<ccls::Range> {
   std::size_t operator()(ccls::Range x) const {
-    union U {
+    /*union U {
       ccls::Range range = {};
       uint64_t u64;
     } u;
     static_assert(sizeof(ccls::Range) == 8);
-    u.range = x;
-    return hash<uint64_t>()(u.u64);
+    u.range = x;*/
+    std::string data((const char*)&x, sizeof(x));
+    return hash<std::string>()(data);
   }
 };
 } // namespace std

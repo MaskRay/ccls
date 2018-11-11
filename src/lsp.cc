@@ -19,6 +19,7 @@ limitations under the License.
 #include "serializers/json.hh"
 
 #include <stdio.h>
+#include <algorithm>
 
 namespace ccls {
 void Reflect(Reader &visitor, RequestId &value) {

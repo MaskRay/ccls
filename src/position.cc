@@ -20,6 +20,7 @@ limitations under the License.
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <algorithm>
 
 namespace ccls {
 Pos Pos::FromString(const std::string &encoded) {
@@ -57,7 +58,7 @@ Range Range::FromString(const std::string &encoded) {
 bool Range::Contains(int line, int column) const {
   if (line > INT16_MAX)
     return false;
-  Pos p{int16_t(line), int16_t(std::min(column, INT16_MAX))};
+  Pos p{int16_t(line), int16_t(std::min<int16_t>(column, INT16_MAX))};
   return !(p < start) && p < end;
 }
 

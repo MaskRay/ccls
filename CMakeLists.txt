@@ -60,6 +60,7 @@ if(MSVC)
     /wd4068 # Disable unknown pragma warning
     $<$<CONFIG:Debug>:/FS>
   )
+  target_link_libraries(ccls PRIVATE Mincore.lib)
 else()
   # Common GCC/Clang(Linux) options
   target_compile_options(ccls PRIVATE
