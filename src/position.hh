@@ -52,7 +52,6 @@ struct Range {
 
   bool Valid() const { return start.Valid(); }
   bool Contains(int line, int column) const;
-  Range RemovePrefix(Pos position) const;
 
   std::string ToString();
 
