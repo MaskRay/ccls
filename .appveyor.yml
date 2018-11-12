@@ -1,0 +1,22 @@
+version: "{build}"
+
+os: Visual Studio 2017
+
+platform:
+  - x64
+
+build:
+  parallel: true  # enable MSBuild parallel builds
+  verbosity: minimal
+
+install:
+  - if not exist llvm.tar.xz appveyor DownloadFile "https://ziglang.org/deps/llvm+clang-7.0.0-win64-msvc-release.tar.xz" -FileName llvm.tar.xz
+  - 7z e -txz llvm.tar.xz
+  - 7z x llvm.tar
+  - git submodule update --init --recursive
+build_script: 
+  - cmake -G"Visual Studio 15 2017 Win64" -H. -Bbuild -DCMAKE_BUILD_TYPE=Release -DSYSTEM_CLANG=ON -DCLANG_ROOT=C:\projects\ccls\llvm+clang-7.0.0-win64-msvc-release
+  - cmake --build build --target ccls --config Release
+
+artifacts:
+  - path: build\Release

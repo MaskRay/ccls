@@ -76,6 +76,7 @@ namespace std {
 template <> struct hash<ccls::Range> {
   std::size_t operator()(ccls::Range x) const {
     union U {
+      U() {} // On VS2017, still need constructor here
       ccls::Range range = {};
       uint64_t u64;
     } u;

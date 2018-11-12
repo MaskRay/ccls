@@ -143,9 +143,10 @@ if(Clang_FOUND AND NOT TARGET Clang::Clang)
   set_target_properties(Clang::Clang PROPERTIES
     IMPORTED_LOCATION ${Clang_LIBRARY}
     INTERFACE_INCLUDE_DIRECTORIES "${Clang_INCLUDE_DIR};${Clang_BUILD_INCLUDE_DIR};${LLVM_INCLUDE_DIR};${LLVM_BUILD_INCLUDE_DIR}")
-
-  find_package(Curses REQUIRED)
-  find_package(ZLIB REQUIRED)
+  if(NOT WIN32)
+    find_package(Curses REQUIRED)
+    find_package(ZLIB REQUIRED)
+  endif()
   set_property(TARGET Clang::Clang PROPERTY IMPORTED_LINK_INTERFACE_LIBRARIES "${_Clang_LIBRARIES};${CURSES_LIBRARIES};${ZLIB_LIBRARIES}")
   if(MINGW)
     set_property(TARGET Clang::Clang APPEND_STRING PROPERTY IMPORTED_LINK_INTERFACE_LIBRARIES ";version")
