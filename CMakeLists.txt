@@ -50,16 +50,17 @@ if(MSVC)
     /EHsc
     /D_CRT_SECURE_NO_WARNINGS # don't try to use MSVC std replacements
     /W3 # roughly -Wall
-    /wd4996 # disable loguru unsafe warnings
-    /wd4722 # ignores warning C4722
-            # (destructor never returns) in loguru
+    /wd4996 # ignore deprecated declaration
     /wd4267 # ignores warning C4267
             # (conversion from 'size_t' to 'type'),
             # roughly -Wno-sign-compare
     /wd4800
     /wd4068 # Disable unknown pragma warning
+    /std:c++17
     $<$<CONFIG:Debug>:/FS>
   )
+  # relink system libs
+  target_link_libraries(ccls PRIVATE Mincore.lib)
 else()
   # Common GCC/Clang(Linux) options
   target_compile_options(ccls PRIVATE
