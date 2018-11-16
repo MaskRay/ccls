@@ -125,6 +125,16 @@ template<>
 bool Ignore(const QueryVar::Def *def) {
   return !def || def->is_local();
 }
+
+void Uniquify(std::vector<std::unique_ptr<DocumentSymbol>> &cs) {
+  std::sort(cs.begin(), cs.end(),
+            [](auto &l, auto &r) { return l->range < r->range; });
+  cs.erase(std::unique(cs.begin(), cs.end(),
+                       [](auto &l, auto &r) { return l->range == r->range; }),
+           cs.end());
+  for (auto &c : cs)
+    Uniquify(c->children);
+}
 } // namespace
 
 void MessageHandler::textDocument_documentSymbol(Reader &reader,
@@ -165,8 +175,13 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
       if (auto range = GetLsRange(wfile, sym.range)) {
         ds->selectionRange = *range;
         ds->range = ds->selectionRange;
+        // For a macro expansion, M(name), we may use `M` for extent and `name`
+        // for spell, do the check as selectionRange must be a subrange of
+        // range.
         if (sym.extent.Valid())
-          if (auto range1 = GetLsRange(wfile, sym.extent))
+          if (auto range1 = GetLsRange(wfile, sym.extent);
+              range1 && range1->start <= range->start &&
+              range->end <= range1->end)
             ds->range = *range1;
       }
       std::vector<const void *> def_ptrs;
@@ -175,7 +190,7 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
         if (!def)
           return;
         ds->name = def->Name(false);
-        ds->detail = def->Name(true);
+        ds->detail = def->detailed_name;
         for (auto &def : entity.def)
           if (def.file_id == file_id && !Ignore(&def)) {
             ds->kind = def.kind;
@@ -184,6 +199,7 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
           }
       });
       if (!(param.all || sym.role & Role::Definition ||
+            ds->kind == SymbolKind::Function ||
             ds->kind == SymbolKind::Method ||
             ds->kind == SymbolKind::Namespace)) {
         ds.reset();
@@ -225,8 +241,11 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
       }
     std::vector<std::unique_ptr<DocumentSymbol>> result;
     for (auto &[_, ds] : sym2ds)
-      if (ds)
+      if (ds) {
+        Uniquify(ds->children);
         result.push_back(std::move(ds));
+      }
+    Uniquify(result);
     reply(result);
   } else {
     std::vector<SymbolInformation> result;
