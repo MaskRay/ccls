@@ -141,7 +141,7 @@ std::string AppendSerializationFormat(const std::string &base) {
 
 std::string GetCachePath(const std::string &source_file) {
   for (auto &root : g_config->workspaceFolders)
-    if (StartsWith(source_file, root)) {
+    if (StringRef(source_file).startswith(root)) {
       auto len = root.size();
       return g_config->cacheDirectory +
              EscapeFileName(root.substr(0, len - 1)) + '/' +
