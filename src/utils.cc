@@ -34,7 +34,7 @@ using namespace llvm;
 #include <unordered_map>
 
 namespace ccls {
-uint64_t HashUsr(std::string_view s) {
+uint64_t HashUsr(llvm::StringRef s) {
   union {
     uint64_t ret;
     uint8_t out[8];
@@ -45,51 +45,6 @@ uint64_t HashUsr(std::string_view s) {
   (void)siphash(reinterpret_cast<const uint8_t *>(s.data()), s.size(), k, out,
                 8);
   return ret;
-}
-
-uint64_t HashUsr(llvm::StringRef s) {
-  return HashUsr(std::string_view(s.data(), s.size()));
-}
-
-bool EndsWith(std::string_view s, std::string_view suffix) {
-  return s.size() >= suffix.size() &&
-         std::equal(suffix.rbegin(), suffix.rend(), s.rbegin());
-}
-
-bool StartsWith(std::string_view s, std::string_view prefix) {
-  return s.size() >= prefix.size() &&
-         std::equal(prefix.begin(), prefix.end(), s.begin());
-}
-
-bool EndsWithAny(std::string_view s, const std::vector<std::string> &ss) {
-  return std::any_of(ss.begin(), ss.end(),
-                     std::bind(EndsWith, s, std::placeholders::_1));
-}
-
-bool FindAnyPartial(const std::string &value,
-                    const std::vector<std::string> &values) {
-  return std::any_of(std::begin(values), std::end(values),
-                     [&value](const std::string &v) {
-                       return value.find(v) != std::string::npos;
-                     });
-}
-
-std::vector<std::string> SplitString(const std::string &str,
-                                     const std::string &delimiter) {
-  // http://stackoverflow.com/a/13172514
-  std::vector<std::string> strings;
-
-  std::string::size_type pos = 0;
-  std::string::size_type prev = 0;
-  while ((pos = str.find(delimiter, prev)) != std::string::npos) {
-    strings.push_back(str.substr(prev, pos - prev));
-    prev = pos + 1;
-  }
-
-  // To get the last substring (or only, if delimiter is not found)
-  strings.push_back(str.substr(prev));
-
-  return strings;
 }
 
 std::string LowerPathIfInsensitive(const std::string &path) {
