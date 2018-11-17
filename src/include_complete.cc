@@ -144,7 +144,11 @@ void IncludeComplete::InsertCompletionItem(const std::string &absolute_path,
 }
 
 void IncludeComplete::AddFile(const std::string &path) {
-  if (!EndsWithAny(path, g_config->completion.include.suffixWhitelist))
+  bool ok = false;
+  for (StringRef suffix : g_config->completion.include.suffixWhitelist)
+    if (StringRef(path).endswith(suffix))
+      ok = true;
+  if (!ok)
     return;
   if (match_ && !match_->IsMatch(path))
     return;
@@ -171,8 +175,11 @@ void IncludeComplete::InsertIncludesFromDirectory(std::string directory,
   GetFilesInFolder(
       directory, true /*recursive*/, false /*add_folder_to_path*/,
       [&](const std::string &path) {
-        if (!include_cpp &&
-            !EndsWithAny(path, g_config->completion.include.suffixWhitelist))
+        bool ok = include_cpp;
+        for (StringRef suffix : g_config->completion.include.suffixWhitelist)
+          if (StringRef(path).endswith(suffix))
+            ok = true;
+        if (!ok)
           return;
         if (match_ && !match_->IsMatch(directory + path))
           return;
