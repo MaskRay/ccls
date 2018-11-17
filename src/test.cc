@@ -25,7 +25,6 @@ limitations under the License.
 
 #include <llvm/Config/llvm-config.h>
 #include <llvm/ADT/StringRef.h>
-using namespace llvm;
 
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
@@ -41,6 +40,8 @@ using namespace llvm;
 #include <sys/wait.h>
 #include <unistd.h>
 #endif
+
+using namespace llvm;
 
 extern bool gTestOutputMode;
 
@@ -90,6 +91,24 @@ void TrimInPlace(std::string &s) {
   s.erase(std::find_if(s.rbegin(), s.rend(), f).base(), s.end());
 }
 
+std::vector<std::string> SplitString(const std::string &str,
+                                     const std::string &delimiter) {
+  // http://stackoverflow.com/a/13172514
+  std::vector<std::string> strings;
+
+  std::string::size_type pos = 0;
+  std::string::size_type prev = 0;
+  while ((pos = str.find(delimiter, prev)) != std::string::npos) {
+    strings.push_back(str.substr(prev, pos - prev));
+    prev = pos + 1;
+  }
+
+  // To get the last substring (or only, if delimiter is not found)
+  strings.push_back(str.substr(prev));
+
+  return strings;
+}
+
 void ParseTestExpectation(
     const std::string &filename,
     const std::vector<std::string> &lines_with_endings, TextReplacer *replacer,
@@ -98,10 +117,10 @@ void ParseTestExpectation(
   // Scan for EXTRA_FLAGS:
   {
     bool in_output = false;
-    for (std::string line : lines_with_endings) {
-      line = StringRef(line).trim().str();
+    for (StringRef line : lines_with_endings) {
+      line = line.trim();
 
-      if (StartsWith(line, "EXTRA_FLAGS:")) {
+      if (line.startswith("EXTRA_FLAGS:")) {
         assert(!in_output && "multiple EXTRA_FLAGS sections");
         in_output = true;
         continue;
@@ -111,7 +130,7 @@ void ParseTestExpectation(
         break;
 
       if (in_output)
-        flags->push_back(line);
+        flags->push_back(line.str());
     }
   }
 
@@ -121,11 +140,11 @@ void ParseTestExpectation(
     std::string active_output_contents;
 
     bool in_output = false;
-    for (std::string line_with_ending : lines_with_endings) {
-      if (StartsWith(line_with_ending, "*/"))
+    for (StringRef line_with_ending : lines_with_endings) {
+      if (line_with_ending.startswith("*/"))
         break;
 
-      if (StartsWith(line_with_ending, "OUTPUT:")) {
+      if (line_with_ending.startswith("OUTPUT:")) {
         // Terminate the previous output section if we found a new one.
         if (in_output) {
           (*output_sections)[active_output_filename] = active_output_contents;
@@ -133,9 +152,10 @@ void ParseTestExpectation(
 
         // Try to tokenize OUTPUT: based one whitespace. If there is more than
         // one token assume it is a filename.
-        std::vector<std::string> tokens = SplitString(line_with_ending, " ");
+        SmallVector<StringRef, 2> tokens;
+        line_with_ending.split(tokens, ' ');
         if (tokens.size() > 1) {
-          active_output_filename = StringRef(tokens[1]).trim().str();
+          active_output_filename = tokens[1].str();
         } else {
           active_output_filename = filename;
         }
@@ -229,7 +249,7 @@ std::string FindExpectedOutputForFilename(
     std::string filename,
     const std::unordered_map<std::string, std::string> &expected) {
   for (const auto &entry : expected) {
-    if (EndsWith(entry.first, filename))
+    if (StringRef(entry.first).endswith(filename))
       return entry.second;
   }
 
@@ -243,7 +263,7 @@ IndexFile *
 FindDbForPathEnding(const std::string &path,
                     const std::vector<std::unique_ptr<IndexFile>> &dbs) {
   for (auto &db : dbs) {
-    if (EndsWith(db->path, path))
+    if (StringRef(db->path).endswith(path))
       return db.get();
   }
   return nullptr;
@@ -275,18 +295,6 @@ bool RunIndexTests(const std::string &filter_path, bool enable_update) {
       "index_tests", true /*recursive*/, true /*add_folder_to_path*/,
       [&](const std::string &path) {
         bool is_fail_allowed = false;
-
-        if (EndsWithAny(path, {".m", ".mm"})) {
-#ifndef __APPLE__
-          return;
-#endif
-
-          // objective-c tests are often not updated right away. do not bring
-          // down
-          // CI if they fail.
-          if (!enable_update)
-            is_fail_allowed = true;
-        }
 
         if (path.find(filter_path) == std::string::npos)
           return;

@@ -32,7 +32,7 @@ std::string PathFromFileEntry(const FileEntry &file) {
   std::string ret = NormalizePath(Name);
   // Resolve /usr/include/c++/7.3.0 symlink.
   if (!llvm::any_of(g_config->workspaceFolders, [&](const std::string &root) {
-        return StartsWith(ret, root);
+        return StringRef(ret).startswith(root);
       })) {
     SmallString<256> dest;
     llvm::sys::fs::real_path(ret, dest);
