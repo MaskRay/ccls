@@ -18,10 +18,15 @@ limitations under the License.
 #include "log.hh"
 #include "position.hh"
 
+#include <clang/Basic/CharInfo.h>
+
 #include <algorithm>
 #include <climits>
 #include <numeric>
 #include <sstream>
+
+using namespace clang;
+using namespace llvm;
 
 namespace ccls {
 namespace {
@@ -248,7 +253,7 @@ void WorkingFile::ComputeLineMapping() {
 
   // For index line i, set index_to_buffer[i] to -1 if line i is duplicated.
   int i = 0;
-  for (auto &line : index_lines) {
+  for (StringRef line : index_lines) {
     uint64_t h = HashUsr(line);
     auto it = hash_to_unique.find(h);
     if (it == hash_to_unique.end()) {
@@ -265,7 +270,7 @@ void WorkingFile::ComputeLineMapping() {
   // For buffer line i, set buffer_to_index[i] to -1 if line i is duplicated.
   i = 0;
   hash_to_unique.clear();
-  for (auto &line : buffer_lines) {
+  for (StringRef line : buffer_lines) {
     uint64_t h = HashUsr(line);
     auto it = hash_to_unique.find(h);
     if (it == hash_to_unique.end()) {
@@ -341,80 +346,22 @@ std::optional<int> WorkingFile::GetIndexPosFromBufferPos(int line, int *column,
                           index_lines, is_end);
 }
 
-std::string
-WorkingFile::FindClosestCallNameInBuffer(Position position,
-                                         int *active_parameter,
-                                         Position *completion_position) const {
-  *active_parameter = 0;
-
-  int offset = GetOffsetForPosition(position, buffer_content);
-
-  // If vscode auto-inserts closing ')' we will begin on ')' token in foo()
-  // which will make the below algorithm think it's a nested call.
-  if (offset > 0 && buffer_content[offset] == ')')
-    --offset;
-
-  // Scan back out of call context.
-  int balance = 0;
-  while (offset > 0) {
-    char c = buffer_content[offset];
-    if (c == ')')
-      ++balance;
-    else if (c == '(')
-      --balance;
-
-    if (balance == 0 && c == ',')
-      *active_parameter += 1;
-
-    --offset;
-
-    if (balance == -1)
-      break;
-  }
-
-  if (offset < 0)
-    return "";
-
-  // Scan back entire identifier.
-  int start_offset = offset;
-  while (offset > 0) {
-    char c = buffer_content[offset - 1];
-    if (isalnum(c) == false && c != '_')
-      break;
-    --offset;
-  }
-
-  if (completion_position)
-    *completion_position = GetPositionForOffset(buffer_content, offset);
-
-  return buffer_content.substr(offset, start_offset - offset + 1);
-}
-
 Position
 WorkingFile::FindStableCompletionSource(Position position,
                                         std::string *existing_completion,
                                         Position *replace_end_pos) const {
-  int start_offset = GetOffsetForPosition(position, buffer_content);
-  int offset = start_offset;
-
-  while (offset > 0) {
-    char c = buffer_content[offset - 1];
-    if (!isalnum(c) && c != '_')
-      break;
-    --offset;
-  }
+  int start = GetOffsetForPosition(position, buffer_content);
+  int i = start;
+  while (i > 0 && isIdentifierBody(buffer_content[i - 1]))
+    --i;
 
   *replace_end_pos = position;
-  for (int i = start_offset; i < buffer_content.size(); i++) {
-    char c = buffer_content[i];
-    if (!isalnum(c) && c != '_')
-      break;
-    // We know that replace_end_pos and position are on the same line.
+  for (int i = start;
+       i < buffer_content.size() && isIdentifierBody(buffer_content[i]); i++)
     replace_end_pos->character++;
-  }
 
-  *existing_completion = buffer_content.substr(offset, start_offset - offset);
-  return GetPositionForOffset(buffer_content, offset);
+  *existing_completion = buffer_content.substr(i, start - i);
+  return GetPositionForOffset(buffer_content, i);
 }
 
 WorkingFile *WorkingFiles::GetFileByFilename(const std::string &filename) {
@@ -437,19 +384,6 @@ std::string WorkingFiles::GetContent(const std::string &filename) {
     if (file->filename == filename)
       return file->buffer_content;
   return "";
-}
-
-void WorkingFiles::DoAction(const std::function<void()> &action) {
-  std::lock_guard<std::mutex> lock(files_mutex);
-  action();
-}
-
-void WorkingFiles::DoActionOnFile(
-    const std::string &filename,
-    const std::function<void(WorkingFile *file)> &action) {
-  std::lock_guard<std::mutex> lock(files_mutex);
-  WorkingFile *file = GetFileByFilenameNoLock(filename);
-  action(file);
 }
 
 WorkingFile *WorkingFiles::OnOpen(const TextDocumentItem &open) {
@@ -522,19 +456,6 @@ void WorkingFiles::OnClose(const TextDocumentIdentifier &close) {
                  << " because it was not open";
 }
 
-WorkingFiles::Snapshot
-WorkingFiles::AsSnapshot(const std::vector<std::string> &filter_paths) {
-  std::lock_guard<std::mutex> lock(files_mutex);
-
-  Snapshot result;
-  result.files.reserve(files.size());
-  for (const auto &file : files) {
-    if (filter_paths.empty() || FindAnyPartial(file->filename, filter_paths))
-      result.files.push_back({file->filename, file->buffer_content});
-  }
-  return result;
-}
-
 // VSCode (UTF-16) disagrees with Emacs lsp-mode (UTF-8) on how to represent
 // text documents.
 // We use a UTF-8 iterator to approximate UTF-16 in the specification (weird).
@@ -557,24 +478,19 @@ int GetOffsetForPosition(Position pos, std::string_view content) {
 
 std::string_view LexIdentifierAroundPos(Position position,
                                         std::string_view content) {
-  int start = GetOffsetForPosition(position, content);
-  int end = start + 1;
+  int start = GetOffsetForPosition(position, content), end = start + 1;
   char c;
 
   // We search for :: before the cursor but not after to get the qualifier.
   for (; start > 0; start--) {
     c = content[start - 1];
-    if (isalnum(c) || c == '_')
-      ;
-    else if (c == ':' && start > 1 && content[start - 2] == ':')
+    if (c == ':' && start > 1 && content[start - 2] == ':')
       start--;
-    else
+    else if (!isIdentifierBody(c))
       break;
   }
-
-  for (; end < (int)content.size(); end++)
-    if (c = content[end], !(isalnum(c) || c == '_'))
-      break;
+  for (; end < content.size() && isIdentifierBody(content[end]); end++)
+    ;
 
   return content.substr(start, end - start);
 }
