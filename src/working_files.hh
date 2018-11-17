@@ -50,19 +50,6 @@ struct WorkingFile {
   // Also resolves |column| if not NULL.
   std::optional<int> GetIndexPosFromBufferPos(int line, int *column,
                                               bool is_end);
-
-  // TODO: Move FindClosestCallNameInBuffer and FindStableCompletionSource into
-  // lex_utils.h/cc
-
-  // Finds the closest 'callable' name prior to position. This is used for
-  // signature help to filter code completion results.
-  //
-  // |completion_position| will be point to a good code completion location to
-  // for fetching signatures.
-  std::string
-  FindClosestCallNameInBuffer(Position position, int *active_parameter,
-                              Position *completion_position = nullptr) const;
-
   // Returns a relatively stable completion position (it jumps back until there
   // is a non-alphanumeric character).
   //
@@ -99,20 +86,14 @@ struct WorkingFiles {
   std::string GetContent(const std::string &filename);
 
   // Run |action| under the lock.
-  void DoAction(const std::function<void()> &action);
-  // Run |action| on the file identified by |filename|. This executes under the
-  // lock.
-  void DoActionOnFile(const std::string &filename,
-                      const std::function<void(WorkingFile *file)> &action);
+  template <typename Fn> void DoAction(Fn &&fn) {
+    std::lock_guard<std::mutex> lock(files_mutex);
+    fn();
+  }
 
   WorkingFile *OnOpen(const TextDocumentItem &open);
   void OnChange(const TextDocumentDidChangeParam &change);
   void OnClose(const TextDocumentIdentifier &close);
-
-  // If |filter_paths| is non-empty, only files which contain any of the given
-  // strings. For example, {"foo", "bar"} means that every result has either the
-  // string "foo" or "bar" contained within it.
-  Snapshot AsSnapshot(const std::vector<std::string> &filter_paths);
 
   // Use unique_ptrs so we can handout WorkingFile ptrs and not have them
   // invalidated if we resize files.

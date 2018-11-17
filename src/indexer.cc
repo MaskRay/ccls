@@ -506,8 +506,8 @@ public:
     }
     auto i = name.find(short_name);
     if (short_name.size())
-      while (i != std::string::npos && ((i && isalnum(name[i - 1])) ||
-                                        isalnum(name[i + short_name.size()])))
+      while (i != std::string::npos && ((i && isIdentifierBody(name[i - 1])) ||
+                                        isIdentifierBody(name[i + short_name.size()])))
         i = name.find(short_name, i + short_name.size());
     if (i == std::string::npos) {
       // e.g. operator type-parameter-1
@@ -526,7 +526,7 @@ public:
         paren++;
       else if (name[i - 1] == '(')
         paren--;
-      else if (!(paren > 0 || isalnum(name[i - 1]) || name[i - 1] == '_' ||
+      else if (!(paren > 0 || isIdentifierBody(name[i - 1]) ||
                  name[i - 1] == ':'))
         break;
     }

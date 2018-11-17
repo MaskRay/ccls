@@ -435,7 +435,7 @@ Project::Entry Project::FindEntry(const std::string &path,
         best_entry = &entry;
       }
     }
-    if (StartsWith(path, root))
+    if (StringRef(path).startswith(root))
       result.root = root;
   }
   if (result.root.empty())

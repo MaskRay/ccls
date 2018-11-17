@@ -15,18 +15,7 @@ class StringRef;
 }
 
 namespace ccls {
-uint64_t HashUsr(std::string_view s);
 uint64_t HashUsr(llvm::StringRef s);
-
-// Returns true if |value| starts/ends with |start| or |ending|.
-bool StartsWith(std::string_view value, std::string_view start);
-bool EndsWith(std::string_view value, std::string_view ending);
-bool EndsWithAny(std::string_view s, const std::vector<std::string> &ss);
-bool FindAnyPartial(const std::string &value,
-                    const std::vector<std::string> &values);
-
-std::vector<std::string> SplitString(const std::string &str,
-                                     const std::string &delimiter);
 
 std::string LowerPathIfInsensitive(const std::string &path);
 
