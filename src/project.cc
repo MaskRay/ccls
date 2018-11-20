@@ -90,15 +90,24 @@ struct ProjectProcessor {
     args.reserve(entry.args.size() + g_config->clang.extraArgs.size() + 1);
     const LanguageId lang = lookupExtension(entry.filename).first;
     for (const char *arg : entry.args) {
-      if (strncmp(arg, "%c ", 3) == 0) {
-        if (lang == LanguageId::C)
-          args.push_back(arg + 3);
-      } else if (strncmp(arg, "%cpp ", 5) == 0) {
-        if (lang == LanguageId::Cpp)
-          args.push_back(arg + 5);
-      } else if (strcmp(arg, "%clang") == 0) {
-        args.push_back(lang == LanguageId::Cpp ? "clang++" : "clang");
-      } else if (!excludeArgs.count(arg)) {
+      StringRef A(arg);
+      if (A[0] == '%') {
+        bool ok = false;
+        for (;;) {
+          if (A.consume_front("%c "))
+            ok |= lang == LanguageId::C;
+          else if (A.consume_front("%cpp "))
+            ok |= lang == LanguageId::Cpp;
+          else if (A.consume_front("%objective-c "))
+            ok |= lang == LanguageId::ObjC;
+          else if (A.consume_front("%objective-cpp "))
+            ok |= lang == LanguageId::ObjCpp;
+          else
+            break;
+        }
+        if (ok)
+          args.push_back(A.data());
+      } else if (!excludeArgs.count(A)) {
         args.push_back(arg);
       }
     }
