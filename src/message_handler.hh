@@ -119,10 +119,9 @@ struct CompletionItem {
   std::string label;
   CompletionItemKind kind = CompletionItemKind::Text;
   std::string detail;
-  std::optional<std::string> documentation;
+  std::string documentation;
   std::string sortText;
-  std::optional<std::string> filterText;
-  std::string insertText;
+  std::string filterText;
   InsertTextFormat insertTextFormat = InsertTextFormat::PlainText;
   TextEdit textEdit;
   std::vector<TextEdit> additionalTextEdits;
