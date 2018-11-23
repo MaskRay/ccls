@@ -35,8 +35,8 @@ using namespace llvm;
 MAKE_REFLECT_TYPE_PROXY(InsertTextFormat);
 MAKE_REFLECT_TYPE_PROXY(CompletionItemKind);
 MAKE_REFLECT_STRUCT(CompletionItem, label, kind, detail, documentation,
-                    sortText, filterText, insertText, insertTextFormat,
-                    textEdit, additionalTextEdits);
+                    sortText, filterText, insertTextFormat, textEdit,
+                    additionalTextEdits);
 
 namespace {
 struct CompletionList {
@@ -141,11 +141,11 @@ void FilterCandidates(CompletionList &result, const std::string &complete_text,
         }
         edits.erase(edits.begin());
       }
+      if (item.filterText == item.label)
+        item.filterText.reset();
       for (auto i = sort.size(); i && ++sort[i - 1] == 'A';)
         sort[--i] = ' ';
       item.sortText = sort;
-      // Compatibility
-      item.insertText = item.textEdit.newText;
     }
   };
 
@@ -155,20 +155,14 @@ void FilterCandidates(CompletionList &result, const std::string &complete_text,
     return;
   }
 
-  // Make sure all items have |filterText| set, code that follow needs it.
-  for (auto &item : items) {
-    if (!item.filterText)
-      item.filterText = item.label;
-  }
-
   // Fuzzy match and remove awful candidates.
   bool sensitive = g_config->completion.caseSensitivity;
   FuzzyMatcher fuzzy(complete_text, sensitive);
-  for (auto &item : items) {
-    item.score_ =
-        ReverseSubseqMatch(complete_text, *item.filterText, sensitive) >= 0
-            ? fuzzy.Match(*item.filterText)
-            : FuzzyMatcher::kMinScore;
+  for (CompletionItem &item : items) {
+    const std::string &filter = item.filterText ? *item.filterText : item.label;
+    item.score_ = ReverseSubseqMatch(complete_text, filter, sensitive) >= 0
+                      ? fuzzy.Match(filter)
+                      : FuzzyMatcher::kMinScore;
   }
   items.erase(std::remove_if(items.begin(), items.end(),
                              [](const CompletionItem &item) {
@@ -185,9 +179,9 @@ void FilterCandidates(CompletionList &result, const std::string &complete_text,
                 return lhs.score_ > rhs.score_;
               if (lhs.priority_ != rhs.priority_)
                 return lhs.priority_ < rhs.priority_;
-              if (lhs.filterText->size() != rhs.filterText->size())
-                return lhs.filterText->size() < rhs.filterText->size();
-              return *lhs.filterText < *rhs.filterText;
+              if (lhs.label.size() != rhs.label.size())
+                return lhs.label.size() < rhs.label.size();
+              return lhs.label < rhs.label;
             });
 
   // Trim result.

@@ -122,7 +122,6 @@ struct CompletionItem {
   std::optional<std::string> documentation;
   std::string sortText;
   std::optional<std::string> filterText;
-  std::string insertText;
   InsertTextFormat insertTextFormat = InsertTextFormat::PlainText;
   TextEdit textEdit;
   std::vector<TextEdit> additionalTextEdits;
