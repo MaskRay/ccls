@@ -552,7 +552,7 @@ public:
                   std::string_view qualified, IndexVar::Def &def) {
     QualType T;
     const Expr *init = nullptr;
-    bool binding = false;
+    bool deduced = false;
     if (auto *VD = dyn_cast<VarDecl>(D)) {
       T = VD->getType();
       init = VD->getAnyInitializer();
@@ -562,9 +562,23 @@ public:
       init = FD->getInClassInitializer();
     } else if (auto *BD = dyn_cast<BindingDecl>(D)) {
       T = BD->getType();
-      binding = true;
+      deduced = true;
     }
-    if (!T.isNull() && (binding || T->getContainedDeducedType())) {
+    if (!T.isNull()) {
+      if (DeducedType *AT = T->getContainedDeducedType()) {
+        if (QualType T1 = AT->getDeducedType(); !T1.isNull())
+          T = T1;
+        deduced = true;
+      } else if (auto *DT = dyn_cast<DecltypeType>(T)) {
+        // decltype(y) x;
+        while (DT && !DT->getUnderlyingType().isNull()) {
+          T = DT->getUnderlyingType();
+          DT = dyn_cast<DecltypeType>(T);
+        }
+        deduced = true;
+      }
+    }
+    if (!T.isNull() && deduced) {
       SmallString<256> Str;
       llvm::raw_svector_ostream OS(Str);
       PrintingPolicy PP = GetDefaultPolicy();
@@ -671,7 +685,11 @@ public:
 
 public:
   IndexDataConsumer(IndexParam &param) : param(param) {}
-  void initialize(ASTContext &Ctx) override { this->Ctx = param.Ctx = &Ctx; }
+  void initialize(ASTContext &Ctx) override {
+    this->Ctx = param.Ctx = &Ctx;
+    SourceManager &SM = Ctx.getSourceManager();
+    (void)param.ConsumeFile(*SM.getFileEntryForID(SM.getMainFileID()));
+  }
   bool handleDeclOccurence(const Decl *D, index::SymbolRoleSet Roles,
                            ArrayRef<index::SymbolRelation> Relations,
 #if LLVM_VERSION_MAJOR >= 7
