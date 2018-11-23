@@ -216,9 +216,7 @@ void MessageHandler::ccls_call(Reader &reader, ReplyOnce &reply) {
 
   if (param.hierarchy)
     reply(result);
-  else {
-    auto out = FlattenHierarchy(result);
-    reply(out);
-  }
+  else
+    reply(FlattenHierarchy(result));
 }
 } // namespace ccls
