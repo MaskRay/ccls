@@ -195,21 +195,13 @@ void MessageHandler::Run(InMessage &msg) {
       try {
         it->second(reader, reply);
       } catch (std::invalid_argument &ex) {
-        ResponseError err;
-        err.code = ErrorCode::InvalidParams;
-        err.message = "invalid params of " + msg.method + ": " + ex.what();
-        reply.Error(err);
+        reply.Error(ErrorCode::InvalidParams,
+                    "invalid params of " + msg.method + ": " + ex.what());
       } catch (...) {
-        ResponseError err;
-        err.code = ErrorCode::InternalError;
-        err.message = "failed to process " + msg.method;
-        reply.Error(err);
+        reply.Error(ErrorCode::InternalError, "failed to process " + msg.method);
       }
     } else {
-      ResponseError err;
-      err.code = ErrorCode::MethodNotFound;
-      err.message = "unknown request " + msg.method;
-      reply.Error(err);
+      reply.Error(ErrorCode::MethodNotFound, "unknown request " + msg.method);
     }
   } else {
     auto it = method2notification.find(msg.method);
@@ -248,14 +240,10 @@ QueryFile *MessageHandler::FindFile(ReplyOnce &reply,
         has_entry |= folder.path2entry_index.count(path);
     }
     ResponseError err;
-    if (has_entry) {
-      err.code = ErrorCode::ServerNotInitialized;
-      err.message = path + " is being indexed";
-    } else {
-      err.code = ErrorCode::InternalError;
-      err.message = "unable to find " + path;
-    }
-    reply.Error(err);
+    if (has_entry)
+      reply.Error(ErrorCode::ServerNotInitialized, path + " is being indexed");
+    else
+      reply.Error(ErrorCode::InternalError, "unable to find " + path);
   }
 
   return ret;

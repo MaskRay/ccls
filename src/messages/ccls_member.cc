@@ -297,9 +297,7 @@ void MessageHandler::ccls_member(Reader &reader, ReplyOnce &reply) {
 
   if (param.hierarchy)
     reply(result);
-  else {
-    auto out = FlattenHierarchy(result);
-    reply(out);
-  }
+  else
+    reply(FlattenHierarchy(result));
 }
 } // namespace ccls

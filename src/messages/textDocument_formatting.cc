@@ -58,15 +58,11 @@ std::vector<TextEdit> ReplacementsToEdits(std::string_view code,
 void Format(ReplyOnce &reply, WorkingFile *wfile, tooling::Range range) {
   std::string_view code = wfile->buffer_content;
   auto ReplsOrErr = FormatCode(code, wfile->filename, range);
-  if (ReplsOrErr) {
-    auto result = ReplacementsToEdits(code, *ReplsOrErr);
-    reply(result);
-  } else {
-    ResponseError err;
-    err.code = ErrorCode::UnknownErrorCode;
-    err.message = llvm::toString(ReplsOrErr.takeError());
-    reply.Error(err);
-  }
+  if (ReplsOrErr)
+    reply(ReplacementsToEdits(code, *ReplsOrErr));
+  else
+    reply.Error(ErrorCode::UnknownErrorCode,
+                llvm::toString(ReplsOrErr.takeError()));
 }
 } // namespace
 

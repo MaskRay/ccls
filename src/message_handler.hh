@@ -182,17 +182,14 @@ MAKE_REFLECT_STRUCT(Diagnostic, range, severity, code, source, message);
 MAKE_REFLECT_STRUCT(ShowMessageParam, type, message);
 MAKE_REFLECT_TYPE_PROXY(LanguageId);
 
-// TODO llvm 8 llvm::unique_function
-template <typename Res>
-using Callback = std::function<void(Res*)>;
-
 struct ReplyOnce {
   RequestId id;
-  template <typename Res> void operator()(Res &result) const {
+  template <typename Res> void operator()(Res &&result) const {
     if (id.Valid())
       pipeline::Reply(id, [&](Writer &w) { Reflect(w, result); });
   }
-  template <typename Err> void Error(Err &err) const {
+  void Error(ErrorCode code, std::string message) const {
+    ResponseError err{code, std::move(message)};
     if (id.Valid())
       pipeline::ReplyError(id, [&](Writer &w) { Reflect(w, err); });
   }
