@@ -62,15 +62,8 @@ enum class ErrorCode {
 };
 
 struct ResponseError {
-  // A number indicating the error type that occurred.
   ErrorCode code;
-
-  // A string providing a short description of the error.
   std::string message;
-
-  // A Primitive or Structured value that contains additional
-  // information about the error. Can be omitted.
-  // std::optional<D> data;
 };
 
 constexpr char ccls_xref[] = "ccls.xref";

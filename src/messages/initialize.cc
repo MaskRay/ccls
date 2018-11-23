@@ -342,8 +342,10 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
 void MessageHandler::initialize(Reader &reader, ReplyOnce &reply) {
   InitializeParam param;
   Reflect(reader, param);
-  if (!param.rootUri)
+  if (!param.rootUri) {
+    reply.Error(ErrorCode::InvalidRequest, "expected rootUri");
     return;
+  }
   Initialize(this, param, reply);
 }
 

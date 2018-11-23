@@ -199,11 +199,12 @@ using Callback = std::function<void(Res*)>;
 
 struct ReplyOnce {
   RequestId id;
-  template <typename Res> void operator()(Res &result) const {
+  template <typename Res> void operator()(Res &&result) const {
     if (id.Valid())
       pipeline::Reply(id, [&](Writer &w) { Reflect(w, result); });
   }
-  template <typename Err> void Error(Err &err) const {
+  void Error(ErrorCode code, std::string message) const {
+    ResponseError err{code, std::move(message)};
     if (id.Valid())
       pipeline::ReplyError(id, [&](Writer &w) { Reflect(w, err); });
   }
