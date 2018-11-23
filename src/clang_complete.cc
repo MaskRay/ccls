@@ -481,6 +481,9 @@ void *DiagnosticMain(void *manager_) {
         BuildCompilerInvocation(session->file.args, FS);
     if (!CI)
       continue;
+    // If main file is a header, add -Wno-unused-function
+    if (lookupExtension(session->file.filename).second)
+      CI->getDiagnosticOpts().Warnings.push_back("no-unused-function");
     CI->getDiagnosticOpts().IgnoreWarnings = false;
     CI->getLangOpts()->SpellChecking = g_config->diagnostics.spellChecking;
     StoreDiags DC(path);
