@@ -27,16 +27,16 @@ struct Hover {
   std::optional<lsRange> range;
 };
 
-void Reflect(Writer &visitor, MarkedString &value) {
+void Reflect(Writer &vis, MarkedString &v) {
   // If there is a language, emit a `{language:string, value:string}` object. If
   // not, emit a string.
-  if (value.language) {
+  if (v.language) {
     REFLECT_MEMBER_START();
     REFLECT_MEMBER(language);
     REFLECT_MEMBER(value);
     REFLECT_MEMBER_END();
   } else {
-    Reflect(visitor, value.value);
+    Reflect(vis, v.value);
   }
 }
 MAKE_REFLECT_STRUCT(Hover, contents, range);
