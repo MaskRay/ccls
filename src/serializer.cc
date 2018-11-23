@@ -29,96 +29,94 @@ Writer::~Writer() {}
 BinaryWriter::~BinaryWriter() {}
 JsonWriter::~JsonWriter() {}
 
-void Reflect(Reader &visitor, uint8_t &value) { value = visitor.GetUInt8(); }
-void Reflect(Writer &visitor, uint8_t &value) { visitor.UInt8(value); }
+void Reflect(Reader &vis, uint8_t &v) { v = vis.GetUInt8(); }
+void Reflect(Writer &vis, uint8_t &v) { vis.UInt8(v); }
 
-void Reflect(Reader &visitor, short &value) {
-  if (!visitor.IsInt())
+void Reflect(Reader &vis, short &v) {
+  if (!vis.IsInt())
     throw std::invalid_argument("short");
-  value = (short)visitor.GetInt();
+  v = (short)vis.GetInt();
 }
-void Reflect(Writer &visitor, short &value) { visitor.Int(value); }
+void Reflect(Writer &vis, short &v) { vis.Int(v); }
 
-void Reflect(Reader &visitor, unsigned short &value) {
-  if (!visitor.IsInt())
+void Reflect(Reader &vis, unsigned short &v) {
+  if (!vis.IsInt())
     throw std::invalid_argument("unsigned short");
-  value = (unsigned short)visitor.GetInt();
+  v = (unsigned short)vis.GetInt();
 }
-void Reflect(Writer &visitor, unsigned short &value) { visitor.Int(value); }
+void Reflect(Writer &vis, unsigned short &v) { vis.Int(v); }
 
-void Reflect(Reader &visitor, int &value) {
-  if (!visitor.IsInt())
+void Reflect(Reader &vis, int &v) {
+  if (!vis.IsInt())
     throw std::invalid_argument("int");
-  value = visitor.GetInt();
+  v = vis.GetInt();
 }
-void Reflect(Writer &visitor, int &value) { visitor.Int(value); }
+void Reflect(Writer &vis, int &v) { vis.Int(v); }
 
-void Reflect(Reader &visitor, unsigned &value) {
-  if (!visitor.IsUInt64())
+void Reflect(Reader &vis, unsigned &v) {
+  if (!vis.IsUInt64())
     throw std::invalid_argument("unsigned");
-  value = visitor.GetUInt32();
+  v = vis.GetUInt32();
 }
-void Reflect(Writer &visitor, unsigned &value) { visitor.UInt32(value); }
+void Reflect(Writer &vis, unsigned &v) { vis.UInt32(v); }
 
-void Reflect(Reader &visitor, long &value) {
-  if (!visitor.IsInt64())
+void Reflect(Reader &vis, long &v) {
+  if (!vis.IsInt64())
     throw std::invalid_argument("long");
-  value = long(visitor.GetInt64());
+  v = long(vis.GetInt64());
 }
-void Reflect(Writer &visitor, long &value) { visitor.Int64(value); }
+void Reflect(Writer &vis, long &v) { vis.Int64(v); }
 
-void Reflect(Reader &visitor, unsigned long &value) {
-  if (!visitor.IsUInt64())
+void Reflect(Reader &vis, unsigned long &v) {
+  if (!vis.IsUInt64())
     throw std::invalid_argument("unsigned long");
-  value = (unsigned long)visitor.GetUInt64();
+  v = (unsigned long)vis.GetUInt64();
 }
-void Reflect(Writer &visitor, unsigned long &value) { visitor.UInt64(value); }
+void Reflect(Writer &vis, unsigned long &v) { vis.UInt64(v); }
 
-void Reflect(Reader &visitor, long long &value) {
-  if (!visitor.IsInt64())
+void Reflect(Reader &vis, long long &v) {
+  if (!vis.IsInt64())
     throw std::invalid_argument("long long");
-  value = visitor.GetInt64();
+  v = vis.GetInt64();
 }
-void Reflect(Writer &visitor, long long &value) { visitor.Int64(value); }
+void Reflect(Writer &vis, long long &v) { vis.Int64(v); }
 
-void Reflect(Reader &visitor, unsigned long long &value) {
-  if (!visitor.IsUInt64())
+void Reflect(Reader &vis, unsigned long long &v) {
+  if (!vis.IsUInt64())
     throw std::invalid_argument("unsigned long long");
-  value = visitor.GetUInt64();
+  v = vis.GetUInt64();
 }
-void Reflect(Writer &visitor, unsigned long long &value) {
-  visitor.UInt64(value);
-}
+void Reflect(Writer &vis, unsigned long long &v) { vis.UInt64(v); }
 
-void Reflect(Reader &visitor, double &value) {
-  if (!visitor.IsDouble())
+void Reflect(Reader &vis, double &v) {
+  if (!vis.IsDouble())
     throw std::invalid_argument("double");
-  value = visitor.GetDouble();
+  v = vis.GetDouble();
 }
-void Reflect(Writer &visitor, double &value) { visitor.Double(value); }
+void Reflect(Writer &vis, double &v) { vis.Double(v); }
 
-void Reflect(Reader &visitor, bool &value) {
-  if (!visitor.IsBool())
+void Reflect(Reader &vis, bool &v) {
+  if (!vis.IsBool())
     throw std::invalid_argument("bool");
-  value = visitor.GetBool();
+  v = vis.GetBool();
 }
-void Reflect(Writer &visitor, bool &value) { visitor.Bool(value); }
+void Reflect(Writer &vis, bool &v) { vis.Bool(v); }
 
-void Reflect(Reader &visitor, std::string &value) {
-  if (!visitor.IsString())
+void Reflect(Reader &vis, std::string &v) {
+  if (!vis.IsString())
     throw std::invalid_argument("std::string");
-  value = visitor.GetString();
+  v = vis.GetString();
 }
-void Reflect(Writer &visitor, std::string &value) {
-  visitor.String(value.c_str(), (rapidjson::SizeType)value.size());
+void Reflect(Writer &vis, std::string &v) {
+  vis.String(v.c_str(), (rapidjson::SizeType)v.size());
 }
 
 void Reflect(Reader &, std::string_view &) { assert(0); }
-void Reflect(Writer &visitor, std::string_view &data) {
+void Reflect(Writer &vis, std::string_view &data) {
   if (data.empty())
-    visitor.String("");
+    vis.String("");
   else
-    visitor.String(&data[0], (rapidjson::SizeType)data.size());
+    vis.String(&data[0], (rapidjson::SizeType)data.size());
 }
 
 void Reflect(Reader &vis, const char *&v) {
@@ -127,17 +125,17 @@ void Reflect(Reader &vis, const char *&v) {
 }
 void Reflect(Writer &vis, const char *&v) { vis.String(v); }
 
-void Reflect(Reader &visitor, JsonNull &value) {
-  assert(visitor.Format() == SerializeFormat::Json);
-  visitor.GetNull();
+void Reflect(Reader &vis, JsonNull &v) {
+  assert(vis.Format() == SerializeFormat::Json);
+  vis.GetNull();
 }
 
-void Reflect(Writer &visitor, JsonNull &value) { visitor.Null(); }
+void Reflect(Writer &vis, JsonNull &v) { vis.Null(); }
 
 // std::unordered_map
 template <typename V>
-void Reflect(Reader &visitor, std::unordered_map<Usr, V> &map) {
-  visitor.IterArray([&](Reader &entry) {
+void Reflect(Reader &vis, std::unordered_map<Usr, V> &map) {
+  vis.IterArray([&](Reader &entry) {
     V val;
     Reflect(entry, val);
     auto usr = val.usr;
@@ -145,14 +143,14 @@ void Reflect(Reader &visitor, std::unordered_map<Usr, V> &map) {
   });
 }
 template <typename V>
-void Reflect(Writer &visitor, std::unordered_map<Usr, V> &map) {
+void Reflect(Writer &vis, std::unordered_map<Usr, V> &map) {
   std::vector<std::pair<uint64_t, V>> xs(map.begin(), map.end());
   std::sort(xs.begin(), xs.end(),
             [](const auto &a, const auto &b) { return a.first < b.first; });
-  visitor.StartArray(xs.size());
+  vis.StartArray(xs.size());
   for (auto &it : xs)
-    Reflect(visitor, it.second);
-  visitor.EndArray();
+    Reflect(vis, it.second);
+  vis.EndArray();
 }
 
 // Used by IndexFile::dependencies.
@@ -190,18 +188,18 @@ void Reflect(Writer &vis, DenseMap<CachedHashStringRef, int64_t> &v) {
 }
 
 // TODO: Move this to indexer.cc
-void Reflect(Reader &visitor, IndexInclude &value) {
+void Reflect(Reader &vis, IndexInclude &v) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(line);
   REFLECT_MEMBER(resolved_path);
   REFLECT_MEMBER_END();
 }
-void Reflect(Writer &visitor, IndexInclude &value) {
+void Reflect(Writer &vis, IndexInclude &v) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(line);
   if (gTestOutputMode) {
-    std::string basename = llvm::sys::path::filename(value.resolved_path);
-    if (value.resolved_path[0] != '&')
+    std::string basename = llvm::sys::path::filename(v.resolved_path);
+    if (v.resolved_path[0] != '&')
       basename = "&" + basename;
     REFLECT_MEMBER2("resolved_path", basename);
   } else {
@@ -210,114 +208,112 @@ void Reflect(Writer &visitor, IndexInclude &value) {
   REFLECT_MEMBER_END();
 }
 
-template <typename Def>
-void ReflectHoverAndComments(Reader &visitor, Def &def) {
-  ReflectMember(visitor, "hover", def.hover);
-  ReflectMember(visitor, "comments", def.comments);
+template <typename Def> void ReflectHoverAndComments(Reader &vis, Def &def) {
+  ReflectMember(vis, "hover", def.hover);
+  ReflectMember(vis, "comments", def.comments);
 }
 
-template <typename Def>
-void ReflectHoverAndComments(Writer &visitor, Def &def) {
+template <typename Def> void ReflectHoverAndComments(Writer &vis, Def &def) {
   // Don't emit empty hover and comments in JSON test mode.
   if (!gTestOutputMode || def.hover[0])
-    ReflectMember(visitor, "hover", def.hover);
+    ReflectMember(vis, "hover", def.hover);
   if (!gTestOutputMode || def.comments[0])
-    ReflectMember(visitor, "comments", def.comments);
+    ReflectMember(vis, "comments", def.comments);
 }
 
-template <typename Def> void ReflectShortName(Reader &visitor, Def &def) {
+template <typename Def> void ReflectShortName(Reader &vis, Def &def) {
   if (gTestOutputMode) {
     std::string short_name;
-    ReflectMember(visitor, "short_name", short_name);
+    ReflectMember(vis, "short_name", short_name);
     def.short_name_offset =
         std::string_view(def.detailed_name).find(short_name);
     assert(def.short_name_offset != std::string::npos);
     def.short_name_size = short_name.size();
   } else {
-    ReflectMember(visitor, "short_name_offset", def.short_name_offset);
-    ReflectMember(visitor, "short_name_size", def.short_name_size);
+    ReflectMember(vis, "short_name_offset", def.short_name_offset);
+    ReflectMember(vis, "short_name_size", def.short_name_size);
   }
 }
 
-template <typename Def> void ReflectShortName(Writer &visitor, Def &def) {
+template <typename Def> void ReflectShortName(Writer &vis, Def &def) {
   if (gTestOutputMode) {
     std::string_view short_name(def.detailed_name + def.short_name_offset,
                                 def.short_name_size);
-    ReflectMember(visitor, "short_name", short_name);
+    ReflectMember(vis, "short_name", short_name);
   } else {
-    ReflectMember(visitor, "short_name_offset", def.short_name_offset);
-    ReflectMember(visitor, "short_name_size", def.short_name_size);
+    ReflectMember(vis, "short_name_offset", def.short_name_offset);
+    ReflectMember(vis, "short_name_size", def.short_name_size);
   }
 }
 
-template <typename TVisitor> void Reflect(TVisitor &visitor, IndexFunc &value) {
+template <typename TVisitor> void Reflect(TVisitor &vis, IndexFunc &v) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER2("usr", value.usr);
-  REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
-  REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
-  ReflectShortName(visitor, value.def);
-  REFLECT_MEMBER2("spell", value.def.spell);
-  ReflectHoverAndComments(visitor, value.def);
-  REFLECT_MEMBER2("bases", value.def.bases);
-  REFLECT_MEMBER2("vars", value.def.vars);
-  REFLECT_MEMBER2("callees", value.def.callees);
-  REFLECT_MEMBER2("kind", value.def.kind);
-  REFLECT_MEMBER2("parent_kind", value.def.parent_kind);
-  REFLECT_MEMBER2("storage", value.def.storage);
+  REFLECT_MEMBER2("usr", v.usr);
+  REFLECT_MEMBER2("detailed_name", v.def.detailed_name);
+  REFLECT_MEMBER2("qual_name_offset", v.def.qual_name_offset);
+  ReflectShortName(vis, v.def);
+  REFLECT_MEMBER2("spell", v.def.spell);
+  ReflectHoverAndComments(vis, v.def);
+  REFLECT_MEMBER2("bases", v.def.bases);
+  REFLECT_MEMBER2("vars", v.def.vars);
+  REFLECT_MEMBER2("callees", v.def.callees);
+  REFLECT_MEMBER2("kind", v.def.kind);
+  REFLECT_MEMBER2("parent_kind", v.def.parent_kind);
+  REFLECT_MEMBER2("storage", v.def.storage);
 
-  REFLECT_MEMBER2("declarations", value.declarations);
-  REFLECT_MEMBER2("derived", value.derived);
-  REFLECT_MEMBER2("uses", value.uses);
+  REFLECT_MEMBER2("declarations", v.declarations);
+  REFLECT_MEMBER2("derived", v.derived);
+  REFLECT_MEMBER2("uses", v.uses);
   REFLECT_MEMBER_END();
 }
 
-template <typename TVisitor> void Reflect(TVisitor &visitor, IndexType &value) {
+template <typename TVisitor> void Reflect(TVisitor &vis, IndexType &v) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER2("usr", value.usr);
-  REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
-  REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
-  ReflectShortName(visitor, value.def);
-  ReflectHoverAndComments(visitor, value.def);
-  REFLECT_MEMBER2("spell", value.def.spell);
-  REFLECT_MEMBER2("bases", value.def.bases);
-  REFLECT_MEMBER2("funcs", value.def.funcs);
-  REFLECT_MEMBER2("types", value.def.types);
-  REFLECT_MEMBER2("vars", value.def.vars);
-  REFLECT_MEMBER2("alias_of", value.def.alias_of);
-  REFLECT_MEMBER2("kind", value.def.kind);
-  REFLECT_MEMBER2("parent_kind", value.def.parent_kind);
+  REFLECT_MEMBER2("usr", v.usr);
+  REFLECT_MEMBER2("detailed_name", v.def.detailed_name);
+  REFLECT_MEMBER2("qual_name_offset", v.def.qual_name_offset);
+  ReflectShortName(vis, v.def);
+  ReflectHoverAndComments(vis, v.def);
+  REFLECT_MEMBER2("spell", v.def.spell);
+  REFLECT_MEMBER2("bases", v.def.bases);
+  REFLECT_MEMBER2("funcs", v.def.funcs);
+  REFLECT_MEMBER2("types", v.def.types);
+  REFLECT_MEMBER2("vars", v.def.vars);
+  REFLECT_MEMBER2("alias_of", v.def.alias_of);
+  REFLECT_MEMBER2("kind", v.def.kind);
+  REFLECT_MEMBER2("parent_kind", v.def.parent_kind);
 
-  REFLECT_MEMBER2("declarations", value.declarations);
-  REFLECT_MEMBER2("derived", value.derived);
-  REFLECT_MEMBER2("instances", value.instances);
-  REFLECT_MEMBER2("uses", value.uses);
+  REFLECT_MEMBER2("declarations", v.declarations);
+  REFLECT_MEMBER2("derived", v.derived);
+  REFLECT_MEMBER2("instances", v.instances);
+  REFLECT_MEMBER2("uses", v.uses);
   REFLECT_MEMBER_END();
 }
 
-template <typename TVisitor> void Reflect(TVisitor &visitor, IndexVar &value) {
+template <typename TVisitor> void Reflect(TVisitor &vis, IndexVar &v) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER2("usr", value.usr);
-  REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
-  REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
-  ReflectShortName(visitor, value.def);
-  ReflectHoverAndComments(visitor, value.def);
-  REFLECT_MEMBER2("spell", value.def.spell);
-  REFLECT_MEMBER2("type", value.def.type);
-  REFLECT_MEMBER2("kind", value.def.kind);
-  REFLECT_MEMBER2("parent_kind", value.def.parent_kind);
-  REFLECT_MEMBER2("storage", value.def.storage);
+  REFLECT_MEMBER2("usr", v.usr);
+  REFLECT_MEMBER2("detailed_name", v.def.detailed_name);
+  REFLECT_MEMBER2("qual_name_offset", v.def.qual_name_offset);
+  ReflectShortName(vis, v.def);
+  ReflectHoverAndComments(vis, v.def);
+  REFLECT_MEMBER2("spell", v.def.spell);
+  REFLECT_MEMBER2("type", v.def.type);
+  REFLECT_MEMBER2("kind", v.def.kind);
+  REFLECT_MEMBER2("parent_kind", v.def.parent_kind);
+  REFLECT_MEMBER2("storage", v.def.storage);
 
-  REFLECT_MEMBER2("declarations", value.declarations);
-  REFLECT_MEMBER2("uses", value.uses);
+  REFLECT_MEMBER2("declarations", v.declarations);
+  REFLECT_MEMBER2("uses", v.uses);
   REFLECT_MEMBER_END();
 }
 
 // IndexFile
-bool ReflectMemberStart(Writer &visitor, IndexFile &value) {
-  visitor.StartObject();
+bool ReflectMemberStart(Writer &vis, IndexFile &v) {
+  vis.StartObject();
   return true;
 }
-template <typename TVisitor> void Reflect(TVisitor &visitor, IndexFile &value) {
+template <typename TVisitor> void Reflect(TVisitor &vis, IndexFile &v) {
   REFLECT_MEMBER_START();
   if (!gTestOutputMode) {
     REFLECT_MEMBER(mtime);
@@ -340,13 +336,13 @@ void Reflect(Reader &vis, SerializeFormat &v) {
                                 : SerializeFormat::Binary;
 }
 
-void Reflect(Writer &visitor, SerializeFormat &value) {
-  switch (value) {
+void Reflect(Writer &vis, SerializeFormat &v) {
+  switch (v) {
   case SerializeFormat::Binary:
-    visitor.String("binary");
+    vis.String("binary");
     break;
   case SerializeFormat::Json:
-    visitor.String("json");
+    vis.String("json");
     break;
   }
 }
