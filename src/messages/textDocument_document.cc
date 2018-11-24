@@ -90,13 +90,22 @@ MAKE_REFLECT_STRUCT(DocumentLink, range, target);
 void MessageHandler::textDocument_documentLink(TextDocumentParam &param,
                                                ReplyOnce &reply) {
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
-  if (!file)
+  WorkingFile *wf = file ? wfiles->GetFileByFilename(file->def->path) : nullptr;
+  if (!wf) {
+    reply.Error(ErrorCode::InternalError, "not opened");
     return;
+  }
 
   std::vector<DocumentLink> result;
   for (const IndexInclude &include : file->def->includes)
-    result.push_back({lsRange{{include.line, 0}, {include.line + 1, 0}},
-                      DocumentUri::FromPath(include.resolved_path)});
+    if (std::optional<int> bline =
+            wf->GetBufferPosFromIndexPos(include.line, nullptr, false)) {
+      const std::string &line = wf->buffer_lines[*bline];
+      auto start = line.find_first_of("\"<"), end = line.find_last_of("\">");
+      if (start < end)
+        result.push_back({lsRange{{*bline, (int)start + 1}, {*bline, (int)end}},
+                          DocumentUri::FromPath(include.resolved_path)});
+    }
   reply(result);
 } // namespace ccls
 
