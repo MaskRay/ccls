@@ -97,6 +97,12 @@ struct lsRange {
   bool operator<(const lsRange &o) const {
     return !(start == o.start) ? start < o.start : end < o.end;
   }
+  bool Includes(const lsRange &o) const {
+    return start <= o.start && o.end <= end;
+  }
+  bool Intersects(const lsRange &o) const {
+    return start < o.end && o.start < end;
+  }
 };
 
 struct Location {
