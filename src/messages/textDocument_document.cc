@@ -201,8 +201,7 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
         // range.
         if (sym.extent.Valid())
           if (auto range1 = GetLsRange(wfile, sym.extent);
-              range1 && range1->start <= range->start &&
-              range->end <= range1->end)
+              range1 && range1->Includes(*range))
             ds->range = *range1;
       }
       std::vector<const void *> def_ptrs;
