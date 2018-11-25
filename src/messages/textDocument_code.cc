@@ -21,21 +21,24 @@ MAKE_REFLECT_STRUCT(CodeAction, title, kind, edit);
 }
 void MessageHandler::textDocument_codeAction(CodeActionParam &param,
                                              ReplyOnce &reply) {
-  WorkingFile *wfile =
+  WorkingFile *wf =
       wfiles->GetFileByFilename(param.textDocument.uri.GetPath());
-  if (!wfile) {
+  if (!wf)
     return;
-  }
   std::vector<CodeAction> result;
   std::vector<Diagnostic> diagnostics;
-  wfiles->DoAction([&]() { diagnostics = wfile->diagnostics_; });
+  wfiles->DoAction([&]() { diagnostics = wf->diagnostics_; });
   for (Diagnostic &diag : diagnostics)
-    if (diag.fixits_.size()) {
+    if (diag.fixits_.size() &&
+        (param.range.Intersects(diag.range) ||
+         llvm::any_of(diag.fixits_, [&](const TextEdit &edit) {
+           return param.range.Intersects(edit.range);
+         }))) {
       CodeAction &cmd = result.emplace_back();
       cmd.title = "FixIt: " + diag.message;
       auto &edit = cmd.edit.documentChanges.emplace_back();
       edit.textDocument.uri = param.textDocument.uri;
-      edit.textDocument.version = wfile->version;
+      edit.textDocument.version = wf->version;
       edit.edits = diag.fixits_;
     }
   reply(result);

@@ -51,11 +51,11 @@ struct ServerCap {
     // for
     // '::' and '>' for '->'. See
     // https://github.com/Microsoft/language-server-protocol/issues/138.
-    std::vector<std::string> triggerCharacters = {".", ":",  ">", "#",
-                                                  "<", "\"", "/"};
+    std::vector<const char *> triggerCharacters = {".", ":",  ">", "#",
+                                                   "<", "\"", "/"};
   } completionProvider;
   struct SignatureHelpOptions {
-    std::vector<std::string> triggerCharacters = {"(", ","};
+    std::vector<const char *> triggerCharacters = {"(", ","};
   } signatureHelpProvider;
   bool definitionProvider = true;
   bool typeDefinitionProvider = true;
@@ -64,7 +64,9 @@ struct ServerCap {
   bool documentHighlightProvider = true;
   bool documentSymbolProvider = true;
   bool workspaceSymbolProvider = true;
-  bool codeActionProvider = true;
+  struct CodeActionOptions {
+    std::vector<const char *> codeActionKinds = {"quickfix"};
+  } codeActionProvider;
   struct CodeLensOptions {
     bool resolveProvider = false;
   } codeLensProvider;
@@ -72,7 +74,7 @@ struct ServerCap {
   bool documentRangeFormattingProvider = true;
   struct DocumentOnTypeFormattingOptions {
     std::string firstTriggerCharacter = "}";
-    std::vector<std::string> moreTriggerCharacter;
+    std::vector<const char *> moreTriggerCharacter;
   } documentOnTypeFormattingProvider;
   bool renameProvider = true;
   struct DocumentLinkOptions {
@@ -81,7 +83,7 @@ struct ServerCap {
   bool foldingRangeProvider = true;
   // The server provides execute command support.
   struct ExecuteCommandOptions {
-    std::vector<std::string> commands{std::string(ccls_xref)};
+    std::vector<const char *> commands = {ccls_xref};
   } executeCommandProvider;
   struct Workspace {
     struct WorkspaceFolders {
@@ -90,9 +92,10 @@ struct ServerCap {
     } workspaceFolders;
   } workspace;
 };
+MAKE_REFLECT_STRUCT(ServerCap::CodeActionOptions, codeActionKinds);
+MAKE_REFLECT_STRUCT(ServerCap::CodeLensOptions, resolveProvider);
 MAKE_REFLECT_STRUCT(ServerCap::CompletionOptions, resolveProvider,
                     triggerCharacters);
-MAKE_REFLECT_STRUCT(ServerCap::CodeLensOptions, resolveProvider);
 MAKE_REFLECT_STRUCT(ServerCap::DocumentLinkOptions, resolveProvider);
 MAKE_REFLECT_STRUCT(ServerCap::DocumentOnTypeFormattingOptions,
                     firstTriggerCharacter, moreTriggerCharacter);
