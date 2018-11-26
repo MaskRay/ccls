@@ -424,8 +424,8 @@ void LaunchStdin() {
   std::thread([]() {
     set_thread_name("stdin");
     std::string str;
+    const std::string_view kContentLength("Content-Length: ");
     while (true) {
-      constexpr std::string_view kContentLength("Content-Length: ");
       int len = 0;
       str.clear();
       while (true) {
@@ -465,7 +465,6 @@ void LaunchStdin() {
       std::string method;
       ReflectMember(reader, "id", id);
       ReflectMember(reader, "method", method);
-      auto param = std::make_unique<rapidjson::Value>();
       on_request->PushBack(
           {id, std::move(method), std::move(message), std::move(document)});
 
