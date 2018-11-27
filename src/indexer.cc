@@ -6,7 +6,6 @@
 #include "clang_complete.hh"
 #include "clang_tu.hh"
 #include "log.hh"
-#include "match.hh"
 #include "pipeline.hh"
 #include "platform.hh"
 #include "serializer.hh"
@@ -85,7 +84,7 @@ struct IndexParam {
   bool UseMultiVersion(const FileEntry &FE) {
     auto it = UID2multi.try_emplace(FE.getUniqueID());
     if (it.second)
-      it.first->second = multiVersionMatcher->IsMatch(PathFromFileEntry(FE));
+      it.first->second = multiVersionMatcher->Matches(PathFromFileEntry(FE));
     return it.first->second;
   }
 };

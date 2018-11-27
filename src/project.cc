@@ -6,7 +6,6 @@
 #include "clang_tu.hh" // llvm::vfs
 #include "filesystem.hh"
 #include "log.hh"
-#include "match.hh"
 #include "pipeline.hh"
 #include "platform.hh"
 #include "serializers/json.hh"
@@ -485,8 +484,8 @@ void Project::Index(WorkingFiles *wfiles, RequestId id) {
       int i = 0;
       for (const Project::Entry &entry : folder.entries) {
         std::string reason;
-        if (match.IsMatch(entry.filename, &reason) &&
-            match_i.IsMatch(entry.filename, &reason)) {
+        if (match.Matches(entry.filename, &reason) &&
+            match_i.Matches(entry.filename, &reason)) {
           bool interactive =
               wfiles->GetFileByFilename(entry.filename) != nullptr;
           pipeline::Index(

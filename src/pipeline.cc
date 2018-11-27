@@ -8,7 +8,6 @@
 #include "include_complete.hh"
 #include "log.hh"
 #include "lsp.hh"
-#include "match.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "platform.hh"
@@ -187,7 +186,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
     return false;
   }
 
-  if (!matcher.IsMatch(request.path)) {
+  if (!matcher.Matches(request.path)) {
     LOG_IF_S(INFO, loud) << "skip " << request.path;
     return false;
   }
@@ -309,7 +308,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
 
   for (std::unique_ptr<IndexFile> &curr : indexes) {
     std::string path = curr->path;
-    if (!matcher.IsMatch(path)) {
+    if (!matcher.Matches(path)) {
       LOG_IF_S(INFO, loud) << "skip index for " << path;
       continue;
     }

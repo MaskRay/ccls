@@ -190,7 +190,6 @@ target_sources(ccls PRIVATE
   src/indexer.cc
   src/log.cc
   src/lsp.cc
-  src/match.cc
   src/message_handler.cc
   src/pipeline.cc
   src/platform_posix.cc
