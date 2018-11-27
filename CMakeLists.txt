@@ -196,7 +196,6 @@ target_sources(ccls PRIVATE
   src/platform_win.cc
   src/position.cc
   src/project.cc
-  src/query_utils.cc
   src/query.cc
   src/serializer.cc
   src/test.cc

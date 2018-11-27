@@ -24,7 +24,7 @@ limitations under the License.
 #include "pipeline.hh"
 #include "platform.hh"
 #include "project.hh"
-#include "query_utils.hh"
+#include "query.hh"
 #include "serializers/json.hh"
 
 #include <rapidjson/document.h>
