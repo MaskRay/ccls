@@ -17,7 +17,7 @@ limitations under the License.
 #include "hierarchy.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
-#include "query_utils.hh"
+#include "query.hh"
 
 #include <clang/AST/Type.h>
 #include <llvm/ADT/DenseSet.h>
