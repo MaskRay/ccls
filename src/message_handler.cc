@@ -32,7 +32,7 @@ MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
 namespace ccls {
 MAKE_REFLECT_STRUCT(CodeActionParam::Context, diagnostics);
 MAKE_REFLECT_STRUCT(CodeActionParam, textDocument, range, context);
-MAKE_REFLECT_STRUCT(EmptyParam, placeholder);
+void Reflect(Reader &, EmptyParam &) {}
 MAKE_REFLECT_STRUCT(TextDocumentParam, textDocument);
 MAKE_REFLECT_STRUCT(DidOpenTextDocumentParam, textDocument);
 MAKE_REFLECT_STRUCT(TextDocumentContentChangeEvent, range, rangeLength, text);

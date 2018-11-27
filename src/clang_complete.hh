@@ -16,7 +16,6 @@ limitations under the License.
 #pragma once
 
 #include "clang_tu.hh"
-#include "lru_cache.hh"
 #include "lsp.hh"
 #include "project.hh"
 #include "threaded_queue.hh"
@@ -26,10 +25,12 @@ limitations under the License.
 #include <clang/Frontend/FrontendActions.h>
 #include <clang/Sema/CodeCompleteOptions.h>
 
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 namespace ccls {
 struct PreambleData;
@@ -51,6 +52,40 @@ struct Diag : DiagBase {
 TextEdit ToTextEdit(const clang::SourceManager &SM,
                       const clang::LangOptions &L,
                       const clang::FixItHint &FixIt);
+
+template <typename K, typename V> struct LruCache {
+  LruCache(int capacity) : capacity(capacity) {}
+
+  std::shared_ptr<V> Get(const K &key) {
+    for (auto it = items.begin(); it != items.end(); ++it)
+      if (it->first == key) {
+        auto x = std::move(*it);
+        std::move_backward(items.begin(), it, it + 1);
+        items[0] = std::move(x);
+        return items[0].second;
+      }
+    return nullptr;
+  }
+  std::shared_ptr<V> Take(const K &key) {
+    for (auto it = items.begin(); it != items.end(); ++it)
+      if (it->first == key) {
+        auto x = std::move(it->second);
+        items.erase(it);
+        return x;
+      }
+    return nullptr;
+  }
+  void Insert(const K &key, std::shared_ptr<V> value) {
+    if ((int)items.size() >= capacity)
+      items.pop_back();
+    items.emplace(items.begin(), key, std::move(value));
+  }
+  void Clear() { items.clear(); }
+
+private:
+  std::vector<std::pair<K, std::shared_ptr<V>>> items;
+  int capacity;
+};
 
 struct CompletionSession
     : public std::enable_shared_from_this<CompletionSession> {
