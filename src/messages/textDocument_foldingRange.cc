@@ -4,7 +4,7 @@
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "project.hh"
-#include "query_utils.hh"
+#include "query.hh"
 #include "working_files.hh"
 
 namespace ccls {

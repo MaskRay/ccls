@@ -4,7 +4,7 @@
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "project.hh"
-#include "query_utils.hh"
+#include "query.hh"
 
 namespace ccls {
 MAKE_REFLECT_STRUCT(QueryFile::Def, path, args, language, skipped_ranges,
