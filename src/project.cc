@@ -268,7 +268,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig *config) {
     e.filename = file;
     e.args = GetCompilerArgumentForFile(file);
     if (e.args.empty())
-      e.args.push_back("%clang"); // Add a Dummy.
+      e.args.push_back("%clang");
     e.args.push_back(Intern(e.filename));
     proc.Process(e);
     result.push_back(e);
@@ -376,7 +376,7 @@ LoadEntriesFromDirectory(ProjectConfig *project,
 // argument guessing.
 int ComputeGuessScore(std::string_view a, std::string_view b) {
   // Increase score based on common prefix and suffix. Prefixes are prioritized.
-  if (a.size() < b.size())
+  if (a.size() > b.size())
     std::swap(a, b);
   size_t i = std::mismatch(a.begin(), a.end(), b.begin()).first - a.begin();
   size_t j = std::mismatch(a.rbegin(), a.rend(), b.rbegin()).first - a.rbegin();
@@ -416,19 +416,6 @@ void Project::Load(const std::string &root) {
   for (size_t i = 0; i < folder.entries.size(); ++i) {
     folder.entries[i].id = i;
     folder.path2entry_index[folder.entries[i].filename] = i;
-  }
-}
-
-void Project::SetArgsForFile(const std::vector<const char *> &args,
-                             const std::string &path) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  for (auto &[root, folder] : root2folder) {
-    auto it = folder.path2entry_index.find(path);
-    if (it != folder.path2entry_index.end()) {
-      // The entry already exists in the project, just set the flags.
-      folder.entries[it->second].args = args;
-      return;
-    }
   }
 }
 
