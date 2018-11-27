@@ -16,7 +16,6 @@ limitations under the License.
 #include "include_complete.hh"
 
 #include "filesystem.hh"
-#include "match.hh"
 #include "platform.hh"
 #include "project.hh"
 
@@ -162,7 +161,7 @@ void IncludeComplete::AddFile(const std::string &path) {
       ok = true;
   if (!ok)
     return;
-  if (match_ && !match_->IsMatch(path))
+  if (match_ && !match_->Matches(path))
     return;
 
   std::string trimmed_path = path;
@@ -179,7 +178,7 @@ void IncludeComplete::InsertIncludesFromDirectory(std::string directory,
                                                   bool use_angle_brackets) {
   directory = NormalizePath(directory);
   EnsureEndsInSlash(directory);
-  if (match_ && !match_->IsMatch(directory))
+  if (match_ && !match_->Matches(directory))
     return;
   bool include_cpp = directory.find("include/c++") != std::string::npos;
 
@@ -193,7 +192,7 @@ void IncludeComplete::InsertIncludesFromDirectory(std::string directory,
             ok = true;
         if (!ok)
           return;
-        if (match_ && !match_->IsMatch(directory + path))
+        if (match_ && !match_->Matches(directory + path))
           return;
 
         CompletionCandidate candidate;

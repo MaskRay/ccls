@@ -19,6 +19,7 @@ limitations under the License.
 #include <string_view>
 
 #include <iterator>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,26 @@ class StringRef;
 }
 
 namespace ccls {
+struct Matcher {
+  struct Impl;
+  std::unique_ptr<Impl> impl;
+  std::string pattern;
+
+  Matcher(const std::string &pattern); // throw
+  Matcher(Matcher&&) = default;
+  ~Matcher();
+  bool Matches(const std::string &text) const;
+};
+
+struct GroupMatch {
+  std::vector<Matcher> whitelist, blacklist;
+
+  GroupMatch(const std::vector<std::string> &whitelist,
+             const std::vector<std::string> &blacklist);
+  bool Matches(const std::string &text,
+               std::string *blacklist_pattern = nullptr) const;
+};
+
 uint64_t HashUsr(llvm::StringRef s);
 
 std::string LowerPathIfInsensitive(const std::string &path);
