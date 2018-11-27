@@ -4,7 +4,6 @@
 #pragma once
 
 #include "lsp.hh"
-#include "maybe.hh"
 #include "position.hh"
 #include "serializer.hh"
 #include "utils.hh"
