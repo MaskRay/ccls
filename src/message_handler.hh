@@ -43,9 +43,7 @@ struct CodeActionParam {
     std::vector<Diagnostic> diagnostics;
   } context;
 };
-struct EmptyParam {
-  bool placeholder;
-};
+struct EmptyParam {};
 struct DidOpenTextDocumentParam {
   TextDocumentItem textDocument;
 };
