@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "clang_complete.hh"
-#include "match.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "project.hh"

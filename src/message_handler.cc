@@ -4,7 +4,6 @@
 #include "message_handler.hh"
 
 #include "log.hh"
-#include "match.hh"
 #include "pipeline.hh"
 #include "project.hh"
 #include "query_utils.hh"
@@ -263,7 +262,7 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
                           g_config->highlight.blacklist);
   assert(file.def);
   if (wfile->buffer_content.size() > g_config->highlight.largeFileSize ||
-      !match.IsMatch(file.def->path))
+      !match.Matches(file.def->path))
     return;
 
   // Group symbols together.

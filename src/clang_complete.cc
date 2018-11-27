@@ -6,7 +6,6 @@
 #include "clang_tu.hh"
 #include "filesystem.hh"
 #include "log.hh"
-#include "match.hh"
 #include "platform.hh"
 
 #include <clang/Lex/PreprocessorOptions.h>
@@ -574,7 +573,7 @@ void CompletionManager::DiagnosticsUpdate(const std::string &path,
                                           int debounce) {
   static GroupMatch match(g_config->diagnostics.whitelist,
                           g_config->diagnostics.blacklist);
-  if (!match.IsMatch(path))
+  if (!match.Matches(path))
     return;
   int64_t now = chrono::duration_cast<chrono::milliseconds>(
     chrono::high_resolution_clock::now().time_since_epoch())
