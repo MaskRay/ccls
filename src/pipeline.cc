@@ -453,7 +453,6 @@ void LaunchStdin() {
       std::string method;
       ReflectMember(reader, "id", id);
       ReflectMember(reader, "method", method);
-      auto param = std::make_unique<rapidjson::Value>();
       on_request->PushBack(
           {id, std::move(method), std::move(message), std::move(document)});
 

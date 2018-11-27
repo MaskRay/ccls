@@ -607,14 +607,14 @@ void CompletionManager::NotifySave(const std::string &filename) {
 
 void CompletionManager::OnClose(const std::string &filename) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
-  preloads.TryTake(filename);
-  sessions.TryTake(filename);
+  preloads.Take(filename);
+  sessions.Take(filename);
 }
 
 bool CompletionManager::EnsureCompletionOrCreatePreloadSession(
     const std::string &path) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
-  if (preloads.TryGet(path) || sessions.TryGet(path))
+  if (preloads.Get(path) || sessions.Get(path))
     return false;
 
   // No CompletionSession, create new one.
@@ -633,11 +633,11 @@ std::shared_ptr<ccls::CompletionSession>
 CompletionManager::TryGetSession(const std::string &path, bool preload,
                                  bool *is_open) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
-  std::shared_ptr<ccls::CompletionSession> session = preloads.TryGet(path);
+  std::shared_ptr<ccls::CompletionSession> session = preloads.Get(path);
 
   if (session) {
     if (!preload) {
-      preloads.TryTake(path);
+      preloads.Take(path);
       sessions.Insert(path, session);
       if (is_open)
         *is_open = true;
@@ -645,7 +645,7 @@ CompletionManager::TryGetSession(const std::string &path, bool preload,
     return session;
   }
 
-  session = sessions.TryGet(path);
+  session = sessions.Get(path);
   if (!session && !preload) {
     session = std::make_shared<ccls::CompletionSession>(
         project_->FindEntry(path, false), wfiles_, PCH);
