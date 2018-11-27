@@ -14,7 +14,7 @@ limitations under the License.
 ==============================================================================*/
 
 #include "message_handler.hh"
-#include "query_utils.hh"
+#include "query.hh"
 
 namespace ccls {
 namespace {

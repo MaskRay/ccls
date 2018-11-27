@@ -18,7 +18,7 @@ limitations under the License.
 #include "log.hh"
 #include "pipeline.hh"
 #include "project.hh"
-#include "query_utils.hh"
+#include "query.hh"
 #include "serializers/json.hh"
 
 #include <algorithm>
