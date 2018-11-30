@@ -264,7 +264,7 @@ CompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
 
   case CXCursor_MacroInstantiation:
   case CXCursor_MacroDefinition:
-    return CompletionItemKind::Interface;
+    return CompletionItemKind::Text;
 
   case CXCursor_Namespace:
   case CXCursor_NamespaceAlias:
