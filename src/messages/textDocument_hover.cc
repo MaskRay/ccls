@@ -82,15 +82,14 @@ GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
 void MessageHandler::textDocument_hover(TextDocumentPositionParam &param,
                                         ReplyOnce &reply) {
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
-  if (!file)
+  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  if (!wf)
     return;
-
-  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   Hover result;
 
-  for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, param.position)) {
+  for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
     std::optional<lsRange> ls_range =
-        GetLsRange(wfiles->GetFileByFilename(file->def->path), sym.range);
+        GetLsRange(wfiles->GetFile(file->def->path), sym.range);
     if (!ls_range)
       continue;
 

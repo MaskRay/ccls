@@ -312,14 +312,14 @@ struct IndexFile {
   std::string ToString();
 };
 
-struct CompletionManager;
+struct SemaManager;
 struct WorkingFiles;
 struct VFS;
 
 namespace idx {
 void Init();
 std::vector<std::unique_ptr<IndexFile>>
-Index(CompletionManager *complete, WorkingFiles *wfiles, VFS *vfs,
+Index(SemaManager *complete, WorkingFiles *wfiles, VFS *vfs,
       const std::string &opt_wdir, const std::string &file,
       const std::vector<const char *> &args,
       const std::vector<std::pair<std::string, std::string>> &remapped,

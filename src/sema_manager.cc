@@ -1,7 +1,7 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "clang_complete.hh"
+#include "sema_manager.hh"
 
 #include "clang_tu.hh"
 #include "filesystem.hh"
@@ -69,6 +69,8 @@ TextEdit ToTextEdit(const clang::SourceManager &SM, const clang::LangOptions &L,
   return edit;
 }
 
+using IncludeStructure = std::vector<std::pair<std::string, int64_t>>;
+
 struct PreambleStatCache {
   llvm::StringMap<ErrorOr<llvm::vfs::Status>> Cache;
 
@@ -120,11 +122,13 @@ struct PreambleStatCache {
 };
 
 struct PreambleData {
-  PreambleData(clang::PrecompiledPreamble P, std::vector<Diag> diags,
+  PreambleData(clang::PrecompiledPreamble P, IncludeStructure includes,
+               std::vector<Diag> diags,
                std::unique_ptr<PreambleStatCache> stat_cache)
-      : Preamble(std::move(P)), diags(std::move(diags)),
-        stat_cache(std::move(stat_cache)) {}
+      : Preamble(std::move(P)), includes(std::move(includes)),
+        diags(std::move(diags)), stat_cache(std::move(stat_cache)) {}
   clang::PrecompiledPreamble Preamble;
+  IncludeStructure includes;
   std::vector<Diag> diags;
   std::unique_ptr<PreambleStatCache> stat_cache;
 };
@@ -161,7 +165,40 @@ CharSourceRange DiagnosticRange(const clang::Diagnostic &D, const LangOptions &L
   return R;
 }
 
+class StoreInclude : public PPCallbacks {
+  const SourceManager &SM;
+  IncludeStructure &out;
+  DenseSet<const FileEntry *> Seen;
 
+public:
+  StoreInclude(const SourceManager &SM, IncludeStructure &out)
+      : SM(SM), out(out) {}
+  void InclusionDirective(SourceLocation HashLoc, const Token &IncludeTok,
+                          StringRef FileName, bool IsAngled,
+                          CharSourceRange FilenameRange, const FileEntry *File,
+                          StringRef SearchPath, StringRef RelativePath,
+                          const clang::Module *Imported
+#if LLVM_VERSION_MAJOR >= 7
+                          , SrcMgr::CharacteristicKind FileKind
+#endif
+                          ) override {
+    (void)SM;
+    if (File && Seen.insert(File).second)
+      out.emplace_back(PathFromFileEntry(*File), File->getModificationTime());
+  }
+};
+
+class CclsPreambleCallbacks : public PreambleCallbacks {
+public:
+  void BeforeExecute(CompilerInstance &CI) override {
+    SM = &CI.getSourceManager();
+  }
+  std::unique_ptr<PPCallbacks> createPPCallbacks() override {
+    return std::make_unique<StoreInclude>(*SM, includes);
+  }
+  SourceManager *SM = nullptr;
+  IncludeStructure includes;
+};
 
 class StoreDiags : public DiagnosticConsumer {
   const LangOptions *LangOpts;
@@ -250,7 +287,7 @@ public:
 };
 
 std::unique_ptr<CompilerInstance> BuildCompilerInstance(
-    CompletionSession &session, std::unique_ptr<CompilerInvocation> CI,
+    Session &session, std::unique_ptr<CompilerInvocation> CI,
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS, DiagnosticConsumer &DC,
     const PreambleData *preamble, const std::string &path,
     std::unique_ptr<llvm::MemoryBuffer> &Buf) {
@@ -291,16 +328,17 @@ bool Parse(CompilerInstance &Clang) {
   return true;
 }
 
-void BuildPreamble(CompletionSession &session, CompilerInvocation &CI,
+void BuildPreamble(Session &session, CompilerInvocation &CI,
                    IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS,
-                   const std::string &main,
+                   const SemaManager::PreambleTask &task,
                    std::unique_ptr<PreambleStatCache> stat_cache) {
   std::shared_ptr<PreambleData> OldP = session.GetPreamble();
-  std::string content = session.wfiles->GetContent(main);
+  std::string content = session.wfiles->GetContent(task.path);
   std::unique_ptr<llvm::MemoryBuffer> Buf =
       llvm::MemoryBuffer::getMemBuffer(content);
   auto Bounds = ComputePreambleBounds(*CI.getLangOpts(), Buf.get(), 0);
-  if (OldP && OldP->Preamble.CanReuse(CI, Buf.get(), Bounds, FS.get()))
+  if (!task.from_diag && OldP &&
+      OldP->Preamble.CanReuse(CI, Buf.get(), Bounds, FS.get()))
     return;
   // -Werror makes warnings issued as errors, which stops parsing
   // prematurely because of -ferror-limit=. This also works around the issue
@@ -312,70 +350,88 @@ void BuildPreamble(CompletionSession &session, CompilerInvocation &CI,
   CI.getLangOpts()->CommentOpts.ParseAllComments = g_config->index.comments > 1;
   CI.getLangOpts()->RetainCommentsFromSystemHeaders = true;
 
-  StoreDiags DC(main);
+  StoreDiags DC(task.path);
   IntrusiveRefCntPtr<DiagnosticsEngine> DE =
       CompilerInstance::createDiagnostics(&CI.getDiagnosticOpts(), &DC, false);
-  PreambleCallbacks PP;
+  if (OldP) {
+    std::lock_guard lock(session.wfiles->mutex);
+    for (auto &include : OldP->includes)
+      if (WorkingFile *wf = session.wfiles->GetFileUnlocked(include.first))
+        CI.getPreprocessorOpts().addRemappedFile(
+            include.first,
+            llvm::MemoryBuffer::getMemBufferCopy(wf->buffer_content).release());
+  }
+
+  CclsPreambleCallbacks PC;
   if (auto NewPreamble = PrecompiledPreamble::Build(
-          CI, Buf.get(), Bounds, *DE, FS, session.PCH, true, PP)) {
+          CI, Buf.get(), Bounds, *DE, FS, session.PCH, true, PC)) {
+    assert(!CI.getPreprocessorOpts().RetainRemappedFileBuffers);
+    if (OldP) {
+      auto &old_includes = OldP->includes;
+      auto it = old_includes.begin();
+      std::sort(PC.includes.begin(), PC.includes.end());
+      for (auto &include : PC.includes)
+        if (include.second == 0) {
+          while (it != old_includes.end() && it->first < include.first)
+            ++it;
+          if (it == old_includes.end())
+            break;
+          include.second = it->second;
+        }
+    }
+
     std::lock_guard lock(session.mutex);
     session.preamble = std::make_shared<PreambleData>(
-        std::move(*NewPreamble), DC.Take(), std::move(stat_cache));
+        std::move(*NewPreamble), std::move(PC.includes), DC.Take(),
+        std::move(stat_cache));
   }
 }
 
-void *CompletionPreloadMain(void *manager_) {
-  auto *manager = static_cast<CompletionManager*>(manager_);
-  set_thread_name("comp-preload");
+void *PreambleMain(void *manager_) {
+  auto *manager = static_cast<SemaManager *>(manager_);
+  set_thread_name("preamble");
   while (true) {
-    auto request = manager->preload_requests_.Dequeue();
+    SemaManager::PreambleTask task = manager->preamble_tasks.Dequeue();
 
-    bool is_open = false;
-    std::shared_ptr<CompletionSession> session =
-        manager->TryGetSession(request.path, true, &is_open);
-    if (!session)
-      continue;
+    bool created = false;
+    std::shared_ptr<Session> session =
+        manager->EnsureSession(task.path, &created);
 
-    const auto &args = session->file.args;
     auto stat_cache = std::make_unique<PreambleStatCache>();
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
         stat_cache->Producer(session->FS);
     if (std::unique_ptr<CompilerInvocation> CI =
-            BuildCompilerInvocation(args, FS))
-      BuildPreamble(*session, *CI, FS, request.path, std::move(stat_cache));
+            BuildCompilerInvocation(session->file.args, FS))
+      BuildPreamble(*session, *CI, FS, task, std::move(stat_cache));
 
-    int debounce =
-        is_open ? g_config->diagnostics.onOpen : g_config->diagnostics.onSave;
-    if (debounce >= 0) {
-      TextDocumentIdentifier document;
-      document.uri = DocumentUri::FromPath(request.path);
-      manager->DiagnosticsUpdate(request.path, debounce);
+    if (task.from_diag) {
+      manager->ScheduleDiag(task.path, 0);
+    } else {
+      int debounce =
+          created ? g_config->diagnostics.onOpen : g_config->diagnostics.onSave;
+      if (debounce >= 0)
+        manager->ScheduleDiag(task.path, debounce);
     }
   }
   return nullptr;
 }
 
 void *CompletionMain(void *manager_) {
-  auto *manager = static_cast<CompletionManager *>(manager_);
+  auto *manager = static_cast<SemaManager *>(manager_);
   set_thread_name("comp");
   while (true) {
-    // Fetching the completion request blocks until we have a request.
-    std::unique_ptr<CompletionManager::CompletionRequest> request =
-        manager->completion_request_.Dequeue();
+    std::unique_ptr<SemaManager::CompTask> task = manager->comp_tasks.Dequeue();
 
     // Drop older requests if we're not buffering.
     while (g_config->completion.dropOldRequests &&
-           !manager->completion_request_.IsEmpty()) {
-      manager->on_dropped_(request->id);
-      request->Consumer.reset();
-      request->on_complete(nullptr);
-      request = manager->completion_request_.Dequeue();
+           !manager->comp_tasks.IsEmpty()) {
+      manager->on_dropped_(task->id);
+      task->Consumer.reset();
+      task->on_complete(nullptr);
+      task = manager->comp_tasks.Dequeue();
     }
 
-    std::string path = request->document.uri.GetPath();
-
-    std::shared_ptr<CompletionSession> session =
-        manager->TryGetSession(path, false);
+    std::shared_ptr<Session> session = manager->EnsureSession(task->path);
     std::shared_ptr<PreambleData> preamble = session->GetPreamble();
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
         preamble ? preamble->stat_cache->Consumer(session->FS) : session->FS;
@@ -384,34 +440,34 @@ void *CompletionMain(void *manager_) {
     if (!CI)
       continue;
     auto &FOpts = CI->getFrontendOpts();
-    FOpts.CodeCompleteOpts = request->CCOpts;
-    FOpts.CodeCompletionAt.FileName = path;
-    FOpts.CodeCompletionAt.Line = request->position.line + 1;
-    FOpts.CodeCompletionAt.Column = request->position.character + 1;
+    FOpts.CodeCompleteOpts = task->CCOpts;
+    FOpts.CodeCompletionAt.FileName = task->path;
+    FOpts.CodeCompletionAt.Line = task->position.line + 1;
+    FOpts.CodeCompletionAt.Column = task->position.character + 1;
     FOpts.SkipFunctionBodies = true;
     CI->getLangOpts()->CommentOpts.ParseAllComments = true;
 
     DiagnosticConsumer DC;
-    std::string content = manager->wfiles_->GetContent(path);
+    std::string content = manager->wfiles->GetContent(task->path);
     auto Buf = llvm::MemoryBuffer::getMemBuffer(content);
     bool in_preamble =
-        GetOffsetForPosition(
-            {request->position.line, request->position.character}, content) <
+        GetOffsetForPosition({task->position.line, task->position.character},
+                             content) <
         ComputePreambleBounds(*CI->getLangOpts(), Buf.get(), 0).Size;
     if (in_preamble)
       preamble.reset();
     auto Clang = BuildCompilerInstance(*session, std::move(CI), FS, DC,
-                                       preamble.get(), path, Buf);
+                                       preamble.get(), task->path, Buf);
     if (!Clang)
       continue;
 
     Clang->getPreprocessorOpts().SingleFileParseMode = in_preamble;
-    Clang->setCodeCompletionConsumer(request->Consumer.release());
+    Clang->setCodeCompletionConsumer(task->Consumer.release());
     if (!Parse(*Clang))
       continue;
     Buf.release();
 
-    request->on_complete(&Clang->getCodeCompletionConsumer());
+    task->on_complete(&Clang->getCodeCompletionConsumer());
   }
   return nullptr;
 }
@@ -445,25 +501,38 @@ void printDiag(llvm::raw_string_ostream &OS, const DiagBase &d) {
 }
 
 void *DiagnosticMain(void *manager_) {
-  auto *manager = static_cast<CompletionManager*>(manager_);
+  auto *manager = static_cast<SemaManager *>(manager_);
   set_thread_name("diag");
   while (true) {
-    CompletionManager::DiagnosticRequest request =
-        manager->diagnostic_request_.Dequeue();
-    const std::string &path = request.path;
-    int64_t wait = request.wait_until -
+    SemaManager::DiagTask task = manager->diag_tasks.Dequeue();
+    int64_t wait = task.wait_until -
                    chrono::duration_cast<chrono::milliseconds>(
                        chrono::high_resolution_clock::now().time_since_epoch())
                        .count();
     if (wait > 0)
-      std::this_thread::sleep_for(chrono::duration<int64_t, std::milli>(
-          std::min(wait, request.debounce)));
+      std::this_thread::sleep_for(
+          chrono::duration<int64_t, std::milli>(std::min(wait, task.debounce)));
 
-    std::shared_ptr<CompletionSession> session =
-        manager->TryGetSession(path, false);
+    std::shared_ptr<Session> session = manager->EnsureSession(task.path);
     std::shared_ptr<PreambleData> preamble = session->GetPreamble();
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
         preamble ? preamble->stat_cache->Consumer(session->FS) : session->FS;
+    if (preamble) {
+      bool rebuild = false;
+      {
+        std::lock_guard lock(manager->wfiles->mutex);
+        for (auto &include : preamble->includes)
+          if (WorkingFile *wf = manager->wfiles->GetFileUnlocked(include.first);
+              wf && include.second < wf->timestamp) {
+            include.second = wf->timestamp;
+            rebuild = true;
+          }
+      }
+      if (rebuild) {
+        manager->preamble_tasks.PushBack({task.path, true}, true);
+        continue;
+      }
+    }
 
     std::unique_ptr<CompilerInvocation> CI =
         BuildCompilerInvocation(session->file.args, FS);
@@ -474,11 +543,11 @@ void *DiagnosticMain(void *manager_) {
       CI->getDiagnosticOpts().Warnings.push_back("no-unused-function");
     CI->getDiagnosticOpts().IgnoreWarnings = false;
     CI->getLangOpts()->SpellChecking = g_config->diagnostics.spellChecking;
-    StoreDiags DC(path);
-    std::string content = manager->wfiles_->GetContent(path);
+    StoreDiags DC(task.path);
+    std::string content = manager->wfiles->GetContent(task.path);
     auto Buf = llvm::MemoryBuffer::getMemBuffer(content);
     auto Clang = BuildCompilerInstance(*session, std::move(CI), FS, DC,
-                                       preamble.get(), path, Buf);
+                                       preamble.get(), task.path, Buf);
     if (!Clang)
       continue;
     if (!Parse(*Clang))
@@ -541,36 +610,32 @@ void *DiagnosticMain(void *manager_) {
     }
 
     {
-      std::lock_guard lock(session->wfiles->files_mutex);
-      if (WorkingFile *wfile = session->wfiles->GetFileByFilenameNoLock(path))
-        wfile->diagnostics_ = ls_diags;
+      std::lock_guard lock(manager->wfiles->mutex);
+      if (WorkingFile *wf = manager->wfiles->GetFileUnlocked(task.path))
+        wf->diagnostics = ls_diags;
     }
-    manager->on_diagnostic_(path, ls_diags);
+    manager->on_diagnostic_(task.path, ls_diags);
   }
   return nullptr;
 }
 
 } // namespace
 
-std::shared_ptr<PreambleData> CompletionSession::GetPreamble() {
+std::shared_ptr<PreambleData> Session::GetPreamble() {
   std::lock_guard<std::mutex> lock(mutex);
   return preamble;
 }
 
-CompletionManager::CompletionManager(Project *project, WorkingFiles *wfiles,
-                                     OnDiagnostic on_diagnostic,
-                                     OnDropped on_dropped)
-    : project_(project), wfiles_(wfiles), on_diagnostic_(on_diagnostic),
-      on_dropped_(on_dropped), preloads(kMaxPreloadedSessions),
-      sessions(kMaxCompletionSessions),
-      PCH(std::make_shared<PCHContainerOperations>()) {
+SemaManager::SemaManager(Project *project, WorkingFiles *wfiles,
+                         OnDiagnostic on_diagnostic, OnDropped on_dropped)
+    : project_(project), wfiles(wfiles), on_diagnostic_(on_diagnostic),
+      on_dropped_(on_dropped), PCH(std::make_shared<PCHContainerOperations>()) {
+  SpawnThread(ccls::PreambleMain, this);
   SpawnThread(ccls::CompletionMain, this);
-  SpawnThread(ccls::CompletionPreloadMain, this);
   SpawnThread(ccls::DiagnosticMain, this);
 }
 
-void CompletionManager::DiagnosticsUpdate(const std::string &path,
-                                          int debounce) {
+void SemaManager::ScheduleDiag(const std::string &path, int debounce) {
   static GroupMatch match(g_config->diagnostics.whitelist,
                           g_config->diagnostics.blacklist);
   if (!match.Matches(path))
@@ -590,78 +655,42 @@ void CompletionManager::DiagnosticsUpdate(const std::string &path,
     }
   }
   if (flag)
-    diagnostic_request_.PushBack({path, now + debounce, debounce}, false);
+    diag_tasks.PushBack({path, now + debounce, debounce}, false);
 }
 
-void CompletionManager::NotifyView(const std::string &path) {
-  // Only reparse the file if we create a new CompletionSession.
-  if (EnsureCompletionOrCreatePreloadSession(path))
-    preload_requests_.PushBack(PreloadRequest{path}, true);
+void SemaManager::OnView(const std::string &path) {
+  std::lock_guard lock(mutex);
+  if (!sessions.Get(path))
+    preamble_tasks.PushBack(PreambleTask{path}, true);
 }
 
-void CompletionManager::NotifySave(const std::string &filename) {
-  EnsureCompletionOrCreatePreloadSession(filename);
-  preload_requests_.PushBack(PreloadRequest{filename}, true);
+void SemaManager::OnSave(const std::string &path) {
+  preamble_tasks.PushBack(PreambleTask{path}, true);
 }
 
-void CompletionManager::OnClose(const std::string &filename) {
-  std::lock_guard<std::mutex> lock(sessions_lock_);
-  preloads.Take(filename);
-  sessions.Take(filename);
+void SemaManager::OnClose(const std::string &path) {
+  std::lock_guard lock(mutex);
+  sessions.Take(path);
 }
 
-bool CompletionManager::EnsureCompletionOrCreatePreloadSession(
-    const std::string &path) {
-  std::lock_guard<std::mutex> lock(sessions_lock_);
-  if (preloads.Get(path) || sessions.Get(path))
-    return false;
-
-  // No CompletionSession, create new one.
-  auto session = std::make_shared<ccls::CompletionSession>(
-      project_->FindEntry(path, false), wfiles_, PCH);
-  if (session->file.filename != path) {
-    session->inferred = true;
-    session->file.filename = path;
-  }
-  preloads.Insert(path, session);
-  LOG_S(INFO) << "create preload session for " << path;
-  return true;
-}
-
-std::shared_ptr<ccls::CompletionSession>
-CompletionManager::TryGetSession(const std::string &path, bool preload,
-                                 bool *is_open) {
-  std::lock_guard<std::mutex> lock(sessions_lock_);
-  std::shared_ptr<ccls::CompletionSession> session = preloads.Get(path);
-
-  if (session) {
-    if (!preload) {
-      preloads.Take(path);
-      sessions.Insert(path, session);
-      if (is_open)
-        *is_open = true;
-    }
-    return session;
-  }
-
-  session = sessions.Get(path);
-  if (!session && !preload) {
-    session = std::make_shared<ccls::CompletionSession>(
-        project_->FindEntry(path, false), wfiles_, PCH);
-    sessions.Insert(path, session);
+std::shared_ptr<ccls::Session>
+SemaManager::EnsureSession(const std::string &path, bool *created) {
+  std::lock_guard lock(mutex);
+  std::shared_ptr<ccls::Session> session = sessions.Get(path);
+  if (!session) {
+    session = std::make_shared<ccls::Session>(
+        project_->FindEntry(path, false), wfiles, PCH);
     LOG_S(INFO) << "create session for " << path;
-    if (is_open)
-      *is_open = true;
+    sessions.Insert(path, session);
+    if (created)
+      *created = true;
   }
-
   return session;
 }
 
-void CompletionManager::FlushAllSessions() {
-  LOG_S(INFO) << "flush all clang complete sessions";
-  std::lock_guard<std::mutex> lock(sessions_lock_);
-
-  preloads.Clear();
+void SemaManager::Clear() {
+  LOG_S(INFO) << "clear all sessions";
+  std::lock_guard lock(mutex);
   sessions.Clear();
 }
 } // namespace ccls

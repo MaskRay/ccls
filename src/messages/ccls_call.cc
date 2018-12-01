@@ -189,11 +189,10 @@ void MessageHandler::ccls_call(Reader &reader, ReplyOnce &reply) {
              param.levels);
   } else {
     QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
-    if (!file)
+    WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+    if (!wf)
       return;
-    WorkingFile *working_file = wfiles->GetFileByFilename(file->def->path);
-    for (SymbolRef sym :
-         FindSymbolsAtLocation(working_file, file, param.position)) {
+    for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
       if (sym.kind == Kind::Func) {
         result = BuildInitial(this, sym.usr, param.callee, param.callType,
                               param.qualified, param.levels);

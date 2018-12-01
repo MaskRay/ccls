@@ -33,14 +33,13 @@ void MessageHandler::textDocument_documentHighlight(
     TextDocumentPositionParam &param, ReplyOnce &reply) {
   int file_id;
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath(), &file_id);
-  if (!file)
+  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  if (!wf)
     return;
 
-  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   std::vector<DocumentHighlight> result;
-
   std::vector<SymbolRef> syms =
-      FindSymbolsAtLocation(wfile, file, param.position, true);
+      FindSymbolsAtLocation(wf, file, param.position, true);
   for (auto [sym, refcnt] : file->symbol2refcnt) {
     if (refcnt <= 0)
       continue;
@@ -78,7 +77,7 @@ MAKE_REFLECT_STRUCT(DocumentLink, range, target);
 void MessageHandler::textDocument_documentLink(TextDocumentParam &param,
                                                ReplyOnce &reply) {
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
-  WorkingFile *wf = file ? wfiles->GetFileByFilename(file->def->path) : nullptr;
+  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
   if (!wf) {
     reply.Error(ErrorCode::InternalError, "not opened");
     return;
@@ -153,10 +152,8 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
 
   int file_id;
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath(), &file_id);
-  if (!file)
-    return;
-  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
-  if (!wfile)
+  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  if (!wf)
     return;
 
   if (param.startLine >= 0) {
@@ -181,14 +178,14 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
         continue;
       auto &ds = r.first->second;
       ds = std::make_unique<DocumentSymbol>();
-      if (auto range = GetLsRange(wfile, sym.range)) {
+      if (auto range = GetLsRange(wf, sym.range)) {
         ds->selectionRange = *range;
         ds->range = ds->selectionRange;
         // For a macro expansion, M(name), we may use `M` for extent and `name`
         // for spell, do the check as selectionRange must be a subrange of
         // range.
         if (sym.extent.Valid())
-          if (auto range1 = GetLsRange(wfile, sym.extent);
+          if (auto range1 = GetLsRange(wf, sym.extent);
               range1 && range1->Includes(*range))
             ds->range = *range1;
       }

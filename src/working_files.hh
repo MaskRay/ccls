@@ -9,9 +9,11 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
 namespace ccls {
 struct WorkingFile {
+  int64_t timestamp = 0;
   int version = 0;
   std::string filename;
 
@@ -29,9 +31,7 @@ struct WorkingFile {
   std::vector<int> index_to_buffer;
   std::vector<int> buffer_to_index;
   // A set of diagnostics that have been reported for this file.
-  // NOTE: _ is appended because it must be accessed under the WorkingFiles
-  // lock!
-  std::vector<Diagnostic> diagnostics_;
+  std::vector<Diagnostic> diagnostics;
 
   WorkingFile(const std::string &filename, const std::string &buffer_content);
 
@@ -67,38 +67,21 @@ private:
 };
 
 struct WorkingFiles {
-  struct Snapshot {
-    struct File {
-      std::string filename;
-      std::string content;
-    };
+  WorkingFile *GetFile(const std::string &path);
+  WorkingFile *GetFileUnlocked(const std::string &path);
+  std::string GetContent(const std::string &path);
 
-    std::vector<File> files;
-  };
-
-  //
-  // :: IMPORTANT :: All methods in this class are guarded by a single lock.
-  //
-
-  // Find the file with the given filename.
-  WorkingFile *GetFileByFilename(const std::string &filename);
-  WorkingFile *GetFileByFilenameNoLock(const std::string &filename);
-  std::string GetContent(const std::string &filename);
-
-  // Run |action| under the lock.
-  template <typename Fn> void DoAction(Fn &&fn) {
-    std::lock_guard<std::mutex> lock(files_mutex);
+  template <typename Fn> void WithLock(Fn &&fn) {
+    std::lock_guard lock(mutex);
     fn();
   }
 
   WorkingFile *OnOpen(const TextDocumentItem &open);
   void OnChange(const TextDocumentDidChangeParam &change);
-  void OnClose(const TextDocumentIdentifier &close);
+  void OnClose(const std::string &close);
 
-  // Use unique_ptrs so we can handout WorkingFile ptrs and not have them
-  // invalidated if we resize files.
-  std::vector<std::unique_ptr<WorkingFile>> files;
-  std::mutex files_mutex; // Protects |files|.
+  std::mutex mutex;
+  std::unordered_map<std::string, std::unique_ptr<WorkingFile>> files;
 };
 
 int GetOffsetForPosition(Position pos, std::string_view content);

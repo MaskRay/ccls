@@ -22,7 +22,7 @@ void MessageHandler::textDocument_foldingRange(TextDocumentParam &param,
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
   if (!file)
     return;
-  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
+  WorkingFile *wfile = wfiles->GetFile(file->def->path);
   if (!wfile)
     return;
   std::vector<FoldingRange> result;

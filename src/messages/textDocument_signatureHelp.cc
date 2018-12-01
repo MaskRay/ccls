@@ -1,9 +1,9 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "clang_complete.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
+#include "sema_manager.hh"
 
 #include <clang/Sema/Sema.h>
 
@@ -144,14 +144,14 @@ void MessageHandler::textDocument_signatureHelp(
 
   std::string path = param.textDocument.uri.GetPath();
   Position begin_pos = param.position;
-  if (WorkingFile *file = wfiles->GetFileByFilename(path)) {
+  if (WorkingFile *file = wfiles->GetFile(path)) {
     std::string completion_text;
     Position end_pos = param.position;
     begin_pos = file->FindStableCompletionSource(param.position,
                                                  &completion_text, &end_pos);
   }
 
-  CompletionManager::OnComplete callback =
+  SemaManager::OnComplete callback =
       [reply, path, begin_pos](CodeCompleteConsumer *OptConsumer) {
         if (!OptConsumer)
           return;
@@ -175,11 +175,10 @@ void MessageHandler::textDocument_signatureHelp(
     cache.WithLock([&]() { Consumer.ls_sighelp = cache.result; });
     callback(&Consumer);
   } else {
-    clang_complete->completion_request_.PushBack(
-        std::make_unique<CompletionManager::CompletionRequest>(
-            reply.id, param.textDocument, param.position,
-            std::make_unique<SignatureHelpConsumer>(CCOpts, false), CCOpts,
-            callback));
+    manager->comp_tasks.PushBack(std::make_unique<SemaManager::CompTask>(
+        reply.id, param.textDocument.uri.GetPath(), param.position,
+        std::make_unique<SignatureHelpConsumer>(CCOpts, false), CCOpts,
+        callback));
   }
 }
 } // namespace ccls
