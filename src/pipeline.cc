@@ -15,7 +15,6 @@ limitations under the License.
 
 #include "pipeline.hh"
 
-#include "clang_complete.hh"
 #include "config.hh"
 #include "include_complete.hh"
 #include "log.hh"
@@ -25,6 +24,7 @@ limitations under the License.
 #include "platform.hh"
 #include "project.hh"
 #include "query.hh"
+#include "sema_manager.hh"
 #include "serializers/json.hh"
 
 #include <rapidjson/document.h>
@@ -179,7 +179,7 @@ std::mutex &GetFileMutex(const std::string &path) {
   return mutexes[std::hash<std::string>()(path) % N_MUTEXES];
 }
 
-bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
+bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
                    Project *project, VFS *vfs, const GroupMatch &matcher) {
   std::optional<Index_Request> opt_request = index_request->TryPopFront();
   if (!opt_request)
@@ -376,11 +376,11 @@ void Init() {
   for_stdout = new ThreadedQueue<std::string>(stdout_waiter);
 }
 
-void Indexer_Main(CompletionManager *completion, VFS *vfs, Project *project,
+void Indexer_Main(SemaManager *manager, VFS *vfs, Project *project,
                   WorkingFiles *wfiles) {
   GroupMatch matcher(g_config->index.whitelist, g_config->index.blacklist);
   while (true)
-    if (!Indexer_Parse(completion, wfiles, project, vfs, matcher))
+    if (!Indexer_Parse(manager, wfiles, project, vfs, matcher))
       indexer_waiter->Wait(index_request);
 }
 
@@ -388,13 +388,13 @@ void Main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
   if (update->refresh) {
     LOG_S(INFO)
         << "loaded project. Refresh semantic highlight for all working file.";
-    std::lock_guard<std::mutex> lock(wfiles->files_mutex);
-    for (auto &f : wfiles->files) {
-      std::string filename = LowerPathIfInsensitive(f->filename);
-      if (db->name2file_id.find(filename) == db->name2file_id.end())
+    std::lock_guard lock(wfiles->mutex);
+    for (auto &[f, wf] : wfiles->files) {
+      std::string path = LowerPathIfInsensitive(f);
+      if (db->name2file_id.find(path) == db->name2file_id.end())
         continue;
-      QueryFile &file = db->files[db->name2file_id[filename]];
-      EmitSemanticHighlight(db, f.get(), file);
+      QueryFile &file = db->files[db->name2file_id[path]];
+      EmitSemanticHighlight(db, wf.get(), file);
     }
     return;
   }
@@ -407,7 +407,7 @@ void Main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
   // Update indexed content, skipped ranges, and semantic highlighting.
   if (update->files_def_update) {
     auto &def_u = *update->files_def_update;
-    if (WorkingFile *wfile = wfiles->GetFileByFilename(def_u.first.path)) {
+    if (WorkingFile *wfile = wfiles->GetFile(def_u.first.path)) {
       // FIXME With index.onChange: true, use buffer_content only for
       // request.path
       wfile->SetIndexContent(g_config->index.onChange ? wfile->buffer_content
@@ -495,7 +495,7 @@ void MainLoop() {
   WorkingFiles wfiles;
   VFS vfs;
 
-  CompletionManager clang_complete(
+  SemaManager manager(
       &project, &wfiles,
       [&](std::string path, std::vector<Diagnostic> diagnostics) {
         PublishDiagnosticParam params;
@@ -521,7 +521,7 @@ void MainLoop() {
   handler.project = &project;
   handler.vfs = &vfs;
   handler.wfiles = &wfiles;
-  handler.clang_complete = &clang_complete;
+  handler.manager = &manager;
   handler.include_complete = &include_complete;
 
   bool has_indexed = false;
@@ -557,12 +557,16 @@ void Standalone(const std::string &root) {
   Project project;
   WorkingFiles wfiles;
   VFS vfs;
+  SemaManager manager(
+      nullptr, nullptr, [&](std::string, std::vector<Diagnostic>) {},
+      [](RequestId id) {});
   IncludeComplete complete(&project);
 
   MessageHandler handler;
   handler.project = &project;
   handler.wfiles = &wfiles;
   handler.vfs = &vfs;
+  handler.manager = &manager;
   handler.include_complete = &complete;
 
   StandaloneInitialize(handler, root);
