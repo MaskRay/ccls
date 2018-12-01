@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "clang_complete.hh"
+#include "sema_manager.hh"
 #include "filesystem.hh"
 #include "include_complete.hh"
 #include "log.hh"
@@ -241,7 +241,7 @@ void *Indexer(void *arg_) {
   delete arg;
   std::string name = "indexer" + std::to_string(idx);
   set_thread_name(name.c_str());
-  pipeline::Indexer_Main(h->clang_complete, h->vfs, h->project, h->wfiles);
+  pipeline::Indexer_Main(h->manager, h->vfs, h->project, h->wfiles);
   return nullptr;
 }
 } // namespace
@@ -337,6 +337,8 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
 
   LOG_S(INFO) << "dispatch initial index requests";
   m->project->Index(m->wfiles, reply.id);
+
+  m->manager->sessions.SetCapacity(g_config->session.maxNum);
 }
 
 void MessageHandler::initialize(Reader &reader, ReplyOnce &reply) {
