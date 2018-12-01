@@ -180,7 +180,6 @@ file(GLOB SOURCES src/*.cc src/*.h src/serializers/*.cc src/serializers/*.h
 target_sources(ccls PRIVATE third_party/siphash.cc)
 
 target_sources(ccls PRIVATE
-  src/clang_complete.cc
   src/clang_tu.cc
   src/config.cc
   src/filesystem.cc
@@ -197,6 +196,7 @@ target_sources(ccls PRIVATE
   src/position.cc
   src/project.cc
   src/query.cc
+  src/sema_manager.cc
   src/serializer.cc
   src/test.cc
   src/utils.cc

@@ -240,6 +240,10 @@ struct Config {
     std::vector<std::string> whitelist;
   } index;
 
+  struct Session {
+    int maxNum = 10;
+  } session;
+
   struct WorkspaceSymbol {
     int caseSensitivity = 1;
     // Maximum workspace search results.
@@ -273,12 +277,13 @@ MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, initialBlacklist,
                     initialWhitelist, multiVersion, multiVersionBlacklist,
                     multiVersionWhitelist, onChange, threads, trackDependency,
                     whitelist);
+MAKE_REFLECT_STRUCT(Config::Session, maxNum);
 MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 MAKE_REFLECT_STRUCT(Config::Xref, maxNum);
 MAKE_REFLECT_STRUCT(Config, compilationDatabaseCommand,
                     compilationDatabaseDirectory, cacheDirectory, cacheFormat,
                     clang, client, codeLens, completion, diagnostics, highlight,
-                    index, workspaceSymbol, xref);
+                    index, session, workspaceSymbol, xref);
 
 extern Config *g_config;
 

@@ -15,7 +15,7 @@ limitations under the License.
 
 #include "test.hh"
 
-#include "clang_complete.hh"
+#include "sema_manager.hh"
 #include "filesystem.hh"
 #include "indexer.hh"
 #include "pipeline.hh"
@@ -288,9 +288,9 @@ bool RunIndexTests(const std::string &filter_path, bool enable_update) {
   bool update_all = false;
   // FIXME: show diagnostics in STL/headers when running tests. At the moment
   // this can be done by conRequestIdex index(1, 1);
-  CompletionManager completion(nullptr, nullptr,
-                               [&](std::string, std::vector<Diagnostic>) {},
-                               [](RequestId id) {});
+  SemaManager completion(
+      nullptr, nullptr, [&](std::string, std::vector<Diagnostic>) {},
+      [](RequestId id) {});
   GetFilesInFolder(
       "index_tests", true /*recursive*/, true /*add_folder_to_path*/,
       [&](const std::string &path) {

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "clang_complete.hh"
+#include "sema_manager.hh"
 #include "fuzzy_match.hh"
 #include "log.hh"
 #include "message_handler.hh"
@@ -37,29 +37,28 @@ void MessageHandler::workspace_didChangeConfiguration(EmptyParam &) {
     project->Load(folder);
   project->Index(wfiles, RequestId());
 
-  clang_complete->FlushAllSessions();
+  manager->Clear();
 };
 
 void MessageHandler::workspace_didChangeWatchedFiles(
     DidChangeWatchedFilesParam &param) {
   for (auto &event : param.changes) {
     std::string path = event.uri.GetPath();
-    IndexMode mode = wfiles->GetFileByFilename(path)
-                         ? IndexMode::Normal
-                         : IndexMode::NonInteractive;
+    IndexMode mode =
+        wfiles->GetFile(path) ? IndexMode::Normal : IndexMode::NonInteractive;
     switch (event.type) {
     case FileChangeType::Created:
     case FileChangeType::Changed: {
       pipeline::Index(path, {}, mode);
       if (mode == IndexMode::Normal)
-        clang_complete->NotifySave(path);
+        manager->OnSave(path);
       else
-        clang_complete->OnClose(path);
+        manager->OnClose(path);
       break;
     }
     case FileChangeType::Deleted:
       pipeline::Index(path, {}, mode);
-      clang_complete->OnClose(path);
+      manager->OnClose(path);
       break;
     }
   }
@@ -91,7 +90,7 @@ void MessageHandler::workspace_didChangeWorkspaceFolders(
 
   project->Index(wfiles, RequestId());
 
-  clang_complete->FlushAllSessions();
+  manager->Clear();
 }
 
 namespace {

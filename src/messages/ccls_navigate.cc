@@ -43,14 +43,13 @@ void MessageHandler::ccls_navigate(Reader &reader,
   Param param;
   Reflect(reader, param);
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
-  if (!file)
+  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  if (!wf)
     return;
-
-  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   Position ls_pos = param.position;
-  if (wfile && wfile->index_lines.size())
-    if (auto line = wfile->GetIndexPosFromBufferPos(ls_pos.line,
-                                                    &ls_pos.character, false))
+  if (wf->index_lines.size())
+    if (auto line =
+            wf->GetIndexPosFromBufferPos(ls_pos.line, &ls_pos.character, false))
       ls_pos.line = *line;
   Pos pos{(int16_t)ls_pos.line, (int16_t)ls_pos.character};
 
@@ -97,7 +96,7 @@ void MessageHandler::ccls_navigate(Reader &reader,
   }
   std::vector<Location> result;
   if (res)
-    if (auto ls_range = GetLsRange(wfile, *res)) {
+    if (auto ls_range = GetLsRange(wf, *res)) {
       Location &ls_loc = result.emplace_back();
       ls_loc.uri = param.textDocument.uri;
       ls_loc.range = *ls_range;
