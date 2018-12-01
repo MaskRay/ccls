@@ -669,8 +669,7 @@ DocumentUri GetLsDocumentUri(DB *db, int file_id) {
 std::optional<Location> GetLsLocation(DB *db, WorkingFiles *wfiles, Use use) {
   std::string path;
   DocumentUri uri = GetLsDocumentUri(db, use.file_id, &path);
-  std::optional<lsRange> range =
-      GetLsRange(wfiles->GetFileByFilename(path), use.range);
+  std::optional<lsRange> range = GetLsRange(wfiles->GetFile(path), use.range);
   if (!range)
     return std::nullopt;
   return Location{uri, *range};
