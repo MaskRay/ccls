@@ -1,12 +1,12 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "clang_complete.hh"
 #include "fuzzy_match.hh"
 #include "include_complete.hh"
 #include "log.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
+#include "sema_manager.hh"
 #include "working_files.hh"
 
 #include <clang/Sema/CodeCompleteConsumer.h>
@@ -439,7 +439,7 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   static CompleteConsumerCache<std::vector<CompletionItem>> cache;
   CompletionList result;
   std::string path = param.textDocument.uri.GetPath();
-  WorkingFile *file = wfiles->GetFileByFilename(path);
+  WorkingFile *file = wfiles->GetFile(path);
   if (!file) {
     return;
   }
@@ -511,7 +511,7 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   }
 #endif
 
-  CompletionManager::OnComplete callback =
+  SemaManager::OnComplete callback =
       [filter, path, begin_pos, end_pos, reply,
        buffer_line](CodeCompleteConsumer *OptConsumer) {
         if (!OptConsumer)
@@ -536,11 +536,9 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
     cache.WithLock([&]() { Consumer.ls_items = cache.result; });
     callback(&Consumer);
   } else {
-    clang_complete->completion_request_.PushBack(
-        std::make_unique<CompletionManager::CompletionRequest>(
-            reply.id, param.textDocument, begin_pos,
-            std::make_unique<CompletionConsumer>(CCOpts, false), CCOpts,
-            callback));
+    manager->comp_tasks.PushBack(std::make_unique<SemaManager::CompTask>(
+        reply.id, param.textDocument.uri.GetPath(), begin_pos,
+        std::make_unique<CompletionConsumer>(CCOpts, false), CCOpts, callback));
   }
 }
 } // namespace ccls

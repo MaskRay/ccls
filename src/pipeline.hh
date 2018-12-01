@@ -13,7 +13,7 @@
 #include <vector>
 
 namespace ccls {
-struct CompletionManager;
+struct SemaManager;
 struct GroupMatch;
 struct Project;
 struct WorkingFiles;
@@ -44,7 +44,7 @@ extern int64_t tick;
 void Init();
 void LaunchStdin();
 void LaunchStdout();
-void Indexer_Main(CompletionManager *completion, VFS *vfs, Project *project,
+void Indexer_Main(SemaManager *manager, VFS *vfs, Project *project,
                   WorkingFiles *wfiles);
 void MainLoop();
 void Standalone(const std::string &root);

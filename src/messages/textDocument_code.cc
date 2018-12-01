@@ -33,13 +33,12 @@ MAKE_REFLECT_STRUCT(CodeAction, title, kind, edit);
 }
 void MessageHandler::textDocument_codeAction(CodeActionParam &param,
                                              ReplyOnce &reply) {
-  WorkingFile *wf =
-      wfiles->GetFileByFilename(param.textDocument.uri.GetPath());
+  WorkingFile *wf = wfiles->GetFile(param.textDocument.uri.GetPath());
   if (!wf)
     return;
   std::vector<CodeAction> result;
   std::vector<Diagnostic> diagnostics;
-  wfiles->DoAction([&]() { diagnostics = wf->diagnostics_; });
+  wfiles->WithLock([&]() { diagnostics = wf->diagnostics; });
   for (Diagnostic &diag : diagnostics)
     if (diag.fixits_.size() &&
         (param.range.Intersects(diag.range) ||
@@ -97,9 +96,8 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
   std::string path = param.textDocument.uri.GetPath();
 
   QueryFile *file = FindFile(reply, path);
-  WorkingFile *wfile =
-      file ? wfiles->GetFileByFilename(file->def->path) : nullptr;
-  if (!wfile) {
+  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  if (!wf) {
     return;
   }
 
@@ -107,7 +105,7 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
                  bool force_display = false) {
     if (!num && !force_display)
       return;
-    std::optional<lsRange> ls_range = GetLsRange(wfile, range);
+    std::optional<lsRange> ls_range = GetLsRange(wf, range);
     if (!ls_range)
       return;
     CodeLens &code_lens = result.emplace_back();

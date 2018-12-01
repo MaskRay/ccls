@@ -9,9 +9,11 @@
 #include <clang/Basic/CharInfo.h>
 
 #include <algorithm>
+#include <chrono>
 #include <climits>
 #include <numeric>
 #include <sstream>
+namespace chrono = std::chrono;
 
 using namespace clang;
 using namespace llvm;
@@ -352,56 +354,52 @@ WorkingFile::FindStableCompletionSource(Position position,
   return GetPositionForOffset(buffer_content, i);
 }
 
-WorkingFile *WorkingFiles::GetFileByFilename(const std::string &filename) {
-  std::lock_guard<std::mutex> lock(files_mutex);
-  return GetFileByFilenameNoLock(filename);
+WorkingFile *WorkingFiles::GetFile(const std::string &path) {
+  std::lock_guard lock(mutex);
+  return GetFileUnlocked(path);
 }
 
-WorkingFile *
-WorkingFiles::GetFileByFilenameNoLock(const std::string &filename) {
-  for (auto &file : files) {
-    if (file->filename == filename)
-      return file.get();
-  }
-  return nullptr;
+WorkingFile *WorkingFiles::GetFileUnlocked(const std::string &path) {
+  auto it = files.find(path);
+  return it != files.end() ? it->second.get() : nullptr;
 }
 
-std::string WorkingFiles::GetContent(const std::string &filename) {
-  std::lock_guard<std::mutex> lock(files_mutex);
-  for (auto &file : files)
-    if (file->filename == filename)
-      return file->buffer_content;
-  return "";
+std::string WorkingFiles::GetContent(const std::string &path) {
+  std::lock_guard lock(mutex);
+  auto it = files.find(path);
+  return it != files.end() ? it->second->buffer_content : "";
 }
 
 WorkingFile *WorkingFiles::OnOpen(const TextDocumentItem &open) {
-  std::lock_guard<std::mutex> lock(files_mutex);
+  std::lock_guard lock(mutex);
 
-  std::string filename = open.uri.GetPath();
+  std::string path = open.uri.GetPath();
   std::string content = open.text;
 
-  // The file may already be open.
-  if (WorkingFile *file = GetFileByFilenameNoLock(filename)) {
-    file->version = open.version;
-    file->buffer_content = content;
-    file->OnBufferContentUpdated();
-    return file;
+  auto &wf = files[path];
+  if (wf) {
+    wf->version = open.version;
+    wf->buffer_content = content;
+    wf->OnBufferContentUpdated();
+  } else {
+    wf = std::make_unique<WorkingFile>(path, content);
   }
-
-  files.push_back(std::make_unique<WorkingFile>(filename, content));
-  return files[files.size() - 1].get();
+  return wf.get();
 }
 
 void WorkingFiles::OnChange(const TextDocumentDidChangeParam &change) {
-  std::lock_guard<std::mutex> lock(files_mutex);
+  std::lock_guard lock(mutex);
 
-  std::string filename = change.textDocument.uri.GetPath();
-  WorkingFile *file = GetFileByFilenameNoLock(filename);
+  std::string path = change.textDocument.uri.GetPath();
+  WorkingFile *file = GetFileUnlocked(path);
   if (!file) {
-    LOG_S(WARNING) << "Could not change " << filename
-                   << " because it was not open";
+    LOG_S(WARNING) << "Could not change " << path << " because it was not open";
     return;
   }
+
+  file->timestamp = chrono::duration_cast<chrono::seconds>(
+                        chrono::high_resolution_clock::now().time_since_epoch())
+                        .count();
 
   // version: number | null
   if (change.textDocument.version)
@@ -428,20 +426,9 @@ void WorkingFiles::OnChange(const TextDocumentDidChangeParam &change) {
   }
 }
 
-void WorkingFiles::OnClose(const TextDocumentIdentifier &close) {
-  std::lock_guard<std::mutex> lock(files_mutex);
-
-  std::string filename = close.uri.GetPath();
-
-  for (int i = 0; i < files.size(); ++i) {
-    if (files[i]->filename == filename) {
-      files.erase(files.begin() + i);
-      return;
-    }
-  }
-
-  LOG_S(WARNING) << "Could not close " << filename
-                 << " because it was not open";
+void WorkingFiles::OnClose(const std::string &path) {
+  std::lock_guard lock(mutex);
+  files.erase(path);
 }
 
 // VSCode (UTF-16) disagrees with Emacs lsp-mode (UTF-8) on how to represent

@@ -473,8 +473,7 @@ void Project::Index(WorkingFiles *wfiles, RequestId id) {
         std::string reason;
         if (match.Matches(entry.filename, &reason) &&
             match_i.Matches(entry.filename, &reason)) {
-          bool interactive =
-              wfiles->GetFileByFilename(entry.filename) != nullptr;
+          bool interactive = wfiles->GetFile(entry.filename) != nullptr;
           pipeline::Index(
               entry.filename, entry.args,
               interactive ? IndexMode::Normal : IndexMode::NonInteractive, id);

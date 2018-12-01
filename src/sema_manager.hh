@@ -42,8 +42,6 @@ TextEdit ToTextEdit(const clang::SourceManager &SM,
                       const clang::FixItHint &FixIt);
 
 template <typename K, typename V> struct LruCache {
-  LruCache(int capacity) : capacity(capacity) {}
-
   std::shared_ptr<V> Get(const K &key) {
     for (auto it = items.begin(); it != items.end(); ++it)
       if (it->first == key) {
@@ -69,14 +67,14 @@ template <typename K, typename V> struct LruCache {
     items.emplace(items.begin(), key, std::move(value));
   }
   void Clear() { items.clear(); }
+  void SetCapacity(int cap) { capacity = cap; }
 
 private:
   std::vector<std::pair<K, std::shared_ptr<V>>> items;
-  int capacity;
+  int capacity = 1;
 };
 
-struct CompletionSession
-    : public std::enable_shared_from_this<CompletionSession> {
+struct Session {
   std::mutex mutex;
   std::shared_ptr<PreambleData> preamble;
 
@@ -89,14 +87,14 @@ struct CompletionSession
       llvm::vfs::getRealFileSystem();
   std::shared_ptr<clang::PCHContainerOperations> PCH;
 
-  CompletionSession(const Project::Entry &file, WorkingFiles *wfiles,
+  Session(const Project::Entry &file, WorkingFiles *wfiles,
                     std::shared_ptr<clang::PCHContainerOperations> PCH)
       : file(file), wfiles(wfiles), PCH(PCH) {}
 
   std::shared_ptr<PreambleData> GetPreamble();
 };
 
-struct CompletionManager {
+struct SemaManager {
   using OnDiagnostic = std::function<void(
       std::string path, std::vector<Diagnostic> diagnostics)>;
   // If OptConsumer is nullptr, the request has been cancelled.
@@ -104,91 +102,57 @@ struct CompletionManager {
       std::function<void(clang::CodeCompleteConsumer *OptConsumer)>;
   using OnDropped = std::function<void(RequestId request_id)>;
 
-  struct PreloadRequest {
+  struct PreambleTask {
     std::string path;
+    bool from_diag = false;
   };
-  struct CompletionRequest {
-    CompletionRequest(const RequestId &id,
-                      const TextDocumentIdentifier &document,
-                      const Position &position,
-                      std::unique_ptr<clang::CodeCompleteConsumer> Consumer,
-                      clang::CodeCompleteOptions CCOpts,
-                      const OnComplete &on_complete)
-        : id(id), document(document), position(position),
-          Consumer(std::move(Consumer)), CCOpts(CCOpts),
-          on_complete(on_complete) {}
+  struct CompTask {
+    CompTask(const RequestId &id, const std::string &path,
+             const Position &position,
+             std::unique_ptr<clang::CodeCompleteConsumer> Consumer,
+             clang::CodeCompleteOptions CCOpts, const OnComplete &on_complete)
+        : id(id), path(path), position(position), Consumer(std::move(Consumer)),
+          CCOpts(CCOpts), on_complete(on_complete) {}
 
     RequestId id;
-    TextDocumentIdentifier document;
+    std::string path;
     Position position;
     std::unique_ptr<clang::CodeCompleteConsumer> Consumer;
     clang::CodeCompleteOptions CCOpts;
     OnComplete on_complete;
   };
-  struct DiagnosticRequest {
+  struct DiagTask {
     std::string path;
     int64_t wait_until;
     int64_t debounce;
   };
 
-  CompletionManager(Project *project, WorkingFiles *wfiles,
+  SemaManager(Project *project, WorkingFiles *wfiles,
                     OnDiagnostic on_diagnostic, OnDropped on_dropped);
 
-  // Request a diagnostics update.
-  void DiagnosticsUpdate(const std::string &path, int debounce);
-
-  // Notify the completion manager that |filename| has been viewed and we
-  // should begin preloading completion data.
-  void NotifyView(const std::string &path);
-  // Notify the completion manager that |filename| has been saved. This
-  // triggers a reparse.
-  void NotifySave(const std::string &path);
-  // Notify the completion manager that |filename| has been closed. Any existing
-  // completion session will be dropped.
+  void ScheduleDiag(const std::string &path, int debounce);
+  void OnView(const std::string &path);
+  void OnSave(const std::string &path);
   void OnClose(const std::string &path);
-
-  // Ensures there is a completion or preloaded session. Returns true if a new
-  // session was created.
-  bool EnsureCompletionOrCreatePreloadSession(const std::string &path);
-  // Tries to find an edit session for |filename|. This will move the session
-  // from view to edit.
-  std::shared_ptr<ccls::CompletionSession>
-  TryGetSession(const std::string &path, bool preload, bool *is_open = nullptr);
-
-  // Flushes all saved sessions
-  void FlushAllSessions(void);
-
-  // TODO: make these configurable.
-  const int kMaxPreloadedSessions = 10;
-  const int kMaxCompletionSessions = 5;
+  std::shared_ptr<ccls::Session> EnsureSession(const std::string &path,
+                                               bool *created = nullptr);
+  void Clear(void);
 
   // Global state.
   Project *project_;
-  WorkingFiles *wfiles_;
+  WorkingFiles *wfiles;
   OnDiagnostic on_diagnostic_;
   OnDropped on_dropped_;
 
-  using LruSessionCache = LruCache<std::string, ccls::CompletionSession>;
-
-  // CompletionSession instances which are preloaded, ie, files which the user
-  // has viewed but not requested code completion for.
-  LruSessionCache preloads;
-  // CompletionSession instances which the user has actually performed
-  // completion on. This is more rare so these instances tend to stay alive
-  // much longer than the ones in |preloaded_sessions_|.
-  LruSessionCache sessions;
-  // Mutex which protects |view_sessions_| and |edit_sessions_|.
-  std::mutex sessions_lock_;
+  std::mutex mutex;
+  LruCache<std::string, ccls::Session> sessions;
 
   std::mutex diag_mutex;
   std::unordered_map<std::string, int64_t> next_diag;
 
-  // Request a code completion at the given location.
-  ThreadedQueue<std::unique_ptr<CompletionRequest>> completion_request_;
-  ThreadedQueue<DiagnosticRequest> diagnostic_request_;
-  // Parse requests. The path may already be parsed, in which case it should be
-  // reparsed.
-  ThreadedQueue<PreloadRequest> preload_requests_;
+  ThreadedQueue<std::unique_ptr<CompTask>> comp_tasks;
+  ThreadedQueue<DiagTask> diag_tasks;
+  ThreadedQueue<PreambleTask> preamble_tasks;
 
   std::shared_ptr<clang::PCHContainerOperations> PCH;
 };
@@ -198,16 +162,14 @@ struct CompletionManager {
 // that happens.
 template <typename T>
 struct CompleteConsumerCache {
-  // NOTE: Make sure to access these variables under |WithLock|.
-  std::optional<std::string> path;
-  std::optional<Position> position;
+  std::mutex mutex;
+  std::string path;
+  Position position;
   T result;
 
-  std::mutex mutex;
-
-  void WithLock(std::function<void()> action) {
+  template <typename Fn> void WithLock(Fn &&fn) {
     std::lock_guard lock(mutex);
-    action();
+    fn();
   }
   bool IsCacheValid(const std::string path, Position position) {
     std::lock_guard lock(mutex);

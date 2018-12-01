@@ -137,9 +137,8 @@ void Inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
     QueryFile *file = m->FindFile(reply, param.textDocument.uri.GetPath());
     if (!file)
       return;
-    WorkingFile *wfile = m->wfiles->GetFileByFilename(file->def->path);
-
-    for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, param.position))
+    WorkingFile *wf = m->wfiles->GetFile(file->def->path);
+    for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position))
       if (sym.kind == Kind::Func || sym.kind == Kind::Type) {
         result = BuildInitial(m, sym, param.derived, param.qualified,
                               param.levels);

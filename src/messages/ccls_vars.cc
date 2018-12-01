@@ -20,13 +20,12 @@ void MessageHandler::ccls_vars(Reader &reader, ReplyOnce &reply) {
   Param param;
   Reflect(reader, param);
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
-  if (!file)
+  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  if (!wf)
     return;
-  WorkingFile *working_file = wfiles->GetFileByFilename(file->def->path);
 
   std::vector<Location> result;
-  for (SymbolRef sym :
-       FindSymbolsAtLocation(working_file, file, param.position)) {
+  for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
     Usr usr = sym.usr;
     switch (sym.kind) {
     default:
