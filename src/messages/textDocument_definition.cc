@@ -49,15 +49,15 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
                                              ReplyOnce &reply) {
   int file_id;
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath(), &file_id);
-  if (!file)
+  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  if (!wf)
     return;
 
   std::vector<Location> result;
   Maybe<Use> on_def;
-  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   Position &ls_pos = param.position;
 
-  for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, ls_pos, true)) {
+  for (SymbolRef sym : FindSymbolsAtLocation(wf, file, ls_pos, true)) {
     // Special cases which are handled:
     //  - symbol has declaration but no definition (ie, pure virtual)
     //  - goto declaration while in definition of recursive type
@@ -108,7 +108,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
     // Find the best match of the identifier at point.
     if (!range) {
       Position position = param.position;
-      const std::string &buffer = wfile->buffer_content;
+      const std::string &buffer = wf->buffer_content;
       std::string_view query = LexIdentifierAroundPos(position, buffer);
       std::string_view short_query = query;
       {
@@ -172,7 +172,7 @@ void MessageHandler::textDocument_typeDefinition(
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
   if (!file)
     return;
-  WorkingFile *working_file = wfiles->GetFileByFilename(file->def->path);
+  WorkingFile *working_file = wfiles->GetFile(file->def->path);
 
   std::vector<Location> result;
   auto Add = [&](const QueryType &type) {

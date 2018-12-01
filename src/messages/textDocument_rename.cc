@@ -38,7 +38,7 @@ WorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *wfiles, SymbolRef sym,
       const std::string &path = file.def->path;
       path_to_edit[file_id].textDocument.uri = DocumentUri::FromPath(path);
 
-      WorkingFile *working_file = wfiles->GetFileByFilename(path);
+      WorkingFile *working_file = wfiles->GetFile(path);
       if (working_file)
         path_to_edit[file_id].textDocument.version = working_file->version;
     }
@@ -56,14 +56,13 @@ WorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *wfiles, SymbolRef sym,
 } // namespace
 
 void MessageHandler::textDocument_rename(RenameParam &param, ReplyOnce &reply) {
-  int file_id;
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath(), &file_id);
-  if (!file)
+  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  if (!wf)
     return;
 
-  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
   WorkspaceEdit result;
-  for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, param.position)) {
+  for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
     result = BuildWorkspaceEdit(db, wfiles, sym, param.newName);
     break;
   }

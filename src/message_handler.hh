@@ -24,7 +24,7 @@ limitations under the License.
 #include <vector>
 
 namespace ccls {
-struct CompletionManager;
+struct SemaManager;
 struct VFS;
 struct IncludeComplete;
 struct Project;
@@ -205,7 +205,7 @@ struct ReplyOnce {
 };
 
 struct MessageHandler {
-  CompletionManager *clang_complete = nullptr;
+  SemaManager *manager = nullptr;
   DB *db = nullptr;
   IncludeComplete *include_complete = nullptr;
   Project *project = nullptr;

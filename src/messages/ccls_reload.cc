@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "clang_complete.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "project.hh"
+#include "sema_manager.hh"
 #include "working_files.hh"
 
 #include <queue>
@@ -40,7 +40,7 @@ void MessageHandler::ccls_reload(Reader &reader) {
     vfs->Clear();
     db->clear();
     project->Index(wfiles, RequestId());
-    clang_complete->FlushAllSessions();
+    manager->Clear();
     return;
   }
 }
