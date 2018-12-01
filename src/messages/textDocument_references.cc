@@ -45,10 +45,8 @@ void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
   ReferenceParam param;
   Reflect(reader, param);
   QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
-  if (!file)
-    return;
-  WorkingFile *wfile = wfiles->GetFileByFilename(file->def->path);
-  if (!wfile)
+  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  if (!wf)
     return;
   for (auto &folder : param.folders)
     EnsureEndsInSlash(folder);
@@ -58,7 +56,7 @@ void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
   std::unordered_set<Use> seen_uses;
   int line = param.position.line;
 
-  for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, param.position)) {
+  for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
     // Found symbol. Return references.
     std::unordered_set<Usr> seen;
     seen.insert(sym.usr);
@@ -107,7 +105,7 @@ void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
     // = 0,
     // use the current filename.
     std::string path;
-    if (line == 0 || line >= (int)wfile->buffer_lines.size() - 1)
+    if (line == 0 || line >= (int)wf->buffer_lines.size() - 1)
       path = file->def->path;
     for (const IndexInclude &include : file->def->includes)
       if (include.line == param.position.line) {

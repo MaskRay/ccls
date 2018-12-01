@@ -15,11 +15,11 @@ limitations under the License.
 
 #include "indexer.hh"
 
-#include "clang_complete.hh"
 #include "clang_tu.hh"
 #include "log.hh"
 #include "pipeline.hh"
 #include "platform.hh"
+#include "sema_manager.hh"
 #include "serializer.hh"
 
 #include <clang/AST/AST.h>
@@ -1232,10 +1232,11 @@ void Init() {
 }
 
 std::vector<std::unique_ptr<IndexFile>>
-Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
+Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
       const std::string &opt_wdir, const std::string &file,
       const std::vector<const char *> &args,
-      const std::vector<std::pair<std::string, std::string>> &remapped, bool &ok) {
+      const std::vector<std::pair<std::string, std::string>> &remapped,
+      bool &ok) {
   ok = true;
   auto PCH = std::make_shared<PCHContainerOperations>();
   llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS = llvm::vfs::getRealFileSystem();
@@ -1266,7 +1267,7 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
     bool done_remap = false;
 #if 0
     std::shared_ptr<CompletionSession> session =
-      completion->TryGetSession(file, false, false);
+      manager->TryGetSession(file, false, false);
     if (session)
       if (auto preamble = session->GetPreamble()) {
         Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(buf));
