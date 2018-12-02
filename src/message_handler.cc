@@ -107,6 +107,13 @@ struct ScanLineEvent {
 };
 } // namespace
 
+void ReplyOnce::NotReady(bool file) {
+  if (file)
+    Error(ErrorCode::InvalidRequest, "not opened");
+  else
+    Error(ErrorCode::InternalError, "not indexed");
+}
+
 void MessageHandler::Bind(const char *method, void (MessageHandler::*handler)(Reader &)) {
   method2notification[method] = [this, handler](Reader &reader) {
     (this->*handler)(reader);
@@ -220,14 +227,14 @@ void MessageHandler::Run(InMessage &msg) {
       try {
         it->second(reader);
       } catch (...) {
-        LOG_S(ERROR) << "failed to process " << msg.method;
+        ShowMessageParam param{MessageType::Error,
+                               std::string("failed to process ") + msg.method};
+        pipeline::Notify(window_showMessage, param);
       }
   }
 }
 
-QueryFile *MessageHandler::FindFile(ReplyOnce &reply,
-                                    const std::string &path,
-                                    int *out_file_id) {
+QueryFile *MessageHandler::FindFile(const std::string &path, int *out_file_id) {
   QueryFile *ret = nullptr;
   auto it = db->name2file_id.find(LowerPathIfInsensitive(path));
   if (it != db->name2file_id.end()) {
@@ -239,24 +246,8 @@ QueryFile *MessageHandler::FindFile(ReplyOnce &reply,
       return ret;
     }
   }
-
   if (out_file_id)
     *out_file_id = -1;
-
-  if (reply.id.Valid()) {
-    bool has_entry = false;
-    {
-      std::lock_guard<std::mutex> lock(project->mutex_);
-      for (auto &[root, folder] : project->root2folder)
-        has_entry |= folder.path2entry_index.count(path);
-    }
-    ResponseError err;
-    if (has_entry)
-      reply.Error(ErrorCode::ServerNotInitialized, path + " is being indexed");
-    else
-      reply.Error(ErrorCode::InternalError, "unable to find " + path);
-  }
-
   return ret;
 }
 

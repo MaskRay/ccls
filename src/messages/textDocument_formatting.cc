@@ -80,19 +80,23 @@ void Format(ReplyOnce &reply, WorkingFile *wfile, tooling::Range range) {
 
 void MessageHandler::textDocument_formatting(DocumentFormattingParam &param,
                                              ReplyOnce &reply) {
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
   WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!wf)
+  if (!wf) {
+    reply.NotReady(file);
     return;
+  }
   Format(reply, wf, {0, (unsigned)wf->buffer_content.size()});
 }
 
 void MessageHandler::textDocument_onTypeFormatting(
     DocumentOnTypeFormattingParam &param, ReplyOnce &reply) {
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
   WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!wf)
+  if (!wf) {
+    reply.NotReady(file);
     return;
+  }
   std::string_view code = wf->buffer_content;
   int pos = GetOffsetForPosition(param.position, code);
   auto lbrace = code.find_last_of('{', pos);
@@ -103,10 +107,12 @@ void MessageHandler::textDocument_onTypeFormatting(
 
 void MessageHandler::textDocument_rangeFormatting(
     DocumentRangeFormattingParam &param, ReplyOnce &reply) {
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
   WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!wf)
+  if (!wf) {
+    reply.NotReady(file);
     return;
+  }
   std::string_view code = wf->buffer_content;
   int begin = GetOffsetForPosition(param.range.start, code),
       end = GetOffsetForPosition(param.range.end, code);
