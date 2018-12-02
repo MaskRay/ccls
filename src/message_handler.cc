@@ -19,7 +19,9 @@ limitations under the License.
 #include "pipeline.hh"
 #include "project.hh"
 #include "query.hh"
-#include "serializers/json.hh"
+
+#include <rapidjson/document.h>
+#include <rapidjson/reader.h>
 
 #include <algorithm>
 #include <stdexcept>
@@ -29,35 +31,35 @@ using namespace clang;
 MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
 
 namespace ccls {
-MAKE_REFLECT_STRUCT(CodeActionParam::Context, diagnostics);
-MAKE_REFLECT_STRUCT(CodeActionParam, textDocument, range, context);
-void Reflect(Reader &, EmptyParam &) {}
-MAKE_REFLECT_STRUCT(TextDocumentParam, textDocument);
-MAKE_REFLECT_STRUCT(DidOpenTextDocumentParam, textDocument);
-MAKE_REFLECT_STRUCT(TextDocumentContentChangeEvent, range, rangeLength, text);
-MAKE_REFLECT_STRUCT(TextDocumentDidChangeParam, textDocument, contentChanges);
-MAKE_REFLECT_STRUCT(TextDocumentPositionParam, textDocument, position);
-MAKE_REFLECT_STRUCT(RenameParam, textDocument, position, newName);
+REFLECT_STRUCT(CodeActionParam::Context, diagnostics);
+REFLECT_STRUCT(CodeActionParam, textDocument, range, context);
+void Reflect(JsonReader &, EmptyParam &) {}
+REFLECT_STRUCT(TextDocumentParam, textDocument);
+REFLECT_STRUCT(DidOpenTextDocumentParam, textDocument);
+REFLECT_STRUCT(TextDocumentContentChangeEvent, range, rangeLength, text);
+REFLECT_STRUCT(TextDocumentDidChangeParam, textDocument, contentChanges);
+REFLECT_STRUCT(TextDocumentPositionParam, textDocument, position);
+REFLECT_STRUCT(RenameParam, textDocument, position, newName);
 
 // completion
-MAKE_REFLECT_TYPE_PROXY(CompletionTriggerKind);
-MAKE_REFLECT_STRUCT(CompletionContext, triggerKind, triggerCharacter);
-MAKE_REFLECT_STRUCT(CompletionParam, textDocument, position, context);
+REFLECT_UNDERLYING(CompletionTriggerKind);
+REFLECT_STRUCT(CompletionContext, triggerKind, triggerCharacter);
+REFLECT_STRUCT(CompletionParam, textDocument, position, context);
 
 // formatting
-MAKE_REFLECT_STRUCT(FormattingOptions, tabSize, insertSpaces);
-MAKE_REFLECT_STRUCT(DocumentFormattingParam, textDocument, options);
-MAKE_REFLECT_STRUCT(DocumentOnTypeFormattingParam, textDocument, position,
-                    ch, options);
-MAKE_REFLECT_STRUCT(DocumentRangeFormattingParam, textDocument, range, options);
+REFLECT_STRUCT(FormattingOptions, tabSize, insertSpaces);
+REFLECT_STRUCT(DocumentFormattingParam, textDocument, options);
+REFLECT_STRUCT(DocumentOnTypeFormattingParam, textDocument, position, ch,
+               options);
+REFLECT_STRUCT(DocumentRangeFormattingParam, textDocument, range, options);
 
 // workspace
-MAKE_REFLECT_TYPE_PROXY(FileChangeType);
-MAKE_REFLECT_STRUCT(DidChangeWatchedFilesParam::Event, uri, type);
-MAKE_REFLECT_STRUCT(DidChangeWatchedFilesParam, changes);
-MAKE_REFLECT_STRUCT(DidChangeWorkspaceFoldersParam::Event, added, removed);
-MAKE_REFLECT_STRUCT(DidChangeWorkspaceFoldersParam, event);
-MAKE_REFLECT_STRUCT(WorkspaceSymbolParam, query, folders);
+REFLECT_UNDERLYING(FileChangeType);
+REFLECT_STRUCT(DidChangeWatchedFilesParam::Event, uri, type);
+REFLECT_STRUCT(DidChangeWatchedFilesParam, changes);
+REFLECT_STRUCT(DidChangeWorkspaceFoldersParam::Event, added, removed);
+REFLECT_STRUCT(DidChangeWorkspaceFoldersParam, event);
+REFLECT_STRUCT(WorkspaceSymbolParam, query, folders);
 
 namespace {
 struct CclsSemanticHighlightSymbol {
@@ -75,15 +77,15 @@ struct CclsSemanticHighlight {
   DocumentUri uri;
   std::vector<CclsSemanticHighlightSymbol> symbols;
 };
-MAKE_REFLECT_STRUCT(CclsSemanticHighlightSymbol, id, parentKind, kind, storage,
-                    ranges, lsRanges);
-MAKE_REFLECT_STRUCT(CclsSemanticHighlight, uri, symbols);
+REFLECT_STRUCT(CclsSemanticHighlightSymbol, id, parentKind, kind, storage,
+               ranges, lsRanges);
+REFLECT_STRUCT(CclsSemanticHighlight, uri, symbols);
 
 struct CclsSetSkippedRanges {
   DocumentUri uri;
   std::vector<lsRange> skippedRanges;
 };
-MAKE_REFLECT_STRUCT(CclsSetSkippedRanges, uri, skippedRanges);
+REFLECT_STRUCT(CclsSetSkippedRanges, uri, skippedRanges);
 
 struct ScanLineEvent {
   Position pos;
@@ -114,8 +116,9 @@ void ReplyOnce::NotReady(bool file) {
     Error(ErrorCode::InternalError, "not indexed");
 }
 
-void MessageHandler::Bind(const char *method, void (MessageHandler::*handler)(Reader &)) {
-  method2notification[method] = [this, handler](Reader &reader) {
+void MessageHandler::Bind(const char *method,
+                          void (MessageHandler::*handler)(JsonReader &)) {
+  method2notification[method] = [this, handler](JsonReader &reader) {
     (this->*handler)(reader);
   };
 }
@@ -123,7 +126,7 @@ void MessageHandler::Bind(const char *method, void (MessageHandler::*handler)(Re
 template <typename Param>
 void MessageHandler::Bind(const char *method,
                           void (MessageHandler::*handler)(Param &)) {
-  method2notification[method] = [this, handler](Reader &reader) {
+  method2notification[method] = [this, handler](JsonReader &reader) {
     Param param{};
     Reflect(reader, param);
     (this->*handler)(param);
@@ -131,9 +134,10 @@ void MessageHandler::Bind(const char *method,
 }
 
 void MessageHandler::Bind(const char *method,
-                          void (MessageHandler::*handler)(Reader &,
+                          void (MessageHandler::*handler)(JsonReader &,
                                                           ReplyOnce &)) {
-  method2request[method] = [this, handler](Reader &reader, ReplyOnce &reply) {
+  method2request[method] = [this, handler](JsonReader &reader,
+                                           ReplyOnce &reply) {
     (this->*handler)(reader, reply);
   };
 }
@@ -142,7 +146,8 @@ template <typename Param>
 void MessageHandler::Bind(const char *method,
                           void (MessageHandler::*handler)(Param &,
                                                           ReplyOnce &)) {
-  method2request[method] = [this, handler](Reader &reader, ReplyOnce &reply) {
+  method2request[method] = [this, handler](JsonReader &reader,
+                                           ReplyOnce &reply) {
     Param param{};
     Reflect(reader, param);
     (this->*handler)(param, reply);
@@ -214,7 +219,8 @@ void MessageHandler::Run(InMessage &msg) {
         it->second(reader, reply);
       } catch (std::invalid_argument &ex) {
         reply.Error(ErrorCode::InvalidParams,
-                    "invalid params of " + msg.method + ": " + ex.what());
+                    "invalid params of " + msg.method + ": expected " +
+                        ex.what() + " for " + reader.GetPath());
       } catch (...) {
         reply.Error(ErrorCode::InternalError, "failed to process " + msg.method);
       }

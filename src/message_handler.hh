@@ -32,8 +32,8 @@ struct WorkingFile;
 struct WorkingFiles;
 
 namespace pipeline {
-void Reply(RequestId id, const std::function<void(Writer &)> &fn);
-void ReplyError(RequestId id, const std::function<void(Writer &)> &fn);
+void Reply(RequestId id, const std::function<void(JsonWriter &)> &fn);
+void ReplyError(RequestId id, const std::function<void(JsonWriter &)> &fn);
 }
 
 struct CodeActionParam {
@@ -63,11 +63,11 @@ struct TextDocumentEdit {
   VersionedTextDocumentIdentifier textDocument;
   std::vector<TextEdit> edits;
 };
-MAKE_REFLECT_STRUCT(TextDocumentEdit, textDocument, edits);
+REFLECT_STRUCT(TextDocumentEdit, textDocument, edits);
 struct WorkspaceEdit {
   std::vector<TextDocumentEdit> documentChanges;
 };
-MAKE_REFLECT_STRUCT(WorkspaceEdit, documentChanges);
+REFLECT_STRUCT(WorkspaceEdit, documentChanges);
 
 // completion
 enum class CompletionTriggerKind {
@@ -175,32 +175,39 @@ struct WorkspaceSymbolParam {
   // ccls extensions
   std::vector<std::string> folders;
 };
-MAKE_REFLECT_STRUCT(WorkspaceFolder, uri, name);
+REFLECT_STRUCT(WorkspaceFolder, uri, name);
 
-MAKE_REFLECT_TYPE_PROXY(ErrorCode);
-MAKE_REFLECT_STRUCT(ResponseError, code, message);
-MAKE_REFLECT_STRUCT(Position, line, character);
-MAKE_REFLECT_STRUCT(lsRange, start, end);
-MAKE_REFLECT_STRUCT(Location, uri, range);
-MAKE_REFLECT_TYPE_PROXY(SymbolKind);
-MAKE_REFLECT_STRUCT(TextDocumentIdentifier, uri);
-MAKE_REFLECT_STRUCT(TextDocumentItem, uri, languageId, version, text);
-MAKE_REFLECT_STRUCT(TextEdit, range, newText);
-MAKE_REFLECT_STRUCT(VersionedTextDocumentIdentifier, uri, version);
-MAKE_REFLECT_STRUCT(Diagnostic, range, severity, code, source, message);
-MAKE_REFLECT_STRUCT(ShowMessageParam, type, message);
-MAKE_REFLECT_TYPE_PROXY(LanguageId);
+inline void Reflect(JsonReader &visitor, DocumentUri &value) {
+  Reflect(visitor, value.raw_uri);
+}
+inline void Reflect(JsonWriter &visitor, DocumentUri &value) {
+  Reflect(visitor, value.raw_uri);
+}
+
+REFLECT_UNDERLYING(ErrorCode);
+REFLECT_STRUCT(ResponseError, code, message);
+REFLECT_STRUCT(Position, line, character);
+REFLECT_STRUCT(lsRange, start, end);
+REFLECT_STRUCT(Location, uri, range);
+REFLECT_UNDERLYING_B(SymbolKind);
+REFLECT_STRUCT(TextDocumentIdentifier, uri);
+REFLECT_STRUCT(TextDocumentItem, uri, languageId, version, text);
+REFLECT_STRUCT(TextEdit, range, newText);
+REFLECT_STRUCT(VersionedTextDocumentIdentifier, uri, version);
+REFLECT_STRUCT(Diagnostic, range, severity, code, source, message);
+REFLECT_STRUCT(ShowMessageParam, type, message);
+REFLECT_UNDERLYING_B(LanguageId);
 
 struct ReplyOnce {
   RequestId id;
   template <typename Res> void operator()(Res &&result) const {
     if (id.Valid())
-      pipeline::Reply(id, [&](Writer &w) { Reflect(w, result); });
+      pipeline::Reply(id, [&](JsonWriter &w) { Reflect(w, result); });
   }
   void Error(ErrorCode code, std::string message) const {
     ResponseError err{code, std::move(message)};
     if (id.Valid())
-      pipeline::ReplyError(id, [&](Writer &w) { Reflect(w, err); });
+      pipeline::ReplyError(id, [&](JsonWriter &w) { Reflect(w, err); });
   }
   void NotReady(bool file);
 };
@@ -213,33 +220,34 @@ struct MessageHandler {
   VFS *vfs = nullptr;
   WorkingFiles *wfiles = nullptr;
 
-  llvm::StringMap<std::function<void(Reader &)>> method2notification;
-  llvm::StringMap<std::function<void(Reader &, ReplyOnce &)>> method2request;
+  llvm::StringMap<std::function<void(JsonReader &)>> method2notification;
+  llvm::StringMap<std::function<void(JsonReader &, ReplyOnce &)>>
+      method2request;
 
   MessageHandler();
   void Run(InMessage &msg);
   QueryFile *FindFile(const std::string &path, int *out_file_id = nullptr);
 
 private:
-  void Bind(const char *method, void (MessageHandler::*handler)(Reader &));
+  void Bind(const char *method, void (MessageHandler::*handler)(JsonReader &));
   template <typename Param>
   void Bind(const char *method, void (MessageHandler::*handler)(Param &));
   void Bind(const char *method,
-            void (MessageHandler::*handler)(Reader &, ReplyOnce &));
+            void (MessageHandler::*handler)(JsonReader &, ReplyOnce &));
   template <typename Param>
   void Bind(const char *method,
             void (MessageHandler::*handler)(Param &, ReplyOnce &));
 
-  void ccls_call(Reader &, ReplyOnce &);
+  void ccls_call(JsonReader &, ReplyOnce &);
   void ccls_fileInfo(TextDocumentParam &, ReplyOnce &);
   void ccls_info(EmptyParam &, ReplyOnce &);
-  void ccls_inheritance(Reader &, ReplyOnce &);
-  void ccls_member(Reader &, ReplyOnce &);
-  void ccls_navigate(Reader &, ReplyOnce &);
-  void ccls_reload(Reader &);
-  void ccls_vars(Reader &, ReplyOnce &);
+  void ccls_inheritance(JsonReader &, ReplyOnce &);
+  void ccls_member(JsonReader &, ReplyOnce &);
+  void ccls_navigate(JsonReader &, ReplyOnce &);
+  void ccls_reload(JsonReader &);
+  void ccls_vars(JsonReader &, ReplyOnce &);
   void exit(EmptyParam &);
-  void initialize(Reader &, ReplyOnce &);
+  void initialize(JsonReader &, ReplyOnce &);
   void shutdown(EmptyParam &, ReplyOnce &);
   void textDocument_codeAction(CodeActionParam &, ReplyOnce &);
   void textDocument_codeLens(TextDocumentParam &, ReplyOnce &);
@@ -251,7 +259,7 @@ private:
   void textDocument_didSave(TextDocumentParam &);
   void textDocument_documentHighlight(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_documentLink(TextDocumentParam &, ReplyOnce &);
-  void textDocument_documentSymbol(Reader &, ReplyOnce &);
+  void textDocument_documentSymbol(JsonReader &, ReplyOnce &);
   void textDocument_foldingRange(TextDocumentParam &, ReplyOnce &);
   void textDocument_formatting(DocumentFormattingParam &, ReplyOnce &);
   void textDocument_hover(TextDocumentPositionParam &, ReplyOnce &);
@@ -260,14 +268,14 @@ private:
                                      ReplyOnce &);
   void textDocument_rangeFormatting(DocumentRangeFormattingParam &,
                                     ReplyOnce &);
-  void textDocument_references(Reader &, ReplyOnce &);
+  void textDocument_references(JsonReader &, ReplyOnce &);
   void textDocument_rename(RenameParam &, ReplyOnce &);
   void textDocument_signatureHelp(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_typeDefinition(TextDocumentPositionParam &, ReplyOnce &);
   void workspace_didChangeConfiguration(EmptyParam &);
   void workspace_didChangeWatchedFiles(DidChangeWatchedFilesParam &);
   void workspace_didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParam &);
-  void workspace_executeCommand(Reader &, ReplyOnce &);
+  void workspace_executeCommand(JsonReader &, ReplyOnce &);
   void workspace_symbol(WorkspaceSymbolParam &, ReplyOnce &);
 };
 

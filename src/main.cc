@@ -17,7 +17,6 @@ limitations under the License.
 #include "pipeline.hh"
 #include "platform.hh"
 #include "serializer.hh"
-#include "serializers/json.hh"
 #include "test.hh"
 #include "working_files.hh"
 
@@ -29,6 +28,7 @@ limitations under the License.
 #include <llvm/Support/Program.h>
 #include <llvm/Support/Signals.h>
 
+#include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 
 #include <stdio.h>
