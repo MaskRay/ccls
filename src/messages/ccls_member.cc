@@ -281,10 +281,12 @@ void MessageHandler::ccls_member(Reader &reader, ReplyOnce &reply) {
                                             param.levels, param.kind)))
       result.reset();
   } else {
-    QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+    QueryFile *file = FindFile(param.textDocument.uri.GetPath());
     WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-    if (!wf)
+    if (!wf) {
+      reply.NotReady(file);
       return;
+    }
     for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
       switch (sym.kind) {
       case Kind::Func:

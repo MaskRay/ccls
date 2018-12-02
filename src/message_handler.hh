@@ -202,6 +202,7 @@ struct ReplyOnce {
     if (id.Valid())
       pipeline::ReplyError(id, [&](Writer &w) { Reflect(w, err); });
   }
+  void NotReady(bool file);
 };
 
 struct MessageHandler {
@@ -217,8 +218,7 @@ struct MessageHandler {
 
   MessageHandler();
   void Run(InMessage &msg);
-  QueryFile *FindFile(ReplyOnce &reply, const std::string &path,
-                      int *out_file_id = nullptr);
+  QueryFile *FindFile(const std::string &path, int *out_file_id = nullptr);
 
 private:
   void Bind(const char *method, void (MessageHandler::*handler)(Reader &));

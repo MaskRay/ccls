@@ -44,10 +44,13 @@ MAKE_REFLECT_STRUCT(ReferenceParam, textDocument, position, context, folders,
 void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
   ReferenceParam param;
   Reflect(reader, param);
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
   WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!wf)
+  if (!wf) {
+    reply.NotReady(file);
     return;
+  }
+
   for (auto &folder : param.folders)
     EnsureEndsInSlash(folder);
   std::vector<uint8_t> file_set = db->GetFileSet(param.folders);
