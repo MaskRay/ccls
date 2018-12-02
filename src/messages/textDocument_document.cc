@@ -32,10 +32,12 @@ MAKE_REFLECT_STRUCT(DocumentHighlight, range, kind, role);
 void MessageHandler::textDocument_documentHighlight(
     TextDocumentPositionParam &param, ReplyOnce &reply) {
   int file_id;
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath(), &file_id);
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath(), &file_id);
   WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!wf)
+  if (!wf) {
+    reply.NotReady(file);
     return;
+  }
 
   std::vector<DocumentHighlight> result;
   std::vector<SymbolRef> syms =
@@ -76,10 +78,10 @@ MAKE_REFLECT_STRUCT(DocumentLink, range, target);
 
 void MessageHandler::textDocument_documentLink(TextDocumentParam &param,
                                                ReplyOnce &reply) {
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
   WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
   if (!wf) {
-    reply.Error(ErrorCode::InternalError, "not opened");
+    reply.NotReady(file);
     return;
   }
 
@@ -151,10 +153,12 @@ void MessageHandler::textDocument_documentSymbol(Reader &reader,
   Reflect(reader, param);
 
   int file_id;
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath(), &file_id);
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath(), &file_id);
   WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!wf)
+  if (!wf) {
+    reply.NotReady(file);
     return;
+  }
 
   if (param.startLine >= 0) {
     std::vector<lsRange> result;

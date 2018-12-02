@@ -31,19 +31,19 @@ MAKE_REFLECT_STRUCT(FoldingRange, startLine, startCharacter, endLine,
 
 void MessageHandler::textDocument_foldingRange(TextDocumentParam &param,
                                                ReplyOnce &reply) {
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
-  if (!file)
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
+  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  if (!wf) {
+    reply.NotReady(file);
     return;
-  WorkingFile *wfile = wfiles->GetFile(file->def->path);
-  if (!wfile)
-    return;
+  }
   std::vector<FoldingRange> result;
   std::optional<lsRange> ls_range;
 
   for (auto [sym, refcnt] : file->symbol2refcnt)
     if (refcnt > 0 && sym.extent.Valid() &&
         (sym.kind == Kind::Func || sym.kind == Kind::Type) &&
-        (ls_range = GetLsRange(wfile, sym.extent))) {
+        (ls_range = GetLsRange(wf, sym.extent))) {
       FoldingRange &fold = result.emplace_back();
       fold.startLine = ls_range->start.line;
       fold.startCharacter = ls_range->start.character;

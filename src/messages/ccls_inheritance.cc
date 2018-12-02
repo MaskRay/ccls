@@ -134,7 +134,7 @@ void Inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
           Expand(m, &*result, param.derived, param.qualified, param.levels)))
       result.reset();
   } else {
-    QueryFile *file = m->FindFile(reply, param.textDocument.uri.GetPath());
+    QueryFile *file = m->FindFile(param.textDocument.uri.GetPath());
     if (!file)
       return;
     WorkingFile *wf = m->wfiles->GetFile(file->def->path);

@@ -36,10 +36,12 @@ std::vector<DeclRef> GetNonDefDeclarationTargets(DB *db, SymbolRef sym) {
 void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
                                              ReplyOnce &reply) {
   int file_id;
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath(), &file_id);
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath(), &file_id);
   WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!wf)
+  if (!wf) {
+    reply.NotReady(file);
     return;
+  }
 
   std::vector<Location> result;
   Maybe<Use> on_def;
@@ -157,10 +159,12 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
 
 void MessageHandler::textDocument_typeDefinition(
     TextDocumentPositionParam &param, ReplyOnce &reply) {
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
-  if (!file)
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
+  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  if (!file) {
+    reply.NotReady(file);
     return;
-  WorkingFile *working_file = wfiles->GetFile(file->def->path);
+  }
 
   std::vector<Location> result;
   auto Add = [&](const QueryType &type) {
@@ -174,8 +178,7 @@ void MessageHandler::textDocument_typeDefinition(
         if (auto ls_loc = GetLsLocation(db, wfiles, dr))
           result.push_back(*ls_loc);
   };
-  for (SymbolRef sym :
-       FindSymbolsAtLocation(working_file, file, param.position)) {
+  for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
     switch (sym.kind) {
     case Kind::Var: {
       const QueryVar::Def *def = db->GetVar(sym).AnyDef();
