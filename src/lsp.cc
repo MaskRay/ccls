@@ -16,29 +16,30 @@ limitations under the License.
 #include "lsp.hh"
 
 #include "log.hh"
-#include "serializers/json.hh"
+
+#include <rapidjson/document.h>
 
 #include <algorithm>
 #include <stdio.h>
 
 namespace ccls {
-void Reflect(Reader &visitor, RequestId &value) {
-  if (visitor.IsInt64()) {
-    value.type = RequestId::kInt;
-    value.value = int(visitor.GetInt64());
-  } else if (visitor.IsInt()) {
-    value.type = RequestId::kInt;
-    value.value = visitor.GetInt();
-  } else if (visitor.IsString()) {
-    value.type = RequestId::kString;
-    value.value = atoll(visitor.GetString());
+void Reflect(JsonReader &vis, RequestId &v) {
+  if (vis.m->IsInt64()) {
+    v.type = RequestId::kInt;
+    v.value = int(vis.m->GetInt64());
+  } else if (vis.m->IsInt()) {
+    v.type = RequestId::kInt;
+    v.value = vis.m->GetInt();
+  } else if (vis.m->IsString()) {
+    v.type = RequestId::kString;
+    v.value = atoll(vis.m->GetString());
   } else {
-    value.type = RequestId::kNone;
-    value.value = -1;
+    v.type = RequestId::kNone;
+    v.value = -1;
   }
 }
 
-void Reflect(Writer &visitor, RequestId &value) {
+void Reflect(JsonWriter &visitor, RequestId &value) {
   switch (value.type) {
   case RequestId::kNone:
     visitor.Null();
@@ -48,7 +49,7 @@ void Reflect(Writer &visitor, RequestId &value) {
     break;
   case RequestId::kString:
     auto s = std::to_string(value.value);
-    visitor.String(s.c_str(), s.length());
+    visitor.String(s.c_str(), s.size());
     break;
   }
 }

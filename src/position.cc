@@ -17,6 +17,9 @@ limitations under the License.
 
 #include "serializer.hh"
 
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+
 #include <algorithm>
 #include <limits.h>
 #include <stdio.h>
@@ -69,45 +72,39 @@ std::string Range::ToString() {
   return buf;
 }
 
-// Position
-void Reflect(Reader &visitor, Pos &value) {
-  if (visitor.Format() == SerializeFormat::Json) {
-    value = Pos::FromString(visitor.GetString());
-  } else {
-    Reflect(visitor, value.line);
-    Reflect(visitor, value.column);
-  }
-}
-void Reflect(Writer &visitor, Pos &value) {
-  if (visitor.Format() == SerializeFormat::Json) {
-    std::string output = value.ToString();
-    visitor.String(output.c_str(), output.size());
-  } else {
-    Reflect(visitor, value.line);
-    Reflect(visitor, value.column);
-  }
+void Reflect(JsonReader &vis, Pos &v) { v = Pos::FromString(vis.GetString()); }
+void Reflect(JsonReader &vis, Range &v) {
+  v = Range::FromString(vis.GetString());
 }
 
-// Range
-void Reflect(Reader &visitor, Range &value) {
-  if (visitor.Format() == SerializeFormat::Json) {
-    value = Range::FromString(visitor.GetString());
-  } else {
-    Reflect(visitor, value.start.line);
-    Reflect(visitor, value.start.column);
-    Reflect(visitor, value.end.line);
-    Reflect(visitor, value.end.column);
-  }
+void Reflect(JsonWriter &vis, Pos &v) {
+  std::string output = v.ToString();
+  vis.String(output.c_str(), output.size());
 }
-void Reflect(Writer &visitor, Range &value) {
-  if (visitor.Format() == SerializeFormat::Json) {
-    std::string output = value.ToString();
-    visitor.String(output.c_str(), output.size());
-  } else {
-    Reflect(visitor, value.start.line);
-    Reflect(visitor, value.start.column);
-    Reflect(visitor, value.end.line);
-    Reflect(visitor, value.end.column);
-  }
+void Reflect(JsonWriter &vis, Range &v) {
+  std::string output = v.ToString();
+  vis.String(output.c_str(), output.size());
+}
+
+void Reflect(BinaryReader &visitor, Pos &value) {
+  Reflect(visitor, value.line);
+  Reflect(visitor, value.column);
+}
+void Reflect(BinaryReader &visitor, Range &value) {
+  Reflect(visitor, value.start.line);
+  Reflect(visitor, value.start.column);
+  Reflect(visitor, value.end.line);
+  Reflect(visitor, value.end.column);
+}
+
+void Reflect(BinaryWriter &vis, Pos &v) {
+  Reflect(vis, v.line);
+  Reflect(vis, v.column);
+}
+void Reflect(BinaryWriter &vis, Range &v) {
+  Reflect(vis, v.start.line);
+  Reflect(vis, v.start.column);
+  Reflect(vis, v.end.line);
+  Reflect(vis, v.end.column);
 }
 } // namespace ccls

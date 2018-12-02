@@ -200,8 +200,9 @@ struct MessageHandler {
   CompletionManager *clang_complete = nullptr;
   IncludeComplete *include_complete = nullptr;
 
-  llvm::StringMap<std::function<void(Reader &)>> method2notification;
-  llvm::StringMap<std::function<void(Reader &, ReplyOnce &)>> method2request;
+  llvm::StringMap<std::function<void(JsonReader &)>> method2notification;
+  llvm::StringMap<std::function<void(JsonReader &, ReplyOnce &)>>
+      method2request;
 
   MessageHandler();
   void Run(InMessage &msg);
@@ -209,25 +210,25 @@ struct MessageHandler {
                       int *out_file_id = nullptr);
 
 private:
-  void Bind(const char *method, void (MessageHandler::*handler)(Reader &));
+  void Bind(const char *method, void (MessageHandler::*handler)(JsonReader &));
   template <typename Param>
   void Bind(const char *method, void (MessageHandler::*handler)(Param &));
   void Bind(const char *method,
-            void (MessageHandler::*handler)(Reader &, ReplyOnce &));
+            void (MessageHandler::*handler)(JsonReader &, ReplyOnce &));
   template <typename Param>
   void Bind(const char *method,
             void (MessageHandler::*handler)(Param &, ReplyOnce &));
 
-  void ccls_call(Reader &, ReplyOnce &);
+  void ccls_call(JsonReader &, ReplyOnce &);
   void ccls_fileInfo(TextDocumentParam &, ReplyOnce &);
   void ccls_info(EmptyParam &, ReplyOnce &);
-  void ccls_inheritance(Reader &, ReplyOnce &);
-  void ccls_member(Reader &, ReplyOnce &);
-  void ccls_navigate(Reader &, ReplyOnce &);
-  void ccls_reload(Reader &);
-  void ccls_vars(Reader &, ReplyOnce &);
+  void ccls_inheritance(JsonReader &, ReplyOnce &);
+  void ccls_member(JsonReader &, ReplyOnce &);
+  void ccls_navigate(JsonReader &, ReplyOnce &);
+  void ccls_reload(JsonReader &);
+  void ccls_vars(JsonReader &, ReplyOnce &);
   void exit(EmptyParam &);
-  void initialize(Reader &, ReplyOnce &);
+  void initialize(JsonReader &, ReplyOnce &);
   void shutdown(EmptyParam &, ReplyOnce &);
   void textDocument_codeAction(CodeActionParam &, ReplyOnce &);
   void textDocument_codeLens(TextDocumentParam &, ReplyOnce &);
@@ -239,7 +240,7 @@ private:
   void textDocument_didSave(TextDocumentParam &);
   void textDocument_documentHighlight(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_documentLink(TextDocumentParam &, ReplyOnce &);
-  void textDocument_documentSymbol(Reader &, ReplyOnce &);
+  void textDocument_documentSymbol(JsonReader &, ReplyOnce &);
   void textDocument_foldingRange(TextDocumentParam &, ReplyOnce &);
   void textDocument_formatting(DocumentFormattingParam &, ReplyOnce &);
   void textDocument_hover(TextDocumentPositionParam &, ReplyOnce &);
@@ -248,14 +249,14 @@ private:
                                      ReplyOnce &);
   void textDocument_rangeFormatting(DocumentRangeFormattingParam &,
                                     ReplyOnce &);
-  void textDocument_references(Reader &, ReplyOnce &);
+  void textDocument_references(JsonReader &, ReplyOnce &);
   void textDocument_rename(RenameParam &, ReplyOnce &);
   void textDocument_signatureHelp(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_typeDefinition(TextDocumentPositionParam &, ReplyOnce &);
   void workspace_didChangeConfiguration(EmptyParam &);
   void workspace_didChangeWatchedFiles(DidChangeWatchedFilesParam &);
   void workspace_didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParam &);
-  void workspace_executeCommand(Reader &, ReplyOnce &);
+  void workspace_executeCommand(JsonReader &, ReplyOnce &);
   void workspace_symbol(WorkspaceSymbolParam &, ReplyOnce &);
 };
 

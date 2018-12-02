@@ -25,7 +25,6 @@ limitations under the License.
 #include "project.hh"
 #include "query.hh"
 #include "sema_manager.hh"
-#include "serializers/json.hh"
 
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
@@ -49,7 +48,7 @@ struct PublishDiagnosticParam {
   DocumentUri uri;
   std::vector<Diagnostic> diagnostics;
 };
-MAKE_REFLECT_STRUCT(PublishDiagnosticParam, uri, diagnostics);
+REFLECT_STRUCT(PublishDiagnosticParam, uri, diagnostics);
 } // namespace
 
 void VFS::Clear() {
@@ -457,8 +456,8 @@ void LaunchStdin() {
       assert(!document->HasParseError());
 
       JsonReader reader{document.get()};
-      if (!reader.HasMember("jsonrpc") ||
-          std::string(reader["jsonrpc"]->GetString()) != "2.0")
+      if (!reader.m->HasMember("jsonrpc") ||
+          std::string((*reader.m)["jsonrpc"].GetString()) != "2.0")
         return;
       RequestId id;
       std::string method;
@@ -610,7 +609,7 @@ std::optional<std::string> LoadIndexedContent(const std::string &path) {
   return ReadContent(GetCachePath(path));
 }
 
-void Notify(const char *method, const std::function<void(Writer &)> &fn) {
+void Notify(const char *method, const std::function<void(JsonWriter &)> &fn) {
   rapidjson::StringBuffer output;
   rapidjson::Writer<rapidjson::StringBuffer> w(output);
   w.StartObject();
@@ -626,7 +625,7 @@ void Notify(const char *method, const std::function<void(Writer &)> &fn) {
 }
 
 static void Reply(RequestId id, const char *key,
-                  const std::function<void(Writer &)> &fn) {
+                  const std::function<void(JsonWriter &)> &fn) {
   rapidjson::StringBuffer output;
   rapidjson::Writer<rapidjson::StringBuffer> w(output);
   w.StartObject();
@@ -652,11 +651,11 @@ static void Reply(RequestId id, const char *key,
   for_stdout->PushBack(output.GetString());
 }
 
-void Reply(RequestId id, const std::function<void(Writer &)> &fn) {
+void Reply(RequestId id, const std::function<void(JsonWriter &)> &fn) {
   Reply(id, "result", fn);
 }
 
-void ReplyError(RequestId id, const std::function<void(Writer &)> &fn) {
+void ReplyError(RequestId id, const std::function<void(JsonWriter &)> &fn) {
   Reply(id, "error", fn);
 }
 } // namespace pipeline

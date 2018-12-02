@@ -36,12 +36,13 @@ struct ReferenceParam : public TextDocumentPositionParam {
   // Include references with all |Role| bits set.
   Role role = Role::None;
 };
-MAKE_REFLECT_STRUCT(ReferenceParam::Context, includeDeclaration);
-MAKE_REFLECT_STRUCT(ReferenceParam, textDocument, position, context, folders,
-                    base, excludeRole, role);
+REFLECT_STRUCT(ReferenceParam::Context, includeDeclaration);
+REFLECT_STRUCT(ReferenceParam, textDocument, position, context, folders, base,
+               excludeRole, role);
 } // namespace
 
-void MessageHandler::textDocument_references(Reader &reader, ReplyOnce &reply) {
+void MessageHandler::textDocument_references(JsonReader &reader,
+                                             ReplyOnce &reply) {
   ReferenceParam param;
   Reflect(reader, param);
   QueryFile *file = FindFile(param.textDocument.uri.GetPath());

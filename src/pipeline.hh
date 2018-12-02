@@ -51,16 +51,16 @@ void Index(const std::string &path, const std::vector<const char *> &args,
 
 std::optional<std::string> LoadIndexedContent(const std::string& path);
 
-void Notify(const char *method, const std::function<void(Writer &)> &fn);
+void Notify(const char *method, const std::function<void(JsonWriter &)> &fn);
 template <typename T> void Notify(const char *method, T &result) {
-  Notify(method, [&](Writer &w) { Reflect(w, result); });
+  Notify(method, [&](JsonWriter &w) { Reflect(w, result); });
 }
 
-void Reply(RequestId id, const std::function<void(Writer &)> &fn);
+void Reply(RequestId id, const std::function<void(JsonWriter &)> &fn);
 
-void ReplyError(RequestId id, const std::function<void(Writer &)> &fn);
+void ReplyError(RequestId id, const std::function<void(JsonWriter &)> &fn);
 template <typename T> void ReplyError(RequestId id, T &result) {
-  ReplyError(id, [&](Writer &w) { Reflect(w, result); });
+  ReplyError(id, [&](JsonWriter &w) { Reflect(w, result); });
 }
 } // namespace pipeline
 } // namespace ccls

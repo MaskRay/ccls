@@ -259,28 +259,28 @@ struct Config {
     int maxNum = 2000;
   } xref;
 };
-MAKE_REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, pathMappings,
+REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, pathMappings,
                     resourceDir);
-MAKE_REFLECT_STRUCT(Config::ClientCapability, hierarchicalDocumentSymbolSupport,
+REFLECT_STRUCT(Config::ClientCapability, hierarchicalDocumentSymbolSupport,
                     snippetSupport);
-MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
-MAKE_REFLECT_STRUCT(Config::Completion::Include, blacklist, maxPathSize,
+REFLECT_STRUCT(Config::CodeLens, localVariables);
+REFLECT_STRUCT(Config::Completion::Include, blacklist, maxPathSize,
                     suffixWhitelist, whitelist);
-MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
+REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
                     dropOldRequests, duplicateOptional, filterAndSort, include,
                     maxNum);
-MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
+REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
                     spellChecking, whitelist)
-MAKE_REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist,
+REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist,
                     whitelist)
-MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, initialBlacklist,
+REFLECT_STRUCT(Config::Index, blacklist, comments, initialBlacklist,
                     initialWhitelist, multiVersion, multiVersionBlacklist,
                     multiVersionWhitelist, onChange, threads, trackDependency,
                     whitelist);
-MAKE_REFLECT_STRUCT(Config::Session, maxNum);
-MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
-MAKE_REFLECT_STRUCT(Config::Xref, maxNum);
-MAKE_REFLECT_STRUCT(Config, compilationDatabaseCommand,
+REFLECT_STRUCT(Config::Session, maxNum);
+REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
+REFLECT_STRUCT(Config::Xref, maxNum);
+REFLECT_STRUCT(Config, compilationDatabaseCommand,
                     compilationDatabaseDirectory, cacheDirectory, cacheFormat,
                     clang, client, codeLens, completion, diagnostics, highlight,
                     index, session, workspaceSymbol, xref);

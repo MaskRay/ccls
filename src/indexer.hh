@@ -46,7 +46,7 @@ using Usr = uint64_t;
 // The order matters. In FindSymbolsAtLocation, we want Var/Func ordered in
 // front of others.
 enum class Kind : uint8_t { Invalid, File, Type, Func, Var };
-MAKE_REFLECT_TYPE_PROXY(Kind);
+REFLECT_UNDERLYING_B(Kind);
 
 enum class Role : uint16_t {
   None = 0,
@@ -61,7 +61,7 @@ enum class Role : uint16_t {
   Implicit = 1 << 8,
   All = (1 << 9) - 1,
 };
-MAKE_REFLECT_TYPE_PROXY(Role);
+REFLECT_UNDERLYING_B(Role);
 inline uint16_t operator&(Role lhs, Role rhs) {
   return uint16_t(lhs) & uint16_t(rhs);
 }
@@ -130,12 +130,18 @@ struct DeclRef : Use {
   Range extent;
 };
 
-void Reflect(Reader &visitor, SymbolRef &value);
-void Reflect(Writer &visitor, SymbolRef &value);
-void Reflect(Reader &visitor, Use &value);
-void Reflect(Writer &visitor, Use &value);
-void Reflect(Reader &visitor, DeclRef &value);
-void Reflect(Writer &visitor, DeclRef &value);
+void Reflect(JsonReader &visitor, SymbolRef &value);
+void Reflect(JsonReader &visitor, Use &value);
+void Reflect(JsonReader &visitor, DeclRef &value);
+void Reflect(JsonWriter &visitor, SymbolRef &value);
+void Reflect(JsonWriter &visitor, Use &value);
+void Reflect(JsonWriter &visitor, DeclRef &value);
+void Reflect(BinaryReader &visitor, SymbolRef &value);
+void Reflect(BinaryReader &visitor, Use &value);
+void Reflect(BinaryReader &visitor, DeclRef &value);
+void Reflect(BinaryWriter &visitor, SymbolRef &value);
+void Reflect(BinaryWriter &visitor, Use &value);
+void Reflect(BinaryWriter &visitor, DeclRef &value);
 
 template <typename D> struct NameMixin {
   std::string_view Name(bool qualified) const {
@@ -174,7 +180,7 @@ struct FuncDef : NameMixin<FuncDef> {
 
   std::vector<Usr> GetBases() const { return bases; }
 };
-MAKE_REFLECT_STRUCT(FuncDef, detailed_name, hover, comments, spell, bases, vars,
+REFLECT_STRUCT(FuncDef, detailed_name, hover, comments, spell, bases, vars,
                     callees, qual_name_offset, short_name_offset,
                     short_name_size, kind, parent_kind, storage);
 
@@ -211,7 +217,7 @@ struct TypeDef : NameMixin<TypeDef> {
 
   std::vector<Usr> GetBases() const { return bases; }
 };
-MAKE_REFLECT_STRUCT(TypeDef, detailed_name, hover, comments, spell, bases,
+REFLECT_STRUCT(TypeDef, detailed_name, hover, comments, spell, bases,
                     funcs, types, vars, alias_of, qual_name_offset,
                     short_name_offset, short_name_size, kind, parent_kind);
 
@@ -255,7 +261,7 @@ struct VarDef : NameMixin<VarDef> {
 
   std::vector<Usr> GetBases() const { return {}; }
 };
-MAKE_REFLECT_STRUCT(VarDef, detailed_name, hover, comments, spell, type,
+REFLECT_STRUCT(VarDef, detailed_name, hover, comments, spell, type,
                     qual_name_offset, short_name_offset, short_name_size, kind,
                     parent_kind, storage);
 
