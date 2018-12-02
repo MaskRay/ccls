@@ -449,12 +449,14 @@ public:
 void MessageHandler::textDocument_completion(CompletionParam &param,
                                              ReplyOnce &reply) {
   static CompleteConsumerCache<std::vector<CompletionItem>> cache;
-  CompletionList result;
   std::string path = param.textDocument.uri.GetPath();
   WorkingFile *file = wfiles->GetFile(path);
   if (!file) {
+    reply.NotReady(true);
     return;
   }
+
+  CompletionList result;
 
   // It shouldn't be possible, but sometimes vscode will send queries out
   // of order, ie, we get completion request before buffer content update.
