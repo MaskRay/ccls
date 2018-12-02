@@ -36,10 +36,9 @@ struct SignatureHelp {
   int activeSignature = 0;
   int activeParameter = 0;
 };
-MAKE_REFLECT_STRUCT(ParameterInformation, label);
-MAKE_REFLECT_STRUCT(SignatureInformation, label, documentation, parameters);
-MAKE_REFLECT_STRUCT(SignatureHelp, signatures, activeSignature,
-                    activeParameter);
+REFLECT_STRUCT(ParameterInformation, label);
+REFLECT_STRUCT(SignatureInformation, label, documentation, parameters);
+REFLECT_STRUCT(SignatureHelp, signatures, activeSignature, activeParameter);
 
 std::string BuildOptional(const CodeCompletionString &CCS,
                           std::vector<ParameterInformation> &ls_params) {
