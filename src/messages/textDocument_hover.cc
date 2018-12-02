@@ -15,19 +15,19 @@ struct Hover {
   std::optional<lsRange> range;
 };
 
-void Reflect(Writer &vis, MarkedString &v) {
+void Reflect(JsonWriter &vis, MarkedString &v) {
   // If there is a language, emit a `{language:string, value:string}` object. If
   // not, emit a string.
   if (v.language) {
-    REFLECT_MEMBER_START();
+    vis.StartObject();
     REFLECT_MEMBER(language);
     REFLECT_MEMBER(value);
-    REFLECT_MEMBER_END();
+    vis.EndObject();
   } else {
     Reflect(vis, v.value);
   }
 }
-MAKE_REFLECT_STRUCT(Hover, contents, range);
+REFLECT_STRUCT(Hover, contents, range);
 
 const char *LanguageIdentifier(LanguageId lang) {
   switch (lang) {

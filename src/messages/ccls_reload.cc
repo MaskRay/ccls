@@ -17,10 +17,10 @@ struct Param {
   std::vector<std::string> whitelist;
   std::vector<std::string> blacklist;
 };
-MAKE_REFLECT_STRUCT(Param, dependencies, whitelist, blacklist);
+REFLECT_STRUCT(Param, dependencies, whitelist, blacklist);
 } // namespace
 
-void MessageHandler::ccls_reload(Reader &reader) {
+void MessageHandler::ccls_reload(JsonReader &reader) {
   Param param;
   Reflect(reader, param);
     // Send index requests for every file.

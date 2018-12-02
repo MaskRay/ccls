@@ -8,6 +8,7 @@
 #include <llvm/Support/Compiler.h>
 
 #include <macro_map.h>
+#include <rapidjson/fwd.h>
 
 #include <cassert>
 #include <functional>
@@ -28,159 +29,208 @@ enum class SerializeFormat { Binary, Json };
 
 struct JsonNull {};
 
-class Reader {
-public:
-  virtual ~Reader();
-  virtual SerializeFormat Format() const = 0;
+struct JsonReader {
+  rapidjson::Value *m;
+  std::vector<const char *> path_;
 
-  virtual bool IsBool() = 0;
-  virtual bool IsNull() = 0;
-  virtual bool IsInt() = 0;
-  virtual bool IsInt64() = 0;
-  virtual bool IsUInt64() = 0;
-  virtual bool IsDouble() = 0;
-  virtual bool IsString() = 0;
-
-  virtual void GetNull() = 0;
-  virtual bool GetBool() = 0;
-  virtual uint8_t GetUInt8() = 0;
-  virtual int GetInt() = 0;
-  virtual uint32_t GetUInt32() = 0;
-  virtual int64_t GetInt64() = 0;
-  virtual uint64_t GetUInt64() = 0;
-  virtual double GetDouble() = 0;
-  virtual const char *GetString() = 0;
-
-  virtual bool HasMember(const char *x) = 0;
-  virtual std::unique_ptr<Reader> operator[](const char *x) = 0;
-
-  virtual void IterArray(std::function<void(Reader &)> fn) = 0;
-  virtual void Member(const char *name, std::function<void()> fn) = 0;
+  JsonReader(rapidjson::Value *m) : m(m) {}
+  void StartObject() {}
+  void EndObject() {}
+  void IterArray(std::function<void()> fn);
+  void Member(const char *name, std::function<void()> fn);
+  bool IsNull();
+  std::string GetString();
+  std::string GetPath() const;
 };
 
-class Writer {
-public:
-  virtual ~Writer();
-  virtual SerializeFormat Format() const = 0;
+struct JsonWriter {
+  using W =
+      rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<char>,
+                        rapidjson::UTF8<char>, rapidjson::CrtAllocator, 0>;
 
-  virtual void Null() = 0;
-  virtual void Bool(bool x) = 0;
-  virtual void Int(int x) = 0;
-  virtual void Int64(int64_t x) = 0;
-  virtual void UInt8(uint8_t x) = 0;
-  virtual void UInt32(uint32_t x) = 0;
-  virtual void UInt64(uint64_t x) = 0;
-  virtual void Double(double x) = 0;
-  virtual void String(const char *x) = 0;
-  virtual void String(const char *x, size_t len) = 0;
-  virtual void StartArray(size_t) = 0;
-  virtual void EndArray() = 0;
-  virtual void StartObject() = 0;
-  virtual void EndObject() = 0;
-  virtual void Key(const char *name) = 0;
+  W *m;
+
+  JsonWriter(W *m) : m(m) {}
+  void StartArray();
+  void EndArray();
+  void StartObject();
+  void EndObject();
+  void Key(const char *name);
+  void Null();
+  void Int(int v);
+  void String(const char *s);
+  void String(const char *s, size_t len);
+};
+
+struct BinaryReader {
+  const char *p_;
+
+  BinaryReader(std::string_view buf) : p_(buf.data()) {}
+  template <typename T> T Get() {
+    T ret;
+    memcpy(&ret, p_, sizeof(T));
+    p_ += sizeof(T);
+    return ret;
+  }
+  uint64_t VarUInt() {
+    auto x = *reinterpret_cast<const uint8_t *>(p_++);
+    if (x < 253)
+      return x;
+    if (x == 253)
+      return Get<uint16_t>();
+    if (x == 254)
+      return Get<uint32_t>();
+    return Get<uint64_t>();
+  }
+  int64_t VarInt() {
+    uint64_t x = VarUInt();
+    return int64_t(x >> 1 ^ -(x & 1));
+  }
+  const char *GetString() {
+    const char *ret = p_;
+    while (*p_)
+      p_++;
+    p_++;
+    return ret;
+  }
+};
+
+struct BinaryWriter {
+  std::string buf_;
+
+  template <typename T> void Pack(T x) {
+    auto i = buf_.size();
+    buf_.resize(i + sizeof(x));
+    memcpy(buf_.data() + i, &x, sizeof(x));
+  }
+
+  void VarUInt(uint64_t n) {
+    if (n < 253)
+      Pack<uint8_t>(n);
+    else if (n < 65536) {
+      Pack<uint8_t>(253);
+      Pack<uint16_t>(n);
+    } else if (n < 4294967296) {
+      Pack<uint8_t>(254);
+      Pack<uint32_t>(n);
+    } else {
+      Pack<uint8_t>(255);
+      Pack<uint64_t>(n);
+    }
+  }
+  void VarInt(int64_t n) { VarUInt(uint64_t(n) << 1 ^ n >> 63); }
+  std::string Take() { return std::move(buf_); }
+
+  void String(const char *x) { String(x, strlen(x)); }
+  void String(const char *x, size_t len) {
+    auto i = buf_.size();
+    buf_.resize(i + len + 1);
+    memcpy(buf_.data() + i, x, len);
+  }
 };
 
 struct IndexFile;
 
-#define REFLECT_MEMBER_START() ReflectMemberStart(vis)
-#define REFLECT_MEMBER_END() ReflectMemberEnd(vis);
 #define REFLECT_MEMBER(name) ReflectMember(vis, #name, v.name)
 #define REFLECT_MEMBER2(name, v) ReflectMember(vis, name, v)
 
-#define MAKE_REFLECT_TYPE_PROXY(type_name)                                     \
-  MAKE_REFLECT_TYPE_PROXY2(type_name, std::underlying_type_t<type_name>)
-#define MAKE_REFLECT_TYPE_PROXY2(type, as_type)                                \
-  LLVM_ATTRIBUTE_UNUSED inline void Reflect(Reader &vis, type &v) {    \
-    as_type value0;                                                            \
-    ::ccls::Reflect(vis, value0);                                          \
-    v = static_cast<type>(value0);                                         \
+#define REFLECT_UNDERLYING(T)                                                  \
+  LLVM_ATTRIBUTE_UNUSED inline void Reflect(JsonReader &vis, T &v) {           \
+    std::underlying_type_t<T> v0;                                              \
+    ::ccls::Reflect(vis, v0);                                                  \
+    v = static_cast<T>(v0);                                                    \
   }                                                                            \
-  LLVM_ATTRIBUTE_UNUSED inline void Reflect(Writer &vis, type &v) {    \
-    auto value0 = static_cast<as_type>(v);                                 \
-    ::ccls::Reflect(vis, value0);                                          \
+  LLVM_ATTRIBUTE_UNUSED inline void Reflect(JsonWriter &vis, T &v) {           \
+    auto v0 = static_cast<std::underlying_type_t<T>>(v);                       \
+    ::ccls::Reflect(vis, v0);                                                  \
+  }
+
+#define REFLECT_UNDERLYING_B(T)                                                \
+  REFLECT_UNDERLYING(T)                                                        \
+  LLVM_ATTRIBUTE_UNUSED inline void Reflect(BinaryReader &vis, T &v) {         \
+    std::underlying_type_t<T> v0;                                              \
+    ::ccls::Reflect(vis, v0);                                                  \
+    v = static_cast<T>(v0);                                                    \
+  }                                                                            \
+  LLVM_ATTRIBUTE_UNUSED inline void Reflect(BinaryWriter &vis, T &v) {         \
+    auto v0 = static_cast<std::underlying_type_t<T>>(v);                       \
+    ::ccls::Reflect(vis, v0);                                                  \
   }
 
 #define _MAPPABLE_REFLECT_MEMBER(name) REFLECT_MEMBER(name);
 
-#define MAKE_REFLECT_EMPTY_STRUCT(type, ...)                                   \
-  template <typename TVisitor> void Reflect(TVisitor &vis, type &v) {  \
-    REFLECT_MEMBER_START();                                                    \
-    REFLECT_MEMBER_END();                                                      \
-  }
-
-#define MAKE_REFLECT_STRUCT(type, ...)                                         \
-  template <typename TVisitor> void Reflect(TVisitor &vis, type &v) {  \
-    REFLECT_MEMBER_START();                                                    \
+#define REFLECT_STRUCT(type, ...)                                              \
+  template <typename Vis> void Reflect(Vis &vis, type &v) {                    \
+    ReflectMemberStart(vis);                                                   \
     MACRO_MAP(_MAPPABLE_REFLECT_MEMBER, __VA_ARGS__)                           \
-    REFLECT_MEMBER_END();                                                      \
+    ReflectMemberEnd(vis);                                                     \
   }
-
-// clang-format off
-// Config has many fields, we need to support at least its number of fields.
-#define NUM_VA_ARGS_IMPL(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,N,...) N
-#define NUM_VA_ARGS(...) NUM_VA_ARGS_IMPL(__VA_ARGS__,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1)
-// clang-format on
 
 #define _MAPPABLE_REFLECT_ARRAY(name) Reflect(vis, v.name);
 
-// Reflects the struct so it is serialized as an array instead of an object.
-// This currently only supports writers.
-#define MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(type, ...)                         \
-  inline void Reflect(Writer &vis, type &v) {                                  \
-    vis.StartArray(NUM_VA_ARGS(__VA_ARGS__));                                  \
-    MACRO_MAP(_MAPPABLE_REFLECT_ARRAY, __VA_ARGS__)                            \
-    vis.EndArray();                                                            \
-  }
+void Reflect(JsonReader &vis, bool &v);
+void Reflect(JsonReader &vis, unsigned char &v);
+void Reflect(JsonReader &vis, short &v);
+void Reflect(JsonReader &vis, unsigned short &v);
+void Reflect(JsonReader &vis, int &v);
+void Reflect(JsonReader &vis, unsigned &v);
+void Reflect(JsonReader &vis, long &v);
+void Reflect(JsonReader &vis, unsigned long &v);
+void Reflect(JsonReader &vis, long long &v);
+void Reflect(JsonReader &vis, unsigned long long &v);
+void Reflect(JsonReader &vis, double &v);
+void Reflect(JsonReader &vis, const char *&v);
+void Reflect(JsonReader &vis, std::string &v);
 
-//// Elementary types
+void Reflect(JsonWriter &vis, bool &v);
+void Reflect(JsonWriter &vis, unsigned char &v);
+void Reflect(JsonWriter &vis, short &v);
+void Reflect(JsonWriter &vis, unsigned short &v);
+void Reflect(JsonWriter &vis, int &v);
+void Reflect(JsonWriter &vis, unsigned &v);
+void Reflect(JsonWriter &vis, long &v);
+void Reflect(JsonWriter &vis, unsigned long &v);
+void Reflect(JsonWriter &vis, long long &v);
+void Reflect(JsonWriter &vis, unsigned long long &v);
+void Reflect(JsonWriter &vis, double &v);
+void Reflect(JsonWriter &vis, const char *&v);
+void Reflect(JsonWriter &vis, std::string &v);
 
-void Reflect(Reader &vis, uint8_t &v);
-void Reflect(Writer &vis, uint8_t &v);
+void Reflect(BinaryReader &vis, bool &v);
+void Reflect(BinaryReader &vis, unsigned char &v);
+void Reflect(BinaryReader &vis, short &v);
+void Reflect(BinaryReader &vis, unsigned short &v);
+void Reflect(BinaryReader &vis, int &v);
+void Reflect(BinaryReader &vis, unsigned &v);
+void Reflect(BinaryReader &vis, long &v);
+void Reflect(BinaryReader &vis, unsigned long &v);
+void Reflect(BinaryReader &vis, long long &v);
+void Reflect(BinaryReader &vis, unsigned long long &v);
+void Reflect(BinaryReader &vis, double &v);
+void Reflect(BinaryReader &vis, const char *&v);
+void Reflect(BinaryReader &vis, std::string &v);
 
-void Reflect(Reader &vis, short &v);
-void Reflect(Writer &vis, short &v);
+void Reflect(BinaryWriter &vis, bool &v);
+void Reflect(BinaryWriter &vis, unsigned char &v);
+void Reflect(BinaryWriter &vis, short &v);
+void Reflect(BinaryWriter &vis, unsigned short &v);
+void Reflect(BinaryWriter &vis, int &v);
+void Reflect(BinaryWriter &vis, unsigned &v);
+void Reflect(BinaryWriter &vis, long &v);
+void Reflect(BinaryWriter &vis, unsigned long &v);
+void Reflect(BinaryWriter &vis, long long &v);
+void Reflect(BinaryWriter &vis, unsigned long long &v);
+void Reflect(BinaryWriter &vis, double &v);
+void Reflect(BinaryWriter &vis, const char *&v);
+void Reflect(BinaryWriter &vis, std::string &v);
 
-void Reflect(Reader &vis, unsigned short &v);
-void Reflect(Writer &vis, unsigned short &v);
+void Reflect(JsonReader &vis, JsonNull &v);
+void Reflect(JsonWriter &vis, JsonNull &v);
 
-void Reflect(Reader &vis, int &v);
-void Reflect(Writer &vis, int &v);
+void Reflect(JsonReader &vis, SerializeFormat &v);
+void Reflect(JsonWriter &vis, SerializeFormat &v);
 
-void Reflect(Reader &vis, unsigned &v);
-void Reflect(Writer &vis, unsigned &v);
-
-void Reflect(Reader &vis, long &v);
-void Reflect(Writer &vis, long &v);
-
-void Reflect(Reader &vis, unsigned long &v);
-void Reflect(Writer &vis, unsigned long &v);
-
-void Reflect(Reader &vis, long long &v);
-void Reflect(Writer &vis, long long &v);
-
-void Reflect(Reader &vis, unsigned long long &v);
-void Reflect(Writer &vis, unsigned long long &v);
-
-void Reflect(Reader &vis, double &v);
-void Reflect(Writer &vis, double &v);
-
-void Reflect(Reader &vis, bool &v);
-void Reflect(Writer &vis, bool &v);
-
-void Reflect(Reader &vis, std::string &v);
-void Reflect(Writer &vis, std::string &v);
-
-void Reflect(Reader &vis, std::string_view &v);
-void Reflect(Writer &vis, std::string_view &v);
-
-void Reflect(Reader &vis, const char *&v);
-void Reflect(Writer &vis, const char *&v);
-
-void Reflect(Reader &vis, JsonNull &v);
-void Reflect(Writer &vis, JsonNull &v);
-
-void Reflect(Reader &vis, SerializeFormat &v);
-void Reflect(Writer &vis, SerializeFormat &v);
+void Reflect(JsonWriter &vis, std::string_view &v);
 
 //// Type constructors
 
@@ -188,107 +238,152 @@ void Reflect(Writer &vis, SerializeFormat &v);
 // properties (in `key: value` context). Reflect std::optional<T> is used for a
 // different purpose, whether an object is nullable (possibly in `value`
 // context).
-template <typename T> void Reflect(Reader &vis, std::optional<T> &v) {
-  if (vis.IsNull()) {
-    vis.GetNull();
-    return;
-  }
-  T val;
-  Reflect(vis, val);
-  v = std::move(val);
-}
-template <typename T> void Reflect(Writer &vis, std::optional<T> &v) {
-  if (v) {
-    if (vis.Format() != SerializeFormat::Json)
-      vis.UInt8(1);
+template <typename T> void Reflect(JsonReader &vis, std::optional<T> &v) {
+  if (!vis.IsNull()) {
+    v.emplace();
     Reflect(vis, *v);
-  } else
+  }
+}
+template <typename T> void Reflect(JsonWriter &vis, std::optional<T> &v) {
+  if (v)
+    Reflect(vis, *v);
+  else
     vis.Null();
+}
+template <typename T> void Reflect(BinaryReader &vis, std::optional<T> &v) {
+  if (*vis.p_++) {
+    v.emplace();
+    Reflect(vis, *v);
+  }
+}
+template <typename T> void Reflect(BinaryWriter &vis, std::optional<T> &v) {
+  if (v) {
+    vis.Pack<unsigned char>(1);
+    Reflect(vis, *v);
+  } else {
+    vis.Pack<unsigned char>(0);
+  }
 }
 
 // The same as std::optional
-template <typename T> void Reflect(Reader &vis, Maybe<T> &v) {
-  if (vis.IsNull()) {
-    vis.GetNull();
-    return;
-  }
-  T val;
-  Reflect(vis, val);
-  v = std::move(val);
-}
-template <typename T> void Reflect(Writer &vis, Maybe<T> &v) {
-  if (v) {
-    if (vis.Format() != SerializeFormat::Json)
-      vis.UInt8(1);
+template <typename T> void Reflect(JsonReader &vis, Maybe<T> &v) {
+  if (!vis.IsNull())
     Reflect(vis, *v);
-  } else
+}
+template <typename T> void Reflect(JsonWriter &vis, Maybe<T> &v) {
+  if (v)
+    Reflect(vis, *v);
+  else
     vis.Null();
+}
+template <typename T> void Reflect(BinaryReader &vis, Maybe<T> &v) {
+  if (*vis.p_++)
+    Reflect(vis, *v);
+}
+template <typename T> void Reflect(BinaryWriter &vis, Maybe<T> &v) {
+  if (v) {
+    vis.Pack<unsigned char>(1);
+    Reflect(vis, *v);
+  } else {
+    vis.Pack<unsigned char>(0);
+  }
 }
 
 template <typename T>
-void ReflectMember(Writer &vis, const char *name, std::optional<T> &v) {
+void ReflectMember(JsonWriter &vis, const char *name, std::optional<T> &v) {
   // For TypeScript std::optional property key?: value in the spec,
   // We omit both key and value if value is std::nullopt (null) for JsonWriter
   // to reduce output. But keep it for other serialization formats.
-  if (v || vis.Format() != SerializeFormat::Json) {
+  if (v) {
     vis.Key(name);
-    Reflect(vis, v);
+    Reflect(vis, *v);
   }
+}
+template <typename T>
+void ReflectMember(BinaryWriter &vis, const char *, std::optional<T> &v) {
+  Reflect(vis, v);
 }
 
 // The same as std::optional
 template <typename T>
-void ReflectMember(Writer &vis, const char *name, Maybe<T> &v) {
-  if (v.Valid() || vis.Format() != SerializeFormat::Json) {
+void ReflectMember(JsonWriter &vis, const char *name, Maybe<T> &v) {
+  if (v.Valid()) {
     vis.Key(name);
     Reflect(vis, v);
   }
 }
+template <typename T>
+void ReflectMember(BinaryWriter &vis, const char *, Maybe<T> &v) {
+  Reflect(vis, v);
+}
 
 template <typename L, typename R>
-void Reflect(Reader &vis, std::pair<L, R> &v) {
+void Reflect(JsonReader &vis, std::pair<L, R> &v) {
   vis.Member("L", [&]() { Reflect(vis, v.first); });
   vis.Member("R", [&]() { Reflect(vis, v.second); });
 }
 template <typename L, typename R>
-void Reflect(Writer &vis, std::pair<L, R> &v) {
+void Reflect(JsonWriter &vis, std::pair<L, R> &v) {
   vis.StartObject();
   ReflectMember(vis, "L", v.first);
   ReflectMember(vis, "R", v.second);
   vis.EndObject();
 }
+template <typename L, typename R>
+void Reflect(BinaryReader &vis, std::pair<L, R> &v) {
+  Reflect(vis, v.first);
+  Reflect(vis, v.second);
+}
+template <typename L, typename R>
+void Reflect(BinaryWriter &vis, std::pair<L, R> &v) {
+  Reflect(vis, v.first);
+  Reflect(vis, v.second);
+}
 
 // std::vector
-template <typename T> void Reflect(Reader &vis, std::vector<T> &vs) {
-  vis.IterArray([&](Reader &entry) {
-    T entry_value;
-    Reflect(entry, entry_value);
-    vs.push_back(std::move(entry_value));
+template <typename T> void Reflect(JsonReader &vis, std::vector<T> &v) {
+  vis.IterArray([&]() {
+    v.emplace_back();
+    Reflect(vis, v.back());
   });
 }
-template <typename T> void Reflect(Writer &vis, std::vector<T> &vs) {
-  vis.StartArray(vs.size());
-  for (auto &v : vs)
-    Reflect(vis, v);
+template <typename T> void Reflect(JsonWriter &vis, std::vector<T> &v) {
+  vis.StartArray();
+  for (auto &it : v)
+    Reflect(vis, it);
   vis.EndArray();
+}
+template <typename T> void Reflect(BinaryReader &vis, std::vector<T> &v) {
+  for (auto n = vis.VarUInt(); n; n--) {
+    v.emplace_back();
+    Reflect(vis, v.back());
+  }
+}
+template <typename T> void Reflect(BinaryWriter &vis, std::vector<T> &v) {
+  vis.VarUInt(v.size());
+  for (auto &it : v)
+    Reflect(vis, it);
 }
 
 // ReflectMember
 
-inline bool ReflectMemberStart(Reader &vis) { return false; }
-inline bool ReflectMemberStart(Writer &vis) {
-  vis.StartObject();
-  return true;
-}
+template <typename T> void ReflectMemberStart(T &) {}
+inline void ReflectMemberStart(JsonWriter &vis) { vis.StartObject(); }
 
-inline void ReflectMemberEnd(Reader &vis) {}
-inline void ReflectMemberEnd(Writer &vis) { vis.EndObject(); }
+template <typename T> void ReflectMemberEnd(T &) {}
+inline void ReflectMemberEnd(JsonWriter &vis) { vis.EndObject(); }
 
-template <typename T> void ReflectMember(Reader &vis, const char *name, T &v) {
+template <typename T> void ReflectMember(JsonReader &vis, const char *name, T &v) {
   vis.Member(name, [&]() { Reflect(vis, v); });
 }
-template <typename T> void ReflectMember(Writer &vis, const char *name, T &v) {
+template <typename T> void ReflectMember(JsonWriter &vis, const char *name, T &v) {
   vis.Key(name);
+  Reflect(vis, v);
+}
+template <typename T> void ReflectMember(BinaryReader &vis, const char *, T &v) {
+  Reflect(vis, v);
+}
+template <typename T> void ReflectMember(BinaryWriter &vis, const char *, T &v) {
   Reflect(vis, v);
 }
 

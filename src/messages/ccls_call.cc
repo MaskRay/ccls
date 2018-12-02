@@ -18,7 +18,7 @@ enum class CallType : uint8_t {
   Derived = 2,
   All = 1 | 2
 };
-MAKE_REFLECT_TYPE_PROXY(CallType);
+REFLECT_UNDERLYING(CallType);
 
 bool operator&(CallType lhs, CallType rhs) {
   return uint8_t(lhs) & uint8_t(rhs);
@@ -40,8 +40,8 @@ struct Param : TextDocumentPositionParam {
   int levels = 1;
   bool hierarchy = false;
 };
-MAKE_REFLECT_STRUCT(Param, textDocument, position, id, callee, callType,
-                    qualified, levels, hierarchy);
+REFLECT_STRUCT(Param, textDocument, position, id, callee, callType, qualified,
+               levels, hierarchy);
 
 struct Out_cclsCall {
   Usr usr;
@@ -57,8 +57,8 @@ struct Out_cclsCall {
   }
   bool operator<(const Out_cclsCall &o) const { return location < o.location; }
 };
-MAKE_REFLECT_STRUCT(Out_cclsCall, id, name, location, callType, numChildren,
-                    children);
+REFLECT_STRUCT(Out_cclsCall, id, name, location, callType, numChildren,
+               children);
 
 bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
             CallType call_type, bool qualified, int levels) {
@@ -170,7 +170,7 @@ std::optional<Out_cclsCall> BuildInitial(MessageHandler *m, Usr root_usr,
 }
 } // namespace
 
-void MessageHandler::ccls_call(Reader &reader, ReplyOnce &reply) {
+void MessageHandler::ccls_call(JsonReader &reader, ReplyOnce &reply) {
   Param param;
   Reflect(reader, param);
   std::optional<Out_cclsCall> result;

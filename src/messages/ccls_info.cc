@@ -19,8 +19,8 @@ limitations under the License.
 #include "query.hh"
 
 namespace ccls {
-MAKE_REFLECT_STRUCT(QueryFile::Def, path, args, language, skipped_ranges,
-                    dependencies);
+REFLECT_STRUCT(QueryFile::Def, path, args, language, skipped_ranges,
+               dependencies);
 
 namespace {
 struct Out_cclsInfo {
@@ -34,10 +34,10 @@ struct Out_cclsInfo {
     int entries;
   } project;
 };
-MAKE_REFLECT_STRUCT(Out_cclsInfo::DB, files, funcs, types, vars);
-MAKE_REFLECT_STRUCT(Out_cclsInfo::Pipeline, pendingIndexRequests);
-MAKE_REFLECT_STRUCT(Out_cclsInfo::Project, entries);
-MAKE_REFLECT_STRUCT(Out_cclsInfo, db, pipeline, project);
+REFLECT_STRUCT(Out_cclsInfo::DB, files, funcs, types, vars);
+REFLECT_STRUCT(Out_cclsInfo::Pipeline, pendingIndexRequests);
+REFLECT_STRUCT(Out_cclsInfo::Project, entries);
+REFLECT_STRUCT(Out_cclsInfo, db, pipeline, project);
 } // namespace
 
 void MessageHandler::ccls_info(EmptyParam &, ReplyOnce &reply) {

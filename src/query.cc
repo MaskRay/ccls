@@ -6,7 +6,8 @@
 #include "indexer.hh"
 #include "pipeline.hh"
 #include "serializer.hh"
-#include "serializers/json.hh"
+
+#include <rapidjson/document.h>
 
 #include <assert.h>
 #include <stdint.h>

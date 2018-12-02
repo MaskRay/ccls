@@ -51,12 +51,19 @@ struct Range {
 };
 
 // Reflection
-class Reader;
-class Writer;
-void Reflect(Reader &visitor, Pos &value);
-void Reflect(Writer &visitor, Pos &value);
-void Reflect(Reader &visitor, Range &value);
-void Reflect(Writer &visitor, Range &value);
+struct JsonReader;
+struct JsonWriter;
+struct BinaryReader;
+struct BinaryWriter;
+
+void Reflect(JsonReader &visitor, Pos &value);
+void Reflect(JsonReader &visitor, Range &value);
+void Reflect(JsonWriter &visitor, Pos &value);
+void Reflect(JsonWriter &visitor, Range &value);
+void Reflect(BinaryReader &visitor, Pos &value);
+void Reflect(BinaryReader &visitor, Range &value);
+void Reflect(BinaryWriter &visitor, Pos &value);
+void Reflect(BinaryWriter &visitor, Range &value);
 } // namespace ccls
 
 namespace std {
