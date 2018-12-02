@@ -25,10 +25,10 @@ struct Param : TextDocumentPositionParam {
   // 4: parameter
   unsigned kind = ~0u;
 };
-MAKE_REFLECT_STRUCT(Param, textDocument, position, kind);
+REFLECT_STRUCT(Param, textDocument, position, kind);
 } // namespace
 
-void MessageHandler::ccls_vars(Reader &reader, ReplyOnce &reply) {
+void MessageHandler::ccls_vars(JsonReader &reader, ReplyOnce &reply) {
   Param param;
   Reflect(reader, param);
   QueryFile *file = FindFile(param.textDocument.uri.GetPath());

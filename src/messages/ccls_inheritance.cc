@@ -36,8 +36,8 @@ struct Param : TextDocumentPositionParam {
   bool hierarchy = false;
 };
 
-MAKE_REFLECT_STRUCT(Param, textDocument, position, id, kind, derived, qualified,
-                    levels, hierarchy);
+REFLECT_STRUCT(Param, textDocument, position, id, kind, derived, qualified,
+               levels, hierarchy);
 
 struct Out_cclsInheritance {
   Usr usr;
@@ -51,8 +51,8 @@ struct Out_cclsInheritance {
   // Empty if the |levels| limit is reached.
   std::vector<Out_cclsInheritance> children;
 };
-MAKE_REFLECT_STRUCT(Out_cclsInheritance, id, kind, name, location, numChildren,
-                    children);
+REFLECT_STRUCT(Out_cclsInheritance, id, kind, name, location, numChildren,
+               children);
 
 bool Expand(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
             bool qualified, int levels);
@@ -165,7 +165,7 @@ void Inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
 }
 } // namespace
 
-void MessageHandler::ccls_inheritance(Reader &reader, ReplyOnce &reply) {
+void MessageHandler::ccls_inheritance(JsonReader &reader, ReplyOnce &reply) {
   Param param;
   Reflect(reader, param);
   Inheritance(this, param, reply);
