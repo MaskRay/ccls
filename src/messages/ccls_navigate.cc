@@ -23,7 +23,7 @@ struct Param {
   Position position;
   std::string direction;
 };
-MAKE_REFLECT_STRUCT(Param, textDocument, position, direction);
+REFLECT_STRUCT(Param, textDocument, position, direction);
 
 Maybe<Range> FindParent(QueryFile *file, Pos pos) {
   Maybe<Range> parent;
@@ -38,8 +38,7 @@ Maybe<Range> FindParent(QueryFile *file, Pos pos) {
 }
 } // namespace
 
-void MessageHandler::ccls_navigate(Reader &reader,
-                                   ReplyOnce &reply) {
+void MessageHandler::ccls_navigate(JsonReader &reader, ReplyOnce &reply) {
   Param param;
   Reflect(reader, param);
   QueryFile *file = FindFile(param.textDocument.uri.GetPath());

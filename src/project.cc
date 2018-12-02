@@ -20,7 +20,6 @@ limitations under the License.
 #include "log.hh"
 #include "pipeline.hh"
 #include "platform.hh"
-#include "serializers/json.hh"
 #include "utils.hh"
 #include "working_files.hh"
 

@@ -20,7 +20,6 @@ limitations under the License.
 #include "pipeline.hh"
 #include "platform.hh"
 #include "sema_manager.hh"
-#include "serializer.hh"
 
 #include <clang/AST/AST.h>
 #include <clang/Frontend/FrontendAction.h>
@@ -1185,7 +1184,7 @@ public:
 } // namespace
 
 const int IndexFile::kMajorVersion = 19;
-const int IndexFile::kMinorVersion = 0;
+const int IndexFile::kMinorVersion = 1;
 
 IndexFile::IndexFile(llvm::sys::fs::UniqueID UniqueID, const std::string &path,
                      const std::string &contents)
@@ -1377,90 +1376,85 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
 }
 } // namespace idx
 
-void Reflect(Reader &vis, SymbolRef &v) {
-  if (vis.Format() == SerializeFormat::Json) {
-    std::string t = vis.GetString();
-    char *s = const_cast<char *>(t.c_str());
-    v.range = Range::FromString(s);
-    s = strchr(s, '|');
-    v.usr = strtoull(s + 1, &s, 10);
-    v.kind = static_cast<Kind>(strtol(s + 1, &s, 10));
-    v.role = static_cast<Role>(strtol(s + 1, &s, 10));
-  } else {
-    Reflect(vis, v.range);
-    Reflect(vis, v.usr);
-    Reflect(vis, v.kind);
-    Reflect(vis, v.role);
-  }
+void Reflect(JsonReader &vis, SymbolRef &v) {
+  std::string t = vis.GetString();
+  char *s = const_cast<char *>(t.c_str());
+  v.range = Range::FromString(s);
+  s = strchr(s, '|');
+  v.usr = strtoull(s + 1, &s, 10);
+  v.kind = static_cast<Kind>(strtol(s + 1, &s, 10));
+  v.role = static_cast<Role>(strtol(s + 1, &s, 10));
 }
-void Reflect(Writer &vis, SymbolRef &v) {
-  if (vis.Format() == SerializeFormat::Json) {
-    char buf[99];
-    snprintf(buf, sizeof buf, "%s|%" PRIu64 "|%d|%d",
-             v.range.ToString().c_str(), v.usr, int(v.kind), int(v.role));
-    std::string s(buf);
-    Reflect(vis, s);
-  } else {
-    Reflect(vis, v.range);
-    Reflect(vis, v.usr);
-    Reflect(vis, v.kind);
-    Reflect(vis, v.role);
-  }
+void Reflect(JsonReader &vis, Use &v) {
+  std::string t = vis.GetString();
+  char *s = const_cast<char *>(t.c_str());
+  v.range = Range::FromString(s);
+  s = strchr(s, '|');
+  v.role = static_cast<Role>(strtol(s + 1, &s, 10));
+  v.file_id = static_cast<int>(strtol(s + 1, &s, 10));
+}
+void Reflect(JsonReader &vis, DeclRef &v) {
+  std::string t = vis.GetString();
+  char *s = const_cast<char *>(t.c_str());
+  v.range = Range::FromString(s);
+  s = strchr(s, '|') + 1;
+  v.extent = Range::FromString(s);
+  s = strchr(s, '|');
+  v.role = static_cast<Role>(strtol(s + 1, &s, 10));
+  v.file_id = static_cast<int>(strtol(s + 1, &s, 10));
 }
 
-void Reflect(Reader &vis, Use &v) {
-  if (vis.Format() == SerializeFormat::Json) {
-    std::string t = vis.GetString();
-    char *s = const_cast<char *>(t.c_str());
-    v.range = Range::FromString(s);
-    s = strchr(s, '|');
-    v.role = static_cast<Role>(strtol(s + 1, &s, 10));
-    v.file_id = static_cast<int>(strtol(s + 1, &s, 10));
-  } else {
-    Reflect(vis, v.range);
-    Reflect(vis, v.role);
-    Reflect(vis, v.file_id);
-  }
+void Reflect(JsonWriter &vis, SymbolRef &v) {
+  char buf[99];
+  snprintf(buf, sizeof buf, "%s|%" PRIu64 "|%d|%d", v.range.ToString().c_str(),
+           v.usr, int(v.kind), int(v.role));
+  std::string s(buf);
+  Reflect(vis, s);
 }
-void Reflect(Writer &vis, Use &v) {
-  if (vis.Format() == SerializeFormat::Json) {
-    char buf[99];
-    snprintf(buf, sizeof buf, "%s|%d|%d", v.range.ToString().c_str(),
-             int(v.role), v.file_id);
-    std::string s(buf);
-    Reflect(vis, s);
-  } else {
-    Reflect(vis, v.range);
-    Reflect(vis, v.role);
-    Reflect(vis, v.file_id);
-  }
+void Reflect(JsonWriter &vis, Use &v) {
+  char buf[99];
+  snprintf(buf, sizeof buf, "%s|%d|%d", v.range.ToString().c_str(), int(v.role),
+           v.file_id);
+  std::string s(buf);
+  Reflect(vis, s);
+}
+void Reflect(JsonWriter &vis, DeclRef &v) {
+  char buf[99];
+  snprintf(buf, sizeof buf, "%s|%s|%d|%d", v.range.ToString().c_str(),
+           v.extent.ToString().c_str(), int(v.role), v.file_id);
+  std::string s(buf);
+  Reflect(vis, s);
 }
 
-void Reflect(Reader &vis, DeclRef &v) {
-  if (vis.Format() == SerializeFormat::Json) {
-    std::string t = vis.GetString();
-    char *s = const_cast<char *>(t.c_str());
-    v.range = Range::FromString(s);
-    s = strchr(s, '|') + 1;
-    v.extent = Range::FromString(s);
-    s = strchr(s, '|');
-    v.role = static_cast<Role>(strtol(s + 1, &s, 10));
-    v.file_id = static_cast<int>(strtol(s + 1, &s, 10));
-  } else {
-    Reflect(vis, static_cast<Use &>(v));
-    Reflect(vis, v.extent);
-  }
+void Reflect(BinaryReader &vis, SymbolRef &v) {
+  Reflect(vis, v.range);
+  Reflect(vis, v.usr);
+  Reflect(vis, v.kind);
+  Reflect(vis, v.role);
 }
-void Reflect(Writer &vis, DeclRef &v) {
-  if (vis.Format() == SerializeFormat::Json) {
-    char buf[99];
-    snprintf(buf, sizeof buf, "%s|%s|%d|%d", v.range.ToString().c_str(),
-             v.extent.ToString().c_str(), int(v.role), v.file_id);
-    std::string s(buf);
-    Reflect(vis, s);
-  } else {
-    Reflect(vis, static_cast<Use &>(v));
-    Reflect(vis, v.extent);
-  }
+void Reflect(BinaryReader &vis, Use &v) {
+  Reflect(vis, v.range);
+  Reflect(vis, v.role);
+  Reflect(vis, v.file_id);
+}
+void Reflect(BinaryReader &vis, DeclRef &v) {
+  Reflect(vis, static_cast<Use &>(v));
+  Reflect(vis, v.extent);
+}
+
+void Reflect(BinaryWriter &vis, SymbolRef &v) {
+  Reflect(vis, v.range);
+  Reflect(vis, v.usr);
+  Reflect(vis, v.kind);
+  Reflect(vis, v.role);
+}
+void Reflect(BinaryWriter &vis, Use &v) {
+  Reflect(vis, v.range);
+  Reflect(vis, v.role);
+  Reflect(vis, v.file_id);
+}
+void Reflect(BinaryWriter &vis, DeclRef &v) {
+  Reflect(vis, static_cast<Use &>(v));
+  Reflect(vis, v.extent);
 }
 } // namespace ccls
