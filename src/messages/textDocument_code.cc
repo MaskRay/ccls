@@ -22,8 +22,10 @@ MAKE_REFLECT_STRUCT(CodeAction, title, kind, edit);
 void MessageHandler::textDocument_codeAction(CodeActionParam &param,
                                              ReplyOnce &reply) {
   WorkingFile *wf = wfiles->GetFile(param.textDocument.uri.GetPath());
-  if (!wf)
+  if (!wf) {
+    reply.NotReady(true);
     return;
+  }
   std::vector<CodeAction> result;
   std::vector<Diagnostic> diagnostics;
   wfiles->WithLock([&]() { diagnostics = wf->diagnostics; });
@@ -80,15 +82,14 @@ struct CommonCodeLensParams {
 
 void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
                                            ReplyOnce &reply) {
-  std::vector<CodeLens> result;
-  std::string path = param.textDocument.uri.GetPath();
-
-  QueryFile *file = FindFile(reply, path);
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
   WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
   if (!wf) {
+    reply.NotReady(file);
     return;
   }
 
+  std::vector<CodeLens> result;
   auto Add = [&](const char *singular, Cmd_xref show, Range range, int num,
                  bool force_display = false) {
     if (!num && !force_display)

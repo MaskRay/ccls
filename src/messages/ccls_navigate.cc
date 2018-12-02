@@ -30,10 +30,12 @@ void MessageHandler::ccls_navigate(Reader &reader,
                                    ReplyOnce &reply) {
   Param param;
   Reflect(reader, param);
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
   WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!wf)
+  if (!wf) {
+    reply.NotReady(file);
     return;
+  }
   Position ls_pos = param.position;
   if (wf->index_lines.size())
     if (auto line =

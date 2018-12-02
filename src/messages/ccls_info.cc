@@ -42,7 +42,7 @@ void MessageHandler::ccls_info(EmptyParam &, ReplyOnce &reply) {
 }
 
 void MessageHandler::ccls_fileInfo(TextDocumentParam &param, ReplyOnce &reply) {
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
   if (!file)
     return;
 

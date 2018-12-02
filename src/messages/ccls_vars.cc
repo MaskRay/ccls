@@ -19,10 +19,12 @@ MAKE_REFLECT_STRUCT(Param, textDocument, position, kind);
 void MessageHandler::ccls_vars(Reader &reader, ReplyOnce &reply) {
   Param param;
   Reflect(reader, param);
-  QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
   WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!wf)
+  if (!wf) {
+    reply.NotReady(file);
     return;
+  }
 
   std::vector<Location> result;
   for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {

@@ -188,7 +188,7 @@ void MessageHandler::ccls_call(Reader &reader, ReplyOnce &reply) {
       Expand(this, &*result, param.callee, param.callType, param.qualified,
              param.levels);
   } else {
-    QueryFile *file = FindFile(reply, param.textDocument.uri.GetPath());
+    QueryFile *file = FindFile(param.textDocument.uri.GetPath());
     WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
     if (!wf)
       return;
