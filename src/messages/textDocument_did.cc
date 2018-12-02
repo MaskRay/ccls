@@ -44,8 +44,7 @@ void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
           pipeline::LoadIndexedContent(path))
     wf->SetIndexContent(*cached_file_contents);
 
-  ReplyOnce reply;
-  QueryFile *file = FindFile(reply, path);
+  QueryFile *file = FindFile(path);
   if (file) {
     EmitSkippedRanges(wf, *file);
     EmitSemanticHighlight(db, wf, *file);

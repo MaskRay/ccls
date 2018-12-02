@@ -98,7 +98,8 @@ BuildCompilerInvocation(std::vector<const char *> args,
   std::string save = "-resource-dir=" + g_config->clang.resourceDir;
   args.push_back(save.c_str());
   IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
-      CompilerInstance::createDiagnostics(new DiagnosticOptions));
+      CompilerInstance::createDiagnostics(new DiagnosticOptions,
+                                          new IgnoringDiagConsumer, true));
   std::unique_ptr<CompilerInvocation> CI =
       createInvocationFromCommandLine(args, Diags, VFS);
   if (CI) {
