@@ -10,7 +10,7 @@
 MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
 
 namespace ccls {
-MAKE_REFLECT_STRUCT(SymbolInformation, name, kind, location, containerName);
+REFLECT_STRUCT(SymbolInformation, name, kind, location, containerName);
 
 namespace {
 struct DocumentHighlight {
@@ -26,7 +26,7 @@ struct DocumentHighlight {
     return !(range == o.range) ? range < o.range : kind < o.kind;
   }
 };
-MAKE_REFLECT_STRUCT(DocumentHighlight, range, kind, role);
+REFLECT_STRUCT(DocumentHighlight, range, kind, role);
 } // namespace
 
 void MessageHandler::textDocument_documentHighlight(
@@ -73,7 +73,7 @@ struct DocumentLink {
   lsRange range;
   DocumentUri target;
 };
-MAKE_REFLECT_STRUCT(DocumentLink, range, target);
+REFLECT_STRUCT(DocumentLink, range, target);
 } // namespace
 
 void MessageHandler::textDocument_documentLink(TextDocumentParam &param,
@@ -106,7 +106,7 @@ struct DocumentSymbolParam : TextDocumentParam {
   int startLine = -1;
   int endLine = -1;
 };
-MAKE_REFLECT_STRUCT(DocumentSymbolParam, textDocument, all, startLine, endLine);
+REFLECT_STRUCT(DocumentSymbolParam, textDocument, all, startLine, endLine);
 
 struct DocumentSymbol {
   std::string name;
@@ -116,10 +116,10 @@ struct DocumentSymbol {
   lsRange selectionRange;
   std::vector<std::unique_ptr<DocumentSymbol>> children;
 };
-void Reflect(Writer &vis, std::unique_ptr<DocumentSymbol> &v);
-MAKE_REFLECT_STRUCT(DocumentSymbol, name, detail, kind, range, selectionRange,
-                    children);
-void Reflect(Writer &vis, std::unique_ptr<DocumentSymbol> &v) {
+void Reflect(JsonWriter &vis, std::unique_ptr<DocumentSymbol> &v);
+REFLECT_STRUCT(DocumentSymbol, name, detail, kind, range, selectionRange,
+               children);
+void Reflect(JsonWriter &vis, std::unique_ptr<DocumentSymbol> &v) {
   Reflect(vis, *v);
 }
 
@@ -147,7 +147,7 @@ void Uniquify(std::vector<std::unique_ptr<DocumentSymbol>> &cs) {
 }
 } // namespace
 
-void MessageHandler::textDocument_documentSymbol(Reader &reader,
+void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
                                                  ReplyOnce &reply) {
   DocumentSymbolParam param;
   Reflect(reader, param);

@@ -20,11 +20,11 @@ namespace ccls {
 using namespace clang;
 using namespace llvm;
 
-MAKE_REFLECT_TYPE_PROXY(InsertTextFormat);
-MAKE_REFLECT_TYPE_PROXY(CompletionItemKind);
+REFLECT_UNDERLYING(InsertTextFormat);
+REFLECT_UNDERLYING(CompletionItemKind);
 
-void Reflect(Writer &vis, CompletionItem &v) {
-  REFLECT_MEMBER_START();
+void Reflect(JsonWriter &vis, CompletionItem &v) {
+  ReflectMemberStart(vis);
   REFLECT_MEMBER(label);
   REFLECT_MEMBER(kind);
   REFLECT_MEMBER(detail);
@@ -37,7 +37,7 @@ void Reflect(Writer &vis, CompletionItem &v) {
   REFLECT_MEMBER(textEdit);
   if (v.additionalTextEdits.size())
     REFLECT_MEMBER(additionalTextEdits);
-  REFLECT_MEMBER_END();
+  ReflectMemberEnd(vis);
 }
 
 namespace {
@@ -45,7 +45,7 @@ struct CompletionList {
   bool isIncomplete = false;
   std::vector<CompletionItem> items;
 };
-MAKE_REFLECT_STRUCT(CompletionList, isIncomplete, items);
+REFLECT_STRUCT(CompletionList, isIncomplete, items);
 
 #if LLVM_VERSION_MAJOR < 8
 void DecorateIncludePaths(const std::smatch &match,

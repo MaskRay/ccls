@@ -4,9 +4,11 @@
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "query.hh"
-#include "serializers/json.hh"
 
 #include <llvm/Support/FormatVariadic.h>
+
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
 
 #include <unordered_set>
 
@@ -17,7 +19,7 @@ struct CodeAction {
   const char *kind = "quickfix";
   WorkspaceEdit edit;
 };
-MAKE_REFLECT_STRUCT(CodeAction, title, kind, edit);
+REFLECT_STRUCT(CodeAction, title, kind, edit);
 }
 void MessageHandler::textDocument_codeAction(CodeActionParam &param,
                                              ReplyOnce &reply) {
@@ -60,9 +62,9 @@ struct CodeLens {
   lsRange range;
   std::optional<Command> command;
 };
-MAKE_REFLECT_STRUCT(Cmd_xref, usr, kind, field);
-MAKE_REFLECT_STRUCT(Command, title, command, arguments);
-MAKE_REFLECT_STRUCT(CodeLens, range, command);
+REFLECT_STRUCT(Cmd_xref, usr, kind, field);
+REFLECT_STRUCT(Command, title, command, arguments);
+REFLECT_STRUCT(CodeLens, range, command);
 
 template <typename T>
 std::string ToString(T &v) {
@@ -162,7 +164,7 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
   reply(result);
 }
 
-void MessageHandler::workspace_executeCommand(Reader &reader,
+void MessageHandler::workspace_executeCommand(JsonReader &reader,
                                               ReplyOnce &reply) {
   Command param;
   Reflect(reader, param);

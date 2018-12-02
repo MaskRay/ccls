@@ -13,8 +13,8 @@ struct FoldingRange {
   int startLine, startCharacter, endLine, endCharacter;
   std::string kind = "region";
 };
-MAKE_REFLECT_STRUCT(FoldingRange, startLine, startCharacter, endLine,
-                    endCharacter, kind);
+REFLECT_STRUCT(FoldingRange, startLine, startCharacter, endLine, endCharacter,
+               kind);
 } // namespace
 
 void MessageHandler::textDocument_foldingRange(TextDocumentParam &param,

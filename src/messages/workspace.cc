@@ -18,7 +18,7 @@
 #include <limits.h>
 
 namespace ccls {
-MAKE_REFLECT_STRUCT(SymbolInformation, name, kind, location, containerName);
+REFLECT_STRUCT(SymbolInformation, name, kind, location, containerName);
 
 void MessageHandler::workspace_didChangeConfiguration(EmptyParam &) {
   for (const std::string &folder : g_config->workspaceFolders)

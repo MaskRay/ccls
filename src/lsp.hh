@@ -23,8 +23,8 @@ struct RequestId {
 
   bool Valid() const { return type != kNone; }
 };
-void Reflect(Reader &visitor, RequestId &value);
-void Reflect(Writer &visitor, RequestId &value);
+void Reflect(JsonReader &visitor, RequestId &value);
+void Reflect(JsonWriter &visitor, RequestId &value);
 
 struct InMessage {
   RequestId id;
@@ -67,11 +67,6 @@ struct DocumentUri {
 
   std::string raw_uri;
 };
-
-template <typename TVisitor>
-void Reflect(TVisitor &visitor, DocumentUri &value) {
-  Reflect(visitor, value.raw_uri);
-}
 
 struct Position {
   int line = 0;
@@ -208,7 +203,7 @@ struct WorkspaceFolder {
 };
 
 enum class MessageType : int { Error = 1, Warning = 2, Info = 3, Log = 4 };
-MAKE_REFLECT_TYPE_PROXY(MessageType)
+REFLECT_UNDERLYING(MessageType)
 
 struct Diagnostic {
   lsRange range;

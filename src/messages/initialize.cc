@@ -9,11 +9,13 @@
 #include "pipeline.hh"
 #include "platform.hh"
 #include "project.hh"
-#include "serializers/json.hh"
 #include "working_files.hh"
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
+
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
 
 #include <stdlib.h>
 #include <stdexcept>
@@ -27,7 +29,7 @@ extern std::string g_init_options;
 
 namespace {
 enum class TextDocumentSyncKind { None = 0, Full = 1, Incremental = 2 };
-MAKE_REFLECT_TYPE_PROXY(TextDocumentSyncKind)
+REFLECT_UNDERLYING(TextDocumentSyncKind)
 
 struct ServerCap {
   struct SaveOptions {
@@ -92,37 +94,36 @@ struct ServerCap {
     } workspaceFolders;
   } workspace;
 };
-MAKE_REFLECT_STRUCT(ServerCap::CodeActionOptions, codeActionKinds);
-MAKE_REFLECT_STRUCT(ServerCap::CodeLensOptions, resolveProvider);
-MAKE_REFLECT_STRUCT(ServerCap::CompletionOptions, resolveProvider,
-                    triggerCharacters);
-MAKE_REFLECT_STRUCT(ServerCap::DocumentLinkOptions, resolveProvider);
-MAKE_REFLECT_STRUCT(ServerCap::DocumentOnTypeFormattingOptions,
-                    firstTriggerCharacter, moreTriggerCharacter);
-MAKE_REFLECT_STRUCT(ServerCap::ExecuteCommandOptions, commands);
-MAKE_REFLECT_STRUCT(ServerCap::SaveOptions, includeText);
-MAKE_REFLECT_STRUCT(ServerCap::SignatureHelpOptions, triggerCharacters);
-MAKE_REFLECT_STRUCT(ServerCap::TextDocumentSyncOptions, openClose, change,
-                    willSave, willSaveWaitUntil, save);
-MAKE_REFLECT_STRUCT(ServerCap::Workspace::WorkspaceFolders, supported,
-                    changeNotifications);
-MAKE_REFLECT_STRUCT(ServerCap::Workspace, workspaceFolders);
-MAKE_REFLECT_STRUCT(ServerCap, textDocumentSync, hoverProvider,
-                    completionProvider, signatureHelpProvider,
-                    definitionProvider, implementationProvider,
-                    typeDefinitionProvider, referencesProvider,
-                    documentHighlightProvider, documentSymbolProvider,
-                    workspaceSymbolProvider, codeActionProvider,
-                    codeLensProvider, documentFormattingProvider,
-                    documentRangeFormattingProvider,
-                    documentOnTypeFormattingProvider, renameProvider,
-                    documentLinkProvider, foldingRangeProvider,
-                    executeCommandProvider, workspace);
+REFLECT_STRUCT(ServerCap::CodeActionOptions, codeActionKinds);
+REFLECT_STRUCT(ServerCap::CodeLensOptions, resolveProvider);
+REFLECT_STRUCT(ServerCap::CompletionOptions, resolveProvider,
+               triggerCharacters);
+REFLECT_STRUCT(ServerCap::DocumentLinkOptions, resolveProvider);
+REFLECT_STRUCT(ServerCap::DocumentOnTypeFormattingOptions,
+               firstTriggerCharacter, moreTriggerCharacter);
+REFLECT_STRUCT(ServerCap::ExecuteCommandOptions, commands);
+REFLECT_STRUCT(ServerCap::SaveOptions, includeText);
+REFLECT_STRUCT(ServerCap::SignatureHelpOptions, triggerCharacters);
+REFLECT_STRUCT(ServerCap::TextDocumentSyncOptions, openClose, change, willSave,
+               willSaveWaitUntil, save);
+REFLECT_STRUCT(ServerCap::Workspace::WorkspaceFolders, supported,
+               changeNotifications);
+REFLECT_STRUCT(ServerCap::Workspace, workspaceFolders);
+REFLECT_STRUCT(ServerCap, textDocumentSync, hoverProvider, completionProvider,
+               signatureHelpProvider, definitionProvider,
+               implementationProvider, typeDefinitionProvider,
+               referencesProvider, documentHighlightProvider,
+               documentSymbolProvider, workspaceSymbolProvider,
+               codeActionProvider, codeLensProvider, documentFormattingProvider,
+               documentRangeFormattingProvider,
+               documentOnTypeFormattingProvider, renameProvider,
+               documentLinkProvider, foldingRangeProvider,
+               executeCommandProvider, workspace);
 
 struct DynamicReg {
   bool dynamicRegistration = false;
 };
-MAKE_REFLECT_STRUCT(DynamicReg, dynamicRegistration);
+REFLECT_STRUCT(DynamicReg, dynamicRegistration);
 
 // Workspace specific client capabilities.
 struct WorkspaceClientCap {
@@ -142,10 +143,10 @@ struct WorkspaceClientCap {
   DynamicReg executeCommand;
 };
 
-MAKE_REFLECT_STRUCT(WorkspaceClientCap::WorkspaceEdit, documentChanges);
-MAKE_REFLECT_STRUCT(WorkspaceClientCap, applyEdit, workspaceEdit,
-                    didChangeConfiguration, didChangeWatchedFiles, symbol,
-                    executeCommand);
+REFLECT_STRUCT(WorkspaceClientCap::WorkspaceEdit, documentChanges);
+REFLECT_STRUCT(WorkspaceClientCap, applyEdit, workspaceEdit,
+               didChangeConfiguration, didChangeWatchedFiles, symbol,
+               executeCommand);
 
 // Text document specific client capabilities.
 struct TextDocumentClientCap {
@@ -166,18 +167,18 @@ struct TextDocumentClientCap {
   } documentSymbol;
 };
 
-MAKE_REFLECT_STRUCT(TextDocumentClientCap::Completion::CompletionItem,
-                    snippetSupport);
-MAKE_REFLECT_STRUCT(TextDocumentClientCap::Completion, completionItem);
-MAKE_REFLECT_STRUCT(TextDocumentClientCap::DocumentSymbol,
-                    hierarchicalDocumentSymbolSupport);
-MAKE_REFLECT_STRUCT(TextDocumentClientCap, completion, documentSymbol);
+REFLECT_STRUCT(TextDocumentClientCap::Completion::CompletionItem,
+               snippetSupport);
+REFLECT_STRUCT(TextDocumentClientCap::Completion, completionItem);
+REFLECT_STRUCT(TextDocumentClientCap::DocumentSymbol,
+               hierarchicalDocumentSymbolSupport);
+REFLECT_STRUCT(TextDocumentClientCap, completion, documentSymbol);
 
 struct ClientCap {
   WorkspaceClientCap workspace;
   TextDocumentClientCap textDocument;
 };
-MAKE_REFLECT_STRUCT(ClientCap, workspace, textDocument);
+REFLECT_STRUCT(ClientCap, workspace, textDocument);
 
 struct InitializeParam {
   // The rootUri of the workspace. Is null if no
@@ -199,12 +200,12 @@ struct InitializeParam {
   std::vector<WorkspaceFolder> workspaceFolders;
 };
 
-void Reflect(Reader &reader, InitializeParam::Trace &value) {
-  if (!reader.IsString()) {
+void Reflect(JsonReader &reader, InitializeParam::Trace &value) {
+  if (!reader.m->IsString()) {
     value = InitializeParam::Trace::Off;
     return;
   }
-  std::string v = reader.GetString();
+  std::string v = reader.m->GetString();
   if (v == "off")
     value = InitializeParam::Trace::Off;
   else if (v == "messages")
@@ -213,13 +214,13 @@ void Reflect(Reader &reader, InitializeParam::Trace &value) {
     value = InitializeParam::Trace::Verbose;
 }
 
-MAKE_REFLECT_STRUCT(InitializeParam, rootUri, initializationOptions,
-                    capabilities, trace, workspaceFolders);
+REFLECT_STRUCT(InitializeParam, rootUri, initializationOptions, capabilities,
+               trace, workspaceFolders);
 
 struct InitializeResult {
   ServerCap capabilities;
 };
-MAKE_REFLECT_STRUCT(InitializeResult, capabilities);
+REFLECT_STRUCT(InitializeResult, capabilities);
 
 void *Indexer(void *arg_) {
   MessageHandler *h;
@@ -329,7 +330,7 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
   m->manager->sessions.SetCapacity(g_config->session.maxNum);
 }
 
-void MessageHandler::initialize(Reader &reader, ReplyOnce &reply) {
+void MessageHandler::initialize(JsonReader &reader, ReplyOnce &reply) {
   InitializeParam param;
   Reflect(reader, param);
   if (!param.rootUri) {
