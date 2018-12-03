@@ -264,7 +264,7 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
           auto &entities, auto &p, bool hint_implicit) {
         auto R = entity_usr.try_emplace(usr, entity_usr.size());
         if (R.second)
-          vars.emplace_back().usr = usr;
+          entities.emplace_back().usr = usr;
         auto &entity = entities[R.first->second];
         for (Use &use : p.first) {
           if (hint_implicit && use.role & Role::Implicit) {

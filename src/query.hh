@@ -73,13 +73,9 @@ template <typename Q, typename QDef> struct QueryEntity {
   }
 };
 
-using DeclRefUpdate =
-    std::unordered_map<Usr,
-                       std::pair<std::vector<DeclRef>, std::vector<DeclRef>>>;
-using UseUpdate =
-    std::unordered_map<Usr, std::pair<std::vector<Use>, std::vector<Use>>>;
-using UsrUpdate =
-    std::unordered_map<Usr, std::pair<std::vector<Usr>, std::vector<Usr>>>;
+template <typename T>
+using Update =
+    std::unordered_map<Usr, std::pair<std::vector<T>, std::vector<T>>>;
 
 struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
   Usr usr;
@@ -126,25 +122,25 @@ struct IndexUpdate {
   int funcs_hint;
   std::vector<std::pair<Usr, QueryFunc::Def>> funcs_removed;
   std::vector<std::pair<Usr, QueryFunc::Def>> funcs_def_update;
-  DeclRefUpdate funcs_declarations;
-  UseUpdate funcs_uses;
-  UsrUpdate funcs_derived;
+  Update<DeclRef> funcs_declarations;
+  Update<Use> funcs_uses;
+  Update<Usr> funcs_derived;
 
   // Type updates.
   int types_hint;
   std::vector<std::pair<Usr, QueryType::Def>> types_removed;
   std::vector<std::pair<Usr, QueryType::Def>> types_def_update;
-  DeclRefUpdate types_declarations;
-  UseUpdate types_uses;
-  UsrUpdate types_derived;
-  UsrUpdate types_instances;
+  Update<DeclRef> types_declarations;
+  Update<Use> types_uses;
+  Update<Usr> types_derived;
+  Update<Usr> types_instances;
 
   // Variable updates.
   int vars_hint;
   std::vector<std::pair<Usr, QueryVar::Def>> vars_removed;
   std::vector<std::pair<Usr, QueryVar::Def>> vars_def_update;
-  DeclRefUpdate vars_declarations;
-  UseUpdate vars_uses;
+  Update<DeclRef> vars_declarations;
+  Update<Use> vars_uses;
 };
 
 struct DenseMapInfoForUsr {
