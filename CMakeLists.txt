@@ -211,6 +211,7 @@ target_sources(ccls PRIVATE
   src/messages/ccls_navigate.cc
   src/messages/ccls_reload.cc
   src/messages/ccls_vars.cc
+  src/messages/ccls_dataFlowInto.cc
   src/messages/initialize.cc
   src/messages/textDocument_code.cc
   src/messages/textDocument_completion.cc

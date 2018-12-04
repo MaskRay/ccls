@@ -130,18 +130,34 @@ struct DeclRef : Use {
   Range extent;
 };
 
+struct DataFlow {
+  Usr from;
+  Use use;
+
+  bool operator==(const DataFlow &o) const {
+    return from == o.from && use == o.use;
+  }
+  bool operator<(const DataFlow &o) const {
+    return from != o.from ? from < o.from : use < o.use;
+  }
+};
+
 void Reflect(JsonReader &visitor, SymbolRef &value);
 void Reflect(JsonReader &visitor, Use &value);
 void Reflect(JsonReader &visitor, DeclRef &value);
+void Reflect(JsonReader &visitor, DataFlow &value);
 void Reflect(JsonWriter &visitor, SymbolRef &value);
 void Reflect(JsonWriter &visitor, Use &value);
 void Reflect(JsonWriter &visitor, DeclRef &value);
+void Reflect(JsonWriter &visitor, DataFlow &value);
 void Reflect(BinaryReader &visitor, SymbolRef &value);
 void Reflect(BinaryReader &visitor, Use &value);
 void Reflect(BinaryReader &visitor, DeclRef &value);
+void Reflect(BinaryReader &visitor, DataFlow &value);
 void Reflect(BinaryWriter &visitor, SymbolRef &value);
 void Reflect(BinaryWriter &visitor, Use &value);
 void Reflect(BinaryWriter &visitor, DeclRef &value);
+void Reflect(BinaryWriter &visitor, DataFlow &value);
 
 template <typename D> struct NameMixin {
   std::string_view Name(bool qualified) const {
@@ -191,6 +207,7 @@ struct IndexFunc : NameMixin<IndexFunc> {
   std::vector<DeclRef> declarations;
   std::vector<Usr> derived;
   std::vector<Use> uses;
+  std::vector<DataFlow> data_flow_into_return;
 };
 
 struct TypeDef : NameMixin<TypeDef> {
@@ -271,6 +288,7 @@ struct IndexVar {
   Def def;
   std::vector<DeclRef> declarations;
   std::vector<Use> uses;
+  std::vector<DataFlow> data_flow_into;
 };
 
 struct IndexInclude {
@@ -349,3 +367,4 @@ MAKE_HASHABLE(ccls::SymbolRef, t.range, t.usr, t.kind, t.role);
 MAKE_HASHABLE(ccls::ExtentRef, t.range, t.usr, t.kind, t.role, t.extent);
 MAKE_HASHABLE(ccls::Use, t.range, t.file_id)
 MAKE_HASHABLE(ccls::DeclRef, t.range, t.file_id)
+MAKE_HASHABLE(ccls::DataFlow, t.from, t.use)

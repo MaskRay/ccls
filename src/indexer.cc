@@ -22,6 +22,7 @@ limitations under the License.
 #include "sema_manager.hh"
 
 #include <clang/AST/AST.h>
+#include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/Frontend/FrontendAction.h>
 #include <clang/Index/IndexDataConsumer.h>
 #include <clang/Index/IndexingAction.h>
@@ -681,6 +682,8 @@ public:
   }
 
 public:
+  std::unordered_set<const Decl *> visited_decls;
+
   IndexDataConsumer(IndexParam &param) : param(param) {}
   void initialize(ASTContext &Ctx) override {
     this->Ctx = param.Ctx = &Ctx;
@@ -795,6 +798,194 @@ public:
 
     IndexParam::DeclInfo *info;
     Usr usr = GetUsr(D, &info);
+
+    if (true) {
+      class FuncVisitor : public RecursiveASTVisitor<FuncVisitor> {
+      public:
+        FuncVisitor(IndexDataConsumer *consumer, IndexFile *db, SourceManager &SM,
+                    const LangOptions &Lang, int lid)
+            : consumer(consumer), db(db), SM(SM), Lang(Lang), lid(lid) {}
+
+        std::stack<FunctionDecl*> function_stack;
+
+        bool TraverseDecl(Decl *decl) {
+          if (decl->hasBody() && !consumer->visited_decls.insert(decl).second)
+            return true;
+          return RecursiveASTVisitor::TraverseDecl(decl);
+        }
+        #define TRAVERSE_FUNCTION_DECL_CHILD(TYPE) \
+        bool Traverse##TYPE(TYPE *decl) {\
+          function_stack.push(decl);\
+          bool ret = RecursiveASTVisitor::Traverse##TYPE(decl);\
+          function_stack.pop();\
+          return ret;\
+        }
+        TRAVERSE_FUNCTION_DECL_CHILD(FunctionDecl)
+        TRAVERSE_FUNCTION_DECL_CHILD(CXXDeductionGuideDecl)
+        TRAVERSE_FUNCTION_DECL_CHILD(CXXMethodDecl)
+        TRAVERSE_FUNCTION_DECL_CHILD(CXXConstructorDecl)
+        TRAVERSE_FUNCTION_DECL_CHILD(CXXConversionDecl)
+        TRAVERSE_FUNCTION_DECL_CHILD(CXXDestructorDecl)
+
+        bool VisitUnaryOperator(UnaryOperator *unop) {
+          if (unop->isIncrementDecrementOp()) {
+            AddDataFlow(unop->getSubExpr(), unop, unop->getSourceRange());
+          }
+          return RecursiveASTVisitor::VisitUnaryOperator(unop);
+        }
+        bool VisitBinaryOperator(BinaryOperator *binop) {
+          if (binop->getOpcode() == BinaryOperator::Opcode::BO_Assign) {
+            AddDataFlow(binop->getLHS(), binop->getRHS(), binop->getSourceRange());
+          } else if (binop->isAssignmentOp()) {
+            AddDataFlow(binop->getLHS(), binop, binop->getSourceRange());
+          }
+          return RecursiveASTVisitor::VisitBinaryOperator(binop);
+        }
+        bool VisitVarDecl(VarDecl *decl) {
+          if (decl->hasInit()) {
+            AddDataFlow(decl, decl->getInit(), decl->getSourceRange());
+          }
+          return RecursiveASTVisitor::VisitVarDecl(decl);
+        }
+        bool VisitFieldDecl(FieldDecl *decl) {
+          if (decl->hasInClassInitializer()) {
+            if (decl->getInClassInitializer()) {
+              AddDataFlow(decl, decl->getInClassInitializer(), decl->getSourceRange());
+            } else {
+              // Allow re-visit of this decl.
+              consumer->visited_decls.erase(decl);
+            }
+          }
+          return RecursiveASTVisitor::VisitFieldDecl(decl);
+        }
+        bool VisitCXXConstructorDecl(CXXConstructorDecl *decl) {
+          for (const auto &init : decl->inits()) {
+            if (init->isMemberInitializer()) {
+              if (auto *defaultInit =
+                      dyn_cast<CXXDefaultInitExpr>(init->getInit())) {
+                AddDataFlow(init->getMember(), defaultInit->getExpr(), defaultInit->getSourceRange());
+              } else {
+                AddDataFlow(init->getMember(), init->getInit(), init->getSourceRange());
+              }
+            }
+            
+            if (auto *constructorInit =
+                    dyn_cast<CXXConstructExpr>(init->getInit())) {
+              if (CXXConstructorDecl *decl = constructorInit->getConstructor()) {
+                int len = std::min(constructorInit->getNumArgs(), decl->getNumParams());
+                for (int i = 0; i < len; ++i) {
+                  AddDataFlow(decl->getParamDecl(i), constructorInit->getArg(i), constructorInit->getSourceRange());
+                }
+              }
+            }
+          }
+          return RecursiveASTVisitor::VisitCXXConstructorDecl(decl);
+        }
+        bool VisitCXXDefaultInitExpr(CXXDefaultInitExpr *expr) {
+          AddDataFlow(expr->getField(), expr->getExpr(), expr->getSourceRange());
+          return RecursiveASTVisitor::VisitCXXDefaultInitExpr(expr);
+        }
+
+        bool VisitDeclStmt(DeclStmt *stmt) {
+          for (auto &decl : stmt->decls()) {
+            if (VarDecl *named = dyn_cast<VarDecl>(decl)) {
+              if (named->hasInit()) {
+                AddDataFlow(named, named->getInit(), named->getSourceRange());
+              }
+            }
+          }
+          return RecursiveASTVisitor::VisitDeclStmt(stmt);
+        }
+
+        bool VisitCallExpr(CallExpr *expr) {
+          if (FunctionDecl *decl = expr->getDirectCallee()) {
+            int len = std::min(expr->getNumArgs(), decl->getNumParams());
+            for (int i = 0; i < len; ++i) {
+              AddDataFlow(decl->getParamDecl(i), expr->getArg(i), expr->getSourceRange());
+            }
+          }
+          return RecursiveASTVisitor::VisitCallExpr(expr);
+        }
+        bool VisitCXXConstructExpr(CXXConstructExpr *expr) {
+          if (CXXConstructorDecl *decl = expr->getConstructor()) {
+            int len = std::min(expr->getNumArgs(), decl->getNumParams());
+            for (int i = 0; i < len; ++i) {
+              AddDataFlow(decl->getParamDecl(i), expr->getArg(i), expr->getSourceRange());
+            }
+          }
+          return RecursiveASTVisitor::VisitCXXConstructExpr(expr);
+        }
+
+        bool VisitReturnStmt(ReturnStmt *stmt) {
+          if (!function_stack.empty()) {
+            if (Expr *retVal = stmt->getRetValue()) {
+              if (const FunctionDecl *func = dyn_cast<FunctionDecl>(function_stack.top()))
+                AddDataFlow(func, retVal, stmt->getSourceRange());
+            }
+          }
+          return RecursiveASTVisitor::VisitReturnStmt(stmt);
+        }
+
+      private:
+        void AddDataFlow(const Expr *target, const Expr *source, SourceRange flowSourceRange) {
+          if (!source)
+            target->dumpColor();
+          if (const auto *targetDeclRef =
+                  dyn_cast<DeclRefExpr>(target->IgnoreParenCasts())) {
+            AddDataFlow(targetDeclRef->getDecl(), source, flowSourceRange);
+          } else if (const auto *targetFieldRef =
+                         dyn_cast<MemberExpr>(target->IgnoreParenCasts())) {
+            AddDataFlow(targetFieldRef->getMemberDecl(), source, flowSourceRange);
+          }
+        }
+        void AddDataFlow(const ValueDecl *target, const Expr *source, SourceRange flowSourceRange) {
+          if (!source)
+            target->dumpColor();
+          auto& var = db->ToVar(consumer->GetUsr(target));
+          var.data_flow_into.push_back(GetDataFlow(source, flowSourceRange));
+        }
+        void AddDataFlow(const FunctionDecl *target, const Expr *source, SourceRange flowSourceRange) {
+          if (!source)
+            target->dumpColor();
+          auto& func = db->ToFunc(consumer->GetUsr(target));
+          func.data_flow_into_return.push_back(GetDataFlow(source, flowSourceRange));
+        }
+        DataFlow GetDataFlow(const Expr *source, SourceRange flowSourceRange) {
+          auto data_flowRange = FromCharSourceRange(
+              SM, Lang,
+              CharSourceRange::getTokenRange(flowSourceRange));
+          Use write{{data_flowRange, Role::None}, lid};
+
+          if (const auto *data_flowExpr =
+                  dyn_cast<DeclRefExpr>(source->IgnoreParenCasts())) {
+            auto *data_flow_decl = data_flowExpr->getDecl();
+            write.role = Role::Read;
+            return DataFlow{consumer->GetUsr(data_flow_decl), write};
+          } else if (const auto *data_flowExpr =
+                         dyn_cast<MemberExpr>(source->IgnoreParenCasts())) {
+            auto *data_flow_decl = data_flowExpr->getMemberDecl();
+            write.role = Role::Read;
+            return DataFlow{consumer->GetUsr(data_flow_decl), write};
+          } else if (const auto *data_flowExpr =
+                         dyn_cast<CallExpr>(source->IgnoreParenCasts())) {
+            if (auto *data_flow_callee = data_flowExpr->getDirectCallee()) {
+              write.role = Role::Call;
+              return DataFlow{consumer->GetUsr(data_flow_callee), write};
+            }
+          }
+
+          return DataFlow{0, write};
+        }
+
+        IndexDataConsumer *consumer;
+        IndexFile *db;
+        SourceManager &SM;
+        const LangOptions &Lang;
+        int lid;
+      };
+      FuncVisitor funcVisitor(this, db, SM, Lang, lid);
+      funcVisitor.TraverseDecl(const_cast<Decl *>(ASTNode.OrigD));
+    }
 
     auto do_def_decl = [&](auto *entity) {
       Use use{{loc, role}, lid};
@@ -1183,8 +1374,8 @@ public:
 };
 } // namespace
 
-const int IndexFile::kMajorVersion = 19;
-const int IndexFile::kMinorVersion = 1;
+const int IndexFile::kMajorVersion = 20;
+const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(llvm::sys::fs::UniqueID UniqueID, const std::string &path,
                      const std::string &contents)
@@ -1349,6 +1540,7 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
       // e.g. declaration + out-of-line definition
       Uniquify(it.second.derived);
       Uniquify(it.second.uses);
+      Uniquify(it.second.data_flow_into_return);
     }
     for (auto &it : entry->usr2type) {
       Uniquify(it.second.derived);
@@ -1357,8 +1549,10 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
       Uniquify(it.second.def.bases);
       Uniquify(it.second.def.funcs);
     }
-    for (auto &it : entry->usr2var)
+    for (auto &it : entry->usr2var) {
       Uniquify(it.second.uses);
+      Uniquify(it.second.data_flow_into);
+    }
 
     // Update dependencies for the file.
     for (auto &[_, file] : param.UID2File) {
@@ -1404,6 +1598,17 @@ void Reflect(JsonReader &vis, DeclRef &v) {
   v.file_id = static_cast<int>(strtol(s + 1, &s, 10));
 }
 
+void Reflect(JsonReader &vis, DataFlow &v) {
+  std::string t = vis.GetString();
+  char *s = const_cast<char *>(t.c_str());
+  v.from = strtoull(s + 1, &s, 10);
+  s = strchr(s, '|') + 1;
+  v.use.range = Range::FromString(s);
+  s = strchr(s, '|');
+  v.use.role = static_cast<Role>(strtol(s + 1, &s, 10));
+  v.use.file_id = static_cast<int>(strtol(s + 1, &s, 10));
+}
+
 void Reflect(JsonWriter &vis, SymbolRef &v) {
   char buf[99];
   snprintf(buf, sizeof buf, "%s|%" PRIu64 "|%d|%d", v.range.ToString().c_str(),
@@ -1425,6 +1630,13 @@ void Reflect(JsonWriter &vis, DeclRef &v) {
   std::string s(buf);
   Reflect(vis, s);
 }
+void Reflect(JsonWriter &vis, DataFlow &v) {
+  char buf[99];
+  snprintf(buf, sizeof buf, "%" PRIu64 "|%s|%d|%d", v.from,
+           v.use.range.ToString().c_str(), int(v.use.role), v.use.file_id);
+  std::string s(buf);
+  Reflect(vis, s);
+}
 
 void Reflect(BinaryReader &vis, SymbolRef &v) {
   Reflect(vis, v.range);
@@ -1440,6 +1652,10 @@ void Reflect(BinaryReader &vis, Use &v) {
 void Reflect(BinaryReader &vis, DeclRef &v) {
   Reflect(vis, static_cast<Use &>(v));
   Reflect(vis, v.extent);
+}
+void Reflect(BinaryReader &vis, DataFlow &v) {
+  Reflect(vis, v.from);
+  Reflect(vis, v.use);
 }
 
 void Reflect(BinaryWriter &vis, SymbolRef &v) {
@@ -1457,4 +1673,9 @@ void Reflect(BinaryWriter &vis, DeclRef &v) {
   Reflect(vis, static_cast<Use &>(v));
   Reflect(vis, v.extent);
 }
+void Reflect(BinaryWriter &vis, DataFlow &v) {
+  Reflect(vis, v.from);
+  Reflect(vis, v.use);
+}
+
 } // namespace ccls

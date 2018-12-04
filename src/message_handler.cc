@@ -163,6 +163,7 @@ MessageHandler::MessageHandler() {
   Bind("$ccls/navigate", &MessageHandler::ccls_navigate);
   Bind("$ccls/reload", &MessageHandler::ccls_reload);
   Bind("$ccls/vars", &MessageHandler::ccls_vars);
+  Bind("$ccls/dataFlowInto", &MessageHandler::ccls_dataFlowInto);
   Bind("exit", &MessageHandler::exit);
   Bind("initialize", &MessageHandler::initialize);
   Bind("shutdown", &MessageHandler::shutdown);
@@ -275,7 +276,7 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
 
   // Group symbols together.
   std::unordered_map<SymbolIdx, CclsSemanticHighlightSymbol> grouped_symbols;
-  for (auto &[sym, refcnt] : file.symbol2refcnt) {
+  for (auto [sym, refcnt] : file.symbol2refcnt) {
     if (refcnt <= 0) continue;
     std::string_view detailed_name;
     SymbolKind parent_kind = SymbolKind::Unknown;
@@ -285,7 +286,10 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.kind) {
     case Kind::Func: {
-      idx = db->func_usr[sym.usr];
+      auto func_it = db->func_usr.find(sym.usr);
+      if (func_it == db->func_usr.end())
+        continue;
+      idx = func_it->second;
       const QueryFunc &func = db->funcs[idx];
       const QueryFunc::Def *def = func.AnyDef();
       if (!def)
@@ -319,7 +323,10 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
       break;
     }
     case Kind::Type: {
-      idx = db->type_usr[sym.usr];
+      auto type_it = db->type_usr.find(sym.usr);
+      if (type_it == db->type_usr.end())
+        continue;
+      idx = type_it->second;
       const QueryType &type = db->types[idx];
       for (auto &def : type.def) {
         kind = def.kind;
@@ -332,7 +339,10 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
       break;
     }
     case Kind::Var: {
-      idx = db->var_usr[sym.usr];
+      auto var_it = db->var_usr.find(sym.usr);
+      if (var_it == db->var_usr.end())
+        continue;
+      idx = var_it->second;
       const QueryVar &var = db->vars[idx];
       for (auto &def : var.def) {
         kind = def.kind;

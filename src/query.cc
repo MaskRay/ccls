@@ -99,6 +99,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
     r.funcs_declarations[func.usr].first = std::move(func.declarations);
     r.funcs_uses[func.usr].first = std::move(func.uses);
     r.funcs_derived[func.usr].first = std::move(func.derived);
+    r.funcs_data_flow_into_return[func.usr].first = std::move(func.data_flow_into_return);
   }
   for (auto &it : current->usr2func) {
     auto &func = it.second;
@@ -107,6 +108,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
     r.funcs_declarations[func.usr].second = std::move(func.declarations);
     r.funcs_uses[func.usr].second = std::move(func.uses);
     r.funcs_derived[func.usr].second = std::move(func.derived);
+    r.funcs_data_flow_into_return[func.usr].second = std::move(func.data_flow_into_return);
   }
 
   r.types_hint = current->usr2type.size() - previous->usr2type.size();
@@ -136,6 +138,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
       r.vars_removed.emplace_back(var.usr, var.def);
     r.vars_declarations[var.usr].first = std::move(var.declarations);
     r.vars_uses[var.usr].first = std::move(var.uses);
+    r.vars_data_flow_into[var.usr].first = std::move(var.data_flow_into);
   }
   for (auto &it : current->usr2var) {
     auto &var = it.second;
@@ -143,6 +146,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
       r.vars_def_update.emplace_back(it.first, var.def);
     r.vars_declarations[var.usr].second = std::move(var.declarations);
     r.vars_uses[var.usr].second = std::move(var.uses);
+    r.vars_data_flow_into[var.usr].second = std::move(var.data_flow_into);
   }
 
   r.files_def_update = BuildFileDefUpdate(std::move(*current));
@@ -239,6 +243,8 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
                  Use &use, int delta) {
     use.file_id =
         use.file_id == -1 ? u->file_id : lid2fid.find(use.file_id)->second;
+    if (usr == 0) return;
+
     ExtentRef sym{{use.range, usr, kind, use.role}};
     int &v = files[use.file_id].symbol2refcnt[sym];
     v += delta;
@@ -319,6 +325,20 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
   REMOVE_ADD(func, derived);
   for (auto &[usr, p] : u->funcs_uses)
     UpdateUses(usr, Kind::Func, func_usr, funcs, p, true);
+  for (auto &[usr, p] : u->funcs_data_flow_into_return) {
+    auto R = func_usr.try_emplace(usr, func_usr.size());
+    if (R.second)
+      funcs.emplace_back().usr = usr;
+    auto &func = funcs[R.first->second];
+    for (DataFlow &src : p.first) {
+      Ref(prev_lid2file_id, src.from, src.use.role == Role::Read ? Kind::Var : Kind::Func, src.use, -1);
+    }
+    RemoveRange(func.data_flow_into_return, p.first);
+    for (DataFlow &src : p.second) {
+      Ref(lid2file_id, src.from, src.use.role == Role::Read ? Kind::Var : Kind::Func, src.use, 1);
+    }
+    AddRange(func.data_flow_into_return, p.second);
+  }
 
   if ((t = types.size() + u->types_hint) > types.capacity()) {
     t = size_t(t * grow);
@@ -361,6 +381,20 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
   REMOVE_ADD(var, declarations);
   for (auto &[usr, p] : u->vars_uses)
     UpdateUses(usr, Kind::Var, var_usr, vars, p, false);
+  for (auto &[usr, p] : u->vars_data_flow_into) {
+    auto R = var_usr.try_emplace(usr, var_usr.size());
+    if (R.second)
+      vars.emplace_back().usr = usr;
+    auto &var = vars[R.first->second];
+    for (DataFlow &src : p.first) {
+      Ref(prev_lid2file_id, src.from, src.use.role == Role::Read ? Kind::Var : Kind::Func, src.use, -1);
+    }
+    RemoveRange(var.data_flow_into, p.first);
+    for (DataFlow &src : p.second) {
+      Ref(lid2file_id, src.from, src.use.role == Role::Read ? Kind::Var : Kind::Func, src.use, 1);
+    }
+    AddRange(var.data_flow_into, p.second);
+  }
 
 #undef REMOVE_ADD
 }
