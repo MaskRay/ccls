@@ -102,6 +102,12 @@ CompletionItem BuildCompletionItem(const std::string &path,
 IncludeComplete::IncludeComplete(Project *project)
     : is_scanning(false), project_(project) {}
 
+IncludeComplete::~IncludeComplete() {
+  // Spin until the scanning has completed.
+  while (is_scanning.load())
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}
+
 void IncludeComplete::Rescan() {
   if (is_scanning || LLVM_VERSION_MAJOR >= 8)
     return;
