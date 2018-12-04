@@ -14,6 +14,7 @@ struct Project;
 
 struct IncludeComplete {
   IncludeComplete(Project *project);
+  ~IncludeComplete();
 
   // Starts scanning directories. Clears existing cache.
   void Rescan();
