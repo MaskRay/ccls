@@ -308,6 +308,7 @@ template <typename TVisitor> void Reflect1(TVisitor &vis, IndexFunc &v) {
   REFLECT_MEMBER2("declarations", v.declarations);
   REFLECT_MEMBER2("derived", v.derived);
   REFLECT_MEMBER2("uses", v.uses);
+  REFLECT_MEMBER2("data_flow_into_return", v.data_flow_into_return);
   ReflectMemberEnd(vis);
 }
 void Reflect(JsonReader &vis, IndexFunc &v) { Reflect1(vis, v); }
@@ -357,6 +358,7 @@ template <typename TVisitor> void Reflect1(TVisitor &vis, IndexVar &v) {
 
   REFLECT_MEMBER2("declarations", v.declarations);
   REFLECT_MEMBER2("uses", v.uses);
+  REFLECT_MEMBER2("data_flow_into", v.data_flow_into);
   ReflectMemberEnd(vis);
 }
 void Reflect(JsonReader &vis, IndexVar &v) { Reflect1(vis, v); }

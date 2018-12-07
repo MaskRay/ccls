@@ -83,6 +83,7 @@ struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
   std::vector<DeclRef> declarations;
   std::vector<Usr> derived;
   std::vector<Use> uses;
+  std::vector<DataFlow> data_flow_into_return;
 };
 
 struct QueryType : QueryEntity<QueryType, TypeDef> {
@@ -99,6 +100,7 @@ struct QueryVar : QueryEntity<QueryVar, VarDef> {
   llvm::SmallVector<Def, 1> def;
   std::vector<DeclRef> declarations;
   std::vector<Use> uses;
+  std::vector<DataFlow> data_flow_into;
 };
 
 struct IndexUpdate {
@@ -125,6 +127,7 @@ struct IndexUpdate {
   Update<DeclRef> funcs_declarations;
   Update<Use> funcs_uses;
   Update<Usr> funcs_derived;
+  Update<DataFlow> funcs_data_flow_into_return;
 
   // Type updates.
   int types_hint;
@@ -141,6 +144,7 @@ struct IndexUpdate {
   std::vector<std::pair<Usr, QueryVar::Def>> vars_def_update;
   Update<DeclRef> vars_declarations;
   Update<Use> vars_uses;
+  Update<DataFlow> vars_data_flow_into;
 };
 
 struct DenseMapInfoForUsr {

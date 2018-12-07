@@ -246,6 +246,7 @@ private:
   void ccls_navigate(JsonReader &, ReplyOnce &);
   void ccls_reload(JsonReader &);
   void ccls_vars(JsonReader &, ReplyOnce &);
+  void ccls_dataFlowInto(JsonReader &, ReplyOnce &);
   void exit(EmptyParam &);
   void initialize(JsonReader &, ReplyOnce &);
   void shutdown(EmptyParam &, ReplyOnce &);
