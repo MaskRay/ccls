@@ -30,7 +30,7 @@ using namespace llvm;
 using namespace llvm::cl;
 
 namespace ccls {
-std::string g_init_options;
+std::vector<std::string> g_init_options;
 }
 
 namespace {
@@ -44,8 +44,8 @@ opt<std::string> opt_test_index("test-index", ValueOptional, init("!"),
 opt<std::string> opt_index("index",
                            desc("standalone mode: index a project and exit"),
                            value_desc("root"), cat(C));
-opt<std::string> opt_init("init", desc("extra initialization options in JSON"),
-                          cat(C));
+list<std::string> opt_init("init", desc("extra initialization options in JSON"),
+                           cat(C));
 opt<std::string> opt_log_file("log-file", desc("log"), value_desc("filename"),
                               cat(C));
 opt<std::string> opt_log_file_append("log-file-append", desc("log"),
@@ -106,23 +106,25 @@ int main(int argc, char **argv) {
     if (!opt_init.empty()) {
       // We check syntax error here but override client-side
       // initializationOptions in messages/initialize.cc
-      g_init_options = opt_init.getValue();
+      g_init_options = opt_init;
       rapidjson::Document reader;
-      rapidjson::ParseResult ok = reader.Parse(g_init_options.c_str());
-      if (!ok) {
-        fprintf(stderr, "Failed to parse --init as JSON: %s (%zd)\n",
-                rapidjson::GetParseError_En(ok.Code()), ok.Offset());
-        return 1;
-      }
-      JsonReader json_reader{&reader};
-      try {
-        Config config;
-        Reflect(json_reader, config);
-      } catch (std::invalid_argument &e) {
-        fprintf(stderr, "Failed to parse --init %s, expected %s\n",
-                static_cast<JsonReader &>(json_reader).GetPath().c_str(),
-                e.what());
-        return 1;
+      for (const std::string &str : g_init_options) {
+        rapidjson::ParseResult ok = reader.Parse(str.c_str());
+        if (!ok) {
+          fprintf(stderr, "Failed to parse --init as JSON: %s (%zd)\n",
+                  rapidjson::GetParseError_En(ok.Code()), ok.Offset());
+          return 1;
+        }
+        JsonReader json_reader{&reader};
+        try {
+          Config config;
+          Reflect(json_reader, config);
+        } catch (std::invalid_argument &e) {
+          fprintf(stderr, "Failed to parse --init %s, expected %s\n",
+                  static_cast<JsonReader &>(json_reader).GetPath().c_str(),
+                  e.what());
+          return 1;
+        }
       }
     }
 
