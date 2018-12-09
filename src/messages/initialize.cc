@@ -24,8 +24,7 @@
 namespace ccls {
 using namespace llvm;
 
-// TODO Cleanup global variables
-extern std::string g_init_options;
+extern std::vector<std::string> g_init_options;
 
 namespace {
 enum class TextDocumentSyncKind { None = 0, Full = 1, Incremental = 2 };
@@ -243,14 +242,16 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
   {
     g_config = new Config(param.initializationOptions);
     rapidjson::Document reader;
-    reader.Parse(g_init_options.c_str());
-    if (!reader.HasParseError()) {
-      JsonReader json_reader{&reader};
-      try {
-        Reflect(json_reader, *g_config);
-      } catch (std::invalid_argument &) {
-        // This will not trigger because parse error is handled in
-        // MessageRegistry::Parse in lsp.cc
+    for (const std::string &str : g_init_options) {
+      reader.Parse(str.c_str());
+      if (!reader.HasParseError()) {
+        JsonReader json_reader{&reader};
+        try {
+          Reflect(json_reader, *g_config);
+        } catch (std::invalid_argument &) {
+          // This will not trigger because parse error is handled in
+          // MessageRegistry::Parse in lsp.cc
+        }
       }
     }
 
