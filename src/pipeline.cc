@@ -77,6 +77,7 @@ void StandaloneInitialize(MessageHandler &, const std::string &root);
 
 namespace pipeline {
 
+std::atomic<bool> quit;
 std::atomic<int64_t> loaded_ts = ATOMIC_VAR_INIT(0),
                      pending_index_requests = ATOMIC_VAR_INIT(0);
 int64_t tick = 0;
@@ -90,6 +91,10 @@ struct Index_Request {
   RequestId id;
   int64_t ts = tick++;
 };
+
+std::mutex thread_mtx;
+std::condition_variable no_pending_threads;
+int pending_threads;
 
 MultiQueueWaiter *main_waiter;
 MultiQueueWaiter *indexer_waiter;
@@ -361,7 +366,30 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
   return true;
 }
 
+void Quit(SemaManager &manager) {
+  quit.store(true, std::memory_order_relaxed);
+  manager.Quit();
+
+  { std::lock_guard lock(index_request->mutex_); }
+  indexer_waiter->cv.notify_all();
+  { std::lock_guard lock(for_stdout->mutex_); }
+  stdout_waiter->cv.notify_one();
+  std::unique_lock lock(thread_mtx);
+  no_pending_threads.wait(lock, [] { return !pending_threads; });
+}
+
 } // namespace
+
+void ThreadEnter() {
+  std::lock_guard lock(thread_mtx);
+  pending_threads++;
+}
+
+void ThreadLeave() {
+  std::lock_guard lock(thread_mtx);
+  if (!--pending_threads)
+    no_pending_threads.notify_one();
+}
 
 void Init() {
   main_waiter = new MultiQueueWaiter;
@@ -380,7 +408,8 @@ void Indexer_Main(SemaManager *manager, VFS *vfs, Project *project,
   GroupMatch matcher(g_config->index.whitelist, g_config->index.blacklist);
   while (true)
     if (!Indexer_Parse(manager, wfiles, project, vfs, matcher))
-      indexer_waiter->Wait(index_request);
+      if (indexer_waiter->Wait(quit, index_request))
+        break;
 }
 
 void Main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
@@ -419,6 +448,7 @@ void Main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
 }
 
 void LaunchStdin() {
+  ThreadEnter();
   std::thread([]() {
     set_thread_name("stdin");
     std::string str;
@@ -469,12 +499,13 @@ void LaunchStdin() {
       if (method == "exit")
         break;
     }
-  })
-      .detach();
+  }).detach();
+  ThreadLeave();
 }
 
 void LaunchStdout() {
-  std::thread([=]() {
+  ThreadEnter();
+  std::thread([]() {
     set_thread_name("stdout");
 
     while (true) {
@@ -483,10 +514,11 @@ void LaunchStdout() {
         llvm::outs() << "Content-Length: " << s.size() << "\r\n\r\n" << s;
         llvm::outs().flush();
       }
-      stdout_waiter->Wait(for_stdout);
+      if (stdout_waiter->Wait(quit, for_stdout))
+        break;
     }
-  })
-      .detach();
+  }).detach();
+  ThreadLeave();
 }
 
 void MainLoop() {
@@ -540,16 +572,20 @@ void MainLoop() {
       Main_OnIndexed(&db, &wfiles, &*update);
     }
 
-    if (did_work)
+    if (did_work) {
       has_indexed |= indexed;
-    else {
+      if (quit.load(std::memory_order_relaxed))
+        break;
+    } else {
       if (has_indexed) {
         FreeUnusedMemory();
         has_indexed = false;
       }
-      main_waiter->Wait(on_indexed, on_request);
+      main_waiter->Wait(quit, on_indexed, on_request);
     }
   }
+
+  Quit(manager);
 }
 
 void Standalone(const std::string &root) {
@@ -590,6 +626,7 @@ void Standalone(const std::string &root) {
   }
   if (tty)
     puts("");
+  Quit(manager);
 }
 
 void Index(const std::string &path, const std::vector<const char *> &args,

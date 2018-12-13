@@ -148,7 +148,8 @@ struct SemaManager {
   void OnClose(const std::string &path);
   std::shared_ptr<ccls::Session> EnsureSession(const std::string &path,
                                                bool *created = nullptr);
-  void Clear(void);
+  void Clear();
+  void Quit();
 
   // Global state.
   Project *project_;

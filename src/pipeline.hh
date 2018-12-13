@@ -36,8 +36,12 @@ enum class IndexMode {
 };
 
 namespace pipeline {
+extern std::atomic<bool> quit;
 extern std::atomic<int64_t> loaded_ts, pending_index_requests;
 extern int64_t tick;
+
+void ThreadEnter();
+void ThreadLeave();
 void Init();
 void LaunchStdin();
 void LaunchStdout();
