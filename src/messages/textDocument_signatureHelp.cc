@@ -155,11 +155,15 @@ void MessageHandler::textDocument_signatureHelp(
 
   std::string path = param.textDocument.uri.GetPath();
   Position begin_pos = param.position;
-  if (WorkingFile *file = wfiles->GetFile(path)) {
-    std::string completion_text;
+  WorkingFile *wf = wfiles->GetFile(path);
+  if (!wf) {
+    reply.NotReady(true);
+    return;
+  }
+  {
+    std::string filter;
     Position end_pos = param.position;
-    begin_pos = file->FindStableCompletionSource(param.position,
-                                                 &completion_text, &end_pos);
+    begin_pos = wf->GetCompletionPosition(param.position, &filter, &end_pos);
   }
 
   SemaManager::OnComplete callback =
