@@ -438,8 +438,8 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
                                              ReplyOnce &reply) {
   static CompleteConsumerCache<std::vector<CompletionItem>> cache;
   std::string path = param.textDocument.uri.GetPath();
-  WorkingFile *file = wfiles->GetFile(path);
-  if (!file) {
+  WorkingFile *wf = wfiles->GetFile(path);
+  if (!wf) {
     reply.NotReady(true);
     return;
   }
@@ -449,9 +449,8 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   // It shouldn't be possible, but sometimes vscode will send queries out
   // of order, ie, we get completion request before buffer content update.
   std::string buffer_line;
-  if (param.position.line >= 0 &&
-      param.position.line < file->buffer_lines.size())
-    buffer_line = file->buffer_lines[param.position.line];
+  if (param.position.line >= 0 && param.position.line < wf->buffer_lines.size())
+    buffer_line = wf->buffer_lines[param.position.line];
 
   clang::CodeCompleteOptions CCOpts;
   CCOpts.IncludeBriefComments = true;
@@ -487,7 +486,7 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   std::string filter;
   Position end_pos = param.position;
   Position begin_pos =
-      file->FindStableCompletionSource(param.position, &filter, &end_pos);
+      wf->GetCompletionPosition(param.position, &filter, &end_pos);
 
 #if LLVM_VERSION_MAJOR < 8
   ParseIncludeLineResult preprocess = ParseIncludeLine(buffer_line);
