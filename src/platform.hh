@@ -19,6 +19,7 @@ limitations under the License.
 #include <string_view>
 #include <vector>
 
+namespace ccls {
 std::string NormalizePath(const std::string &path);
 
 // Free any unused memory and return it to the system.
@@ -31,3 +32,4 @@ std::string GetExternalCommandOutput(const std::vector<std::string> &command,
                                      std::string_view input);
 
 void SpawnThread(void *(*fn)(void *), void *arg);
+} // namespace ccls

@@ -18,6 +18,7 @@ limitations under the License.
 #include "clang_tu.hh"
 #include "filesystem.hh"
 #include "log.hh"
+#include "pipeline.hh"
 #include "platform.hh"
 
 #include <clang/Lex/PreprocessorOptions.h>
@@ -403,6 +404,8 @@ void *PreambleMain(void *manager_) {
   set_thread_name("preamble");
   while (true) {
     SemaManager::PreambleTask task = manager->preamble_tasks.Dequeue();
+    if (pipeline::quit.load(std::memory_order_relaxed))
+      break;
 
     bool created = false;
     std::shared_ptr<Session> session =
@@ -424,6 +427,7 @@ void *PreambleMain(void *manager_) {
         manager->ScheduleDiag(task.path, debounce);
     }
   }
+  pipeline::ThreadLeave();
   return nullptr;
 }
 
@@ -432,6 +436,8 @@ void *CompletionMain(void *manager_) {
   set_thread_name("comp");
   while (true) {
     std::unique_ptr<SemaManager::CompTask> task = manager->comp_tasks.Dequeue();
+    if (pipeline::quit.load(std::memory_order_relaxed))
+      break;
 
     // Drop older requests if we're not buffering.
     while (g_config->completion.dropOldRequests &&
@@ -440,6 +446,8 @@ void *CompletionMain(void *manager_) {
       task->Consumer.reset();
       task->on_complete(nullptr);
       task = manager->comp_tasks.Dequeue();
+      if (pipeline::quit.load(std::memory_order_relaxed))
+        break;
     }
 
     std::shared_ptr<Session> session = manager->EnsureSession(task->path);
@@ -480,6 +488,7 @@ void *CompletionMain(void *manager_) {
 
     task->on_complete(&Clang->getCodeCompletionConsumer());
   }
+  pipeline::ThreadLeave();
   return nullptr;
 }
 
@@ -516,6 +525,8 @@ void *DiagnosticMain(void *manager_) {
   set_thread_name("diag");
   while (true) {
     SemaManager::DiagTask task = manager->diag_tasks.Dequeue();
+    if (pipeline::quit.load(std::memory_order_relaxed))
+      break;
     int64_t wait = task.wait_until -
                    chrono::duration_cast<chrono::milliseconds>(
                        chrono::high_resolution_clock::now().time_since_epoch())
@@ -627,6 +638,7 @@ void *DiagnosticMain(void *manager_) {
     }
     manager->on_diagnostic_(task.path, ls_diags);
   }
+  pipeline::ThreadLeave();
   return nullptr;
 }
 
@@ -703,5 +715,11 @@ void SemaManager::Clear() {
   LOG_S(INFO) << "clear all sessions";
   std::lock_guard lock(mutex);
   sessions.Clear();
+}
+
+void SemaManager::Quit() {
+  comp_tasks.PushBack(nullptr);
+  diag_tasks.PushBack({});
+  preamble_tasks.PushBack({});
 }
 } // namespace ccls
