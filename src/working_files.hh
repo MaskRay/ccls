@@ -61,16 +61,10 @@ struct WorkingFile {
   // Also resolves |column| if not NULL.
   std::optional<int> GetIndexPosFromBufferPos(int line, int *column,
                                               bool is_end);
-  // Returns a relatively stable completion position (it jumps back until there
-  // is a non-alphanumeric character).
-  //
-  // The out param |is_global_completion| is set to true if this looks like a
-  // global completion.
-  // The out param |existing_completion| is set to any existing completion
-  // content the user has entered.
-  Position FindStableCompletionSource(Position position,
-                                        std::string *existing_completion,
-                                        Position *replace_end_pos) const;
+  // Returns the stable completion position (it jumps back until there is a
+  // non-alphanumeric character).
+  Position GetCompletionPosition(Position pos, std::string *filter,
+                                 Position *replace_end_pos) const;
 
 private:
   // Compute index_to_buffer and buffer_to_index.

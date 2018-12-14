@@ -348,21 +348,19 @@ std::optional<int> WorkingFile::GetIndexPosFromBufferPos(int line, int *column,
                           index_lines, is_end);
 }
 
-Position
-WorkingFile::FindStableCompletionSource(Position position,
-                                        std::string *existing_completion,
-                                        Position *replace_end_pos) const {
-  int start = GetOffsetForPosition(position, buffer_content);
+Position WorkingFile::GetCompletionPosition(Position pos, std::string *filter,
+                                            Position *replace_end_pos) const {
+  int start = GetOffsetForPosition(pos, buffer_content);
   int i = start;
   while (i > 0 && isIdentifierBody(buffer_content[i - 1]))
     --i;
 
-  *replace_end_pos = position;
+  *replace_end_pos = pos;
   for (int i = start;
        i < buffer_content.size() && isIdentifierBody(buffer_content[i]); i++)
     replace_end_pos->character++;
 
-  *existing_completion = buffer_content.substr(i, start - i);
+  *filter = buffer_content.substr(i, start - i);
   return GetPositionForOffset(buffer_content, i);
 }
 
