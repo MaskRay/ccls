@@ -66,10 +66,15 @@ struct MultiQueueWaiter {
     return false;
   }
 
-  template <typename... BaseThreadQueue> void Wait(BaseThreadQueue... queues) {
+  template <typename... BaseThreadQueue>
+  bool Wait(std::atomic<bool> &quit, BaseThreadQueue... queues) {
     MultiQueueLock<BaseThreadQueue...> l(queues...);
-    while (!HasState({queues...}))
+    while (!quit.load(std::memory_order_relaxed)) {
+      if (HasState({queues...}))
+        return false;
       cv.wait(l);
+    }
+    return true;
   }
 };
 
