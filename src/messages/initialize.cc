@@ -230,6 +230,7 @@ void *Indexer(void *arg_) {
   std::string name = "indexer" + std::to_string(idx);
   set_thread_name(name.c_str());
   pipeline::Indexer_Main(h->manager, h->vfs, h->project, h->wfiles);
+  pipeline::ThreadLeave();
   return nullptr;
 }
 } // namespace
@@ -353,7 +354,6 @@ void MessageHandler::shutdown(EmptyParam &, ReplyOnce &reply) {
 }
 
 void MessageHandler::exit(EmptyParam &) {
-  // FIXME cancel threads
-  ::exit(0);
+  pipeline::quit.store(true, std::memory_order_relaxed);
 }
 } // namespace ccls

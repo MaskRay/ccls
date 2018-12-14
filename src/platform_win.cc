@@ -18,6 +18,7 @@
 #include <string>
 #include <thread>
 
+namespace ccls {
 std::string NormalizePath(const std::string &path) {
   DWORD retval = 0;
   TCHAR buffer[MAX_PATH] = TEXT("");
@@ -51,6 +52,7 @@ std::string GetExternalCommandOutput(const std::vector<std::string> &command,
 
 void SpawnThread(void *(*fn)(void *), void *arg) {
   std::thread(fn, arg).detach();
+}
 }
 
 #endif
