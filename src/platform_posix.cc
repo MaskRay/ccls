@@ -42,7 +42,15 @@ limitations under the License.
 #include <llvm/ADT/SmallString.h>
 #include <llvm/Support/Path.h>
 
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <string>
+
+namespace ccls {
+namespace pipeline {
+void ThreadEnter();
+}
 
 std::string NormalizePath(const std::string &path) {
   llvm::SmallString<256> P(path);
@@ -113,14 +121,15 @@ void SpawnThread(void *(*fn)(void *), void *arg) {
   pthread_attr_t attr;
   struct rlimit rlim;
   size_t stack_size = 4 * 1024 * 1024;
-  if (getrlimit(RLIMIT_STACK, &rlim) == 0 &&
-      rlim.rlim_cur != RLIM_INFINITY)
+  if (getrlimit(RLIMIT_STACK, &rlim) == 0 && rlim.rlim_cur != RLIM_INFINITY)
     stack_size = rlim.rlim_cur;
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
   pthread_attr_setstacksize(&attr, stack_size);
+  pipeline::ThreadEnter();
   pthread_create(&thd, &attr, fn, arg);
   pthread_attr_destroy(&attr);
 }
+} // namespace ccls
 
 #endif
