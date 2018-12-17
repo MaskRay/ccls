@@ -51,11 +51,13 @@ void MessageHandler::ccls_vars(JsonReader &reader, ReplyOnce &reply) {
       usr = def->type;
       [[fallthrough]];
     }
-    case Kind::Type:
-      result = GetLsLocations(
-          db, wfiles,
-          GetVarDeclarations(db, db->Type(usr).instances, param.kind));
+    case Kind::Type: {
+      for (DeclRef dr :
+           GetVarDeclarations(db, db->Type(usr).instances, param.kind))
+        if (auto loc = GetLocationLink(db, wfiles, dr))
+          result.push_back(Location(std::move(loc)));
       break;
+    }
     }
   }
   reply(result);

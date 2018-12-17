@@ -45,6 +45,27 @@ std::vector<DeclRef> GetNonDefDeclarationTargets(DB *db, SymbolRef sym) {
 }
 } // namespace
 
+void MessageHandler::textDocument_declaration(TextDocumentPositionParam &param,
+                                              ReplyOnce &reply) {
+  int file_id;
+  QueryFile *file = FindFile(param.textDocument.uri.GetPath(), &file_id);
+  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  if (!wf) {
+    reply.NotReady(file);
+    return;
+  }
+
+  std::vector<LocationLink> result;
+  Position &ls_pos = param.position;
+  for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position))
+    for (DeclRef dr : GetNonDefDeclarations(db, sym))
+      if (!(dr.file_id == file_id &&
+            dr.range.Contains(ls_pos.line, ls_pos.character)))
+        if (auto loc = GetLocationLink(db, wfiles, dr))
+          result.push_back(loc);
+  reply.ReplyLocationLink(result);
+}
+
 void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
                                              ReplyOnce &reply) {
   int file_id;
@@ -55,54 +76,52 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
     return;
   }
 
-  std::vector<Location> result;
-  Maybe<Use> on_def;
+  std::vector<LocationLink> result;
+  Maybe<DeclRef> on_def;
   Position &ls_pos = param.position;
 
   for (SymbolRef sym : FindSymbolsAtLocation(wf, file, ls_pos, true)) {
     // Special cases which are handled:
     //  - symbol has declaration but no definition (ie, pure virtual)
     //  - goto declaration while in definition of recursive type
-    std::vector<Use> uses;
+    std::vector<DeclRef> drs;
     EachEntityDef(db, sym, [&](const auto &def) {
       if (def.spell) {
-        Use spell = *def.spell;
+        DeclRef spell = *def.spell;
         if (spell.file_id == file_id &&
             spell.range.Contains(ls_pos.line, ls_pos.character)) {
           on_def = spell;
-          uses.clear();
+          drs.clear();
           return false;
         }
-        uses.push_back(spell);
+        drs.push_back(spell);
       }
       return true;
     });
 
     // |uses| is empty if on a declaration/definition, otherwise it includes
     // all declarations/definitions.
-    if (uses.empty()) {
-      for (Use use : GetNonDefDeclarationTargets(db, sym))
-        if (!(use.file_id == file_id &&
-              use.range.Contains(ls_pos.line, ls_pos.character)))
-          uses.push_back(use);
+    if (drs.empty()) {
+      for (DeclRef dr : GetNonDefDeclarationTargets(db, sym))
+        if (!(dr.file_id == file_id &&
+              dr.range.Contains(ls_pos.line, ls_pos.character)))
+          drs.push_back(dr);
       // There is no declaration but the cursor is on a definition.
-      if (uses.empty() && on_def)
-        uses.push_back(*on_def);
+      if (drs.empty() && on_def)
+        drs.push_back(*on_def);
     }
-    auto locs = GetLsLocations(db, wfiles, uses);
-    result.insert(result.end(), locs.begin(), locs.end());
+    for (DeclRef dr : drs)
+      if (auto loc = GetLocationLink(db, wfiles, dr))
+        result.push_back(loc);
   }
 
-  if (result.size()) {
-    std::sort(result.begin(), result.end());
-    result.erase(std::unique(result.begin(), result.end()), result.end());
-  } else {
+  if (result.empty()) {
     Maybe<Range> range;
     // Check #include
     for (const IndexInclude &include : file->def->includes) {
       if (include.line == ls_pos.line) {
         result.push_back(
-            Location{DocumentUri::FromPath(include.resolved_path)});
+            {DocumentUri::FromPath(include.resolved_path).raw_uri});
         range = {{0, 0}, {0, 0}};
         break;
       }
@@ -160,13 +179,13 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
       if (best_sym.kind != Kind::Invalid) {
         Maybe<DeclRef> dr = GetDefinitionSpell(db, best_sym);
         assert(dr);
-        if (auto loc = GetLsLocation(db, wfiles, *dr))
-          result.push_back(*loc);
+        if (auto loc = GetLocationLink(db, wfiles, *dr))
+          result.push_back(loc);
       }
     }
   }
 
-  reply(result);
+  reply.ReplyLocationLink(result);
 }
 
 void MessageHandler::textDocument_typeDefinition(
@@ -178,17 +197,16 @@ void MessageHandler::textDocument_typeDefinition(
     return;
   }
 
-  std::vector<Location> result;
+  std::vector<LocationLink> result;
   auto Add = [&](const QueryType &type) {
     for (const auto &def : type.def)
-      if (def.spell) {
-        if (auto ls_loc = GetLsLocation(db, wfiles, *def.spell))
-          result.push_back(*ls_loc);
-      }
+      if (def.spell)
+        if (auto loc = GetLocationLink(db, wfiles, *def.spell))
+          result.push_back(loc);
     if (result.empty())
       for (const DeclRef &dr : type.declarations)
-        if (auto ls_loc = GetLsLocation(db, wfiles, dr))
-          result.push_back(*ls_loc);
+        if (auto loc = GetLocationLink(db, wfiles, dr))
+          result.push_back(loc);
   };
   for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
     switch (sym.kind) {
@@ -211,8 +229,6 @@ void MessageHandler::textDocument_typeDefinition(
     }
   }
 
-  std::sort(result.begin(), result.end());
-  result.erase(std::unique(result.begin(), result.end()), result.end());
-  reply(result);
+  reply.ReplyLocationLink(result);
 }
 } // namespace ccls

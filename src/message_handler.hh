@@ -189,6 +189,7 @@ REFLECT_STRUCT(ResponseError, code, message);
 REFLECT_STRUCT(Position, line, character);
 REFLECT_STRUCT(lsRange, start, end);
 REFLECT_STRUCT(Location, uri, range);
+REFLECT_STRUCT(LocationLink, targetUri, targetRange, targetSelectionRange);
 REFLECT_UNDERLYING_B(SymbolKind);
 REFLECT_STRUCT(TextDocumentIdentifier, uri);
 REFLECT_STRUCT(TextDocumentItem, uri, languageId, version, text);
@@ -210,6 +211,7 @@ struct ReplyOnce {
       pipeline::ReplyError(id, [&](JsonWriter &w) { Reflect(w, err); });
   }
   void NotReady(bool file);
+  void ReplyLocationLink(std::vector<LocationLink> &result);
 };
 
 struct MessageHandler {
@@ -252,6 +254,7 @@ private:
   void textDocument_codeAction(CodeActionParam &, ReplyOnce &);
   void textDocument_codeLens(TextDocumentParam &, ReplyOnce &);
   void textDocument_completion(CompletionParam &, ReplyOnce &);
+  void textDocument_declaration(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_definition(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_didChange(TextDocumentDidChangeParam &);
   void textDocument_didClose(TextDocumentParam &);

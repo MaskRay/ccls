@@ -200,7 +200,7 @@ Maybe<DeclRef> GetDefinitionSpell(DB *db, SymbolIdx sym);
 // for each id.
 std::vector<Use> GetFuncDeclarations(DB *, const std::vector<Usr> &);
 std::vector<Use> GetTypeDeclarations(DB *, const std::vector<Usr> &);
-std::vector<Use> GetVarDeclarations(DB *, const std::vector<Usr> &, unsigned);
+std::vector<DeclRef> GetVarDeclarations(DB *, const std::vector<Usr> &, unsigned);
 
 // Get non-defining declarations.
 std::vector<DeclRef> &GetNonDefDeclarations(DB *db, SymbolIdx sym);
@@ -215,8 +215,8 @@ DocumentUri GetLsDocumentUri(DB *db, int file_id);
 std::optional<Location> GetLsLocation(DB *db, WorkingFiles *wfiles, Use use);
 std::optional<Location> GetLsLocation(DB *db, WorkingFiles *wfiles,
                                         SymbolRef sym, int file_id);
-std::vector<Location> GetLsLocations(DB *db, WorkingFiles *wfiles,
-                                           const std::vector<Use> &uses);
+LocationLink GetLocationLink(DB *db, WorkingFiles *wfiles, DeclRef dr);
+
 // Returns a symbol. The symbol will *NOT* have a location assigned.
 std::optional<SymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
                                                  bool detailed);
