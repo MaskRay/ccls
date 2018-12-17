@@ -116,6 +116,21 @@ void ReplyOnce::NotReady(bool file) {
     Error(ErrorCode::InternalError, "not indexed");
 }
 
+void ReplyOnce::ReplyLocationLink(std::vector<LocationLink> &result) {
+  std::sort(result.begin(), result.end());
+  result.erase(std::unique(result.begin(), result.end()), result.end());
+  if (result.size() > g_config->xref.maxNum)
+    result.resize(g_config->xref.maxNum);
+  if (g_config->client.linkSupport) {
+    (*this)(result);
+  } else {
+    std::vector<Location> result1;
+    for (auto &loc : result)
+      result1.emplace_back(std::move(loc));
+    (*this)(result1);
+  }
+}
+
 void MessageHandler::Bind(const char *method,
                           void (MessageHandler::*handler)(JsonReader &)) {
   method2notification[method] = [this, handler](JsonReader &reader) {
@@ -155,6 +170,7 @@ void MessageHandler::Bind(const char *method,
 }
 
 MessageHandler::MessageHandler() {
+  // clang-format off
   Bind("$ccls/call", &MessageHandler::ccls_call);
   Bind("$ccls/fileInfo", &MessageHandler::ccls_fileInfo);
   Bind("$ccls/info", &MessageHandler::ccls_info);
@@ -169,39 +185,31 @@ MessageHandler::MessageHandler() {
   Bind("textDocument/codeAction", &MessageHandler::textDocument_codeAction);
   Bind("textDocument/codeLens", &MessageHandler::textDocument_codeLens);
   Bind("textDocument/completion", &MessageHandler::textDocument_completion);
+  Bind("textDocument/declaration", &MessageHandler::textDocument_declaration);
   Bind("textDocument/definition", &MessageHandler::textDocument_definition);
   Bind("textDocument/didChange", &MessageHandler::textDocument_didChange);
   Bind("textDocument/didClose", &MessageHandler::textDocument_didClose);
   Bind("textDocument/didOpen", &MessageHandler::textDocument_didOpen);
   Bind("textDocument/didSave", &MessageHandler::textDocument_didSave);
-  Bind("textDocument/documentHighlight",
-       &MessageHandler::textDocument_documentHighlight);
+  Bind("textDocument/documentHighlight", &MessageHandler::textDocument_documentHighlight);
   Bind("textDocument/documentLink", &MessageHandler::textDocument_documentLink);
-  Bind("textDocument/documentSymbol",
-       &MessageHandler::textDocument_documentSymbol);
+  Bind("textDocument/documentSymbol", &MessageHandler::textDocument_documentSymbol);
   Bind("textDocument/foldingRange", &MessageHandler::textDocument_foldingRange);
   Bind("textDocument/formatting", &MessageHandler::textDocument_formatting);
   Bind("textDocument/hover", &MessageHandler::textDocument_hover);
-  Bind("textDocument/implementation",
-       &MessageHandler::textDocument_implementation);
-  Bind("textDocument/onTypeFormatting",
-       &MessageHandler::textDocument_onTypeFormatting);
-  Bind("textDocument/rangeFormatting",
-       &MessageHandler::textDocument_rangeFormatting);
+  Bind("textDocument/implementation", &MessageHandler::textDocument_implementation);
+  Bind("textDocument/onTypeFormatting", &MessageHandler::textDocument_onTypeFormatting);
+  Bind("textDocument/rangeFormatting", &MessageHandler::textDocument_rangeFormatting);
   Bind("textDocument/references", &MessageHandler::textDocument_references);
   Bind("textDocument/rename", &MessageHandler::textDocument_rename);
-  Bind("textDocument/signatureHelp",
-       &MessageHandler::textDocument_signatureHelp);
-  Bind("textDocument/typeDefinition",
-       &MessageHandler::textDocument_typeDefinition);
-  Bind("workspace/didChangeConfiguration",
-       &MessageHandler::workspace_didChangeConfiguration);
-  Bind("workspace/didChangeWatchedFiles",
-       &MessageHandler::workspace_didChangeWatchedFiles);
-  Bind("workspace/didChangeWorkspaceFolders",
-       &MessageHandler::workspace_didChangeWorkspaceFolders);
+  Bind("textDocument/signatureHelp", &MessageHandler::textDocument_signatureHelp);
+  Bind("textDocument/typeDefinition", &MessageHandler::textDocument_typeDefinition);
+  Bind("workspace/didChangeConfiguration", &MessageHandler::workspace_didChangeConfiguration);
+  Bind("workspace/didChangeWatchedFiles", &MessageHandler::workspace_didChangeWatchedFiles);
+  Bind("workspace/didChangeWorkspaceFolders", &MessageHandler::workspace_didChangeWorkspaceFolders);
   Bind("workspace/executeCommand", &MessageHandler::workspace_executeCommand);
   Bind("workspace/symbol", &MessageHandler::workspace_symbol);
+  // clang-format on
 }
 
 void MessageHandler::Run(InMessage &msg) {
