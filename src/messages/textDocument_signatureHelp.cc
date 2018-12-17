@@ -24,7 +24,7 @@ using namespace clang;
 
 namespace {
 struct ParameterInformation {
-  std::string label;
+  std::vector<int> label;
 };
 struct SignatureInformation {
   std::string label;
@@ -40,13 +40,12 @@ REFLECT_STRUCT(ParameterInformation, label);
 REFLECT_STRUCT(SignatureInformation, label, documentation, parameters);
 REFLECT_STRUCT(SignatureHelp, signatures, activeSignature, activeParameter);
 
-std::string BuildOptional(const CodeCompletionString &CCS,
-                          std::vector<ParameterInformation> &ls_params) {
-  std::string ret;
+void BuildOptional(const CodeCompletionString &CCS, std::string &label,
+                   std::vector<ParameterInformation> &ls_params) {
   for (const auto &Chunk : CCS) {
     switch (Chunk.Kind) {
     case CodeCompletionString::CK_Optional:
-      ret += BuildOptional(*Chunk.Optional, ls_params);
+      BuildOptional(*Chunk.Optional, label, ls_params);
       break;
     case CodeCompletionString::CK_Placeholder:
       // A string that acts as a placeholder for, e.g., a function call
@@ -56,18 +55,18 @@ std::string BuildOptional(const CodeCompletionString &CCS,
       // A piece of text that describes the parameter that corresponds to
       // the code-completion location within a function call, message send,
       // macro invocation, etc.
-      ret += Chunk.Text;
-      ls_params.push_back({Chunk.Text});
+      int off = (int)label.size();
+      label += Chunk.Text;
+      ls_params.push_back({{off, (int)label.size()}});
       break;
     }
     case CodeCompletionString::CK_VerticalSpace:
       break;
     default:
-      ret += Chunk.Text;
+      label += Chunk.Text;
       break;
     }
   }
-  return ret;
 }
 
 class SignatureHelpConsumer : public CodeCompleteConsumer {
@@ -115,12 +114,13 @@ public:
           break;
         case CodeCompletionString::CK_Placeholder:
         case CodeCompletionString::CK_CurrentParameter: {
+          int off = (int)ls_sig.label.size();
           ls_sig.label += Chunk.Text;
-          ls_sig.parameters.push_back({Chunk.Text});
+          ls_sig.parameters.push_back({{off, (int)ls_sig.label.size()}});
           break;
         }
         case CodeCompletionString::CK_Optional:
-          ls_sig.label += BuildOptional(*Chunk.Optional, ls_sig.parameters);
+          BuildOptional(*Chunk.Optional, ls_sig.label, ls_sig.parameters);
           break;
         case CodeCompletionString::CK_VerticalSpace:
           break;
