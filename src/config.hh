@@ -73,6 +73,8 @@ struct Config {
   struct ClientCapability {
     // TextDocumentClientCapabilities.documentSymbol.hierarchicalDocumentSymbolSupport
     bool hierarchicalDocumentSymbolSupport = true;
+    // TextDocumentClientCapabilities.definition.linkSupport
+    bool linkSupport = true;
     // TextDocumentClientCapabilities.completion.completionItem.snippetSupport
     bool snippetSupport = true;
   } client;
@@ -248,30 +250,28 @@ struct Config {
   } xref;
 };
 REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, pathMappings,
-                    resourceDir);
+               resourceDir);
 REFLECT_STRUCT(Config::ClientCapability, hierarchicalDocumentSymbolSupport,
-                    snippetSupport);
+               linkSupport, snippetSupport);
 REFLECT_STRUCT(Config::CodeLens, localVariables);
 REFLECT_STRUCT(Config::Completion::Include, blacklist, maxPathSize,
-                    suffixWhitelist, whitelist);
+               suffixWhitelist, whitelist);
 REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
-                    dropOldRequests, duplicateOptional, filterAndSort, include,
-                    maxNum);
+               dropOldRequests, duplicateOptional, filterAndSort, include,
+               maxNum);
 REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
-                    spellChecking, whitelist)
-REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist,
-                    whitelist)
+               spellChecking, whitelist)
+REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist, whitelist)
 REFLECT_STRUCT(Config::Index, blacklist, comments, initialBlacklist,
-                    initialWhitelist, multiVersion, multiVersionBlacklist,
-                    multiVersionWhitelist, onChange, threads, trackDependency,
-                    whitelist);
+               initialWhitelist, multiVersion, multiVersionBlacklist,
+               multiVersionWhitelist, onChange, threads, trackDependency,
+               whitelist);
 REFLECT_STRUCT(Config::Session, maxNum);
 REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 REFLECT_STRUCT(Config::Xref, maxNum);
-REFLECT_STRUCT(Config, compilationDatabaseCommand,
-                    compilationDatabaseDirectory, cacheDirectory, cacheFormat,
-                    clang, client, codeLens, completion, diagnostics, highlight,
-                    index, session, workspaceSymbol, xref);
+REFLECT_STRUCT(Config, compilationDatabaseCommand, compilationDatabaseDirectory,
+               cacheDirectory, cacheFormat, clang, client, codeLens, completion,
+               diagnostics, highlight, index, session, workspaceSymbol, xref);
 
 extern Config *g_config;
 

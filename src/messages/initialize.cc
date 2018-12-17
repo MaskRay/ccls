@@ -58,6 +58,7 @@ struct ServerCap {
   struct SignatureHelpOptions {
     std::vector<const char *> triggerCharacters = {"(", ","};
   } signatureHelpProvider;
+  bool declarationProvider = true;
   bool definitionProvider = true;
   bool typeDefinitionProvider = true;
   bool implementationProvider = true;
@@ -109,7 +110,7 @@ REFLECT_STRUCT(ServerCap::Workspace::WorkspaceFolders, supported,
                changeNotifications);
 REFLECT_STRUCT(ServerCap::Workspace, workspaceFolders);
 REFLECT_STRUCT(ServerCap, textDocumentSync, hoverProvider, completionProvider,
-               signatureHelpProvider, definitionProvider,
+               signatureHelpProvider, declarationProvider, definitionProvider,
                implementationProvider, typeDefinitionProvider,
                referencesProvider, documentHighlightProvider,
                documentSymbolProvider, workspaceSymbolProvider,
@@ -161,6 +162,11 @@ struct TextDocumentClientCap {
     } completionItem;
   } completion;
 
+  // Ignore declaration, implementation, typeDefinition
+  struct LinkSupport {
+    bool linkSupport = false;
+  } definition;
+
   struct DocumentSymbol {
     bool hierarchicalDocumentSymbolSupport = false;
   } documentSymbol;
@@ -171,7 +177,8 @@ REFLECT_STRUCT(TextDocumentClientCap::Completion::CompletionItem,
 REFLECT_STRUCT(TextDocumentClientCap::Completion, completionItem);
 REFLECT_STRUCT(TextDocumentClientCap::DocumentSymbol,
                hierarchicalDocumentSymbolSupport);
-REFLECT_STRUCT(TextDocumentClientCap, completion, documentSymbol);
+REFLECT_STRUCT(TextDocumentClientCap::LinkSupport, linkSupport);
+REFLECT_STRUCT(TextDocumentClientCap, completion, definition, documentSymbol);
 
 struct ClientCap {
   WorkspaceClientCap workspace;
@@ -272,11 +279,13 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
 
   // Client capabilities
   const auto &capabilities = param.capabilities;
-  g_config->client.snippetSupport &=
-      capabilities.textDocument.completion.completionItem.snippetSupport;
   g_config->client.hierarchicalDocumentSymbolSupport &=
       capabilities.textDocument.documentSymbol
           .hierarchicalDocumentSymbolSupport;
+  g_config->client.linkSupport &=
+      capabilities.textDocument.definition.linkSupport;
+  g_config->client.snippetSupport &=
+      capabilities.textDocument.completion.completionItem.snippetSupport;
 
   // Ensure there is a resource directory.
   if (g_config->clang.resourceDir.empty())
