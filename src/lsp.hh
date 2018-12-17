@@ -72,7 +72,8 @@ constexpr char window_showMessage[] = "window/showMessage";
 struct DocumentUri {
   static DocumentUri FromPath(const std::string &path);
 
-  bool operator==(const DocumentUri &other) const;
+  bool operator==(const DocumentUri &o) const { return raw_uri == o.raw_uri; }
+  bool operator<(const DocumentUri &o) const { return raw_uri < o.raw_uri; }
 
   void SetPath(const std::string &path);
   std::string GetPath() const;
@@ -116,8 +117,26 @@ struct Location {
     return uri == o.uri && range == o.range;
   }
   bool operator<(const Location &o) const {
-    return !(uri.raw_uri == o.uri.raw_uri) ? uri.raw_uri < o.uri.raw_uri
-                                           : range < o.range;
+    return !(uri == o.uri) ? uri < o.uri : range < o.range;
+  }
+};
+
+struct LocationLink {
+  std::string targetUri;
+  lsRange targetRange;
+  lsRange targetSelectionRange;
+  explicit operator bool() const { return targetUri.size(); }
+  explicit operator Location() && {
+    return {DocumentUri{std::move(targetUri)}, targetSelectionRange};
+  }
+  bool operator==(const LocationLink &o) const {
+    return targetUri == o.targetUri &&
+           targetSelectionRange == o.targetSelectionRange;
+  }
+  bool operator<(const LocationLink &o) const {
+    return !(targetUri == o.targetUri)
+               ? targetUri < o.targetUri
+               : targetSelectionRange < o.targetSelectionRange;
   }
 };
 

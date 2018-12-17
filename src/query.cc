@@ -532,9 +532,9 @@ std::vector<Use> GetFuncDeclarations(DB *db, const std::vector<Usr> &usrs) {
 std::vector<Use> GetTypeDeclarations(DB *db, const std::vector<Usr> &usrs) {
   return GetDeclarations(db->type_usr, db->types, usrs);
 }
-std::vector<Use> GetVarDeclarations(DB *db, const std::vector<Usr> &usrs,
-                                    unsigned kind) {
-  std::vector<Use> ret;
+std::vector<DeclRef> GetVarDeclarations(DB *db, const std::vector<Usr> &usrs,
+                                        unsigned kind) {
+  std::vector<DeclRef> ret;
   ret.reserve(usrs.size());
   for (Usr usr : usrs) {
     QueryVar &var = db->Var(usr);
@@ -681,17 +681,18 @@ std::optional<Location> GetLsLocation(DB *db, WorkingFiles *wfiles,
   return GetLsLocation(db, wfiles, Use{{sym.range, sym.role}, file_id});
 }
 
-std::vector<Location> GetLsLocations(DB *db, WorkingFiles *wfiles,
-                                     const std::vector<Use> &uses) {
-  std::vector<Location> ret;
-  for (Use use : uses)
-    if (auto loc = GetLsLocation(db, wfiles, use))
-      ret.push_back(*loc);
-  std::sort(ret.begin(), ret.end());
-  ret.erase(std::unique(ret.begin(), ret.end()), ret.end());
-  if (ret.size() > g_config->xref.maxNum)
-    ret.resize(g_config->xref.maxNum);
-  return ret;
+LocationLink GetLocationLink(DB *db, WorkingFiles *wfiles, DeclRef dr) {
+  std::string path;
+  DocumentUri uri = GetLsDocumentUri(db, dr.file_id, &path);
+  if (auto range = GetLsRange(wfiles->GetFile(path), dr.range))
+    if (auto extent = GetLsRange(wfiles->GetFile(path), dr.extent)) {
+      LocationLink ret;
+      ret.targetUri = uri.raw_uri;
+      ret.targetSelectionRange = *range;
+      ret.targetRange = extent->Includes(*range) ? *extent : *range;
+      return ret;
+    }
+  return {};
 }
 
 SymbolKind GetSymbolKind(DB *db, SymbolIdx sym) {

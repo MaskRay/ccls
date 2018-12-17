@@ -60,10 +60,6 @@ DocumentUri DocumentUri::FromPath(const std::string &path) {
   return result;
 }
 
-bool DocumentUri::operator==(const DocumentUri &other) const {
-  return raw_uri == other.raw_uri;
-}
-
 void DocumentUri::SetPath(const std::string &path) {
   // file:///c%3A/Users/jacob/Desktop/superindex/indexer/full_tests
   raw_uri = path;
