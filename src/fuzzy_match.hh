@@ -29,7 +29,7 @@ public:
   constexpr static int kMinScore = INT_MIN / 4;
 
   FuzzyMatcher(std::string_view pattern, int case_sensitivity);
-  int Match(std::string_view text);
+  int Match(std::string_view text, bool strict);
 
 private:
   int case_sensitivity;
