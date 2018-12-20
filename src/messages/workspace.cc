@@ -168,8 +168,8 @@ done_add:
           longest, int(db->GetSymbolName(std::get<2>(cand), true).size()));
     FuzzyMatcher fuzzy(query, g_config->workspaceSymbol.caseSensitivity);
     for (auto &cand : cands)
-      std::get<1>(cand) =
-          fuzzy.Match(db->GetSymbolName(std::get<2>(cand), std::get<1>(cand)));
+      std::get<1>(cand) = fuzzy.Match(
+          db->GetSymbolName(std::get<2>(cand), std::get<1>(cand)), false);
     std::sort(cands.begin(), cands.end(), [](const auto &l, const auto &r) {
       return std::get<1>(l) > std::get<1>(r);
     });
