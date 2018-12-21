@@ -30,6 +30,8 @@ namespace {
 enum class TextDocumentSyncKind { None = 0, Full = 1, Incremental = 2 };
 REFLECT_UNDERLYING(TextDocumentSyncKind)
 
+bool didChangeWatchedFiles;
+
 struct ServerCap {
   struct SaveOptions {
     bool includeText = false;
@@ -228,6 +230,24 @@ struct InitializeResult {
 };
 REFLECT_STRUCT(InitializeResult, capabilities);
 
+struct FileSystemWatcher {
+  std::string globPattern = "**/*";
+};
+struct DidChangeWatchedFilesRegistration {
+  std::string id = "didChangeWatchedFiles";
+  std::string method = "workspace/didChangeWatchedFiles";
+  struct Option {
+    std::vector<FileSystemWatcher> watchers = {{}};
+  } registerOptions;
+};
+struct RegistrationParam {
+  std::vector<DidChangeWatchedFilesRegistration> registrations = {{}};
+};
+REFLECT_STRUCT(FileSystemWatcher, globPattern);
+REFLECT_STRUCT(DidChangeWatchedFilesRegistration::Option, watchers);
+REFLECT_STRUCT(DidChangeWatchedFilesRegistration, id, method, registerOptions);
+REFLECT_STRUCT(RegistrationParam, registrations);
+
 void *Indexer(void *arg_) {
   MessageHandler *h;
   int idx;
@@ -287,6 +307,8 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
       capabilities.textDocument.definition.linkSupport;
   g_config->client.snippetSupport &=
       capabilities.textDocument.completion.completionItem.snippetSupport;
+  didChangeWatchedFiles =
+      capabilities.workspace.didChangeWatchedFiles.dynamicRegistration;
 
   // Ensure there is a resource directory.
   if (g_config->clang.resourceDir.empty())
@@ -357,6 +379,13 @@ void StandaloneInitialize(MessageHandler &handler, const std::string &root) {
   param.rootUri = DocumentUri::FromPath(root);
   ReplyOnce reply;
   Initialize(&handler, param, reply);
+}
+
+void MessageHandler::initialized(EmptyParam &) {
+  if (didChangeWatchedFiles) {
+    RegistrationParam param;
+    pipeline::Request("client/registerCapability", param);
+  }
 }
 
 void MessageHandler::shutdown(EmptyParam &, ReplyOnce &reply) {
