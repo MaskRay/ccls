@@ -25,7 +25,7 @@ void MessageHandler::textDocument_didChange(TextDocumentDidChangeParam &param) {
   std::string path = param.textDocument.uri.GetPath();
   wfiles->OnChange(param);
   if (g_config->index.onChange)
-    pipeline::Index(path, {}, IndexMode::OnChange);
+    pipeline::Index(path, {}, IndexMode::OnChange, true);
   manager->OnView(path);
   if (g_config->diagnostics.onChange >= 0)
     manager->ScheduleDiag(path, g_config->diagnostics.onChange);
@@ -56,14 +56,14 @@ void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
   std::pair<LanguageId, bool> lang = lookupExtension(path);
   if ((lang.first != LanguageId::Unknown && !lang.second) ||
       !pipeline::pending_index_requests)
-    pipeline::Index(path, {}, IndexMode::Normal);
+    pipeline::Index(path, {}, IndexMode::Normal, false);
 
   manager->OnView(path);
 }
 
 void MessageHandler::textDocument_didSave(TextDocumentParam &param) {
   const std::string &path = param.textDocument.uri.GetPath();
-  pipeline::Index(path, {}, IndexMode::Normal);
+  pipeline::Index(path, {}, IndexMode::Normal, true);
   manager->OnSave(path);
 }
 } // namespace ccls

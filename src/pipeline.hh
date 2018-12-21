@@ -51,13 +51,17 @@ void MainLoop();
 void Standalone(const std::string &root);
 
 void Index(const std::string &path, const std::vector<const char *> &args,
-           IndexMode mode, RequestId id = {});
+           IndexMode mode, bool must_exist, RequestId id = {});
 
 std::optional<std::string> LoadIndexedContent(const std::string& path);
 
-void Notify(const char *method, const std::function<void(JsonWriter &)> &fn);
+void NotifyOrRequest(const char *method, bool request,
+                     const std::function<void(JsonWriter &)> &fn);
 template <typename T> void Notify(const char *method, T &result) {
-  Notify(method, [&](JsonWriter &w) { Reflect(w, result); });
+  NotifyOrRequest(method, false, [&](JsonWriter &w) { Reflect(w, result); });
+}
+template <typename T> void Request(const char *method, T &result) {
+  NotifyOrRequest(method, true, [&](JsonWriter &w) { Reflect(w, result); });
 }
 
 void Reply(RequestId id, const std::function<void(JsonWriter &)> &fn);

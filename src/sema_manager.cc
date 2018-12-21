@@ -302,7 +302,7 @@ public:
 std::unique_ptr<CompilerInstance> BuildCompilerInstance(
     Session &session, std::unique_ptr<CompilerInvocation> CI,
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS, DiagnosticConsumer &DC,
-    const PreambleData *preamble, const std::string &path,
+    const PreambleData *preamble, const std::string &main,
     std::unique_ptr<llvm::MemoryBuffer> &Buf) {
   if (preamble) {
 #if LLVM_VERSION_MAJOR >= 7
@@ -311,7 +311,7 @@ std::unique_ptr<CompilerInstance> BuildCompilerInstance(
     preamble->Preamble.AddImplicitPreamble(*CI, FS, Buf.get());
 #endif
   } else {
-    CI->getPreprocessorOpts().addRemappedFile(path, Buf.get());
+    CI->getPreprocessorOpts().addRemappedFile(main, Buf.get());
   }
 
   auto Clang = std::make_unique<CompilerInstance>(session.PCH);
@@ -328,6 +328,11 @@ std::unique_ptr<CompilerInstance> BuildCompilerInstance(
   Clang->createFileManager();
   Clang->setSourceManager(new SourceManager(Clang->getDiagnostics(),
                                             Clang->getFileManager(), true));
+  auto &IS = Clang->getFrontendOpts().Inputs;
+  if (IS.size()) {
+    assert(IS[0].isFile());
+    IS[0] = FrontendInputFile(main, IS[0].getKind(), IS[0].isSystem());
+  }
   return Clang;
 }
 
@@ -702,7 +707,7 @@ SemaManager::EnsureSession(const std::string &path, bool *created) {
   std::shared_ptr<ccls::Session> session = sessions.Get(path);
   if (!session) {
     session = std::make_shared<ccls::Session>(
-        project_->FindEntry(path, false), wfiles, PCH);
+        project_->FindEntry(path, true), wfiles, PCH);
     std::string line;
     if (LOG_V_ENABLED(1)) {
       line = "\n ";
