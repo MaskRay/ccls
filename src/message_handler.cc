@@ -181,6 +181,7 @@ MessageHandler::MessageHandler() {
   Bind("$ccls/vars", &MessageHandler::ccls_vars);
   Bind("exit", &MessageHandler::exit);
   Bind("initialize", &MessageHandler::initialize);
+  Bind("initialized", &MessageHandler::initialized);
   Bind("shutdown", &MessageHandler::shutdown);
   Bind("textDocument/codeAction", &MessageHandler::textDocument_codeAction);
   Bind("textDocument/codeLens", &MessageHandler::textDocument_codeLens);

@@ -250,6 +250,7 @@ private:
   void ccls_vars(JsonReader &, ReplyOnce &);
   void exit(EmptyParam &);
   void initialize(JsonReader &, ReplyOnce &);
+  void initialized(EmptyParam &);
   void shutdown(EmptyParam &, ReplyOnce &);
   void textDocument_codeAction(CodeActionParam &, ReplyOnce &);
   void textDocument_codeLens(TextDocumentParam &, ReplyOnce &);
