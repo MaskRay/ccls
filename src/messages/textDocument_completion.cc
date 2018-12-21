@@ -61,9 +61,10 @@ REFLECT_STRUCT(CompletionList, isIncomplete, items);
 
 #if LLVM_VERSION_MAJOR < 8
 void DecorateIncludePaths(const std::smatch &match,
-                          std::vector<CompletionItem> *items) {
+                          std::vector<CompletionItem> *items,
+                          char quote) {
   std::string spaces_after_include = " ";
-  if (match[3].compare("include") == 0 && match[5].length())
+  if (match[3].compare("include") == 0 && quote != '\0')
     spaces_after_include = match[4].str();
 
   std::string prefix =
@@ -72,8 +73,7 @@ void DecorateIncludePaths(const std::smatch &match,
 
   for (CompletionItem &item : *items) {
     char quote0, quote1;
-    if (match[5].compare("<") == 0 ||
-        (match[5].length() == 0 && item.use_angle_brackets_))
+    if (quote != '"')
       quote0 = '<', quote1 = '>';
     else
       quote0 = quote1 = '"';
@@ -504,21 +504,22 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   ParseIncludeLineResult preprocess = ParseIncludeLine(buffer_line);
   if (preprocess.ok && preprocess.keyword.compare("include") == 0) {
     CompletionList result;
+    char quote = std::string(preprocess.match[5])[0];
     {
       std::unique_lock<std::mutex> lock(
           include_complete->completion_items_mutex, std::defer_lock);
       if (include_complete->is_scanning)
         lock.lock();
-      std::string quote = preprocess.match[5];
       for (auto &item : include_complete->completion_items)
-        if (quote.empty() || quote == (item.use_angle_brackets_ ? "<" : "\""))
+        if (quote == '\0' || (item.quote_kind_ & 1 && quote == '"') ||
+            (item.quote_kind_ & 2 && quote == '<'))
           result.items.push_back(item);
     }
     begin_pos.character = 0;
     end_pos.character = (int)buffer_line.size();
     FilterCandidates(result, preprocess.pattern, begin_pos, end_pos,
                      buffer_line);
-    DecorateIncludePaths(preprocess.match, &result.items);
+    DecorateIncludePaths(preprocess.match, &result.items, quote);
     reply(result);
     return;
   }
