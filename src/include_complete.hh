@@ -34,11 +34,6 @@ struct IncludeComplete {
   // Ensures the one-off file is inside |completion_items|.
   void AddFile(const std::string &absolute_path);
 
-  // Scans the given directory and inserts all includes from this. This is a
-  // blocking function and should be run off the querydb thread.
-  void InsertIncludesFromDirectory(std::string directory,
-                                   bool use_angle_brackets);
-
   std::optional<ccls::CompletionItem>
   FindCompletionItemForAbsolutePath(const std::string &absolute_path);
 
