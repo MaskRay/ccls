@@ -84,10 +84,11 @@ int64_t tick = 0;
 
 namespace {
 
-struct Index_Request {
+struct IndexRequest {
   std::string path;
   std::vector<const char *> args;
   IndexMode mode;
+  bool must_exist = false;
   RequestId id;
   int64_t ts = tick++;
 };
@@ -100,7 +101,7 @@ MultiQueueWaiter *main_waiter;
 MultiQueueWaiter *indexer_waiter;
 MultiQueueWaiter *stdout_waiter;
 ThreadedQueue<InMessage> *on_request;
-ThreadedQueue<Index_Request> *index_request;
+ThreadedQueue<IndexRequest> *index_request;
 ThreadedQueue<IndexUpdate> *on_indexed;
 ThreadedQueue<std::string> *for_stdout;
 
@@ -185,7 +186,7 @@ std::mutex &GetFileMutex(const std::string &path) {
 
 bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
                    Project *project, VFS *vfs, const GroupMatch &matcher) {
-  std::optional<Index_Request> opt_request = index_request->TryPopFront();
+  std::optional<IndexRequest> opt_request = index_request->TryPopFront();
   if (!opt_request)
     return false;
   auto &request = *opt_request;
@@ -207,23 +208,32 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
     return false;
   }
 
-  Project::Entry entry = project->FindEntry(request.path, true);
+  Project::Entry entry = project->FindEntry(request.path, request.must_exist);
+  if (request.must_exist && entry.filename.empty())
+    return true;
   if (request.args.size())
     entry.args = request.args;
   std::string path_to_index = entry.filename;
   std::unique_ptr<IndexFile> prev;
 
+  bool deleted = false;
+  int reparse = 0;
   std::optional<int64_t> write_time = LastWriteTime(path_to_index);
-  if (!write_time)
-    return true;
-  int reparse = vfs->Stamp(path_to_index, *write_time, 0);
-  if (request.path != path_to_index) {
-    std::optional<int64_t> mtime1 = LastWriteTime(request.path);
-    if (!mtime1)
-      return true;
-    if (vfs->Stamp(request.path, *mtime1, 0))
-      reparse = 2;
+  if (!write_time) {
+    deleted = true;
+  } else {
+    reparse = vfs->Stamp(path_to_index, *write_time, 0);
+    if (request.path != path_to_index) {
+      std::optional<int64_t> mtime1 = LastWriteTime(request.path);
+      if (!mtime1)
+        deleted = true;
+      else if (vfs->Stamp(request.path, *mtime1, 0))
+        reparse = 2;
+    }
   }
+  if (deleted)
+    reparse = 2;
+
   if (g_config->index.onChange) {
     reparse = 2;
     std::lock_guard lock(vfs->mutex);
@@ -307,27 +317,34 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
       for (auto &arg : entry.args)
         (line += ' ') += arg;
     }
-    LOG_S(INFO) << "parse " << path_to_index << line;
+    LOG_S(INFO) << (deleted ? "delete " : "parse ") << path_to_index << line;
   }
 
-  std::vector<std::pair<std::string, std::string>> remapped;
-  if (g_config->index.onChange) {
-    std::string content = wfiles->GetContent(path_to_index);
-    if (content.size())
-      remapped.emplace_back(path_to_index, content);
-  }
-  bool ok;
-  auto indexes = idx::Index(completion, wfiles, vfs, entry.directory,
-                            path_to_index, entry.args, remapped, ok);
-
-  if (!ok) {
-    if (request.id.Valid()) {
-      ResponseError err;
-      err.code = ErrorCode::InternalError;
-      err.message = "failed to index " + path_to_index;
-      pipeline::ReplyError(request.id, err);
+  std::vector<std::unique_ptr<IndexFile>> indexes;
+  if (deleted) {
+    indexes.push_back(std::make_unique<IndexFile>(request.path, ""));
+    if (request.path != path_to_index)
+      indexes.push_back(std::make_unique<IndexFile>(path_to_index, ""));
+  } else {
+    std::vector<std::pair<std::string, std::string>> remapped;
+    if (g_config->index.onChange) {
+      std::string content = wfiles->GetContent(path_to_index);
+      if (content.size())
+        remapped.emplace_back(path_to_index, content);
     }
-    return true;
+    bool ok;
+    indexes = idx::Index(completion, wfiles, vfs, entry.directory,
+                         path_to_index, entry.args, remapped, ok);
+
+    if (!ok) {
+      if (request.id.Valid()) {
+        ResponseError err;
+        err.code = ErrorCode::InternalError;
+        err.message = "failed to index " + path_to_index;
+        pipeline::ReplyError(request.id, err);
+      }
+      return true;
+    }
   }
 
   for (std::unique_ptr<IndexFile> &curr : indexes) {
@@ -405,7 +422,7 @@ void Init() {
   on_indexed = new ThreadedQueue<IndexUpdate>(main_waiter);
 
   indexer_waiter = new MultiQueueWaiter;
-  index_request = new ThreadedQueue<Index_Request>(indexer_waiter);
+  index_request = new ThreadedQueue<IndexRequest>(indexer_waiter);
 
   stdout_waiter = new MultiQueueWaiter;
   for_stdout = new ThreadedQueue<std::string>(stdout_waiter);
@@ -638,9 +655,10 @@ void Standalone(const std::string &root) {
 }
 
 void Index(const std::string &path, const std::vector<const char *> &args,
-           IndexMode mode, RequestId id) {
+           IndexMode mode, bool must_exist, RequestId id) {
   pending_index_requests++;
-  index_request->PushBack({path, args, mode, id}, mode != IndexMode::NonInteractive);
+  index_request->PushBack({path, args, mode, must_exist, id},
+                          mode != IndexMode::NonInteractive);
 }
 
 std::optional<std::string> LoadIndexedContent(const std::string &path) {

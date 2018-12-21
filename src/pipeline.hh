@@ -51,7 +51,7 @@ void MainLoop();
 void Standalone(const std::string &root);
 
 void Index(const std::string &path, const std::vector<const char *> &args,
-           IndexMode mode, RequestId id = {});
+           IndexMode mode, bool must_exist, RequestId id = {});
 
 std::optional<std::string> LoadIndexedContent(const std::string& path);
 

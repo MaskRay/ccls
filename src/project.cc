@@ -413,13 +413,13 @@ void Project::Load(const std::string &root) {
 }
 
 Project::Entry Project::FindEntry(const std::string &path,
-                                  bool can_be_inferred) {
+                                  bool must_exist) {
   std::shared_lock lock(mtx);
   for (auto &[root, folder] : root2folder) {
     auto it = folder.path2entry_index.find(path);
     if (it != folder.path2entry_index.end()) {
       Project::Entry &entry = folder.entries[it->second];
-      if (can_be_inferred || entry.filename == path)
+      if (entry.filename == path)
         return entry;
     }
   }
@@ -427,6 +427,8 @@ Project::Entry Project::FindEntry(const std::string &path,
   std::string dir;
   const std::vector<const char *> *extra = nullptr;
   Project::Entry ret;
+  if (must_exist)
+    return ret;
   for (auto &[root, folder] : root2folder)
     if (StringRef(path).startswith(root))
       for (auto &[dir1, args] : folder.dot_ccls)
@@ -512,9 +514,10 @@ void Project::Index(WorkingFiles *wfiles, RequestId id) {
         if (match.Matches(entry.filename, &reason) &&
             match_i.Matches(entry.filename, &reason)) {
           bool interactive = wfiles->GetFile(entry.filename) != nullptr;
-          pipeline::Index(
-              entry.filename, entry.args,
-              interactive ? IndexMode::Normal : IndexMode::NonInteractive, id);
+          pipeline::Index(entry.filename, entry.args,
+                          interactive ? IndexMode::Normal
+                                      : IndexMode::NonInteractive,
+                          false, id);
         } else {
           LOG_V(1) << "[" << i << "/" << folder.entries.size() << "]: " << reason
                    << "; skip " << entry.filename;
@@ -527,6 +530,6 @@ void Project::Index(WorkingFiles *wfiles, RequestId id) {
   pipeline::loaded_ts = pipeline::tick;
   // Dummy request to indicate that project is loaded and
   // trigger refreshing semantic highlight for all working files.
-  pipeline::Index("", {}, IndexMode::NonInteractive);
+  pipeline::Index("", {}, IndexMode::NonInteractive, false);
 }
 } // namespace ccls
