@@ -83,8 +83,7 @@ bool TryReplaceDef(llvm::SmallVectorImpl<Q> &def_list, Q &&def) {
 
 IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
   IndexUpdate r;
-  static IndexFile empty(llvm::sys::fs::UniqueID(0, 0), current->path,
-                         "<empty>");
+  static IndexFile empty(current->path, "<empty>");
   if (previous)
     r.prev_lid2path = std::move(previous->lid2path);
   else

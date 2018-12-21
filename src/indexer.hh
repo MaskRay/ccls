@@ -290,7 +290,6 @@ struct IndexFile {
   // files accepted by newer ccls.
   static const int kMinorVersion;
 
-  llvm::sys::fs::UniqueID UniqueID;
   std::string path;
   std::vector<const char *> args;
   // This is unfortunately time_t as used by clang::FileEntry
@@ -320,8 +319,7 @@ struct IndexFile {
   // File contents at the time of index. Not serialized.
   std::string file_contents;
 
-  IndexFile(llvm::sys::fs::UniqueID UniqueID, const std::string &path,
-            const std::string &contents);
+  IndexFile(const std::string &path, const std::string &contents);
 
   IndexFunc &ToFunc(Usr usr);
   IndexType &ToType(Usr usr);
