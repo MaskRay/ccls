@@ -23,11 +23,13 @@ limitations under the License.
 
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/StringRef.h>
+#include <llvm/Support/Path.h>
 
 #include <algorithm>
 #include <ctype.h>
 #include <functional>
 #include <limits.h>
+using namespace llvm;
 
 namespace ccls {
 REFLECT_STRUCT(SymbolInformation, name, kind, location, containerName);
@@ -44,20 +46,30 @@ void MessageHandler::workspace_didChangeWatchedFiles(
     DidChangeWatchedFilesParam &param) {
   for (auto &event : param.changes) {
     std::string path = event.uri.GetPath();
+    if ((g_config->cacheDirectory.size() &&
+         StringRef(path).startswith(g_config->cacheDirectory)) ||
+        lookupExtension(path).first == LanguageId::Unknown)
+      return;
+    for (std::string cur = path; cur.size(); cur = sys::path::parent_path(cur))
+      if (cur[0] == '.')
+        return;
+
     IndexMode mode =
         wfiles->GetFile(path) ? IndexMode::Normal : IndexMode::NonInteractive;
     switch (event.type) {
     case FileChangeType::Created:
     case FileChangeType::Changed: {
-      pipeline::Index(path, {}, mode);
-      if (mode == IndexMode::Normal)
-        manager->OnSave(path);
-      else
-        manager->OnClose(path);
+      pipeline::Index(path, {}, mode, true);
+      if (event.type == FileChangeType::Changed) {
+        if (mode == IndexMode::Normal)
+          manager->OnSave(path);
+        else
+          manager->OnClose(path);
+      }
       break;
     }
     case FileChangeType::Deleted:
-      pipeline::Index(path, {}, mode);
+      pipeline::Index(path, {}, mode, true);
       manager->OnClose(path);
       break;
     }
