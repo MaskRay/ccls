@@ -82,8 +82,7 @@ struct IndexParam {
 
       if (!vfs.Stamp(path, it->second.mtime, 1))
         return;
-      it->second.db = std::make_unique<IndexFile>(File.getUniqueID(), path,
-                                                  it->second.content);
+      it->second.db = std::make_unique<IndexFile>(path, it->second.content);
     }
   }
 
@@ -1186,9 +1185,8 @@ public:
 const int IndexFile::kMajorVersion = 19;
 const int IndexFile::kMinorVersion = 1;
 
-IndexFile::IndexFile(llvm::sys::fs::UniqueID UniqueID, const std::string &path,
-                     const std::string &contents)
-    : UniqueID(UniqueID), path(path), file_contents(contents) {}
+IndexFile::IndexFile(const std::string &path, const std::string &contents)
+    : path(path), file_contents(contents) {}
 
 IndexFunc &IndexFile::ToFunc(Usr usr) {
   auto [it, inserted] = usr2func.try_emplace(usr);
