@@ -127,7 +127,7 @@ struct CompletionItem {
   std::vector<std::string> parameters_;
   int score_;
   unsigned priority_;
-  bool use_angle_brackets_ = false;
+  int quote_kind_ = 0;
 };
 
 // formatting

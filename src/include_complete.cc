@@ -60,40 +60,26 @@ size_t TrimCommonPathPrefix(const std::string &result,
   return 0;
 }
 
-// Returns true iff angle brackets should be used.
-bool TrimPath(Project *project, std::string &path) {
+int TrimPath(Project *project, std::string &path) {
   size_t pos = 0;
-  bool angle = false;
-  for (auto &[root, folder] : project->root2folder) {
-    size_t pos1 = 0;
-    for (auto &search : folder.angle_search_list)
-      pos1 = std::max(pos1, TrimCommonPathPrefix(path, search));
-    if (pos1 > pos) {
-      pos = pos1;
-      angle = true;
-    }
-
-    pos1 = TrimCommonPathPrefix(path, root);
-    for (auto &search : folder.quote_search_list)
-      pos1 = std::max(pos1, TrimCommonPathPrefix(path, search));
-    if (pos1 > pos) {
-      pos = pos1;
-      angle = false;
-    }
-  }
+  int kind = 0;
+  for (auto &[root, folder] : project->root2folder)
+    for (auto &[search, search_dir_kind] : folder.search_dir2kind)
+      if (int t = TrimCommonPathPrefix(path, search); t > pos)
+        pos = t, kind = search_dir_kind;
   path = path.substr(pos);
-  return angle;
+  return kind;
 }
 
 CompletionItem BuildCompletionItem(const std::string &path,
-                                   bool use_angle_brackets) {
+                                   int kind) {
   CompletionItem item;
   item.label = ElideLongPath(path);
   item.detail = path; // the include path, used in de-duplicating
   item.textEdit.newText = path;
   item.insertTextFormat = InsertTextFormat::PlainText;
-  item.use_angle_brackets_ = use_angle_brackets;
   item.kind = CompletionItemKind::File;
+  item.quote_kind_ = kind;
   item.priority_ = 0;
   return item;
 }
@@ -125,14 +111,41 @@ void IncludeComplete::Rescan() {
   is_scanning = true;
   std::thread([this]() {
     set_thread_name("include");
-    std::unordered_set<std::string> angle_set, quote_set;
     for (auto &[root, folder] : project_->root2folder) {
-      for (const std::string &search : folder.angle_search_list)
-        if (angle_set.insert(search).second)
-          InsertIncludesFromDirectory(search, true);
-      for (const std::string &search : folder.quote_search_list)
-        if (quote_set.insert(search).second)
-          InsertIncludesFromDirectory(search, false);
+      for (auto &search_kind : folder.search_dir2kind) {
+        const std::string &search = search_kind.first;
+        int kind = search_kind.second;
+        assert(search.back() == '/');
+        if (match_ && !match_->Matches(search))
+          return;
+        bool include_cpp = search.find("include/c++") != std::string::npos;
+
+        std::vector<CompletionCandidate> results;
+        GetFilesInFolder(search, true /*recursive*/,
+                         false /*add_folder_to_path*/,
+                         [&](const std::string &path) {
+                           bool ok = include_cpp;
+                           for (StringRef suffix :
+                                g_config->completion.include.suffixWhitelist)
+                             if (StringRef(path).endswith(suffix))
+                               ok = true;
+                           if (!ok)
+                             return;
+                           if (match_ && !match_->Matches(search + path))
+                             return;
+
+                           CompletionCandidate candidate;
+                           candidate.absolute_path = search + path;
+                           candidate.completion_item =
+                               BuildCompletionItem(path, kind);
+                           results.push_back(candidate);
+                         });
+
+        std::lock_guard lock(completion_items_mutex);
+        for (CompletionCandidate &result : results)
+          InsertCompletionItem(result.absolute_path,
+                               std::move(result.completion_item));
+      }
     }
 
     is_scanning = false;
@@ -142,7 +155,7 @@ void IncludeComplete::Rescan() {
 
 void IncludeComplete::InsertCompletionItem(const std::string &absolute_path,
                                            CompletionItem &&item) {
-  if (inserted_paths.insert({item.detail, inserted_paths.size()}).second) {
+  if (inserted_paths.try_emplace(item.detail, inserted_paths.size()).second) {
     completion_items.push_back(item);
     // insert if not found or with shorter include path
     auto it = absolute_path_to_completion_item.find(absolute_path);
@@ -151,12 +164,6 @@ void IncludeComplete::InsertCompletionItem(const std::string &absolute_path,
       absolute_path_to_completion_item[absolute_path] =
           completion_items.size() - 1;
     }
-  } else {
-    CompletionItem &inserted_item =
-        completion_items[inserted_paths[item.detail]];
-    // Update |use_angle_brackets_|, prefer quotes.
-    if (!item.use_angle_brackets_)
-      inserted_item.use_angle_brackets_ = false;
   }
 }
 
@@ -171,47 +178,13 @@ void IncludeComplete::AddFile(const std::string &path) {
     return;
 
   std::string trimmed_path = path;
-  bool use_angle_brackets = TrimPath(project_, trimmed_path);
-  CompletionItem item = BuildCompletionItem(trimmed_path, use_angle_brackets);
+  int kind = TrimPath(project_, trimmed_path);
+  CompletionItem item = BuildCompletionItem(trimmed_path, kind);
 
   std::unique_lock<std::mutex> lock(completion_items_mutex, std::defer_lock);
   if (is_scanning)
     lock.lock();
   InsertCompletionItem(path, std::move(item));
-}
-
-void IncludeComplete::InsertIncludesFromDirectory(std::string directory,
-                                                  bool use_angle_brackets) {
-  directory = NormalizePath(directory);
-  EnsureEndsInSlash(directory);
-  if (match_ && !match_->Matches(directory))
-    return;
-  bool include_cpp = directory.find("include/c++") != std::string::npos;
-
-  std::vector<CompletionCandidate> results;
-  GetFilesInFolder(
-      directory, true /*recursive*/, false /*add_folder_to_path*/,
-      [&](const std::string &path) {
-        bool ok = include_cpp;
-        for (StringRef suffix : g_config->completion.include.suffixWhitelist)
-          if (StringRef(path).endswith(suffix))
-            ok = true;
-        if (!ok)
-          return;
-        if (match_ && !match_->Matches(directory + path))
-          return;
-
-        CompletionCandidate candidate;
-        candidate.absolute_path = directory + path;
-        candidate.completion_item =
-            BuildCompletionItem(path, use_angle_brackets);
-        results.push_back(candidate);
-      });
-
-  std::lock_guard<std::mutex> lock(completion_items_mutex);
-  for (CompletionCandidate &result : results)
-    InsertCompletionItem(result.absolute_path,
-                         std::move(result.completion_item));
 }
 
 std::optional<CompletionItem>
