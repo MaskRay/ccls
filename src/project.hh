@@ -19,7 +19,7 @@ limitations under the License.
 #include "lsp.hh"
 
 #include <functional>
-#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -37,20 +37,20 @@ struct Project {
     std::vector<const char *> args;
     // If true, this entry is inferred and was not read from disk.
     bool is_inferred = false;
+    // 0 unless coming from a compile_commands.json entry.
+    int compdb_size = 0;
     int id = -1;
   };
 
   struct Folder {
     std::string name;
-    // Include directories for <> headers
-    std::vector<std::string> angle_search_list;
-    // Include directories for "" headers
-    std::vector<std::string> quote_search_list;
+    std::unordered_map<std::string, int> search_dir2kind;
     std::vector<Entry> entries;
     std::unordered_map<std::string, int> path2entry_index;
+    std::unordered_map<std::string, std::vector<const char *>> dot_ccls;
   };
 
-  std::mutex mutex_;
+  std::shared_mutex mtx;
   std::unordered_map<std::string, Folder> root2folder;
 
   // Loads a project for the given |directory|.
@@ -63,7 +63,8 @@ struct Project {
   // will affect flags in their subtrees (relative paths are relative to the
   // project root, not subdirectories). For compile_commands.json, its entries
   // are indexed.
-  void Load(const std::string &root_directory);
+  void Load(const std::string &root);
+  void LoadDirectory(const std::string &root, Folder &folder);
 
   // Lookup the CompilationEntry for |filename|. If no entry was found this
   // will infer one based on existing project structure.
