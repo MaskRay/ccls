@@ -293,7 +293,7 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
         on_indexed->PushBack(std::move(update),
           request.mode != IndexMode::NonInteractive);
         if (entry.id >= 0) {
-          std::lock_guard lock2(project->mutex_);
+          std::shared_lock lock2(project->mtx);
           project->root2folder[entry.root].path2entry_index[path] = entry.id;
         }
       }
@@ -363,7 +363,7 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
         vfs->state[path].loaded = true;
       }
       if (entry.id >= 0) {
-        std::lock_guard<std::mutex> lock(project->mutex_);
+        std::shared_lock lock(project->mtx);
         auto &folder = project->root2folder[entry.root];
         for (auto &dep : curr->dependencies)
           folder.path2entry_index[dep.first.val().str()] = entry.id;
