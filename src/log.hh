@@ -40,4 +40,5 @@ struct Message {
 #define LOG_IF_S(v, cond)          \
   LOG_IF(ccls::log::Verbosity_##v, \
          (cond) && ccls::log::Verbosity_##v <= ccls::log::verbosity)
-#define LOG_V(v) LOG_IF(ccls::log::Verbosity(v), v <= ccls::log::verbosity)
+#define LOG_V_ENABLED(v) (v <= ccls::log::verbosity)
+#define LOG_V(v) LOG_IF(ccls::log::Verbosity(v), LOG_V_ENABLED(v))

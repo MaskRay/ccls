@@ -288,7 +288,15 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
       return true;
     } while (0);
 
-  LOG_IF_S(INFO, loud) << "parse " << path_to_index;
+  if (loud) {
+    std::string line;
+    if (LOG_V_ENABLED(1)) {
+      line = "\n ";
+      for (auto &arg : entry.args)
+        (line += ' ') += arg;
+    }
+    LOG_S(INFO) << "parse " << path_to_index << line;
+  }
 
   std::vector<std::pair<std::string, std::string>> remapped;
   if (g_config->index.onChange) {
