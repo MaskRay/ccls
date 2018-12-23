@@ -282,7 +282,7 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
 
     if (g_config->cacheDirectory.size()) {
       SmallString<256> Path(g_config->cacheDirectory);
-      sys::fs::make_absolute(Path);
+      sys::fs::make_absolute(project_path, Path);
       g_config->cacheDirectory = Path.str();
       EnsureEndsInSlash(g_config->cacheDirectory);
     }
