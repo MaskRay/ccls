@@ -392,8 +392,15 @@ public:
           R.Availability == CXAvailability_NotAvailable)
         continue;
       if (R.Declaration) {
-        if (R.Declaration->getKind() == Decl::CXXDestructor)
+        Decl::Kind K = R.Declaration->getKind();
+        if (K == Decl::CXXDestructor)
           continue;
+        if (K == Decl::FunctionTemplate) {
+          // Ignore CXXDeductionGuide which has empty TypedText.
+          auto *FD = cast<FunctionTemplateDecl>(R.Declaration);
+          if (FD->getTemplatedDecl()->getKind() == Decl::CXXDeductionGuide)
+            continue;
+        }
         if (auto *RD = dyn_cast<RecordDecl>(R.Declaration))
           if (RD->isInjectedClassName())
             continue;
