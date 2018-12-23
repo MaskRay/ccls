@@ -271,8 +271,9 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
 
     if (g_config->cacheDirectory.size()) {
       SmallString<256> Path(g_config->cacheDirectory);
-      sys::fs::make_absolute(Path);
-      g_config->cacheDirectory = Path.str();
+      sys::fs::make_absolute(project_path, Path);
+      // Use upper case for the Driver letter on Windows.
+      g_config->cacheDirectory = NormalizePath(Path.str());
       EnsureEndsInSlash(g_config->cacheDirectory);
     }
   }

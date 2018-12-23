@@ -19,7 +19,6 @@
 
 #include <llvm/Support/Process.h>
 #include <llvm/Support/Threading.h>
-#include <llvm/Support/Timer.h>
 using namespace llvm;
 
 #include <chrono>
@@ -423,10 +422,7 @@ void Main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
     return;
   }
 
-  static Timer timer("apply", "apply index");
-  timer.startTimer();
   db->ApplyIndexUpdate(update);
-  timer.stopTimer();
 
   // Update indexed content, skipped ranges, and semantic highlighting.
   if (update->files_def_update) {
