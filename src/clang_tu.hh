@@ -51,7 +51,8 @@ Range FromTokenRangeDefaulted(const clang::SourceManager &SM,
                               Range range);
 
 std::unique_ptr<clang::CompilerInvocation>
-BuildCompilerInvocation(std::vector<const char *> args,
+BuildCompilerInvocation(const std::string &main,
+                        std::vector<const char *> args,
                         llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> VFS);
 
 const char *ClangBuiltinTypeName(int);
