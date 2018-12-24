@@ -200,8 +200,7 @@ void MessageHandler::ccls_call(JsonReader &reader, ReplyOnce &reply) {
       Expand(this, &*result, param.callee, param.callType, param.qualified,
              param.levels);
   } else {
-    QueryFile *file = FindFile(param.textDocument.uri.GetPath());
-    WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+    auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
     if (!wf)
       return;
     for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
