@@ -93,7 +93,7 @@ Range FromTokenRangeDefaulted(const SourceManager &SM, const LangOptions &Lang,
 }
 
 std::unique_ptr<CompilerInvocation>
-BuildCompilerInvocation(std::vector<const char *> args,
+BuildCompilerInvocation(const std::string &main, std::vector<const char *> args,
                         IntrusiveRefCntPtr<llvm::vfs::FileSystem> VFS) {
   std::string save = "-resource-dir=" + g_config->clang.resourceDir;
   args.push_back(save.c_str());
@@ -106,6 +106,9 @@ BuildCompilerInvocation(std::vector<const char *> args,
     CI->getDiagnosticOpts().IgnoreWarnings = true;
     CI->getFrontendOpts().DisableFree = false;
     CI->getLangOpts()->SpellChecking = false;
+    auto &IS = CI->getFrontendOpts().Inputs;
+    if (IS.size())
+      IS[0] = FrontendInputFile(main, IS[0].getKind(), IS[0].isSystem());
   }
   return CI;
 }

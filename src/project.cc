@@ -426,12 +426,11 @@ Project::Entry Project::FindEntry(const std::string &path,
                                   bool must_exist) {
   std::shared_lock lock(mtx);
   for (auto &[root, folder] : root2folder) {
+    // The entry may have different filename but it doesn't matter when building
+    // CompilerInvocation. The main filename is specified separately.
     auto it = folder.path2entry_index.find(path);
-    if (it != folder.path2entry_index.end()) {
-      Project::Entry &entry = folder.entries[it->second];
-      if (!must_exist || entry.filename == path)
-        return entry;
-    }
+    if (it != folder.path2entry_index.end())
+      return folder.entries[it->second];
   }
 
   std::string dir;
@@ -490,14 +489,6 @@ out:
     ret.root = best->root;
     ret.directory = best->directory;
     ret.args = best->args;
-    std::string base_name = sys::path::filename(best->filename);
-    for (const char *&arg : ret.args) {
-      try {
-        if (arg == best->filename || sys::path::filename(arg) == base_name)
-          arg = Intern(path);
-      } catch (...) {
-      }
-    }
     ret.args.resize(best->compdb_size);
     if (extra && extra->size())
       ret.args.insert(ret.args.end(), extra->begin() + 1, extra->end());
