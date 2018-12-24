@@ -17,6 +17,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 
+#include <llvm/Support/Path.h>
 #include <llvm/Support/Process.h>
 #include <llvm/Support/Threading.h>
 using namespace llvm;
@@ -110,9 +111,11 @@ bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
     }
   }
 
+  // For inferred files, allow -o a a.cc -> -o b b.cc
+  std::string stem = sys::path::stem(path);
   bool changed = prev->args.size() != args.size();
   for (size_t i = 0; !changed && i < args.size(); i++)
-    if (strcmp(prev->args[i], args[i]))
+    if (strcmp(prev->args[i], args[i]) && sys::path::stem(args[i]) != stem)
       changed = true;
   if (changed)
     LOG_S(INFO) << "args changed for " << path
@@ -195,7 +198,8 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
   }
 
   // must_exist is currently unused.
-  Project::Entry entry = project->FindEntry(request.path, false);
+  Project::Entry entry =
+      project->FindEntry(request.path, true, request.must_exist);
   if (request.must_exist && entry.filename.empty())
     return true;
   if (request.args.size())
