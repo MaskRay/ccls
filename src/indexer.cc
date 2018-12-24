@@ -1230,14 +1230,15 @@ void Init() {
 
 std::vector<std::unique_ptr<IndexFile>>
 Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
-      const std::string &opt_wdir, const std::string &file,
+      const std::string &opt_wdir, const std::string &main,
       const std::vector<const char *> &args,
       const std::vector<std::pair<std::string, std::string>> &remapped,
       bool &ok) {
   ok = true;
   auto PCH = std::make_shared<PCHContainerOperations>();
   llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS = llvm::vfs::getRealFileSystem();
-  std::shared_ptr<CompilerInvocation> CI = BuildCompilerInvocation(args, FS);
+  std::shared_ptr<CompilerInvocation> CI =
+      BuildCompilerInvocation(main, args, FS);
   // e.g. .s
   if (!CI)
     return {};
@@ -1257,35 +1258,13 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
     //     HSOpts.UseBuiltinIncludes)
     //   HSOpts.ResourceDir = g_config->clang.resourceDir;
   }
-  std::string buf = wfiles->GetContent(file);
+  std::string buf = wfiles->GetContent(main);
   std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
-  if (buf.size()) {
-    // If there is a completion session, reuse its preamble if exists.
-    bool done_remap = false;
-#if 0
-    std::shared_ptr<CompletionSession> session =
-      manager->TryGetSession(file, false, false);
-    if (session)
-      if (auto preamble = session->GetPreamble()) {
-        Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(buf));
-        auto Bounds = ComputePreambleBounds(*CI->getLangOpts(), Bufs.back().get(), 0);
-        if (preamble->Preamble.CanReuse(*CI, Bufs.back().get(), Bounds,
-                                        FS.get())) {
-          preamble->Preamble.AddImplicitPreamble(*CI, FS, Bufs.back().get());
-          done_remap = true;
-        }
-      }
-#endif
+  if (buf.size())
     for (auto &[filename, content] : remapped) {
-      if (filename == file && done_remap)
-        continue;
       Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(content));
-      CI->getPreprocessorOpts().addRemappedFile(
-          filename == file ? CI->getFrontendOpts().Inputs[0].getFile()
-                           : StringRef(filename),
-          Bufs.back().get());
+      CI->getPreprocessorOpts().addRemappedFile(filename, Bufs.back().get());
     }
-  }
 
   DiagnosticConsumer DC;
   auto Clang = std::make_unique<CompilerInstance>(PCH);
@@ -1314,20 +1293,20 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   {
     llvm::CrashRecoveryContext CRC;
     auto parse = [&]() {
-                   if (!Action->BeginSourceFile(*Clang, Clang->getFrontendOpts().Inputs[0]))
-                     return;
-                   if (!Action->Execute())
-                     return;
-                   Action->EndSourceFile();
-                   ok = true;
-                 };
+      if (!Action->BeginSourceFile(*Clang, Clang->getFrontendOpts().Inputs[0]))
+        return;
+      if (!Action->Execute())
+        return;
+      Action->EndSourceFile();
+      ok = true;
+    };
     if (!CRC.RunSafely(parse)) {
-      LOG_S(ERROR) << "clang crashed for " << file;
+      LOG_S(ERROR) << "clang crashed for " << main;
       return {};
     }
   }
   if (!ok) {
-    LOG_S(ERROR) << "failed to index " << file;
+    LOG_S(ERROR) << "failed to index " << main;
     return {};
   }
   for (auto &Buf : Bufs)
@@ -1338,7 +1317,7 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
     if (!it.second.db)
       continue;
     std::unique_ptr<IndexFile> &entry = it.second.db;
-    entry->import_file = file;
+    entry->import_file = main;
     entry->args = args;
     for (auto &[_, it] : entry->uid2lid_and_path)
       entry->lid2path.emplace_back(it.first, std::move(it.second));
