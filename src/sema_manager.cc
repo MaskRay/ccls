@@ -409,7 +409,7 @@ void *PreambleMain(void *manager_) {
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
         stat_cache->Producer(session->FS);
     if (std::unique_ptr<CompilerInvocation> CI =
-            BuildCompilerInvocation(session->file.args, FS))
+            BuildCompilerInvocation(task.path, session->file.args, FS))
       BuildPreamble(*session, *CI, FS, task, std::move(stat_cache));
 
     if (task.from_diag) {
@@ -449,7 +449,7 @@ void *CompletionMain(void *manager_) {
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
         preamble ? preamble->stat_cache->Consumer(session->FS) : session->FS;
     std::unique_ptr<CompilerInvocation> CI =
-        BuildCompilerInvocation(session->file.args, FS);
+        BuildCompilerInvocation(task->path, session->file.args, FS);
     if (!CI)
       continue;
     auto &FOpts = CI->getFrontendOpts();
@@ -551,7 +551,7 @@ void *DiagnosticMain(void *manager_) {
     }
 
     std::unique_ptr<CompilerInvocation> CI =
-        BuildCompilerInvocation(session->file.args, FS);
+        BuildCompilerInvocation(task.path, session->file.args, FS);
     if (!CI)
       continue;
     // If main file is a header, add -Wno-unused-function
@@ -696,7 +696,7 @@ SemaManager::EnsureSession(const std::string &path, bool *created) {
   std::shared_ptr<ccls::Session> session = sessions.Get(path);
   if (!session) {
     session = std::make_shared<ccls::Session>(
-        project_->FindEntry(path, true), wfiles, PCH);
+        project_->FindEntry(path, false, false), wfiles, PCH);
     std::string line;
     if (LOG_V_ENABLED(1)) {
       line = "\n ";
