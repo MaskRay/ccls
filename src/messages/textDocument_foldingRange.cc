@@ -31,12 +31,9 @@ REFLECT_STRUCT(FoldingRange, startLine, startCharacter, endLine, endCharacter,
 
 void MessageHandler::textDocument_foldingRange(TextDocumentParam &param,
                                                ReplyOnce &reply) {
-  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
-  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!wf) {
-    reply.NotReady(file);
+  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+  if (!wf)
     return;
-  }
   std::vector<FoldingRange> result;
   std::optional<lsRange> ls_range;
 

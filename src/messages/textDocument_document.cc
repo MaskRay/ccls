@@ -44,12 +44,9 @@ REFLECT_STRUCT(DocumentHighlight, range, kind, role);
 void MessageHandler::textDocument_documentHighlight(
     TextDocumentPositionParam &param, ReplyOnce &reply) {
   int file_id;
-  QueryFile *file = FindFile(param.textDocument.uri.GetPath(), &file_id);
-  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!wf) {
-    reply.NotReady(file);
+  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply, &file_id);
+  if (!wf)
     return;
-  }
 
   std::vector<DocumentHighlight> result;
   std::vector<SymbolRef> syms =
@@ -90,10 +87,8 @@ REFLECT_STRUCT(DocumentLink, range, target);
 
 void MessageHandler::textDocument_documentLink(TextDocumentParam &param,
                                                ReplyOnce &reply) {
-  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
-  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
   if (!wf) {
-    reply.NotReady(file);
     return;
   }
 
@@ -165,10 +160,8 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
   Reflect(reader, param);
 
   int file_id;
-  QueryFile *file = FindFile(param.textDocument.uri.GetPath(), &file_id);
-  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply, &file_id);
   if (!wf) {
-    reply.NotReady(file);
     return;
   }
 
