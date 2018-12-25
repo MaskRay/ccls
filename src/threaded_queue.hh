@@ -6,6 +6,7 @@
 #include "utils.hh"
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <deque>
 #include <mutex>
@@ -63,6 +64,14 @@ struct MultiQueueWaiter {
       cv.wait(l);
     }
     return true;
+  }
+
+  template <typename... BaseThreadQueue>
+  void WaitUntil(std::chrono::steady_clock::time_point t,
+                 BaseThreadQueue... queues) {
+    MultiQueueLock<BaseThreadQueue...> l(queues...);
+    if (!HasState({queues...}))
+      cv.wait_until(l, t);
   }
 };
 
