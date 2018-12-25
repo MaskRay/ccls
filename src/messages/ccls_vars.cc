@@ -31,10 +31,8 @@ REFLECT_STRUCT(Param, textDocument, position, kind);
 void MessageHandler::ccls_vars(JsonReader &reader, ReplyOnce &reply) {
   Param param;
   Reflect(reader, param);
-  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
-  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
   if (!wf) {
-    reply.NotReady(file);
     return;
   }
 
