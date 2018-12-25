@@ -109,11 +109,8 @@ struct ScanLineEvent {
 };
 } // namespace
 
-void ReplyOnce::NotReady(bool file) {
-  if (file)
-    Error(ErrorCode::InvalidRequest, "not opened");
-  else
-    Error(ErrorCode::InternalError, "not indexed");
+void ReplyOnce::NotOpened(std::string_view path) {
+  Error(ErrorCode::InvalidRequest, std::string(path) + " is not opened");
 }
 
 void ReplyOnce::ReplyLocationLink(std::vector<LocationLink> &result) {
@@ -215,13 +212,11 @@ MessageHandler::MessageHandler() {
 
 void MessageHandler::Run(InMessage &msg) {
   rapidjson::Document &doc = *msg.document;
-  rapidjson::Value param;
+  rapidjson::Value null;
   auto it = doc.FindMember("params");
-  if (it != doc.MemberEnd())
-    param = it->value;
-  JsonReader reader(&param);
+  JsonReader reader(it != doc.MemberEnd() ? &it->value : &null);
   if (msg.id.Valid()) {
-    ReplyOnce reply{msg.id};
+    ReplyOnce reply{*this, msg.id};
     auto it = method2request.find(msg.method);
     if (it != method2request.end()) {
       try {
@@ -230,6 +225,8 @@ void MessageHandler::Run(InMessage &msg) {
         reply.Error(ErrorCode::InvalidParams,
                     "invalid params of " + msg.method + ": expected " +
                         ex.what() + " for " + reader.GetPath());
+      } catch (NotIndexed &) {
+        throw;
       } catch (...) {
         reply.Error(ErrorCode::InternalError, "failed to process " + msg.method);
       }
@@ -249,7 +246,8 @@ void MessageHandler::Run(InMessage &msg) {
   }
 }
 
-QueryFile *MessageHandler::FindFile(const std::string &path, int *out_file_id) {
+QueryFile *MessageHandler::FindFile(const std::string &path,
+                                    int *out_file_id) {
   QueryFile *ret = nullptr;
   auto it = db->name2file_id.find(LowerPathIfInsensitive(path));
   if (it != db->name2file_id.end()) {
@@ -264,6 +262,22 @@ QueryFile *MessageHandler::FindFile(const std::string &path, int *out_file_id) {
   if (out_file_id)
     *out_file_id = -1;
   return ret;
+}
+
+std::pair<QueryFile *, WorkingFile *>
+MessageHandler::FindOrFail(const std::string &path, ReplyOnce &reply,
+                           int *out_file_id) {
+  WorkingFile *wf = wfiles->GetFile(path);
+  if (!wf) {
+    reply.NotOpened(path);
+    return {nullptr, nullptr};
+  }
+  QueryFile *file = FindFile(path, out_file_id);
+  if (!file) {
+    reply.Error(ErrorCode::InvalidRequest, "not indexed");
+    return {nullptr, nullptr};
+  }
+  return {file, wf};
 }
 
 void EmitSkippedRanges(WorkingFile *wfile, QueryFile &file) {

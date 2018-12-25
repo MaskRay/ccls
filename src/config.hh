@@ -242,6 +242,12 @@ struct Config {
     std::vector<std::string> whitelist;
   } index;
 
+  struct Request {
+    // If the document of a request has not been indexed, wait up to this many
+    // milleseconds before reporting error.
+    int64_t timeout = 5000;
+  } request;
+
   struct Session {
     int maxNum = 10;
   } session;
@@ -278,12 +284,14 @@ REFLECT_STRUCT(Config::Index, blacklist, comments, initialBlacklist,
                initialWhitelist, multiVersion, multiVersionBlacklist,
                multiVersionWhitelist, onChange, threads, trackDependency,
                whitelist);
+REFLECT_STRUCT(Config::Request, timeout);
 REFLECT_STRUCT(Config::Session, maxNum);
 REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 REFLECT_STRUCT(Config::Xref, maxNum);
 REFLECT_STRUCT(Config, compilationDatabaseCommand, compilationDatabaseDirectory,
                cacheDirectory, cacheFormat, clang, client, codeLens, completion,
-               diagnostics, highlight, index, session, workspaceSymbol, xref);
+               diagnostics, highlight, index, request, session, workspaceSymbol,
+               xref);
 
 extern Config *g_config;
 
