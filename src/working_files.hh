@@ -21,6 +21,7 @@ limitations under the License.
 #include <mutex>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
 namespace ccls {
 struct WorkingFile {
