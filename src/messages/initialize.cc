@@ -387,7 +387,7 @@ void MessageHandler::initialize(JsonReader &reader, ReplyOnce &reply) {
 void StandaloneInitialize(MessageHandler &handler, const std::string &root) {
   InitializeParam param;
   param.rootUri = DocumentUri::FromPath(root);
-  ReplyOnce reply;
+  ReplyOnce reply{handler};
   Initialize(&handler, param, reply);
 }
 

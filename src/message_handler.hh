@@ -199,7 +199,13 @@ REFLECT_STRUCT(Diagnostic, range, severity, code, source, message);
 REFLECT_STRUCT(ShowMessageParam, type, message);
 REFLECT_UNDERLYING_B(LanguageId);
 
+struct NotIndexed {
+  std::string path;
+};
+struct MessageHandler;
+
 struct ReplyOnce {
+  MessageHandler &handler;
   RequestId id;
   template <typename Res> void operator()(Res &&result) const {
     if (id.Valid())
@@ -210,7 +216,7 @@ struct ReplyOnce {
     if (id.Valid())
       pipeline::ReplyError(id, [&](JsonWriter &w) { Reflect(w, err); });
   }
-  void NotReady(bool file);
+  void NotOpened(std::string_view path);
   void ReplyLocationLink(std::vector<LocationLink> &result);
 };
 
@@ -225,10 +231,14 @@ struct MessageHandler {
   llvm::StringMap<std::function<void(JsonReader &)>> method2notification;
   llvm::StringMap<std::function<void(JsonReader &, ReplyOnce &)>>
       method2request;
+  bool overdue = false;
 
   MessageHandler();
   void Run(InMessage &msg);
   QueryFile *FindFile(const std::string &path, int *out_file_id = nullptr);
+  std::pair<QueryFile *, WorkingFile *> FindOrFail(const std::string &path,
+                                                   ReplyOnce &reply,
+                                                   int *out_file_id = nullptr);
 
 private:
   void Bind(const char *method, void (MessageHandler::*handler)(JsonReader &));

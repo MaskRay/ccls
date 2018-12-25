@@ -152,12 +152,11 @@ public:
 void MessageHandler::textDocument_signatureHelp(
     TextDocumentPositionParam &param, ReplyOnce &reply) {
   static CompleteConsumerCache<SignatureHelp> cache;
-
-  std::string path = param.textDocument.uri.GetPath();
   Position begin_pos = param.position;
+  std::string path = param.textDocument.uri.GetPath();
   WorkingFile *wf = wfiles->GetFile(path);
   if (!wf) {
-    reply.NotReady(true);
+    reply.NotOpened(path);
     return;
   }
   {
