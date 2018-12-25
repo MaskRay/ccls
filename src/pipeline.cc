@@ -32,7 +32,6 @@ limitations under the License.
 #include <llvm/Support/Path.h>
 #include <llvm/Support/Process.h>
 #include <llvm/Support/Threading.h>
-using namespace llvm;
 
 #include <chrono>
 #include <mutex>
@@ -41,6 +40,8 @@ using namespace llvm;
 #ifndef _WIN32
 #include <unistd.h>
 #endif
+using namespace llvm;
+namespace chrono = std::chrono;
 
 namespace ccls {
 namespace {
@@ -526,8 +527,11 @@ void LaunchStdin() {
       if (method.empty())
         continue;
       bool should_exit = method == "exit";
+      // g_config is not available before "initialize". Use 0 in that case.
       on_request->PushBack(
-          {id, std::move(method), std::move(message), std::move(document)});
+          {id, std::move(method), std::move(message), std::move(document),
+           chrono::steady_clock::now() +
+               chrono::milliseconds(g_config ? g_config->request.timeout : 0)});
 
       if (should_exit)
         break;
@@ -589,11 +593,34 @@ void MainLoop() {
   handler.include_complete = &include_complete;
 
   bool has_indexed = false;
+  std::deque<InMessage> backlog;
+  StringMap<std::deque<InMessage *>> path2backlog;
   while (true) {
+    if (backlog.size()) {
+      auto now = chrono::steady_clock::now();
+      handler.overdue = true;
+      while (backlog.size()) {
+        if (backlog[0].backlog_path.size()) {
+          if (now < backlog[0].deadline)
+            break;
+          handler.Run(backlog[0]);
+          path2backlog[backlog[0].backlog_path].pop_front();
+        }
+        backlog.pop_front();
+      }
+      handler.overdue = false;
+    }
+
     std::vector<InMessage> messages = on_request->DequeueAll();
     bool did_work = messages.size();
     for (InMessage &message : messages)
-      handler.Run(message);
+      try {
+        handler.Run(message);
+      } catch (NotIndexed &ex) {
+        backlog.push_back(std::move(message));
+        backlog.back().backlog_path = ex.path;
+        path2backlog[ex.path].push_back(&backlog.back());
+      }
 
     bool indexed = false;
     for (int i = 20; i--;) {
@@ -603,6 +630,16 @@ void MainLoop() {
       did_work = true;
       indexed = true;
       Main_OnIndexed(&db, &wfiles, &*update);
+      if (update->files_def_update) {
+        auto it = path2backlog.find(update->files_def_update->first.path);
+        if (it != path2backlog.end()) {
+          for (auto &message : it->second) {
+            handler.Run(*message);
+            message->backlog_path.clear();
+          }
+          path2backlog.erase(it);
+        }
+      }
     }
 
     if (did_work) {
@@ -614,7 +651,10 @@ void MainLoop() {
         FreeUnusedMemory();
         has_indexed = false;
       }
-      main_waiter->Wait(quit, on_indexed, on_request);
+      if (backlog.empty())
+        main_waiter->Wait(quit, on_indexed, on_request);
+      else
+        main_waiter->WaitUntil(backlog[0].deadline, on_indexed, on_request);
     }
   }
 

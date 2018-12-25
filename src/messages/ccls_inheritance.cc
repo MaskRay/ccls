@@ -146,10 +146,10 @@ void Inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
           Expand(m, &*result, param.derived, param.qualified, param.levels)))
       result.reset();
   } else {
-    QueryFile *file = m->FindFile(param.textDocument.uri.GetPath());
-    if (!file)
+    auto [file, wf] = m->FindOrFail(param.textDocument.uri.GetPath(), reply);
+    if (!wf) {
       return;
-    WorkingFile *wf = m->wfiles->GetFile(file->def->path);
+    }
     for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position))
       if (sym.kind == Kind::Func || sym.kind == Kind::Type) {
         result = BuildInitial(m, sym, param.derived, param.qualified,

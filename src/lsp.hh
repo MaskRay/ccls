@@ -21,8 +21,8 @@ limitations under the License.
 
 #include <rapidjson/fwd.h>
 
+#include <chrono>
 #include <iosfwd>
-#include <unordered_map>
 
 namespace ccls {
 struct RequestId {
@@ -43,6 +43,8 @@ struct InMessage {
   std::string method;
   std::unique_ptr<char[]> message;
   std::unique_ptr<rapidjson::Document> document;
+  std::chrono::steady_clock::time_point deadline;
+  std::string backlog_path;
 };
 
 enum class ErrorCode {

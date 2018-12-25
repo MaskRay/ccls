@@ -56,10 +56,8 @@ WorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *wfiles, SymbolRef sym,
 } // namespace
 
 void MessageHandler::textDocument_rename(RenameParam &param, ReplyOnce &reply) {
-  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
-  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
+  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
   if (!wf) {
-    reply.NotReady(file);
     return;
   }
 
