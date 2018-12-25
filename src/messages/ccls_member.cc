@@ -281,12 +281,9 @@ void MessageHandler::ccls_member(JsonReader &reader, ReplyOnce &reply) {
                                             param.levels, param.kind)))
       result.reset();
   } else {
-    QueryFile *file = FindFile(param.textDocument.uri.GetPath());
-    WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-    if (!wf) {
-      reply.NotReady(file);
+    auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+    if (!wf)
       return;
-    }
     for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
       switch (sym.kind) {
       case Kind::Func:
