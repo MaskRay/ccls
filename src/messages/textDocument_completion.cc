@@ -447,7 +447,7 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   std::string path = param.textDocument.uri.GetPath();
   WorkingFile *wf = wfiles->GetFile(path);
   if (!wf) {
-    reply.NotReady(true);
+    reply.NotOpened(path);
     return;
   }
 
