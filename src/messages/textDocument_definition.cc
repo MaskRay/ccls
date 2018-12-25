@@ -48,12 +48,9 @@ std::vector<DeclRef> GetNonDefDeclarationTargets(DB *db, SymbolRef sym) {
 void MessageHandler::textDocument_declaration(TextDocumentPositionParam &param,
                                               ReplyOnce &reply) {
   int file_id;
-  QueryFile *file = FindFile(param.textDocument.uri.GetPath(), &file_id);
-  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!wf) {
-    reply.NotReady(file);
+  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply, &file_id);
+  if (!wf)
     return;
-  }
 
   std::vector<LocationLink> result;
   Position &ls_pos = param.position;
@@ -69,12 +66,9 @@ void MessageHandler::textDocument_declaration(TextDocumentPositionParam &param,
 void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
                                              ReplyOnce &reply) {
   int file_id;
-  QueryFile *file = FindFile(param.textDocument.uri.GetPath(), &file_id);
-  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!wf) {
-    reply.NotReady(file);
+  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply, &file_id);
+  if (!wf)
     return;
-  }
 
   std::vector<LocationLink> result;
   Maybe<DeclRef> on_def;
@@ -190,12 +184,9 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
 
 void MessageHandler::textDocument_typeDefinition(
     TextDocumentPositionParam &param, ReplyOnce &reply) {
-  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
-  WorkingFile *wf = file ? wfiles->GetFile(file->def->path) : nullptr;
-  if (!file) {
-    reply.NotReady(file);
+  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+  if (!file)
     return;
-  }
 
   std::vector<LocationLink> result;
   auto Add = [&](const QueryType &type) {
