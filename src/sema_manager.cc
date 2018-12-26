@@ -406,6 +406,10 @@ void BuildPreamble(Session &session, CompilerInvocation &CI,
 
 void *PreambleMain(void *manager_) {
   auto *manager = static_cast<SemaManager *>(manager_);
+  pipeline::ThreadEnter();
+  struct RAII {
+    ~RAII() { pipeline::ThreadLeave(); }
+  } raii{};
   set_thread_name("preamble");
   while (true) {
     SemaManager::PreambleTask task = manager->preamble_tasks.Dequeue();
@@ -432,12 +436,15 @@ void *PreambleMain(void *manager_) {
         manager->ScheduleDiag(task.path, debounce);
     }
   }
-  pipeline::ThreadLeave();
   return nullptr;
 }
 
 void *CompletionMain(void *manager_) {
   auto *manager = static_cast<SemaManager *>(manager_);
+  pipeline::ThreadEnter();
+  struct RAII {
+    ~RAII() { pipeline::ThreadLeave(); }
+  } raii{};
   set_thread_name("comp");
   while (true) {
     std::unique_ptr<SemaManager::CompTask> task = manager->comp_tasks.Dequeue();
@@ -493,7 +500,6 @@ void *CompletionMain(void *manager_) {
 
     task->on_complete(&Clang->getCodeCompletionConsumer());
   }
-  pipeline::ThreadLeave();
   return nullptr;
 }
 
@@ -527,6 +533,10 @@ void printDiag(llvm::raw_string_ostream &OS, const DiagBase &d) {
 
 void *DiagnosticMain(void *manager_) {
   auto *manager = static_cast<SemaManager *>(manager_);
+  pipeline::ThreadEnter();
+  struct RAII {
+    ~RAII() { pipeline::ThreadLeave(); }
+  } raii{};
   set_thread_name("diag");
   while (true) {
     SemaManager::DiagTask task = manager->diag_tasks.Dequeue();
@@ -643,7 +653,6 @@ void *DiagnosticMain(void *manager_) {
     }
     manager->on_diagnostic_(task.path, ls_diags);
   }
-  pipeline::ThreadLeave();
   return nullptr;
 }
 

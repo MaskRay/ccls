@@ -423,6 +423,7 @@ void ThreadLeave() {
   std::lock_guard lock(thread_mtx);
   if (!--pending_threads)
     no_pending_threads.notify_one();
+  assert(pending_threads >= 0);
 }
 
 void Init() {
@@ -526,13 +527,13 @@ void LaunchStdin() {
       ReflectMember(reader, "method", method);
       if (method.empty())
         continue;
+      const auto should_exit = method == "exit";
       // g_config is not available before "initialize". Use 0 in that case.
       on_request->PushBack(
           {id, std::move(method), std::move(message), std::move(document),
            chrono::steady_clock::now() +
                chrono::milliseconds(g_config ? g_config->request.timeout : 0)});
-
-      if (method == "exit")
+      if (should_exit)
         break;
     }
   }).detach();
