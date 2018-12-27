@@ -143,6 +143,7 @@ int main(int argc, char **argv) {
 
     sys::ChangeStdinToBinary();
     sys::ChangeStdoutToBinary();
+    sys::SetInterruptFunction(nullptr);
     if (opt_index.size()) {
       SmallString<256> Root(opt_index);
       sys::fs::make_absolute(Root);
