@@ -77,5 +77,6 @@ struct Project {
                       const std::string &path);
 
   void Index(WorkingFiles *wfiles, RequestId id);
+  void IndexRelated(const std::string &path);
 };
 } // namespace ccls
