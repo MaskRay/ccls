@@ -547,4 +547,22 @@ void Project::Index(WorkingFiles *wfiles, RequestId id) {
   // trigger refreshing semantic highlight for all working files.
   pipeline::Index("", {}, IndexMode::NonInteractive, false);
 }
+
+void Project::IndexRelated(const std::string &path) {
+  auto &gi = g_config->index;
+  GroupMatch match(gi.whitelist, gi.blacklist);
+  std::string stem = sys::path::stem(path);
+  std::lock_guard lock(mtx);
+  for (auto &[root, folder] : root2folder)
+    if (StringRef(path).startswith(root)) {
+      for (const Project::Entry &entry : folder.entries) {
+        std::string reason;
+        if (sys::path::stem(entry.filename) == stem && entry.filename != path &&
+            match.Matches(entry.filename, &reason))
+          pipeline::Index(entry.filename, entry.args, IndexMode::NonInteractive,
+                          true);
+      }
+      break;
+    }
+}
 } // namespace ccls
