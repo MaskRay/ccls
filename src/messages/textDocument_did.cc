@@ -53,10 +53,12 @@ void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
 
   // Submit new index request if it is not a header file or there is no
   // pending index request.
-  std::pair<LanguageId, bool> lang = lookupExtension(path);
-  if ((lang.first != LanguageId::Unknown && !lang.second) ||
+  auto [lang, header] = lookupExtension(path);
+  if ((lang != LanguageId::Unknown && !header) ||
       !pipeline::pending_index_requests)
     pipeline::Index(path, {}, IndexMode::Normal, false);
+  if (header)
+    project->IndexRelated(path);
 
   manager->OnView(path);
 }
