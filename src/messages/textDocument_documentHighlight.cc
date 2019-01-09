@@ -27,19 +27,12 @@ struct lsDocumentHighlight {
 };
 MAKE_REFLECT_STRUCT(lsDocumentHighlight, range, kind, role);
 
-struct In_TextDocumentDocumentHighlight : public RequestInMessage {
+struct In_TextDocumentDocumentHighlight : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(In_TextDocumentDocumentHighlight, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentDocumentHighlight);
-
-struct Out_TextDocumentDocumentHighlight
-    : public lsOutMessage<Out_TextDocumentDocumentHighlight> {
-  lsRequestId id;
-  std::vector<lsDocumentHighlight> result;
-};
-MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentHighlight, jsonrpc, id, result);
 
 struct Handler_TextDocumentDocumentHighlight
     : BaseMessageHandler<In_TextDocumentDocumentHighlight> {
@@ -51,14 +44,12 @@ struct Handler_TextDocumentDocumentHighlight
                         request->params.textDocument.uri.GetPath(), &file,
                         &file_id))
       return;
-    WorkingFile *working_file =
-        working_files->GetFileByFilename(file->def->path);
 
-    Out_TextDocumentDocumentHighlight out;
-    out.id = request->id;
+    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+    std::vector<lsDocumentHighlight> result;
 
-    std::vector<SymbolRef> syms = FindSymbolsAtLocation(
-        working_file, file, request->params.position, true);
+    std::vector<SymbolRef> syms =
+        FindSymbolsAtLocation(wfile, file, request->params.position, true);
     for (auto [sym, refcnt] : file->symbol2refcnt) {
       if (refcnt <= 0)
         continue;
@@ -78,11 +69,11 @@ struct Handler_TextDocumentDocumentHighlight
         else
           highlight.kind = lsDocumentHighlight::Text;
         highlight.role = sym.role;
-        out.result.push_back(highlight);
+        result.push_back(highlight);
       }
     }
-    std::sort(out.result.begin(), out.result.end());
-    pipeline::WriteStdout(kMethodType, out);
+    std::sort(result.begin(), result.end());
+    pipeline::Reply(request->id, result);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDocumentHighlight);

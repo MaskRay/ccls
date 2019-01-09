@@ -54,28 +54,21 @@ struct lsCompletionParams : lsTextDocumentPositionParams {
 };
 MAKE_REFLECT_STRUCT(lsCompletionParams, textDocument, position, context);
 
-struct In_TextDocumentComplete : public RequestInMessage {
+struct In_TextDocumentComplete : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsCompletionParams params;
 };
 MAKE_REFLECT_STRUCT(In_TextDocumentComplete, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentComplete);
 
-struct lsTextDocumentCompleteResult {
+struct lsCompletionList {
   // This list it not complete. Further typing should result in recomputing
   // this list.
   bool isIncomplete = false;
   // The completion items.
   std::vector<lsCompletionItem> items;
 };
-MAKE_REFLECT_STRUCT(lsTextDocumentCompleteResult, isIncomplete, items);
-
-struct Out_TextDocumentComplete
-    : public lsOutMessage<Out_TextDocumentComplete> {
-  lsRequestId id;
-  lsTextDocumentCompleteResult result;
-};
-MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
+MAKE_REFLECT_STRUCT(lsCompletionList, isIncomplete, items);
 
 void DecorateIncludePaths(const std::smatch &match,
                           std::vector<lsCompletionItem> *items) {
@@ -141,11 +134,11 @@ template <typename T> char *tofixedbase64(T input, char *out) {
 // Pre-filters completion responses before sending to vscode. This results in a
 // significantly snappier completion experience as vscode is easily overloaded
 // when given 1000+ completion items.
-void FilterCandidates(Out_TextDocumentComplete *complete_response,
+void FilterCandidates(lsCompletionList &result,
                       const std::string &complete_text, lsPosition begin_pos,
                       lsPosition end_pos, const std::string &buffer_line) {
   assert(begin_pos.line == end_pos.line);
-  auto &items = complete_response->result.items;
+  auto &items = result.items;
 
   // People usually does not want to insert snippets or parenthesis when
   // changing function or type names, e.g. "str.|()" or "std::|<int>".
@@ -161,7 +154,7 @@ void FilterCandidates(Out_TextDocumentComplete *complete_response,
     int max_num = g_config->completion.maxNum;
     if (items.size() > max_num) {
       items.resize(max_num);
-      complete_response->result.isIncomplete = true;
+      result.isIncomplete = true;
     }
 
     for (auto &item : items) {
@@ -485,13 +478,12 @@ struct Handler_TextDocumentCompletion
     static CompleteConsumerCache<std::vector<lsCompletionItem>> cache;
 
     const auto &params = request->params;
-    Out_TextDocumentComplete out;
-    out.id = request->id;
+    lsCompletionList result;
 
     std::string path = params.textDocument.uri.GetPath();
     WorkingFile *file = working_files->GetFileByFilename(path);
     if (!file) {
-      pipeline::WriteStdout(kMethodType, out);
+      pipeline::Reply(request->id, result);
       return;
     }
 
@@ -536,7 +528,7 @@ struct Handler_TextDocumentCompletion
       }
 
       if (did_fail_check) {
-        pipeline::WriteStdout(kMethodType, out);
+        pipeline::Reply(request->id, result);
         return;
       }
     }
@@ -549,8 +541,7 @@ struct Handler_TextDocumentCompletion
     ParseIncludeLineResult preprocess = ParseIncludeLine(buffer_line);
 
     if (preprocess.ok && preprocess.keyword.compare("include") == 0) {
-      Out_TextDocumentComplete out;
-      out.id = request->id;
+      lsCompletionList result;
       {
         std::unique_lock<std::mutex> lock(
             include_complete->completion_items_mutex, std::defer_lock);
@@ -559,14 +550,14 @@ struct Handler_TextDocumentCompletion
         std::string quote = preprocess.match[5];
         for (auto &item : include_complete->completion_items)
           if (quote.empty() || quote == (item.use_angle_brackets_ ? "<" : "\""))
-            out.result.items.push_back(item);
+            result.items.push_back(item);
       }
       begin_pos.character = 0;
       end_pos.character = (int)buffer_line.size();
-      FilterCandidates(&out, preprocess.pattern, begin_pos, end_pos,
+      FilterCandidates(result, preprocess.pattern, begin_pos, end_pos,
                        buffer_line);
-      DecorateIncludePaths(preprocess.match, &out.result.items);
-      pipeline::WriteStdout(kMethodType, out);
+      DecorateIncludePaths(preprocess.match, &result.items);
+      pipeline::Reply(request->id, result);
     } else {
       std::string path = params.textDocument.uri.GetPath();
       CompletionManager::OnComplete callback =
@@ -575,13 +566,12 @@ struct Handler_TextDocumentCompletion
             if (!OptConsumer)
               return;
             auto *Consumer = static_cast<CompletionConsumer *>(OptConsumer);
-            Out_TextDocumentComplete out;
-            out.id = id;
-            out.result.items = Consumer->ls_items;
+            lsCompletionList result;
+            result.items = Consumer->ls_items;
 
-            FilterCandidates(&out, completion_text, begin_pos, end_pos,
+            FilterCandidates(result, completion_text, begin_pos, end_pos,
                              buffer_line);
-            pipeline::WriteStdout(kMethodType, out);
+            pipeline::Reply(id, result);
             if (!Consumer->from_cache) {
               cache.WithLock([&]() {
                 cache.path = path;

@@ -36,13 +36,6 @@ struct lsFormattingOptions {
 };
 MAKE_REFLECT_STRUCT(lsFormattingOptions, tabSize, insertSpaces);
 
-struct Out_TextDocumentFormatting
-    : public lsOutMessage<Out_TextDocumentFormatting> {
-  lsRequestId id;
-  std::vector<lsTextEdit> result;
-};
-MAKE_REFLECT_STRUCT(Out_TextDocumentFormatting, jsonrpc, id, result);
-
 llvm::Expected<tooling::Replacements>
 FormatCode(std::string_view code, std::string_view file, tooling::Range Range) {
   StringRef Code(code.data(), code.size()), File(file.data(), file.size());
@@ -91,20 +84,17 @@ void Format(WorkingFile *wfile, tooling::Range range, lsRequestId id) {
   auto ReplsOrErr =
       FormatCode(code, wfile->filename, range);
   if (ReplsOrErr) {
-    Out_TextDocumentFormatting out;
-    out.id = id;
-    out.result = ReplacementsToEdits(code, *ReplsOrErr);
-    pipeline::WriteStdout(formatting, out);
+    auto result = ReplacementsToEdits(code, *ReplsOrErr);
+    pipeline::Reply(id, result);
   } else {
-    Out_Error err;
-    err.id = id;
-    err.error.code = lsErrorCodes::UnknownErrorCode;
-    err.error.message = llvm::toString(ReplsOrErr.takeError());
-    pipeline::WriteStdout(kMethodType_Unknown, err);
+    lsResponseError err;
+    err.code = lsErrorCodes::UnknownErrorCode;
+    err.message = llvm::toString(ReplsOrErr.takeError());
+    pipeline::ReplyError(id, err);
   }
 }
 
-struct In_TextDocumentFormatting : public RequestInMessage {
+struct In_TextDocumentFormatting : public RequestMessage {
   MethodType GetMethodType() const override { return formatting; }
   struct Params {
     lsTextDocumentIdentifier textDocument;
@@ -132,7 +122,7 @@ struct Handler_TextDocumentFormatting
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentFormatting);
 
-struct In_TextDocumentOnTypeFormatting : public RequestInMessage {
+struct In_TextDocumentOnTypeFormatting : public RequestMessage {
   MethodType GetMethodType() const override { return onTypeFormatting; }
   struct Params {
     lsTextDocumentIdentifier textDocument;
@@ -168,7 +158,7 @@ struct Handler_TextDocumentOnTypeFormatting
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentOnTypeFormatting);
 
-struct In_TextDocumentRangeFormatting : public RequestInMessage {
+struct In_TextDocumentRangeFormatting : public RequestMessage {
   MethodType GetMethodType() const override { return rangeFormatting; }
   struct Params {
     lsTextDocumentIdentifier textDocument;

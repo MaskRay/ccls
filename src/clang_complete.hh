@@ -5,8 +5,8 @@
 
 #include "clang_tu.hh"
 #include "lru_cache.h"
+#include "lsp.h"
 #include "lsp_completion.h"
-#include "lsp_diagnostic.h"
 #include "project.h"
 #include "threaded_queue.h"
 #include "working_files.h"

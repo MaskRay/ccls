@@ -34,6 +34,7 @@ class BinaryReader : public Reader {
 
 public:
   BinaryReader(std::string_view buf) : p_(buf.data()) {}
+  virtual ~BinaryReader();
   SerializeFormat Format() const override { return SerializeFormat::Binary; }
 
   bool IsBool() override { return true; }
@@ -98,6 +99,7 @@ class BinaryWriter : public Writer {
   void VarInt(int64_t n) { VarUInt(uint64_t(n) << 1 ^ n >> 63); }
 
 public:
+  virtual ~BinaryWriter();
   SerializeFormat Format() const override { return SerializeFormat::Binary; }
   std::string Take() { return std::move(buf_); }
 

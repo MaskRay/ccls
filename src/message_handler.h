@@ -4,7 +4,6 @@
 #pragma once
 
 #include "lsp.h"
-#include "method.h"
 #include "query.h"
 
 #include <memory>
@@ -23,30 +22,6 @@ struct DB;
 struct WorkingFile;
 struct WorkingFiles;
 
-struct Out_CclsPublishSemanticHighlighting
-    : public lsOutMessage<Out_CclsPublishSemanticHighlighting> {
-  struct Symbol {
-    int stableId = 0;
-    lsSymbolKind parentKind;
-    lsSymbolKind kind;
-    uint8_t storage;
-    std::vector<std::pair<int, int>> ranges;
-
-    // `lsRanges` is used to compute `ranges`.
-    std::vector<lsRange> lsRanges;
-  };
-  struct Params {
-    lsDocumentUri uri;
-    std::vector<Symbol> symbols;
-  };
-  std::string method = "$ccls/publishSemanticHighlighting";
-  Params params;
-};
-MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting::Symbol, stableId,
-                    parentKind, kind, storage, ranges, lsRanges);
-MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting::Params, uri, symbols);
-MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting, jsonrpc, method,
-                    params);
 
 // Usage:
 //
@@ -91,8 +66,6 @@ bool FindFileOrFail(DB *db, Project *project, std::optional<lsRequestId> id,
                     const std::string &absolute_path,
                     QueryFile **out_query_file, int *out_file_id = nullptr);
 
-void EmitSkippedRanges(WorkingFile *working_file,
-                       const std::vector<Range> &skipped_ranges);
+void EmitSkippedRanges(WorkingFile *wfile, QueryFile &file);
 
-void EmitSemanticHighlighting(DB *db, WorkingFile *working_file,
-                              QueryFile *file);
+void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file);

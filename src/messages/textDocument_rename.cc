@@ -51,7 +51,7 @@ lsWorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *working_files,
   return edit;
 }
 
-struct In_TextDocumentRename : public RequestInMessage {
+struct In_TextDocumentRename : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     // The document to format.
@@ -72,12 +72,6 @@ MAKE_REFLECT_STRUCT(In_TextDocumentRename::Params, textDocument, position,
 MAKE_REFLECT_STRUCT(In_TextDocumentRename, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentRename);
 
-struct Out_TextDocumentRename : public lsOutMessage<Out_TextDocumentRename> {
-  lsRequestId id;
-  lsWorkspaceEdit result;
-};
-MAKE_REFLECT_STRUCT(Out_TextDocumentRename, jsonrpc, id, result);
-
 struct Handler_TextDocumentRename : BaseMessageHandler<In_TextDocumentRename> {
   MethodType GetMethodType() const override { return kMethodType; }
   void Run(In_TextDocumentRename *request) override {
@@ -85,25 +79,19 @@ struct Handler_TextDocumentRename : BaseMessageHandler<In_TextDocumentRename> {
     QueryFile *file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file,
-                        &file_id)) {
+                        &file_id))
       return;
-    }
 
-    WorkingFile *working_file =
-        working_files->GetFileByFilename(file->def->path);
-
-    Out_TextDocumentRename out;
-    out.id = request->id;
-
+    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+    lsWorkspaceEdit result;
     for (SymbolRef sym :
-         FindSymbolsAtLocation(working_file, file, request->params.position)) {
-      // Found symbol. Return references to rename.
-      out.result =
+         FindSymbolsAtLocation(wfile, file, request->params.position)) {
+      result =
           BuildWorkspaceEdit(db, working_files, sym, request->params.newName);
       break;
     }
 
-    pipeline::WriteStdout(kMethodType, out);
+    pipeline::Reply(request->id, result);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentRename);

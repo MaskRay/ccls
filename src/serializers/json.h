@@ -14,6 +14,7 @@ class JsonReader : public Reader {
 
 public:
   JsonReader(rapidjson::GenericValue<rapidjson::UTF8<>> *m) : m_(m) {}
+  virtual ~JsonReader();
   SerializeFormat Format() const override { return SerializeFormat::Json; }
   rapidjson::GenericValue<rapidjson::UTF8<>> &m() { return *m_; }
 
@@ -83,6 +84,7 @@ class JsonWriter : public Writer {
 
 public:
   JsonWriter(rapidjson::Writer<rapidjson::StringBuffer> *m) : m_(m) {}
+  virtual ~JsonWriter();
   SerializeFormat Format() const override { return SerializeFormat::Json; }
   rapidjson::Writer<rapidjson::StringBuffer> &m() { return *m_; }
 
