@@ -55,19 +55,12 @@ struct lsSignatureHelp {
 MAKE_REFLECT_STRUCT(lsSignatureHelp, signatures, activeSignature,
                     activeParameter);
 
-struct In_TextDocumentSignatureHelp : public RequestInMessage {
+struct In_TextDocumentSignatureHelp : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(In_TextDocumentSignatureHelp, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentSignatureHelp);
-
-struct Out_TextDocumentSignatureHelp
-    : public lsOutMessage<Out_TextDocumentSignatureHelp> {
-  lsRequestId id;
-  lsSignatureHelp result;
-};
-MAKE_REFLECT_STRUCT(Out_TextDocumentSignatureHelp, jsonrpc, id, result);
 
 std::string BuildOptional(const CodeCompletionString &CCS,
                           std::vector<lsParameterInformation> &ls_params) {
@@ -199,10 +192,7 @@ struct Handler_TextDocumentSignatureHelp
           if (!OptConsumer)
             return;
           auto *Consumer = static_cast<SignatureHelpConsumer *>(OptConsumer);
-          Out_TextDocumentSignatureHelp out;
-          out.id = id;
-          out.result = Consumer->ls_sighelp;
-          pipeline::WriteStdout(kMethodType, out);
+          pipeline::Reply(id, Consumer->ls_sighelp);
           if (!Consumer->from_cache) {
             cache.WithLock([&]() {
               cache.path = path;

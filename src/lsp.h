@@ -16,12 +16,41 @@ limitations under the License.
 #pragma once
 
 #include "config.h"
-#include "method.h"
 #include "serializer.h"
 #include "utils.h"
 
 #include <iosfwd>
 #include <unordered_map>
+
+using MethodType = const char *;
+extern MethodType kMethodType_Exit;
+
+struct lsRequestId {
+  // The client can send the request id as an int or a string. We should output
+  // the same format we received.
+  enum Type { kNone, kInt, kString };
+  Type type = kNone;
+
+  int value = -1;
+
+  bool Valid() const { return type != kNone; }
+};
+void Reflect(Reader &visitor, lsRequestId &value);
+void Reflect(Writer &visitor, lsRequestId &value);
+
+struct InMessage {
+  virtual ~InMessage();
+
+  virtual MethodType GetMethodType() const = 0;
+  virtual lsRequestId GetRequestId() const { return {}; }
+};
+
+struct NotificationMessage : InMessage {};
+
+struct RequestMessage : public InMessage {
+  lsRequestId id;
+  lsRequestId GetRequestId() const override { return id; }
+};
 
 #define REGISTER_IN_MESSAGE(type)                                              \
   static MessageRegistryRegister<type> type##message_handler_instance_;
@@ -53,45 +82,38 @@ template <typename T> struct MessageRegistryRegister {
   }
 };
 
-struct lsBaseOutMessage {
-  virtual ~lsBaseOutMessage();
-  virtual void ReflectWriter(Writer &) = 0;
+enum class lsErrorCodes {
+  // Defined by JSON RPC
+  ParseError = -32700,
+  InvalidRequest = -32600,
+  MethodNotFound = -32601,
+  InvalidParams = -32602,
+  InternalError = -32603,
+  serverErrorStart = -32099,
+  serverErrorEnd = -32000,
+  ServerNotInitialized = -32002,
+  UnknownErrorCode = -32001,
 
-  // Send the message to the language client by writing it to stdout.
-  void Write(std::ostream &out);
+  // Defined by the protocol.
+  RequestCancelled = -32800,
 };
-
-template <typename TDerived> struct lsOutMessage : lsBaseOutMessage {
-  // All derived types need to reflect on the |jsonrpc| member.
-  std::string jsonrpc = "2.0";
-
-  void ReflectWriter(Writer &writer) override {
-    Reflect(writer, static_cast<TDerived &>(*this));
-  }
-};
+MAKE_REFLECT_TYPE_PROXY(lsErrorCodes);
 
 struct lsResponseError {
-  enum class lsErrorCodes : int {
-    ParseError = -32700,
-    InvalidRequest = -32600,
-    MethodNotFound = -32601,
-    InvalidParams = -32602,
-    InternalError = -32603,
-    serverErrorStart = -32099,
-    serverErrorEnd = -32000,
-    ServerNotInitialized = -32002,
-    UnknownErrorCode = -32001,
-    RequestCancelled = -32800,
-  };
-
+  // A number indicating the error type that occurred.
   lsErrorCodes code;
-  // Short description.
+
+  // A string providing a short description of the error.
   std::string message;
 
-  void Write(Writer &visitor);
+  // A Primitive or Structured value that contains additional
+  // information about the error. Can be omitted.
+  // std::optional<D> data;
 };
+MAKE_REFLECT_STRUCT(lsResponseError, code, message);
 
-constexpr std::string_view ccls_xref("ccls.xref");
+constexpr char ccls_xref[] = "ccls.xref";
+constexpr char window_showMessage[] = "window/showMessage";
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -317,35 +339,55 @@ MAKE_REFLECT_STRUCT(lsWorkspaceFolder, uri, name);
 enum class lsMessageType : int { Error = 1, Warning = 2, Info = 3, Log = 4 };
 MAKE_REFLECT_TYPE_PROXY(lsMessageType)
 
-struct Out_ShowLogMessageParams {
+enum class lsDiagnosticSeverity {
+  // Reports an error.
+  Error = 1,
+  // Reports a warning.
+  Warning = 2,
+  // Reports an information.
+  Information = 3,
+  // Reports a hint.
+  Hint = 4
+};
+MAKE_REFLECT_TYPE_PROXY(lsDiagnosticSeverity);
+
+struct lsDiagnostic {
+  // The range at which the message applies.
+  lsRange range;
+
+  // The diagnostic's severity. Can be omitted. If omitted it is up to the
+  // client to interpret diagnostics as error, warning, info or hint.
+  std::optional<lsDiagnosticSeverity> severity;
+
+  // The diagnostic's code. Can be omitted.
+  int code = 0;
+
+  // A human-readable string describing the source of this
+  // diagnostic, e.g. 'typescript' or 'super lint'.
+  std::string source = "ccls";
+
+  // The diagnostic's message.
+  std::string message;
+
+  // Non-serialized set of fixits.
+  std::vector<lsTextEdit> fixits_;
+};
+MAKE_REFLECT_STRUCT(lsDiagnostic, range, severity, source, message);
+
+struct lsPublishDiagnosticsParams {
+  // The URI for which diagnostic information is reported.
+  lsDocumentUri uri;
+
+  // An array of diagnostic information items.
+  std::vector<lsDiagnostic> diagnostics;
+};
+MAKE_REFLECT_STRUCT(lsPublishDiagnosticsParams, uri, diagnostics);
+
+struct lsShowMessageParams {
   lsMessageType type = lsMessageType::Error;
   std::string message;
 };
-MAKE_REFLECT_STRUCT(Out_ShowLogMessageParams, type, message);
-
-struct Out_ShowLogMessage : public lsOutMessage<Out_ShowLogMessage> {
-  enum class DisplayType { Show, Log };
-  DisplayType display_type = DisplayType::Show;
-
-  std::string method();
-  Out_ShowLogMessageParams params;
-};
-
-template <typename TVisitor>
-void Reflect(TVisitor &visitor, Out_ShowLogMessage &value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(jsonrpc);
-  std::string method = value.method();
-  REFLECT_MEMBER2("method", method);
-  REFLECT_MEMBER(params);
-  REFLECT_MEMBER_END();
-}
-
-struct Out_LocationList : public lsOutMessage<Out_LocationList> {
-  lsRequestId id;
-  std::vector<lsLocation> result;
-};
-MAKE_REFLECT_STRUCT(Out_LocationList, jsonrpc, id, result);
+MAKE_REFLECT_STRUCT(lsShowMessageParams, type, message);
 
 // Used to identify the language at a file level. The ordering is important, as
 // a file previously identified as `C`, will be changed to `Cpp` if it

@@ -48,12 +48,6 @@ struct Cmd_xref {
 };
 MAKE_REFLECT_STRUCT(Cmd_xref, usr, kind, field);
 
-struct Out_xref : public lsOutMessage<Out_xref> {
-  lsRequestId id;
-  std::vector<lsLocation> result;
-};
-MAKE_REFLECT_STRUCT(Out_xref, jsonrpc, id, result);
-
 template <typename T>
 std::string ToString(T &v) {
   rapidjson::StringBuffer output;
@@ -69,7 +63,7 @@ struct CommonCodeLensParams {
   WorkingFile *wfile;
 };
 
-struct In_TextDocumentCodeLens : public RequestInMessage {
+struct In_TextDocumentCodeLens : public RequestMessage {
   MethodType GetMethodType() const override { return codeLens; }
   struct Params {
     lsTextDocumentIdentifier textDocument;
@@ -79,20 +73,12 @@ MAKE_REFLECT_STRUCT(In_TextDocumentCodeLens::Params, textDocument);
 MAKE_REFLECT_STRUCT(In_TextDocumentCodeLens, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentCodeLens);
 
-struct Out_TextDocumentCodeLens
-    : public lsOutMessage<Out_TextDocumentCodeLens> {
-  lsRequestId id;
-  std::vector<lsCodeLens> result;
-};
-MAKE_REFLECT_STRUCT(Out_TextDocumentCodeLens, jsonrpc, id, result);
-
 struct Handler_TextDocumentCodeLens
     : BaseMessageHandler<In_TextDocumentCodeLens> {
   MethodType GetMethodType() const override { return codeLens; }
   void Run(In_TextDocumentCodeLens *request) override {
     auto &params = request->params;
-    Out_TextDocumentCodeLens out;
-    out.id = request->id;
+    std::vector<lsCodeLens> result;
     std::string path = params.textDocument.uri.GetPath();
 
     QueryFile *file;
@@ -107,7 +93,7 @@ struct Handler_TextDocumentCodeLens
       std::optional<lsRange> range = GetLsRange(wfile, use.range);
       if (!range)
         return;
-      lsCodeLens &code_lens = out.result.emplace_back();
+      lsCodeLens &code_lens = result.emplace_back();
       code_lens.range = *range;
       code_lens.command = lsCommand();
       code_lens.command->command = std::string(ccls_xref);
@@ -178,12 +164,12 @@ struct Handler_TextDocumentCodeLens
       };
     }
 
-    pipeline::WriteStdout(codeLens, out);
+    pipeline::Reply(request->id, result);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentCodeLens);
 
-struct In_WorkspaceExecuteCommand : public RequestInMessage {
+struct In_WorkspaceExecuteCommand : public RequestMessage {
   MethodType GetMethodType() const override { return executeCommand; }
   lsCommand params;
 };
@@ -203,12 +189,11 @@ struct Handler_WorkspaceExecuteCommand
     if (params.command == ccls_xref) {
       Cmd_xref cmd;
       Reflect(json_reader, cmd);
-      Out_xref out;
-      out.id = request->id;
+      std::vector<lsLocation> result;
       auto Map = [&](auto &&uses) {
         for (auto &use : uses)
           if (auto loc = GetLsLocation(db, working_files, use))
-            out.result.push_back(std::move(*loc));
+            result.push_back(std::move(*loc));
       };
       switch (cmd.kind) {
       case SymbolKind::Func: {
@@ -247,7 +232,7 @@ struct Handler_WorkspaceExecuteCommand
       default:
         break;
       }
-      pipeline::WriteStdout(executeCommand, out);
+      pipeline::Reply(request->id, result);
     }
   }
 };

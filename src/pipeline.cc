@@ -26,6 +26,9 @@ limitations under the License.
 #include "platform.h"
 #include "project.h"
 #include "query_utils.h"
+#include "serializers/json.h"
+
+#include <rapidjson/writer.h>
 
 #include <llvm/Support/Threading.h>
 #include <llvm/Support/Timer.h>
@@ -76,18 +79,13 @@ struct Index_Request {
   int64_t ts = tick++;
 };
 
-struct Stdout_Request {
-  MethodType method;
-  std::string content;
-};
-
 MultiQueueWaiter *main_waiter;
 MultiQueueWaiter *indexer_waiter;
 MultiQueueWaiter *stdout_waiter;
 ThreadedQueue<std::unique_ptr<InMessage>> *on_request;
 ThreadedQueue<Index_Request> *index_request;
 ThreadedQueue<IndexUpdate> *on_indexed;
-ThreadedQueue<Stdout_Request> *for_stdout;
+ThreadedQueue<std::string> *for_stdout;
 
 struct InMemoryIndexFile {
   std::string content;
@@ -299,11 +297,10 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
 
   if (!ok) {
     if (request.id.Valid()) {
-      Out_Error out;
-      out.id = request.id;
-      out.error.code = lsErrorCodes::InternalError;
-      out.error.message = "Failed to index " + path_to_index;
-      pipeline::WriteStdout(kMethodType_Unknown, out);
+      lsResponseError err;
+      err.code = lsErrorCodes::InternalError;
+      err.message = "failed to index " + path_to_index;
+      pipeline::ReplyError(request.id, err);
     }
     return true;
   }
@@ -363,7 +360,7 @@ void Init() {
   index_request = new ThreadedQueue<Index_Request>(indexer_waiter);
 
   stdout_waiter = new MultiQueueWaiter;
-  for_stdout = new ThreadedQueue<Stdout_Request>(stdout_waiter);
+  for_stdout = new ThreadedQueue<std::string>(stdout_waiter);
 }
 
 void Indexer_Main(CompletionManager *completion, VFS *vfs, Project *project,
@@ -383,8 +380,8 @@ void Main_OnIndexed(DB *db, WorkingFiles *working_files, IndexUpdate *update) {
       std::string filename = LowerPathIfInsensitive(f->filename);
       if (db->name2file_id.find(filename) == db->name2file_id.end())
         continue;
-      QueryFile *file = &db->files[db->name2file_id[filename]];
-      EmitSemanticHighlighting(db, f.get(), file);
+      QueryFile &file = db->files[db->name2file_id[filename]];
+      EmitSemanticHighlight(db, f.get(), file);
     }
     return;
   }
@@ -403,8 +400,9 @@ void Main_OnIndexed(DB *db, WorkingFiles *working_files, IndexUpdate *update) {
       // request.path
       wfile->SetIndexContent(g_config->index.onChange ? wfile->buffer_content
                                                       : def_u.second);
-      EmitSkippedRanges(wfile, def_u.first.skipped_ranges);
-      EmitSemanticHighlighting(db, wfile, &db->files[update->file_id]);
+      QueryFile &file = db->files[update->file_id];
+      EmitSkippedRanges(wfile, file);
+      EmitSemanticHighlight(db, wfile, file);
     }
   }
 }
@@ -414,21 +412,20 @@ void LaunchStdin() {
     set_thread_name("stdin");
     while (true) {
       std::unique_ptr<InMessage> message;
-      std::optional<std::string> err =
+      std::optional<std::string> error =
           MessageRegistry::instance()->ReadMessageFromStdin(&message);
 
       // Message parsing can fail if we don't recognize the method.
-      if (err) {
+      if (error) {
         // The message may be partially deserialized.
         // Emit an error ResponseMessage if |id| is available.
         if (message) {
           lsRequestId id = message->GetRequestId();
           if (id.Valid()) {
-            Out_Error out;
-            out.id = id;
-            out.error.code = lsErrorCodes::InvalidParams;
-            out.error.message = std::move(*err);
-            WriteStdout(kMethodType_Unknown, out);
+            lsResponseError err;
+            err.code = lsErrorCodes::InvalidParams;
+            err.message = std::move(*error);
+            ReplyError(id, err);
           }
         }
         continue;
@@ -453,20 +450,12 @@ void LaunchStdout() {
     set_thread_name("stdout");
 
     while (true) {
-      std::vector<Stdout_Request> messages = for_stdout->DequeueAll();
-      if (messages.empty()) {
-        stdout_waiter->Wait(for_stdout);
-        continue;
+      std::vector<std::string> messages = for_stdout->DequeueAll();
+      for (auto &s : messages) {
+        llvm::outs() << "Content-Length: " << s.size() << "\r\n\r\n" << s;
+        llvm::outs().flush();
       }
-
-      for (auto &message : messages) {
-#ifdef _WIN32
-        fwrite(message.content.c_str(), message.content.size(), 1, stdout);
-        fflush(stdout);
-#else
-        write(1, message.content.c_str(), message.content.size());
-#endif
-      }
+      stdout_waiter->Wait(for_stdout);
     }
   })
       .detach();
@@ -480,20 +469,17 @@ void MainLoop() {
   CompletionManager clang_complete(
       &project, &working_files,
       [&](std::string path, std::vector<lsDiagnostic> diagnostics) {
-        Out_TextDocumentPublishDiagnostics out;
-        out.params.uri = lsDocumentUri::FromPath(path);
-        out.params.diagnostics = diagnostics;
-        ccls::pipeline::WriteStdout(kMethodType_TextDocumentPublishDiagnostics,
-          out);
+        lsPublishDiagnosticsParams params;
+        params.uri = lsDocumentUri::FromPath(path);
+        params.diagnostics = diagnostics;
+        Notify("textDocument/publishDiagnostics", params);
       },
       [](lsRequestId id) {
         if (id.Valid()) {
-          Out_Error out;
-          out.id = id;
-          out.error.code = lsErrorCodes::InternalError;
-          out.error.message = "Dropping completion request; a newer request "
-                              "has come in that will be serviced instead.";
-          pipeline::WriteStdout(kMethodType_Unknown, out);
+          lsResponseError err;
+          err.code = lsErrorCodes::InternalError;
+          err.message = "drop older completion request";
+          ReplyError(id, err);
         }
       });
 
@@ -566,14 +552,54 @@ std::optional<std::string> LoadIndexedContent(const std::string &path) {
   return ReadContent(GetCachePath(path));
 }
 
-void WriteStdout(MethodType method, lsBaseOutMessage &response) {
-  std::ostringstream sstream;
-  response.Write(sstream);
+void Notify(const char *method, const std::function<void(Writer &)> &fn) {
+  rapidjson::StringBuffer output;
+  rapidjson::Writer<rapidjson::StringBuffer> w(output);
+  w.StartObject();
+  w.Key("jsonrpc");
+  w.String("2.0");
+  w.Key("method");
+  w.String(method);
+  w.Key("params");
+  JsonWriter writer(&w);
+  fn(writer);
+  w.EndObject();
+  for_stdout->PushBack(output.GetString());
+}
 
-  Stdout_Request out;
-  out.content = sstream.str();
-  out.method = method;
-  for_stdout->PushBack(std::move(out));
+static void Reply(lsRequestId id, const char *key,
+                  const std::function<void(Writer &)> &fn) {
+  rapidjson::StringBuffer output;
+  rapidjson::Writer<rapidjson::StringBuffer> w(output);
+  w.StartObject();
+  w.Key("jsonrpc");
+  w.String("2.0");
+  w.Key("id");
+  switch (id.type) {
+  case lsRequestId::kNone:
+    w.Null();
+    break;
+  case lsRequestId::kInt:
+    w.Int(id.value);
+    break;
+  case lsRequestId::kString:
+    auto s = std::to_string(id.value);
+    w.String(s.c_str(), s.length());
+    break;
+  }
+  w.Key(key);
+  JsonWriter writer(&w);
+  fn(writer);
+  w.EndObject();
+  for_stdout->PushBack(output.GetString());
+}
+
+void Reply(lsRequestId id, const std::function<void(Writer &)> &fn) {
+  Reply(id, "result", fn);
+}
+
+void ReplyError(lsRequestId id, const std::function<void(Writer &)> &fn) {
+  Reply(id, "error", fn);
 }
 
 } // namespace ccls::pipeline

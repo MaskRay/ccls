@@ -24,7 +24,7 @@ using namespace ccls;
 namespace {
 MethodType kMethodType = "textDocument/references";
 
-struct In_TextDocumentReferences : public RequestInMessage {
+struct In_TextDocumentReferences : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct lsReferenceContext {
     bool base = true;
@@ -60,11 +60,10 @@ struct Handler_TextDocumentReferences
     if (!FindFileOrFail(db, project, request->id,
                         params.textDocument.uri.GetPath(), &file))
       return;
-    Out_LocationList out;
-    out.id = request->id;
+    std::vector<lsLocation> result;
     WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
     if (!file) {
-      pipeline::WriteStdout(kMethodType, out);
+      pipeline::Reply(request->id, result);
       return;
     }
 
@@ -86,7 +85,7 @@ struct Handler_TextDocumentReferences
               !(use.role & params.context.excludeRole) &&
               seen_uses.insert(use).second)
             if (auto loc = GetLsLocation(db, working_files, use)) {
-              out.result.push_back(*loc);
+              result.push_back(*loc);
             }
         };
         WithEntity(db, sym, [&](const auto &entity) {
@@ -116,7 +115,7 @@ struct Handler_TextDocumentReferences
       break;
     }
 
-    if (out.result.empty()) {
+    if (result.empty()) {
       // |path| is the #include line. If the cursor is not on such line but line
       // = 0,
       // use the current filename.
@@ -134,16 +133,16 @@ struct Handler_TextDocumentReferences
             for (const IndexInclude &include : file1.def->includes)
               if (include.resolved_path == path) {
                 // Another file |file1| has the same include line.
-                lsLocation &loc = out.result.emplace_back();
+                lsLocation &loc = result.emplace_back();
                 loc.uri = lsDocumentUri::FromPath(file1.def->path);
                 loc.range.start.line = loc.range.end.line = include.line;
                 break;
               }
     }
 
-    if ((int)out.result.size() >= g_config->xref.maxNum)
-      out.result.resize(g_config->xref.maxNum);
-    pipeline::WriteStdout(kMethodType, out);
+    if ((int)result.size() >= g_config->xref.maxNum)
+      result.resize(g_config->xref.maxNum);
+    pipeline::Reply(request->id, result);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentReferences);

@@ -30,23 +30,36 @@ MAKE_HASHABLE(SymbolIdx, t.usr, t.kind);
 
 namespace {
 
-struct Out_CclsSetSkippedRanges
-    : public lsOutMessage<Out_CclsSetSkippedRanges> {
-  struct Params {
-    lsDocumentUri uri;
-    std::vector<lsRange> skippedRanges;
-  };
-  std::string method = "$ccls/setSkippedRanges";
-  Params params;
+struct CclsSemanticHighlightSymbol {
+  int id = 0;
+  lsSymbolKind parentKind;
+  lsSymbolKind kind;
+  uint8_t storage;
+  std::vector<std::pair<int, int>> ranges;
+
+  // `lsRanges` is used to compute `ranges`.
+  std::vector<lsRange> lsRanges;
 };
-MAKE_REFLECT_STRUCT(Out_CclsSetSkippedRanges::Params, uri, skippedRanges);
-MAKE_REFLECT_STRUCT(Out_CclsSetSkippedRanges, jsonrpc, method, params);
+
+struct CclsSemanticHighlightParams {
+  lsDocumentUri uri;
+  std::vector<CclsSemanticHighlightSymbol> symbols;
+};
+MAKE_REFLECT_STRUCT(CclsSemanticHighlightSymbol, id, parentKind, kind, storage,
+                    ranges, lsRanges);
+MAKE_REFLECT_STRUCT(CclsSemanticHighlightParams, uri, symbols);
+
+struct CclsSetSkippedRangesParams {
+  lsDocumentUri uri;
+  std::vector<lsRange> skippedRanges;
+};
+MAKE_REFLECT_STRUCT(CclsSetSkippedRangesParams, uri, skippedRanges);
 
 struct ScanLineEvent {
   lsPosition pos;
   lsPosition end_pos; // Second key when there is a tie for insertion events.
   int id;
-  Out_CclsPublishSemanticHighlighting::Symbol *symbol;
+  CclsSemanticHighlightSymbol *symbol;
   bool operator<(const ScanLineEvent &other) const {
     // See the comments below when insertion/deletion events are inserted.
     if (!(pos == other.pos))
@@ -68,7 +81,6 @@ MessageHandler::MessageHandler() {
   message_handlers->push_back(this);
 }
 
-// static
 std::vector<MessageHandler *> *MessageHandler::message_handlers = nullptr;
 
 bool FindFileOrFail(DB *db, Project *project, std::optional<lsRequestId> id,
@@ -98,46 +110,40 @@ bool FindFileOrFail(DB *db, Project *project, std::optional<lsRequestId> id,
   }
 
   if (id) {
-    Out_Error out;
-    out.id = *id;
+    lsResponseError err;
     if (has_entry) {
-      out.error.code = lsErrorCodes::ServerNotInitialized;
-      out.error.message = absolute_path + " is being indexed";
+      err.code = lsErrorCodes::ServerNotInitialized;
+      err.message = absolute_path + " is being indexed";
     } else {
-      out.error.code = lsErrorCodes::InternalError;
-      out.error.message = "Unable to find file " + absolute_path;
+      err.code = lsErrorCodes::InternalError;
+      err.message = "unable to find " + absolute_path;
     }
-    LOG_S(INFO) << out.error.message;
-    pipeline::WriteStdout(kMethodType_Unknown, out);
+    pipeline::ReplyError(*id, err);
   }
 
   return false;
 }
 
-void EmitSkippedRanges(WorkingFile *working_file,
-                       const std::vector<Range> &skipped_ranges) {
-  Out_CclsSetSkippedRanges out;
-  out.params.uri = lsDocumentUri::FromPath(working_file->filename);
-  for (Range skipped : skipped_ranges) {
-    std::optional<lsRange> ls_skipped = GetLsRange(working_file, skipped);
-    if (ls_skipped)
-      out.params.skippedRanges.push_back(*ls_skipped);
-  }
-  pipeline::WriteStdout(kMethodType_CclsPublishSkippedRanges, out);
+void EmitSkippedRanges(WorkingFile *wfile, QueryFile &file) {
+  CclsSetSkippedRangesParams params;
+  params.uri = lsDocumentUri::FromPath(wfile->filename);
+  for (Range skipped : file.def->skipped_ranges)
+    if (auto ls_skipped = GetLsRange(wfile, skipped))
+      params.skippedRanges.push_back(*ls_skipped);
+  pipeline::Notify("$ccls/publishSkippedRanges", params);
 }
 
-void EmitSemanticHighlighting(DB *db, WorkingFile *wfile, QueryFile *file) {
+void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
   static GroupMatch match(g_config->highlight.whitelist,
                           g_config->highlight.blacklist);
-  assert(file->def);
+  assert(file.def);
   if (wfile->buffer_content.size() > g_config->highlight.largeFileSize ||
-      !match.IsMatch(file->def->path))
+      !match.IsMatch(file.def->path))
     return;
 
   // Group symbols together.
-  std::unordered_map<SymbolIdx, Out_CclsPublishSemanticHighlighting::Symbol>
-      grouped_symbols;
-  for (auto [sym, refcnt] : file->symbol2refcnt) {
+  std::unordered_map<SymbolIdx, CclsSemanticHighlightSymbol> grouped_symbols;
+  for (auto [sym, refcnt] : file.symbol2refcnt) {
     if (refcnt <= 0) continue;
     std::string_view detailed_name;
     lsSymbolKind parent_kind = lsSymbolKind::Unknown;
@@ -217,8 +223,8 @@ void EmitSemanticHighlighting(DB *db, WorkingFile *wfile, QueryFile *file) {
       if (it != grouped_symbols.end()) {
         it->second.lsRanges.push_back(*loc);
       } else {
-        Out_CclsPublishSemanticHighlighting::Symbol symbol;
-        symbol.stableId = idx;
+        CclsSemanticHighlightSymbol symbol;
+        symbol.id = idx;
         symbol.parentKind = parent_kind;
         symbol.kind = kind;
         symbol.storage = storage;
@@ -232,7 +238,7 @@ void EmitSemanticHighlighting(DB *db, WorkingFile *wfile, QueryFile *file) {
   std::vector<ScanLineEvent> events;
   int id = 0;
   for (auto &entry : grouped_symbols) {
-    Out_CclsPublishSemanticHighlighting::Symbol &symbol = entry.second;
+    CclsSemanticHighlightSymbol &symbol = entry.second;
     for (auto &loc : symbol.lsRanges) {
       // For ranges sharing the same start point, the one with leftmost end
       // point comes first.
@@ -267,13 +273,11 @@ void EmitSemanticHighlighting(DB *db, WorkingFile *wfile, QueryFile *file) {
       deleted[~events[i].id] = 1;
   }
 
-  Out_CclsPublishSemanticHighlighting out;
-  out.params.uri = lsDocumentUri::FromPath(wfile->filename);
+  CclsSemanticHighlightParams params;
+  params.uri = lsDocumentUri::FromPath(wfile->filename);
   // Transform lsRange into pair<int, int> (offset pairs)
   if (!g_config->highlight.lsRanges) {
-    std::vector<
-        std::pair<lsRange, Out_CclsPublishSemanticHighlighting::Symbol *>>
-        scratch;
+    std::vector<std::pair<lsRange, CclsSemanticHighlightSymbol *>> scratch;
     for (auto &entry : grouped_symbols) {
       for (auto &range : entry.second.lsRanges)
         scratch.emplace_back(range, &entry.second);
@@ -315,6 +319,6 @@ void EmitSemanticHighlighting(DB *db, WorkingFile *wfile, QueryFile *file) {
 
   for (auto &entry : grouped_symbols)
     if (entry.second.ranges.size() || entry.second.lsRanges.size())
-      out.params.symbols.push_back(std::move(entry.second));
-  pipeline::WriteStdout(kMethodType_CclsPublishSemanticHighlighting, out);
+      params.symbols.push_back(std::move(entry.second));
+  pipeline::Notify("$ccls/publishSemanticHighlight", params);
 }

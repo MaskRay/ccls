@@ -315,6 +315,8 @@ void WorkingFile::ComputeLineMapping() {
 
 std::optional<int> WorkingFile::GetBufferPosFromIndexPos(int line, int *column,
                                                          bool is_end) {
+  if (line == (int)index_lines.size() && !*column)
+    return buffer_content.size();
   if (line < 0 || line >= (int)index_lines.size()) {
     LOG_S(WARNING) << "bad index_line (got " << line << ", expected [0, "
                    << index_lines.size() << ")) in " << filename;
@@ -329,7 +331,6 @@ std::optional<int> WorkingFile::GetBufferPosFromIndexPos(int line, int *column,
 
 std::optional<int> WorkingFile::GetIndexPosFromBufferPos(int line, int *column,
                                                          bool is_end) {
-  // See GetBufferLineFromIndexLine for additional comments.
   if (line < 0 || line >= (int)buffer_lines.size())
     return std::nullopt;
 

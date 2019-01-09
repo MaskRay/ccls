@@ -1,7 +1,6 @@
 #pragma once
 
-#include "lsp_diagnostic.h"
-#include "method.h"
+#include "lsp.h"
 #include "query.h"
 
 #include <atomic>
@@ -15,7 +14,6 @@ struct GroupMatch;
 struct VFS;
 struct Project;
 struct WorkingFiles;
-struct lsBaseOutMessage;
 
 struct VFS {
   struct State {
@@ -52,6 +50,20 @@ void Index(const std::string &path, const std::vector<const char *> &args,
            IndexMode mode, lsRequestId id = {});
 
 std::optional<std::string> LoadIndexedContent(const std::string& path);
-void WriteStdout(MethodType method, lsBaseOutMessage &response);
+
+void Notify(const char *method, const std::function<void(Writer &)> &fn);
+template <typename T> void Notify(const char *method, T &result) {
+  Notify(method, [&](Writer &w) { Reflect(w, result); });
+}
+
+void Reply(lsRequestId id, const std::function<void(Writer &)> &fn);
+template <typename T> void Reply(lsRequestId id, T &result) {
+  Reply(id, [&](Writer &w) { Reflect(w, result); });
+}
+
+void ReplyError(lsRequestId id, const std::function<void(Writer &)> &fn);
+template <typename T> void ReplyError(lsRequestId id, T &result) {
+  ReplyError(id, [&](Writer &w) { Reflect(w, result); });
+}
 } // namespace pipeline
 } // namespace ccls

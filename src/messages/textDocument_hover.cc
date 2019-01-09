@@ -70,25 +70,18 @@ GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
   return {hover, ls_comments};
 }
 
-struct In_TextDocumentHover : public RequestInMessage {
+struct In_TextDocumentHover : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(In_TextDocumentHover, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentHover);
 
-struct Out_TextDocumentHover : public lsOutMessage<Out_TextDocumentHover> {
-  struct Result {
-    std::vector<lsMarkedString> contents;
-    std::optional<lsRange> range;
-  };
-
-  lsRequestId id;
-  std::optional<Result> result;
+struct lsHover {
+  std::vector<lsMarkedString> contents;
+  std::optional<lsRange> range;
 };
-MAKE_REFLECT_STRUCT(Out_TextDocumentHover::Result, contents, range);
-MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_TextDocumentHover, jsonrpc, id,
-                                       result);
+MAKE_REFLECT_STRUCT(lsHover, contents, range);
 
 struct Handler_TextDocumentHover : BaseMessageHandler<In_TextDocumentHover> {
   MethodType GetMethodType() const override { return kMethodType; }
@@ -99,33 +92,27 @@ struct Handler_TextDocumentHover : BaseMessageHandler<In_TextDocumentHover> {
                         params.textDocument.uri.GetPath(), &file))
       return;
 
-    WorkingFile *working_file =
-        working_files->GetFileByFilename(file->def->path);
+    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+    lsHover result;
 
-    Out_TextDocumentHover out;
-    out.id = request->id;
-
-    for (SymbolRef sym :
-         FindSymbolsAtLocation(working_file, file, params.position)) {
-      // Found symbol. Return hover.
+    for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, params.position)) {
       std::optional<lsRange> ls_range = GetLsRange(
           working_files->GetFileByFilename(file->def->path), sym.range);
       if (!ls_range)
         continue;
 
-      auto[hover, comments] = GetHover(db, file->def->language, sym, file->id);
+      auto [hover, comments] = GetHover(db, file->def->language, sym, file->id);
       if (comments || hover) {
-        out.result = Out_TextDocumentHover::Result();
-        out.result->range = *ls_range;
+        result.range = *ls_range;
         if (comments)
-          out.result->contents.push_back(*comments);
+          result.contents.push_back(*comments);
         if (hover)
-          out.result->contents.push_back(*hover);
+          result.contents.push_back(*hover);
         break;
       }
     }
 
-    pipeline::WriteStdout(kMethodType, out);
+    pipeline::Reply(request->id, result);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentHover);

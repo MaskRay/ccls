@@ -24,7 +24,7 @@ MAKE_HASHABLE(SymbolIdx, t.usr, t.kind);
 namespace {
 MethodType kMethodType = "textDocument/documentSymbol";
 
-struct In_TextDocumentDocumentSymbol : public RequestInMessage {
+struct In_TextDocumentDocumentSymbol : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     lsTextDocumentIdentifier textDocument;
@@ -40,20 +40,6 @@ MAKE_REFLECT_STRUCT(In_TextDocumentDocumentSymbol::Params, textDocument, all,
 MAKE_REFLECT_STRUCT(In_TextDocumentDocumentSymbol, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentDocumentSymbol);
 
-struct Out_SimpleDocumentSymbol
-    : public lsOutMessage<Out_SimpleDocumentSymbol> {
-  lsRequestId id;
-  std::vector<lsRange> result;
-};
-MAKE_REFLECT_STRUCT(Out_SimpleDocumentSymbol, jsonrpc, id, result);
-
-struct Out_TextDocumentDocumentSymbol
-    : public lsOutMessage<Out_TextDocumentDocumentSymbol> {
-  lsRequestId id;
-  std::vector<lsSymbolInformation> result;
-};
-MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentSymbol, jsonrpc, id, result);
-
 struct lsDocumentSymbol {
   std::string name;
   std::string detail;
@@ -68,13 +54,6 @@ MAKE_REFLECT_STRUCT(lsDocumentSymbol, name, detail, kind, range, selectionRange,
 void Reflect(Writer &vis, std::unique_ptr<lsDocumentSymbol> &v) {
   Reflect(vis, *v);
 }
-
-struct Out_HierarchicalDocumentSymbol
-    : public lsOutMessage<Out_HierarchicalDocumentSymbol> {
-  lsRequestId id;
-  std::vector<std::unique_ptr<lsDocumentSymbol>> result;
-};
-MAKE_REFLECT_STRUCT(Out_HierarchicalDocumentSymbol, jsonrpc, id, result);
 
 template <typename Def>
 bool Ignore(const Def *def) {
@@ -107,15 +86,14 @@ struct Handler_TextDocumentDocumentSymbol
     const auto &symbol2refcnt =
         params.all ? file->symbol2refcnt : file->outline2refcnt;
     if (params.startLine >= 0) {
-      Out_SimpleDocumentSymbol out;
-      out.id = request->id;
+      std::vector<lsRange> result;
       for (auto [sym, refcnt] : symbol2refcnt)
         if (refcnt > 0 && params.startLine <= sym.range.start.line &&
             sym.range.start.line <= params.endLine)
           if (auto loc = GetLsLocation(db, working_files, sym, file_id))
-            out.result.push_back(loc->range);
-      std::sort(out.result.begin(), out.result.end());
-      pipeline::WriteStdout(kMethodType, out);
+            result.push_back(loc->range);
+      std::sort(result.begin(), result.end());
+      pipeline::Reply(request->id, result);
     } else if (g_config->client.hierarchicalDocumentSymbolSupport) {
       std::unordered_map<SymbolIdx, std::unique_ptr<lsDocumentSymbol>> sym2ds;
       std::vector<std::pair<const QueryFunc::Def *, lsDocumentSymbol *>> funcs;
@@ -207,15 +185,13 @@ struct Handler_TextDocumentDocumentSymbol
             ds->children.push_back(std::move(it->second));
         }
       }
-      Out_HierarchicalDocumentSymbol out;
-      out.id = request->id;
+      std::vector<std::unique_ptr<lsDocumentSymbol>> result;
       for (auto &[_, ds] : sym2ds)
         if (ds)
-          out.result.push_back(std::move(ds));
-      pipeline::WriteStdout(kMethodType, out);
+          result.push_back(std::move(ds));
+      pipeline::Reply(request->id, result);
     } else {
-      Out_TextDocumentDocumentSymbol out;
-      out.id = request->id;
+      std::vector<lsSymbolInformation> result;
       for (auto [sym, refcnt] : symbol2refcnt) {
         if (refcnt <= 0) continue;
         if (std::optional<lsSymbolInformation> info =
@@ -227,11 +203,11 @@ struct Handler_TextDocumentDocumentSymbol
             continue;
           if (auto loc = GetLsLocation(db, working_files, sym, file_id)) {
             info->location = *loc;
-            out.result.push_back(*info);
+            result.push_back(*info);
           }
         }
       }
-      pipeline::WriteStdout(kMethodType, out);
+      pipeline::Reply(request->id, result);
     }
   }
 };

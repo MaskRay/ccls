@@ -17,7 +17,6 @@ limitations under the License.
 
 #include "config.h"
 #include "lsp.h"
-#include "method.h"
 
 #include <functional>
 #include <mutex>

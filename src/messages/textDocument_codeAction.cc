@@ -21,7 +21,7 @@ using namespace ccls;
 namespace {
 MethodType kMethodType = "textDocument/codeAction";
 
-struct In_TextDocumentCodeAction : public RequestInMessage {
+struct In_TextDocumentCodeAction : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 
   // Contains additional diagnostic information about the context in which
@@ -54,13 +54,6 @@ struct lsCodeAction {
 };
 MAKE_REFLECT_STRUCT(lsCodeAction, title, kind, edit);
 
-struct Out_TextDocumentCodeAction
-    : public lsOutMessage<Out_TextDocumentCodeAction> {
-  lsRequestId id;
-  std::vector<lsCodeAction> result;
-};
-MAKE_REFLECT_STRUCT(Out_TextDocumentCodeAction, jsonrpc, id, result);
-
 struct Handler_TextDocumentCodeAction
     : BaseMessageHandler<In_TextDocumentCodeAction> {
   MethodType GetMethodType() const override { return kMethodType; }
@@ -71,20 +64,19 @@ struct Handler_TextDocumentCodeAction
         working_files->GetFileByFilename(params.textDocument.uri.GetPath());
     if (!wfile)
       return;
-    Out_TextDocumentCodeAction out;
-    out.id = request->id;
+    std::vector<lsCodeAction> result;
     std::vector<lsDiagnostic> diagnostics;
     working_files->DoAction([&]() { diagnostics = wfile->diagnostics_; });
     for (lsDiagnostic &diag : diagnostics)
       if (diag.fixits_.size()) {
-        lsCodeAction &cmd = out.result.emplace_back();
+        lsCodeAction &cmd = result.emplace_back();
         cmd.title = "FixIt: " + diag.message;
         auto &edit = cmd.edit.documentChanges.emplace_back();
         edit.textDocument.uri = params.textDocument.uri;
         edit.textDocument.version = wfile->version;
         edit.edits = diag.fixits_;
       }
-    pipeline::WriteStdout(kMethodType, out);
+    pipeline::Reply(request->id, result);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentCodeAction);
