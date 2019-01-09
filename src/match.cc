@@ -18,12 +18,11 @@ std::optional<Matcher> Matcher::Create(const std::string &search) {
     );
     return m;
   } catch (const std::exception &e) {
-    Out_ShowLogMessage out;
-    out.display_type = Out_ShowLogMessage::DisplayType::Show;
-    out.params.type = lsMessageType::Error;
-    out.params.message =
-        "ccls: Parsing EMCAScript regex \"" + search + "\" failed; " + e.what();
-    pipeline::WriteStdout(kMethodType_Unknown, out);
+    lsShowMessageParams params;
+    params.type = lsMessageType::Error;
+    params.message =
+        "failed to parse EMCAScript regex " + search + " : " + e.what();
+    pipeline::Notify(window_showMessage, params);
     return std::nullopt;
   }
 }

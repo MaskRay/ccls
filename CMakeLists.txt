@@ -187,7 +187,6 @@ target_sources(ccls PRIVATE
   src/main.cc
   src/include_complete.cc
   src/indexer.cc
-  src/method.cc
   src/log.cc
   src/lsp.cc
   src/match.cc
@@ -225,12 +224,10 @@ target_sources(ccls PRIVATE
   src/messages/textDocument_documentHighlight.cc
   src/messages/textDocument_documentSymbol.cc
   src/messages/textDocument_hover.cc
-  src/messages/textDocument_implementation.cc
   src/messages/textDocument_references.cc
   src/messages/textDocument_rename.cc
   src/messages/textDocument_signatureHelp.cc
   src/messages/textDocument_typeDefinition.cc
   src/messages/workspace_did.cc
-  src/messages/workspace_didChangeWatchedFiles.cc
   src/messages/workspace_symbol.cc
 )

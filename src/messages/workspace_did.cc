@@ -25,6 +25,7 @@ using namespace ccls;
 
 namespace {
 MethodType didChangeConfiguration = "workspace/didChangeConfiguration",
+           didChangeWatchedFiles = "workspace/didChangeWatchedFiles",
            didChangeWorkspaceFolders = "workspace/didChangeWorkspaceFolders";
 
 struct lsDidChangeConfigurationParams {
@@ -32,7 +33,7 @@ struct lsDidChangeConfigurationParams {
 };
 MAKE_REFLECT_STRUCT(lsDidChangeConfigurationParams, placeholder);
 
-struct In_workspaceDidChangeConfiguration : public NotificationInMessage {
+struct In_workspaceDidChangeConfiguration : public NotificationMessage {
   MethodType GetMethodType() const override { return didChangeConfiguration; }
   lsDidChangeConfigurationParams params;
 };
@@ -53,12 +54,66 @@ struct Handler_workspaceDidChangeConfiguration
 };
 REGISTER_MESSAGE_HANDLER(Handler_workspaceDidChangeConfiguration);
 
+enum class lsFileChangeType {
+  Created = 1,
+  Changed = 2,
+  Deleted = 3,
+};
+MAKE_REFLECT_TYPE_PROXY(lsFileChangeType);
+
+struct lsFileEvent {
+  lsDocumentUri uri;
+  lsFileChangeType type;
+};
+MAKE_REFLECT_STRUCT(lsFileEvent, uri, type);
+
+struct lsDidChangeWatchedFilesParams {
+  std::vector<lsFileEvent> changes;
+};
+MAKE_REFLECT_STRUCT(lsDidChangeWatchedFilesParams, changes);
+
+struct In_WorkspaceDidChangeWatchedFiles : public NotificationMessage {
+  MethodType GetMethodType() const override { return didChangeWatchedFiles; }
+  lsDidChangeWatchedFilesParams params;
+};
+MAKE_REFLECT_STRUCT(In_WorkspaceDidChangeWatchedFiles, params);
+REGISTER_IN_MESSAGE(In_WorkspaceDidChangeWatchedFiles);
+
+struct Handler_WorkspaceDidChangeWatchedFiles
+    : BaseMessageHandler<In_WorkspaceDidChangeWatchedFiles> {
+  MethodType GetMethodType() const override { return didChangeWatchedFiles; }
+  void Run(In_WorkspaceDidChangeWatchedFiles *request) override {
+    for (lsFileEvent &event : request->params.changes) {
+      std::string path = event.uri.GetPath();
+      IndexMode mode = working_files->GetFileByFilename(path)
+                           ? IndexMode::Normal
+                           : IndexMode::NonInteractive;
+      switch (event.type) {
+      case lsFileChangeType::Created:
+      case lsFileChangeType::Changed: {
+        pipeline::Index(path, {}, mode);
+        if (mode == IndexMode::Normal)
+          clang_complete->NotifySave(path);
+        else
+          clang_complete->OnClose(path);
+        break;
+      }
+      case lsFileChangeType::Deleted:
+        pipeline::Index(path, {}, mode);
+        clang_complete->OnClose(path);
+        break;
+      }
+    }
+  }
+};
+REGISTER_MESSAGE_HANDLER(Handler_WorkspaceDidChangeWatchedFiles);
+
 struct lsWorkspaceFoldersChangeEvent {
   std::vector<lsWorkspaceFolder> added, removed;
 };
 MAKE_REFLECT_STRUCT(lsWorkspaceFoldersChangeEvent, added, removed);
 
-struct In_workspaceDidChangeWorkspaceFolders : public NotificationInMessage {
+struct In_workspaceDidChangeWorkspaceFolders : public NotificationMessage {
   MethodType GetMethodType() const override {
     return didChangeWorkspaceFolders;
   }

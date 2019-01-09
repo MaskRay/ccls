@@ -26,11 +26,10 @@ class StringRef;
 enum class SerializeFormat { Binary, Json };
 
 struct JsonNull {};
-struct mandatory_optional_tag {};
 
 class Reader {
 public:
-  virtual ~Reader() {}
+  virtual ~Reader();
   virtual SerializeFormat Format() const = 0;
 
   virtual bool IsBool() = 0;
@@ -60,7 +59,7 @@ public:
 
 class Writer {
 public:
-  virtual ~Writer() {}
+  virtual ~Writer();
   virtual SerializeFormat Format() const = 0;
 
   virtual void Null() = 0;
@@ -85,8 +84,6 @@ struct IndexFile;
 #define REFLECT_MEMBER_START() ReflectMemberStart(visitor)
 #define REFLECT_MEMBER_END() ReflectMemberEnd(visitor);
 #define REFLECT_MEMBER(name) ReflectMember(visitor, #name, value.name)
-#define REFLECT_MEMBER_MANDATORY_OPTIONAL(name)                                \
-  ReflectMember(visitor, #name, value.name, mandatory_optional_tag{})
 #define REFLECT_MEMBER2(name, value) ReflectMember(visitor, name, value)
 
 #define MAKE_REFLECT_TYPE_PROXY(type_name)                                     \
@@ -103,8 +100,6 @@ struct IndexFile;
   }
 
 #define _MAPPABLE_REFLECT_MEMBER(name) REFLECT_MEMBER(name);
-#define _MAPPABLE_REFLECT_MEMBER_MANDATORY_OPTIONAL(name)                      \
-  REFLECT_MEMBER_MANDATORY_OPTIONAL(name);
 
 #define MAKE_REFLECT_EMPTY_STRUCT(type, ...)                                   \
   template <typename TVisitor> void Reflect(TVisitor &visitor, type &value) {  \
@@ -116,13 +111,6 @@ struct IndexFile;
   template <typename TVisitor> void Reflect(TVisitor &visitor, type &value) {  \
     REFLECT_MEMBER_START();                                                    \
     MACRO_MAP(_MAPPABLE_REFLECT_MEMBER, __VA_ARGS__)                           \
-    REFLECT_MEMBER_END();                                                      \
-  }
-
-#define MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(type, ...)                      \
-  template <typename TVisitor> void Reflect(TVisitor &visitor, type &value) {  \
-    REFLECT_MEMBER_START();                                                    \
-    MACRO_MAP(_MAPPABLE_REFLECT_MEMBER_MANDATORY_OPTIONAL, __VA_ARGS__)        \
     REFLECT_MEMBER_END();                                                      \
   }
 
@@ -254,13 +242,6 @@ void ReflectMember(Writer &visitor, const char *name, Maybe<T> &value) {
     visitor.Key(name);
     Reflect(visitor, value);
   }
-}
-
-template <typename T>
-void ReflectMember(Writer &visitor, const char *name, T &value,
-                   mandatory_optional_tag) {
-  visitor.Key(name);
-  Reflect(visitor, value);
 }
 
 template <typename L, typename R>

@@ -9,7 +9,7 @@ using namespace ccls;
 namespace {
 MethodType kMethodType = "$ccls/vars";
 
-struct In_CclsVars : public RequestInMessage {
+struct In_cclsVars : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params : lsTextDocumentPositionParams {
     // 1: field
@@ -18,14 +18,14 @@ struct In_CclsVars : public RequestInMessage {
     unsigned kind = ~0u;
   } params;
 };
-MAKE_REFLECT_STRUCT(In_CclsVars::Params, textDocument, position, kind);
-MAKE_REFLECT_STRUCT(In_CclsVars, id, params);
-REGISTER_IN_MESSAGE(In_CclsVars);
+MAKE_REFLECT_STRUCT(In_cclsVars::Params, textDocument, position, kind);
+MAKE_REFLECT_STRUCT(In_cclsVars, id, params);
+REGISTER_IN_MESSAGE(In_cclsVars);
 
-struct Handler_CclsVars : BaseMessageHandler<In_CclsVars> {
+struct Handler_cclsVars : BaseMessageHandler<In_cclsVars> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  void Run(In_CclsVars *request) override {
+  void Run(In_cclsVars *request) override {
     auto &params = request->params;
     QueryFile *file;
     if (!FindFileOrFail(db, project, request->id,
@@ -35,8 +35,7 @@ struct Handler_CclsVars : BaseMessageHandler<In_CclsVars> {
     WorkingFile *working_file =
         working_files->GetFileByFilename(file->def->path);
 
-    Out_LocationList out;
-    out.id = request->id;
+    std::vector<lsLocation> result;
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, params.position)) {
       Usr usr = sym.usr;
@@ -51,14 +50,14 @@ struct Handler_CclsVars : BaseMessageHandler<In_CclsVars> {
         [[fallthrough]];
       }
       case SymbolKind::Type:
-        out.result = GetLsLocations(
+        result = GetLsLocations(
             db, working_files,
             GetVarDeclarations(db, db->Type(usr).instances, params.kind));
         break;
       }
     }
-    pipeline::WriteStdout(kMethodType, out);
+    pipeline::Reply(request->id, result);
   }
 };
-REGISTER_MESSAGE_HANDLER(Handler_CclsVars);
+REGISTER_MESSAGE_HANDLER(Handler_cclsVars);
 } // namespace

@@ -4,7 +4,7 @@
 #include "message_handler.h"
 
 namespace {
-struct In_Exit : public NotificationInMessage {
+struct In_Exit : public NotificationMessage {
   MethodType GetMethodType() const override { return kMethodType_Exit; }
 };
 MAKE_REFLECT_EMPTY_STRUCT(In_Exit);

@@ -388,7 +388,7 @@ struct lsInitializeError {
 };
 MAKE_REFLECT_STRUCT(lsInitializeError, retry);
 
-struct In_InitializeRequest : public RequestInMessage {
+struct In_InitializeRequest : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 
   lsInitializeParams params;
@@ -396,15 +396,10 @@ struct In_InitializeRequest : public RequestInMessage {
 MAKE_REFLECT_STRUCT(In_InitializeRequest, id, params);
 REGISTER_IN_MESSAGE(In_InitializeRequest);
 
-struct Out_InitializeResponse : public lsOutMessage<Out_InitializeResponse> {
-  struct InitializeResult {
-    lsServerCapabilities capabilities;
-  };
-  lsRequestId id;
-  InitializeResult result;
+struct lsInitializeResult {
+  lsServerCapabilities capabilities;
 };
-MAKE_REFLECT_STRUCT(Out_InitializeResponse::InitializeResult, capabilities);
-MAKE_REFLECT_STRUCT(Out_InitializeResponse, jsonrpc, id, result);
+MAKE_REFLECT_STRUCT(lsInitializeResult, capabilities);
 
 void *Indexer(void *arg_) {
   MessageHandler *h;
@@ -474,13 +469,10 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
 
     // Send initialization before starting indexers, so we don't send a
     // status update too early.
-    // TODO: query request->params.capabilities.textDocument and support
-    // only things the client supports.
-
-    Out_InitializeResponse out;
-    out.id = request->id;
-
-    pipeline::WriteStdout(kMethodType, out);
+    {
+      lsInitializeResult result;
+      pipeline::Reply(request->id, result);
+    }
 
     // Set project root.
     EnsureEndsInSlash(project_path);

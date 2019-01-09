@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "lsp_diagnostic.h"
+#include "lsp.h"
 #include "utils.h"
 
 #include <mutex>

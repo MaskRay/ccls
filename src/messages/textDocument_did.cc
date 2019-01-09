@@ -15,7 +15,7 @@ MethodType didClose = "textDocument/didClose";
 MethodType didOpen = "textDocument/didOpen";
 MethodType didSave = "textDocument/didSave";
 
-struct In_TextDocumentDidChange : public NotificationInMessage {
+struct In_TextDocumentDidChange : public NotificationMessage {
   MethodType GetMethodType() const override { return didChange; }
   lsTextDocumentDidChangeParams params;
 };
@@ -39,7 +39,7 @@ struct Handler_TextDocumentDidChange
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidChange);
 
-struct In_TextDocumentDidClose : public NotificationInMessage {
+struct In_TextDocumentDidClose : public NotificationMessage {
   MethodType GetMethodType() const override { return didClose; }
   struct Params {
     lsTextDocumentIdentifier textDocument;
@@ -56,19 +56,13 @@ struct Handler_TextDocumentDidClose
   void Run(In_TextDocumentDidClose *request) override {
     std::string path = request->params.textDocument.uri.GetPath();
 
-    // Clear any diagnostics for the file.
-    Out_TextDocumentPublishDiagnostics out;
-    out.params.uri = request->params.textDocument.uri;
-    pipeline::WriteStdout(didClose, out);
-
-    // Remove internal state.
     working_files->OnClose(request->params.textDocument);
     clang_complete->OnClose(path);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidClose);
 
-struct In_TextDocumentDidOpen : public NotificationInMessage {
+struct In_TextDocumentDidOpen : public NotificationMessage {
   MethodType GetMethodType() const override { return didOpen; }
 
   struct Params {
@@ -101,9 +95,9 @@ struct Handler_TextDocumentDidOpen
 
     QueryFile *file = nullptr;
     FindFileOrFail(db, project, std::nullopt, path, &file);
-    if (file && file->def) {
-      EmitSkippedRanges(working_file, file->def->skipped_ranges);
-      EmitSemanticHighlighting(db, working_file, file);
+    if (file) {
+      EmitSkippedRanges(working_file, *file);
+      EmitSemanticHighlight(db, working_file, *file);
     }
 
     include_complete->AddFile(working_file->filename);
@@ -125,7 +119,7 @@ struct Handler_TextDocumentDidOpen
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidOpen);
 
-struct In_TextDocumentDidSave : public NotificationInMessage {
+struct In_TextDocumentDidSave : public NotificationMessage {
   MethodType GetMethodType() const override { return didSave; }
 
   struct Params {

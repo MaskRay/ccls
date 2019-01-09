@@ -9,19 +9,22 @@
 #include <queue>
 
 template <typename Node>
-void FlattenHierarchy(const Node &root, Out_LocationList &out) {
+std::vector<lsLocation> FlattenHierarchy(const std::optional<Node> &root) {
+  if (!root)
+    return {};
+  std::vector<lsLocation> ret;
   std::queue<const Node *> q;
-  for (auto &entry : root.children)
+  for (auto &entry : root->children)
     q.push(&entry);
   while (q.size()) {
     auto *entry = q.front();
     q.pop();
     if (entry->location.uri.raw_uri.size())
-      out.result.push_back({entry->location});
+      ret.push_back({entry->location});
     for (auto &entry1 : entry->children)
       q.push(&entry1);
   }
-  std::sort(out.result.begin(), out.result.end());
-  out.result.erase(std::unique(out.result.begin(), out.result.end()),
-    out.result.end());
+  std::sort(ret.begin(), ret.end());
+  ret.erase(std::unique(ret.begin(), ret.end()), ret.end());
+  return ret;
 }

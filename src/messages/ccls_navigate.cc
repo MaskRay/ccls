@@ -9,7 +9,7 @@ using namespace ccls;
 namespace {
 MethodType kMethodType = "$ccls/navigate";
 
-struct In_CclsNavigate : public RequestInMessage {
+struct In_CclsNavigate : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     lsTextDocumentIdentifier textDocument;
@@ -88,15 +88,14 @@ struct Handler_CclsNavigate : BaseMessageHandler<In_CclsNavigate> {
           res = sym.range;
       break;
     }
-    Out_LocationList out;
-    out.id = request->id;
+    std::vector<lsLocation> result;
     if (res)
       if (auto ls_range = GetLsRange(wfile, *res)) {
-        lsLocation &ls_loc = out.result.emplace_back();
+        lsLocation &ls_loc = result.emplace_back();
         ls_loc.uri = params.textDocument.uri;
         ls_loc.range = *ls_range;
       }
-    pipeline::WriteStdout(kMethodType, out);
+    pipeline::Reply(request->id, result);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsNavigate);

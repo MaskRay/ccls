@@ -26,7 +26,7 @@ bool operator&(CallType lhs, CallType rhs) {
   return uint8_t(lhs) & uint8_t(rhs);
 }
 
-struct In_CclsCall : public RequestInMessage {
+struct In_cclsCall : public RequestMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 
   struct Params {
@@ -50,34 +50,29 @@ struct In_CclsCall : public RequestInMessage {
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(In_CclsCall::Params, textDocument, position, id,
-                    callee, callType, qualified, levels, hierarchy);
-MAKE_REFLECT_STRUCT(In_CclsCall, id, params);
-REGISTER_IN_MESSAGE(In_CclsCall);
+MAKE_REFLECT_STRUCT(In_cclsCall::Params, textDocument, position, id, callee,
+                    callType, qualified, levels, hierarchy);
+MAKE_REFLECT_STRUCT(In_cclsCall, id, params);
+REGISTER_IN_MESSAGE(In_cclsCall);
 
-struct Out_CclsCall : public lsOutMessage<Out_CclsCall> {
-  struct Entry {
-    Usr usr;
-    std::string id;
-    std::string_view name;
-    lsLocation location;
-    CallType callType = CallType::Direct;
-    int numChildren;
-    // Empty if the |levels| limit is reached.
-    std::vector<Entry> children;
-    bool operator==(const Entry &o) const { return location == o.location; }
-    bool operator<(const Entry &o) const { return location < o.location; }
-  };
-
-  lsRequestId id;
-  std::optional<Entry> result;
+struct Out_cclsCall {
+  Usr usr;
+  std::string id;
+  std::string_view name;
+  lsLocation location;
+  CallType callType = CallType::Direct;
+  int numChildren;
+  // Empty if the |levels| limit is reached.
+  std::vector<Out_cclsCall> children;
+  bool operator==(const Out_cclsCall &o) const {
+    return location == o.location;
+  }
+  bool operator<(const Out_cclsCall &o) const { return location < o.location; }
 };
-MAKE_REFLECT_STRUCT(Out_CclsCall::Entry, id, name, location, callType,
-                    numChildren, children);
-MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_CclsCall, jsonrpc, id,
-                                       result);
+MAKE_REFLECT_STRUCT(Out_cclsCall, id, name, location, callType, numChildren,
+                    children);
 
-bool Expand(MessageHandler *m, Out_CclsCall::Entry *entry, bool callee,
+bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
             CallType call_type, bool qualified, int levels) {
   const QueryFunc &func = m->db->Func(entry->usr);
   const QueryFunc::Def *def = func.AnyDef();
@@ -87,7 +82,7 @@ bool Expand(MessageHandler *m, Out_CclsCall::Entry *entry, bool callee,
   auto handle = [&](SymbolRef sym, int file_id, CallType call_type1) {
     entry->numChildren++;
     if (levels > 0) {
-      Out_CclsCall::Entry entry1;
+      Out_cclsCall entry1;
       entry1.id = std::to_string(sym.usr);
       entry1.usr = sym.usr;
       if (auto loc = GetLsLocation(m->db, m->working_files,
@@ -167,17 +162,17 @@ bool Expand(MessageHandler *m, Out_CclsCall::Entry *entry, bool callee,
   return true;
 }
 
-struct Handler_CclsCall : BaseMessageHandler<In_CclsCall> {
+struct Handler_cclsCall : BaseMessageHandler<In_cclsCall> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  std::optional<Out_CclsCall::Entry>
-  BuildInitial(Usr root_usr, bool callee, CallType call_type, bool qualified,
-               int levels) {
+  std::optional<Out_cclsCall> BuildInitial(Usr root_usr, bool callee,
+                                           CallType call_type, bool qualified,
+                                           int levels) {
     const auto *def = db->Func(root_usr).AnyDef();
     if (!def)
       return {};
 
-    Out_CclsCall::Entry entry;
+    Out_cclsCall entry;
     entry.id = std::to_string(root_usr);
     entry.usr = root_usr;
     entry.callType = CallType::Direct;
@@ -190,25 +185,22 @@ struct Handler_CclsCall : BaseMessageHandler<In_CclsCall> {
     return entry;
   }
 
-  void Run(In_CclsCall *request) override {
+  void Run(In_cclsCall *request) override {
     auto &params = request->params;
-    Out_CclsCall out;
-    out.id = request->id;
-
+    std::optional<Out_cclsCall> result;
     if (params.id.size()) {
       try {
         params.usr = std::stoull(params.id);
       } catch (...) {
         return;
       }
-      Out_CclsCall::Entry entry;
-      entry.id = std::to_string(params.usr);
-      entry.usr = params.usr;
-      entry.callType = CallType::Direct;
+      result.emplace();
+      result->id = std::to_string(params.usr);
+      result->usr = params.usr;
+      result->callType = CallType::Direct;
       if (db->HasFunc(params.usr))
-        Expand(this, &entry, params.callee, params.callType, params.qualified,
+        Expand(this, &*result, params.callee, params.callType, params.qualified,
                params.levels);
-      out.result = std::move(entry);
     } else {
       QueryFile *file;
       if (!FindFileOrFail(db, project, request->id,
@@ -219,24 +211,21 @@ struct Handler_CclsCall : BaseMessageHandler<In_CclsCall> {
       for (SymbolRef sym :
            FindSymbolsAtLocation(working_file, file, params.position)) {
         if (sym.kind == SymbolKind::Func) {
-          out.result = BuildInitial(sym.usr, params.callee, params.callType,
-                                    params.qualified, params.levels);
+          result = BuildInitial(sym.usr, params.callee, params.callType,
+                                params.qualified, params.levels);
           break;
         }
       }
     }
 
-    if (params.hierarchy) {
-      pipeline::WriteStdout(kMethodType, out);
-      return;
+    if (params.hierarchy)
+      pipeline::Reply(request->id, result);
+    else {
+      auto out = FlattenHierarchy(result);
+      pipeline::Reply(request->id, out);
     }
-    Out_LocationList out1;
-    out1.id = request->id;
-    if (out.result)
-      FlattenHierarchy<Out_CclsCall::Entry>(*out.result, out1);
-    pipeline::WriteStdout(kMethodType, out1);
   }
 };
-REGISTER_MESSAGE_HANDLER(Handler_CclsCall);
+REGISTER_MESSAGE_HANDLER(Handler_cclsCall);
 
 } // namespace
