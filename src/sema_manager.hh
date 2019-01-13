@@ -102,10 +102,6 @@ struct SemaManager {
       std::function<void(clang::CodeCompleteConsumer *OptConsumer)>;
   using OnDropped = std::function<void(RequestId request_id)>;
 
-  struct PreambleTask {
-    std::string path;
-    bool from_diag = false;
-  };
   struct CompTask {
     CompTask(const RequestId &id, const std::string &path,
              const Position &position,
@@ -125,6 +121,11 @@ struct SemaManager {
     std::string path;
     int64_t wait_until;
     int64_t debounce;
+  };
+  struct PreambleTask {
+    std::string path;
+    std::unique_ptr<CompTask> comp_task;
+    bool from_diag = false;
   };
 
   SemaManager(Project *project, WorkingFiles *wfiles,
