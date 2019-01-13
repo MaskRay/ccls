@@ -423,7 +423,9 @@ void *PreambleMain(void *manager_) {
             BuildCompilerInvocation(task.path, session->file.args, FS))
       BuildPreamble(*session, *CI, FS, task, std::move(stat_cache));
 
-    if (task.from_diag) {
+    if (task.comp_task) {
+      manager->comp_tasks.PushBack(std::move(task.comp_task));
+    } else if (task.from_diag) {
       manager->ScheduleDiag(task.path, 0);
     } else {
       int debounce =
@@ -474,12 +476,18 @@ void *CompletionMain(void *manager_) {
     DiagnosticConsumer DC;
     std::string content = manager->wfiles->GetContent(task->path);
     auto Buf = llvm::MemoryBuffer::getMemBuffer(content);
+    PreambleBounds Bounds =
+        ComputePreambleBounds(*CI->getLangOpts(), Buf.get(), 0);
     bool in_preamble =
         GetOffsetForPosition({task->position.line, task->position.character},
-                             content) <
-        ComputePreambleBounds(*CI->getLangOpts(), Buf.get(), 0).Size;
-    if (in_preamble)
+                             content) < (int)Bounds.Size;
+    if (in_preamble) {
       preamble.reset();
+    } else if (preamble && Bounds.Size != preamble->Preamble.getBounds().Size) {
+      manager->preamble_tasks.PushBack({task->path, std::move(task), false},
+                                       true);
+      continue;
+    }
     auto Clang = BuildCompilerInstance(*session, std::move(CI), FS, DC,
                                        preamble.get(), task->path, Buf);
     if (!Clang)
@@ -556,7 +564,7 @@ void *DiagnosticMain(void *manager_) {
           }
       }
       if (rebuild) {
-        manager->preamble_tasks.PushBack({task.path, true}, true);
+        manager->preamble_tasks.PushBack({task.path, nullptr, true}, true);
         continue;
       }
     }
