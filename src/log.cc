@@ -67,11 +67,14 @@ Message::Message(Verbosity verbosity, const char *file, int line)
 }
 
 Message::~Message() {
-  if (!file)
-    return;
   std::lock_guard<std::mutex> lock(mtx);
   stream_ << '\n';
-  fputs(stream_.str().c_str(), file);
+  if (file) {
+    fputs(stream_.str().c_str(), file);
+    fflush(file);
+  }
+  fputs(stream_.str().c_str(), stderr);
+  fflush(stderr); // stderr is redirected to LSP client
   if (verbosity_ == Verbosity_FATAL)
     abort();
 }
