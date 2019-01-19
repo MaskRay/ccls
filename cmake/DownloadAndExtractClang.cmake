@@ -6,27 +6,40 @@
 # Downloads 7-Zip to extract Clang if it isn't available in the PATH
 function(download_and_extract_clang CLANG_DOWNLOAD_LOCATION)
 
-set(CLANG_VERSION 7.0.0)
-set(CLANG_ARCHIVE_EXT .tar.xz)
+set(CLANG_VERSION 7.0.0
+    CACHE STRING "Version of Clang to download")
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
 
   # Default to Ubuntu 16.04
-  set(CLANG_ARCHIVE_NAME
-      clang+llvm-${CLANG_VERSION}-x86_64-linux-gnu-ubuntu-16.04)
+  set(_default_CLANG_ARCH x86_64-linux-gnu-ubuntu-16.04)
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
 
-  set(CLANG_ARCHIVE_NAME clang+llvm-${CLANG_VERSION}-x86_64-apple-darwin)
+  set(_default_CLANG_ARCH x86_64-apple-darwin)
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 
-  set(CLANG_ARCHIVE_NAME LLVM-${CLANG_VERSION}-win64)
-  set(CLANG_ARCHIVE_EXT .exe)
+  set(_default_CLANG_ARCH win64)
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL FreeBSD)
 
-  set(CLANG_ARCHIVE_NAME clang+llvm-${CLANG_VERSION}-amd64-unknown-freebsd11)
+  set(_default_CLANG_ARCH amd64-unknown-freebsd11)
+
+endif()
+
+set(CLANG_ARCH_NAME ${_default_CLANG_ARCH}
+    CACHE STRING "Clang downlaod architecture")
+
+if(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
+
+  set(CLANG_ARCHIVE_NAME LLVM-${CLANG_VERSION}-${CLANG_ARCH_NAME})
+  set(CLANG_ARCHIVE_EXT .exe)
+
+else()
+
+  set(CLANG_ARCHIVE_NAME clang+llvm-${CLANG_VERSION}-${CLANG_ARCH_NAME})
+  set(CLANG_ARCHIVE_EXT .tar.xz)
 
 endif()
 
