@@ -230,43 +230,43 @@ void SpawnThread(void *(*fn)(void *), void *arg) {
 }
 
 void RemoveDirectoryRecursive(const std::string &path) {
-    std::string pathString = path;  // create modifiable copy
-    // parameter 'pFrom' must be double NULL-terminated:
-    pathString.append(2, 0);
+  std::string pathString = path;  // create modifiable copy
+  // parameter 'pFrom' must be double NULL-terminated:
+  pathString.append(2, 0);
 
-    // We use SHFileOperation, because its FO_DELETE operation is recursive.
-    SHFILEOPSTRUCT op;
-    memset(&op, 0, sizeof(op));
-    op.wFunc = FO_DELETE;
-    op.pFrom = pathString.c_str();
-    op.fFlags = FOF_NO_UI;
-    SHFileOperation(&op);
+  // We use SHFileOperation, because its FO_DELETE operation is recursive.
+  SHFILEOPSTRUCT op;
+  memset(&op, 0, sizeof(op));
+  op.wFunc = FO_DELETE;
+  op.pFrom = pathString.c_str();
+  op.fFlags = FOF_NO_UI;
+  SHFileOperation(&op);
 }
 
 std::optional<std::string> TryMakeTempDirectory() {
-    // get "temp" dir
-    char tmpdir_buf[MAX_PATH];
-    DWORD len = GetTempPath(MAX_PATH, tmpdir_buf);
+  // get "temp" dir
+  char tmpdir_buf[MAX_PATH];
+  DWORD len = GetTempPath(MAX_PATH, tmpdir_buf);
 
-    // Unfortunately, there is no mkdtemp() on windows. We append a (random)
-    // GUID to use as a unique directory name.
-    GUID guid;
-    CoCreateGuid(&guid);
-    // simplest way to append the guid to the existing c string:
-    len += snprintf(tmpdir_buf + len, MAX_PATH - len,
-        "ccls-%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
-             guid.Data1, guid.Data2, guid.Data3,
-             guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
-             guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+  // Unfortunately, there is no mkdtemp() on windows. We append a (random)
+  // GUID to use as a unique directory name.
+  GUID guid;
+  CoCreateGuid(&guid);
+  // simplest way to append the guid to the existing c string:
+  len += snprintf(tmpdir_buf + len, MAX_PATH - len,
+                  "ccls-%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+                  guid.Data1, guid.Data2, guid.Data3,
+                  guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
+                  guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
 
-    std::string dirPath(tmpdir_buf, len);
+  std::string dirPath(tmpdir_buf, len);
 
-    // finally, create the dir
-    const bool createSuccessful = (_mkdir(dirPath.c_str()) != -1) ||
-                                  (errno == EEXIST);
+  // finally, create the dir
+  const bool createSuccessful =
+    (_mkdir(dirPath.c_str()) != -1) || (errno == EEXIST);
 
-    if(createSuccessful) return dirPath;
-    return std::nullopt;
+  if(createSuccessful) return dirPath;
+  return std::nullopt;
 }
 
 }
