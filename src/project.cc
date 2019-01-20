@@ -351,6 +351,7 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
   std::string err_msg;
   std::unique_ptr<tooling::CompilationDatabase> CDB =
       tooling::CompilationDatabase::loadFromDirectory(CDBDir, err_msg);
+  if(err_msg.size() > 0) LOG_S(ERROR) << err_msg;
   if (!g_config->compilationDatabaseCommand.empty()) {
     RemoveDirectoryRecursive(CDBDir.c_str());
   }

@@ -161,7 +161,7 @@ std::string GetExternalCommandOutput(const std::vector<std::string> &command,
   // fold the command line parts into a single string, quoting the arguments
   std::string cmdString;
   for (int i = 0; i < command.size(); i++) {
-    cmdString += ((i > 0) ? " \"" : "\"") + command[i] + "\"";
+    cmdString += ((i == 0) ? command[i] : (" \"" + command[i] + "\"")) ;
   }
 
   std::wstring cmdString_u16 = Utf8To16(cmdString.c_str());
