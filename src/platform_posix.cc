@@ -35,6 +35,7 @@ limitations under the License.
 #include <sys/types.h> // required for stat.h
 #include <sys/wait.h>
 #include <unistd.h>
+#include <ftw.h>
 #ifdef __GLIBC__
 #include <malloc.h>
 #endif
@@ -134,21 +135,21 @@ void SpawnThread(void *(*fn)(void *), void *arg) {
 /// callback function required for RemoveDirectoryRecursive()
 static int nftwCallback(const char *name, const struct stat * /*unused*/,
                     int /*unused*/, FTW * /*unused*/) {
-    remove(name);
-    return 0;
+  remove(name);
+  return 0;
 }
 
-void RemoveDirectoryRecursive(const AbsolutePath &path) {
-    // https://stackoverflow.com/a/5467788/2192139
-    nftw(path.path.c_str(), nftwCallback, 64, FTW_DEPTH | FTW_PHYS);
+void RemoveDirectoryRecursive(const std::string &path) {
+  // https://stackoverflow.com/a/5467788/2192139
+  nftw(path.c_str(), nftwCallback, 64, FTW_DEPTH | FTW_PHYS);
 }
 
-optional<std::string> TryMakeTempDirectory() {
-    char tmpl[] = "/tmp/ccls-XXXXXX";
-    if(!mkdtemp(tmpl)) {
-        return nullopt;
-    }
-    return tmpl;
+std::optional<std::string> TryMakeTempDirectory() {
+  char tmpl[] = "/tmp/ccls-XXXXXX";
+  if(!mkdtemp(tmpl)) {
+    return std::nullopt;
+  }
+  return tmpl;
 }
 
 } // namespace ccls
