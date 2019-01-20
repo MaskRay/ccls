@@ -318,37 +318,41 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
   } else {
     // If `compilationDatabaseCommand` is specified, execute it to get the
     // compdb.
-#ifdef _WIN32
-    // TODO
-#else
-    char tmpdir[] = "/tmp/ccls-compdb-XXXXXX";
-    if (!mkdtemp(tmpdir))
-      return;
-    CDBDir = tmpdir;
+
+    // generally it would be nice if we could just let clang load the
+    // compilation database (compile_commands.json) from memory.
+    // However, clang insists on reading compile_commands.json from a
+    // directory, so we create a temporary directory just for clang to read
+    // from.
+
+    auto tmpdir = TryMakeTempDirectory();
+    if(!tmpdir.has_value()) {
+        LOG_S(ERROR) << "could not create temp directory for external "
+            "compile_commands.json command";
+        return;
+    }
+
+    CDBDir = tmpdir.value();
     sys::path::append(Path, CDBDir, "compile_commands.json");
     rapidjson::StringBuffer input;
     rapidjson::Writer<rapidjson::StringBuffer> writer(input);
     JsonWriter json_writer(&writer);
     Reflect(json_writer, *g_config);
+    LOG_S(INFO) << "Starting external command " <<
+        g_config->compilationDatabaseCommand << " " << root;
     std::string contents = GetExternalCommandOutput(
         std::vector<std::string>{g_config->compilationDatabaseCommand, root},
         input.GetString());
     FILE *fout = fopen(Path.c_str(), "wb");
     fwrite(contents.c_str(), contents.size(), 1, fout);
     fclose(fout);
-#endif
   }
 
   std::string err_msg;
   std::unique_ptr<tooling::CompilationDatabase> CDB =
       tooling::CompilationDatabase::loadFromDirectory(CDBDir, err_msg);
   if (!g_config->compilationDatabaseCommand.empty()) {
-#ifdef _WIN32
-    // TODO
-#else
-    unlink(Path.c_str());
-    rmdir(CDBDir.c_str());
-#endif
+    RemoveDirectoryRecursive(CDBDir.c_str());
   }
 
   ProjectProcessor proc(folder);

@@ -18,6 +18,7 @@ limitations under the License.
 #include <string>
 #include <string_view>
 #include <vector>
+#include <optional>
 
 namespace ccls {
 std::string NormalizePath(const std::string &path);
@@ -32,4 +33,10 @@ std::string GetExternalCommandOutput(const std::vector<std::string> &command,
                                      std::string_view input);
 
 void SpawnThread(void *(*fn)(void *), void *arg);
+
+std::optional<std::string> TryMakeTempDirectory();
+
+/// Removes a directory and all its contents.
+void RemoveDirectoryRecursive(const std::string& path);
+
 } // namespace ccls
