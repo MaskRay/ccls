@@ -60,6 +60,7 @@ Message::~Message() {
   std::lock_guard<std::mutex> lock(mtx);
   stream_ << '\n';
   fputs(stream_.str().c_str(), file);
+  fflush(file);
   if (verbosity_ == Verbosity_FATAL)
     abort();
 }
