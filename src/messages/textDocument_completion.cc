@@ -424,7 +424,6 @@ public:
           ls_items[j].label = ls_items[j].filterText;
         }
       }
-#if LLVM_VERSION_MAJOR >= 7
       for (const FixItHint &FixIt : R.FixIts) {
         auto &AST = S.getASTContext();
         TextEdit ls_edit =
@@ -432,7 +431,6 @@ public:
         for (size_t j = first_idx; j < ls_items.size(); j++)
           ls_items[j].additionalTextEdits.push_back(ls_edit);
       }
-#endif
     }
   }
 
@@ -462,9 +460,7 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   clang::CodeCompleteOptions CCOpts;
   CCOpts.IncludeBriefComments = true;
   CCOpts.IncludeCodePatterns = StringRef(buffer_line).ltrim().startswith("#");
-#if LLVM_VERSION_MAJOR >= 7
   CCOpts.IncludeFixIts = true;
-#endif
   CCOpts.IncludeMacros = true;
 
   if (param.context.triggerKind == CompletionTriggerKind::TriggerCharacter &&
