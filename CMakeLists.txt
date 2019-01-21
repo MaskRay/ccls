@@ -112,7 +112,7 @@ endif()
 ### Libraries
 
 # See cmake/FindClang.cmake
-find_package(Clang 6.0.0)
+find_package(Clang 7.0.0)
 target_link_libraries(ccls PRIVATE Clang::Clang)
 
 # Enable threading support
