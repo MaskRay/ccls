@@ -190,11 +190,8 @@ public:
                           StringRef FileName, bool IsAngled,
                           CharSourceRange FilenameRange, const FileEntry *File,
                           StringRef SearchPath, StringRef RelativePath,
-                          const clang::Module *Imported
-#if LLVM_VERSION_MAJOR >= 7
-                          , SrcMgr::CharacteristicKind FileKind
-#endif
-                          ) override {
+                          const clang::Module *Imported,
+                          SrcMgr::CharacteristicKind FileKind) override {
     (void)SM;
     if (File && Seen.insert(File).second)
       out.emplace_back(PathFromFileEntry(*File), File->getModificationTime());
@@ -304,15 +301,10 @@ std::unique_ptr<CompilerInstance> BuildCompilerInstance(
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS, DiagnosticConsumer &DC,
     const PreambleData *preamble, const std::string &main,
     std::unique_ptr<llvm::MemoryBuffer> &Buf) {
-  if (preamble) {
-#if LLVM_VERSION_MAJOR >= 7
+  if (preamble)
     preamble->Preamble.OverridePreamble(*CI, FS, Buf.get());
-#else
-    preamble->Preamble.AddImplicitPreamble(*CI, FS, Buf.get());
-#endif
-  } else {
+  else
     CI->getPreprocessorOpts().addRemappedFile(main, Buf.get());
-  }
 
   auto Clang = std::make_unique<CompilerInstance>(session.PCH);
   Clang->setInvocation(std::move(CI));
