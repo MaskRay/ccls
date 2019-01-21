@@ -59,7 +59,7 @@ opt<std::string> opt_index("index",
 list<std::string> opt_init("init", desc("extra initialization options in JSON"),
                            cat(C));
 opt<std::string> opt_log_file("log-file", desc("log"), value_desc("filename"),
-                              cat(C));
+                              init("stderr"), cat(C));
 opt<std::string> opt_log_file_append("log-file-append", desc("log"),
                                      value_desc("filename"), cat(C));
 
@@ -96,9 +96,11 @@ int main(int argc, char **argv) {
   bool language_server = true;
 
   if (opt_log_file.size() || opt_log_file_append.size()) {
-    ccls::log::file = opt_log_file.size()
-                          ? fopen(opt_log_file.c_str(), "wb")
-                          : fopen(opt_log_file_append.c_str(), "ab");
+    if (opt_log_file.size())
+      ccls::log::file =
+          opt_log_file == "stderr" ? stderr : fopen(opt_log_file.c_str(), "wb");
+    else
+      ccls::log::file = fopen(opt_log_file_append.c_str(), "ab");
     if (!ccls::log::file) {
       fprintf(
           stderr, "failed to open %s\n",
