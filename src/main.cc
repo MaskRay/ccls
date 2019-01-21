@@ -58,10 +58,10 @@ opt<std::string> opt_index("index",
                            value_desc("root"), cat(C));
 list<std::string> opt_init("init", desc("extra initialization options in JSON"),
                            cat(C));
-opt<std::string> opt_log_file("log-file", desc("log"), value_desc("filename"),
+opt<std::string> opt_log_file("log-file", desc("stderr or log file"),
+                              value_desc("file"), init("stderr"), cat(C));
+opt<bool> opt_log_file_append("log-file-append", desc("append to log file"),
                               cat(C));
-opt<std::string> opt_log_file_append("log-file-append", desc("log"),
-                                     value_desc("filename"), cat(C));
 
 void CloseLog() { fclose(ccls::log::file); }
 
@@ -95,14 +95,13 @@ int main(int argc, char **argv) {
 
   bool language_server = true;
 
-  if (opt_log_file.size() || opt_log_file_append.size()) {
-    ccls::log::file = opt_log_file.size()
-                          ? fopen(opt_log_file.c_str(), "wb")
-                          : fopen(opt_log_file_append.c_str(), "ab");
+  if (opt_log_file.size()) {
+    ccls::log::file =
+        opt_log_file == "stderr"
+            ? stderr
+            : fopen(opt_log_file.c_str(), opt_log_file_append ? "ab" : "wb");
     if (!ccls::log::file) {
-      fprintf(
-          stderr, "failed to open %s\n",
-          (opt_log_file.size() ? opt_log_file : opt_log_file_append).c_str());
+      fprintf(stderr, "failed to open %s\n", opt_log_file.c_str());
       return 2;
     }
     setbuf(ccls::log::file, NULL);
