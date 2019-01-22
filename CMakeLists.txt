@@ -5,13 +5,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
 include(DefaultCMakeBuildType)
 
 # Required Clang version
-set(CLANG_DOWNLOAD_LOCATION ${CMAKE_BINARY_DIR}
-    CACHE STRING "Downloaded Clang location")
-option(SYSTEM_CLANG "Use system installation of Clang instead of \
-       downloading Clang" OFF)
-option(ASAN "Compile with address sanitizers" OFF)
 option(LLVM_ENABLE_RTTI "-fno-rtti if OFF. This should match LLVM libraries" OFF)
-option(CLANG_USE_BUNDLED_LIBC++ "Let Clang use bundled libc++" OFF)
 option(USE_SHARED_LLVM "Link against libLLVM.so instead separate LLVM{Option,Support,...}" OFF)
 
 # Sources for the executable are specified at end of CMakeLists.txt
@@ -30,10 +24,7 @@ add_executable(ccls "")
 # Enable C++17 (Required)
 set_property(TARGET ccls PROPERTY CXX_STANDARD 17)
 set_property(TARGET ccls PROPERTY CXX_STANDARD_REQUIRED ON)
-# Disable gnu extensions except for Cygwin which needs them to build properly
-if(NOT CYGWIN)
-  set_property(TARGET ccls PROPERTY CXX_EXTENSIONS OFF)
-endif()
+set_property(TARGET ccls PROPERTY CXX_EXTENSIONS OFF)
 
 if(NOT LLVM_ENABLE_RTTI)
   # releases.llvm.org libraries are compiled with -fno-rtti
@@ -76,37 +67,6 @@ else()
     target_compile_options(ccls PRIVATE
                            $<$<CONFIG:Debug>:-fno-limit-debug-info>)
   endif()
-
-  if(ASAN)
-    target_compile_options(ccls PRIVATE -fsanitize=address,undefined)
-    # target_link_libraries also takes linker flags
-    target_link_libraries(ccls PRIVATE -fsanitize=address,undefined)
-  endif()
-endif()
-
-### Download Clang if required
-
-if(NOT SYSTEM_CLANG)
-  message(STATUS "Using downloaded Clang")
-
-  include(DownloadAndExtractClang)
-  download_and_extract_clang(${CLANG_DOWNLOAD_LOCATION})
-  # Used by FindClang
-  set(CLANG_ROOT ${DOWNLOADED_CLANG_DIR})
-
-  if(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang AND CLANG_USE_BUNDLED_LIBC++)
-    message(STATUS "Using bundled libc++")
-    target_compile_options(ccls PRIVATE -nostdinc++ -cxx-isystem ${CLANG_ROOT}/include/c++/v1)
-    if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
-      # Don't use -stdlib=libc++ because while ccls is linked with libc++, bundled clang+llvm require libstdc++
-      target_link_libraries(ccls PRIVATE -L${CLANG_ROOT}/lib c++ c++abi)
-
-      # FreeBSD defaults to -stdlib=libc++ and uses system libcxxrt.a
-    endif()
-  endif()
-
-else()
-  message(STATUS "Using system Clang")
 endif()
 
 ### Libraries
@@ -142,31 +102,6 @@ target_include_directories(ccls SYSTEM PRIVATE
 ### Install
 
 install(TARGETS ccls RUNTIME DESTINATION bin)
-
-if(NOT SYSTEM_CLANG AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
-
-  if(${CMAKE_SYSTEM_NAME} MATCHES Linux|FreeBSD)
-    set_property(TARGET ccls APPEND PROPERTY
-                 INSTALL_RPATH $ORIGIN/../lib)
-  elseif(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
-    set_property(TARGET ccls APPEND PROPERTY
-                 INSTALL_RPATH @loader_path/../lib)
-  endif()
-
-  file(GLOB LIBCLANG_PLUS_SYMLINKS
-       ${DOWNLOADED_CLANG_DIR}/lib/libclang.[so,dylib]*)
-  install(FILES ${LIBCLANG_PLUS_SYMLINKS} DESTINATION lib)
-endif()
-
-# Allow running from build Windows by copying libclang.dll to build directory
-if(NOT SYSTEM_CLANG AND ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
-  add_custom_command(TARGET ccls
-                     POST_BUILD
-                     COMMAND ${CMAKE_COMMAND} -E copy
-                     ${DOWNLOADED_CLANG_DIR}/bin/libclang.dll
-                     $<TARGET_FILE_DIR:ccls>
-                     COMMENT "Copying libclang.dll to build directory ...")
-endif()
 
 ### Tools
 
