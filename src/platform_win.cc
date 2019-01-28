@@ -57,11 +57,6 @@ void FreeUnusedMemory() {}
 // TODO Wait for debugger to attach
 void TraceMe() {}
 
-std::string GetExternalCommandOutput(const std::vector<std::string> &command,
-                                     std::string_view input) {
-  return "";
-}
-
 void SpawnThread(void *(*fn)(void *), void *arg) {
   std::thread(fn, arg).detach();
 }

@@ -73,49 +73,6 @@ void TraceMe() {
     raise(traceme[0] == 's' ? SIGSTOP : SIGTSTP);
 }
 
-std::string GetExternalCommandOutput(const std::vector<std::string> &command,
-                                     std::string_view input) {
-  int pin[2], pout[2];
-  if (pipe(pin) < 0) {
-    perror("pipe(stdin)");
-    return "";
-  }
-  if (pipe(pout) < 0) {
-    perror("pipe(stdout)");
-    close(pin[0]);
-    close(pin[1]);
-    return "";
-  }
-  pid_t child = fork();
-  if (child == 0) {
-    dup2(pout[0], 0);
-    dup2(pin[1], 1);
-    close(pin[0]);
-    close(pin[1]);
-    close(pout[0]);
-    close(pout[1]);
-    auto argv = new char *[command.size() + 1];
-    for (size_t i = 0; i < command.size(); i++)
-      argv[i] = const_cast<char *>(command[i].c_str());
-    argv[command.size()] = nullptr;
-    execvp(argv[0], argv);
-    _Exit(127);
-  }
-  close(pin[1]);
-  close(pout[0]);
-  // O_NONBLOCK is disabled, write(2) blocks until all bytes are written.
-  (void)write(pout[1], input.data(), input.size());
-  close(pout[1]);
-  std::string ret;
-  char buf[4096];
-  ssize_t n;
-  while ((n = read(pin[0], buf, sizeof buf)) > 0)
-    ret.append(buf, n);
-  close(pin[0]);
-  waitpid(child, NULL, 0);
-  return ret;
-}
-
 void SpawnThread(void *(*fn)(void *), void *arg) {
   pthread_t thd;
   pthread_attr_t attr;

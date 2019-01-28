@@ -31,13 +31,17 @@ limitations under the License.
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/StringSet.h>
 #include <llvm/Support/LineIterator.h>
+#include <llvm/Support/Program.h>
 
 #include <rapidjson/writer.h>
 
-#if defined(__unix__) || defined(__APPLE__)
-#include <unistd.h>
+#ifdef _WIN32
+# include <Windows.h>
+#else
+# include <unistd.h>
 #endif
 
+#include <array>
 #include <limits.h>
 #include <unordered_set>
 #include <vector>
@@ -308,7 +312,8 @@ int ComputeGuessScore(std::string_view a, std::string_view b) {
 } // namespace
 
 void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
-  SmallString<256> Path, CDBDir;
+  SmallString<256> CDBDir, Path, StdinPath;
+  std::string err_msg;
   folder.entries.clear();
   if (g_config->compilationDatabaseCommand.empty()) {
     CDBDir = root;
@@ -319,33 +324,49 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
     // If `compilationDatabaseCommand` is specified, execute it to get the
     // compdb.
 #ifdef _WIN32
-    // TODO
+    char tmpdir[L_tmpnam];
+    tmpnam_s(tmpdir, L_tmpnam);
+    CDBDir = tmpdir;
+    if (sys::fs::create_directory(tmpdir, false))
+      return;
 #else
     char tmpdir[] = "/tmp/ccls-compdb-XXXXXX";
     if (!mkdtemp(tmpdir))
       return;
     CDBDir = tmpdir;
-    sys::path::append(Path, CDBDir, "compile_commands.json");
-    rapidjson::StringBuffer input;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(input);
-    JsonWriter json_writer(&writer);
-    Reflect(json_writer, *g_config);
-    std::string contents = GetExternalCommandOutput(
-        std::vector<std::string>{g_config->compilationDatabaseCommand, root},
-        input.GetString());
-    FILE *fout = fopen(Path.c_str(), "wb");
-    fwrite(contents.c_str(), contents.size(), 1, fout);
-    fclose(fout);
 #endif
+    sys::path::append(Path, CDBDir, "compile_commands.json");
+    sys::path::append(StdinPath, CDBDir, "stdin");
+    {
+      rapidjson::StringBuffer sb;
+      rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+      JsonWriter json_writer(&writer);
+      Reflect(json_writer, *g_config);
+      std::string input = sb.GetString();
+      FILE *fout = fopen(StdinPath.c_str(), "wb");
+      fwrite(input.c_str(), input.size(), 1, fout);
+      fclose(fout);
+    }
+    std::array<Optional<StringRef>, 3> Redir{StringRef(StdinPath),
+                                             StringRef(Path), StringRef()};
+    std::vector<StringRef> args{g_config->compilationDatabaseCommand, root};
+    if (sys::ExecuteAndWait(args[0], args, llvm::None, Redir, 0, 0, &err_msg) <
+        0) {
+      LOG_S(ERROR) << "failed to execute " << args[0].str() << " "
+                   << args[1].str() << ": " << err_msg;
+      return;
+    }
   }
 
-  std::string err_msg;
   std::unique_ptr<tooling::CompilationDatabase> CDB =
       tooling::CompilationDatabase::loadFromDirectory(CDBDir, err_msg);
   if (!g_config->compilationDatabaseCommand.empty()) {
 #ifdef _WIN32
-    // TODO
+    DeleteFileA(StdinPath.c_str());
+    DeleteFileA(Path.c_str());
+    RemoveDirectoryA(CDBDir.c_str());
 #else
+    unlink(StdinPath.c_str());
     unlink(Path.c_str());
     rmdir(CDBDir.c_str());
 #endif
@@ -354,7 +375,10 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
   ProjectProcessor proc(folder);
   StringSet<> Seen;
   std::vector<Project::Entry> result;
-  if (CDB) {
+  if (!CDB) {
+    if (g_config->compilationDatabaseCommand.size() || sys::fs::exists(Path))
+      LOG_S(ERROR) << "failed to load " << Path.c_str();
+  } else {
     LOG_S(INFO) << "loaded " << Path.c_str();
     for (tooling::CompileCommand &Cmd : CDB->getAllCompileCommands()) {
       static bool once;

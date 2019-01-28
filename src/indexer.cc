@@ -593,11 +593,7 @@ public:
     if (init) {
       SourceManager &SM = Ctx->getSourceManager();
       const LangOptions &Lang = Ctx->getLangOpts();
-      SourceRange R = SM.getExpansionRange(init->getSourceRange())
-#if LLVM_VERSION_MAJOR >= 7
-                          .getAsRange()
-#endif
-          ;
+      SourceRange R = SM.getExpansionRange(init->getSourceRange()).getAsRange();
       SourceLocation L = D->getLocation();
       if (L.isMacroID() || !SM.isBeforeInTranslationUnit(L, R.getBegin()))
         return;
@@ -688,41 +684,15 @@ public:
   }
   bool handleDeclOccurence(const Decl *D, index::SymbolRoleSet Roles,
                            ArrayRef<index::SymbolRelation> Relations,
-#if LLVM_VERSION_MAJOR >= 7
-                           SourceLocation Loc,
-#else
-                           FileID LocFID, unsigned LocOffset,
-#endif
-                           ASTNodeInfo ASTNode) override {
+                           SourceLocation Loc, ASTNodeInfo ASTNode) override {
     SourceManager &SM = Ctx->getSourceManager();
     const LangOptions &Lang = Ctx->getLangOpts();
-#if LLVM_VERSION_MAJOR < 7
-    SourceLocation Loc;
-    {
-      const SrcMgr::SLocEntry &Entry = SM.getSLocEntry(LocFID);
-      unsigned off = Entry.getOffset() + LocOffset;
-      if (!Entry.isFile())
-        off |= 1u << 31;
-      Loc = SourceLocation::getFromRawEncoding(off);
-    }
-#else
     FileID LocFID;
-#endif
     SourceLocation Spell = SM.getSpellingLoc(Loc);
     const FileEntry *FE;
     Range loc;
-#if LLVM_VERSION_MAJOR < 7
-    CharSourceRange R;
-    if (SM.isMacroArgExpansion(Loc))
-      R = CharSourceRange::getTokenRange(Spell);
-    else {
-      auto P = SM.getExpansionRange(Loc);
-      R = CharSourceRange::getTokenRange(P.first, P.second);
-    }
-#else
     auto R = SM.isMacroArgExpansion(Loc) ? CharSourceRange::getTokenRange(Spell)
                                          : SM.getExpansionRange(Loc);
-#endif
     loc = FromCharSourceRange(SM, Lang, R);
     LocFID = SM.getFileID(R.getBegin());
     FE = SM.getFileEntryForID(LocFID);
@@ -1085,12 +1055,8 @@ public:
                           StringRef Included, bool IsAngled,
                           CharSourceRange FilenameRange, const FileEntry *File,
                           StringRef SearchPath, StringRef RelativePath,
-                          const Module *Imported
-#if LLVM_VERSION_MAJOR >= 7
-                          ,
-                          SrcMgr::CharacteristicKind FileType
-#endif
-                          ) override {
+                          const Module *Imported,
+                          SrcMgr::CharacteristicKind FileType) override {
     if (!File)
       return;
     llvm::sys::fs::UniqueID UniqueID;
@@ -1283,9 +1249,7 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   IndexOpts.SystemSymbolFilter =
       index::IndexingOptions::SystemSymbolFilterKind::All;
   IndexOpts.IndexFunctionLocals = true;
-#if LLVM_VERSION_MAJOR >= 7
   IndexOpts.IndexImplicitInstantiation = true;
-#endif
 
   std::unique_ptr<FrontendAction> Action = createIndexingAction(
       DataConsumer, IndexOpts, std::make_unique<IndexFrontendAction>(param));

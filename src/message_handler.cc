@@ -274,6 +274,8 @@ MessageHandler::FindOrFail(const std::string &path, ReplyOnce &reply,
   }
   QueryFile *file = FindFile(path, out_file_id);
   if (!file) {
+    if (!overdue)
+      throw NotIndexed{path};
     reply.Error(ErrorCode::InvalidRequest, "not indexed");
     return {nullptr, nullptr};
   }

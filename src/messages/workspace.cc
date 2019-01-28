@@ -69,7 +69,7 @@ void MessageHandler::workspace_didChangeWatchedFiles(
       break;
     }
     case FileChangeType::Deleted:
-      pipeline::Index(path, {}, mode, true);
+      pipeline::Index(path, {}, mode, false);
       manager->OnClose(path);
       break;
     }

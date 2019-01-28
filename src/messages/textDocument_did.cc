@@ -65,7 +65,7 @@ void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
 
 void MessageHandler::textDocument_didSave(TextDocumentParam &param) {
   const std::string &path = param.textDocument.uri.GetPath();
-  pipeline::Index(path, {}, IndexMode::Normal, true);
+  pipeline::Index(path, {}, IndexMode::Normal, false);
   manager->OnSave(path);
 }
 } // namespace ccls
