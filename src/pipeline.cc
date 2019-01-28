@@ -35,6 +35,7 @@ limitations under the License.
 
 #include <chrono>
 #include <mutex>
+#include <charconv>
 #include <shared_mutex>
 #include <thread>
 #ifndef _WIN32
@@ -479,56 +480,89 @@ void Main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
   }
 }
 
+std::size_t ReadHeader(bool* eof, std::string* str) {
+  static const std::string_view kContentLength("Content-Length: ");
+  str->clear();
+  while (true) {
+    int c = getchar();
+    if (c == EOF) {
+      *eof = true;
+      return 0;
+    }
+    if (c == '\n') {
+      if (str->empty()) {
+        break;
+      }
+      if (str->compare(0, kContentLength.size(), kContentLength)) {
+        LOG_S(WARNING) << "Unknown header";
+        break;
+      }
+      std::size_t len;
+      auto result = std::from_chars(str->c_str() + kContentLength.size(), str->c_str() + str->size(), len);
+      if (result.ec != std::errc()) {
+        LOG_S(WARNING) << "Content-Length parse error";
+        break;
+      }
+      return len;
+    } else if (c != '\r') {
+      str->push_back(c);
+    }
+  }
+  return 0;
+}
+
 void LaunchStdin() {
   ThreadEnter();
   std::thread([]() {
     set_thread_name("stdin");
+    bool eof = false;
     std::string str;
-    const std::string_view kContentLength("Content-Length: ");
-    while (true) {
-      int len = 0;
+    while (!eof) {
+      std::size_t len = ReadHeader(&eof, &str); // read Content-Length
+      if (eof)
+        return;
+      if (len == 0)
+        continue;
+      ReadHeader(&eof, &str); // read empty line
+      if (eof)
+        return;
       str.clear();
-      while (true) {
+      str.reserve(len);
+      for (std::size_t i = 0; i < len; ++i) {
         int c = getchar();
-        if (c == EOF)
+        if (c == EOF) {
+          eof = true;
           return;
-        if (c == '\n') {
-          if (str.empty())
-            break;
-          if (!str.compare(0, kContentLength.size(), kContentLength))
-            len = atoi(str.c_str() + kContentLength.size());
-          str.clear();
-        } else if (c != '\r') {
-          str += c;
         }
-      }
-
-      str.resize(len);
-      for (int i = 0; i < len; ++i) {
-        int c = getchar();
-        if (c == EOF)
-          return;
-        str[i] = c;
+        str.push_back(c);
       }
 
       auto message = std::make_unique<char[]>(len);
       std::copy(str.begin(), str.end(), message.get());
       auto document = std::make_unique<rapidjson::Document>();
       document->Parse(message.get(), len);
-      assert(!document->HasParseError());
+      if (document->HasParseError()) {
+        LOG_S(WARNING) << "Json parse error";
+        continue;
+      }
 
       JsonReader reader{document.get()};
       if (!reader.m->HasMember("jsonrpc") ||
-          std::string((*reader.m)["jsonrpc"].GetString()) != "2.0")
-        break;
+          std::string((*reader.m)["jsonrpc"].GetString()) != "2.0") {
+        LOG_S(WARNING) << "Bad jsonrpc member";
+        continue;
+      }
       RequestId id;
       std::string method;
       ReflectMember(reader, "id", id);
       ReflectMember(reader, "method", method);
-      if (method.empty())
+      if (method.empty()) {
+        LOG_S(WARNING) << "Empty method";
         continue;
+      }
       bool should_exit = method == "exit";
       // g_config is not available before "initialize". Use 0 in that case.
+      LOG_S(DEBUG) << "Received method: " << method;
       on_request->PushBack(
           {id, std::move(method), std::move(message), std::move(document),
            chrono::steady_clock::now() +
@@ -738,6 +772,7 @@ void NotifyOrRequest(const char *method, bool request,
   JsonWriter writer(&w);
   fn(writer);
   w.EndObject();
+  LOG_S(DEBUG) << "Notify/Request sent " << method;
   for_stdout->PushBack(output.GetString());
 }
 
@@ -765,6 +800,7 @@ static void Reply(RequestId id, const char *key,
   JsonWriter writer(&w);
   fn(writer);
   w.EndObject();
+  LOG_S(DEBUG) << "Reply sent: " << id.value;
   for_stdout->PushBack(output.GetString());
 }
 

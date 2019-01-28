@@ -49,7 +49,7 @@ namespace {
 OptionCategory C("ccls options");
 
 opt<bool> opt_help("h", desc("Alias for -help"), cat(C));
-opt<int> opt_verbose("v", desc("verbosity"), init(0), cat(C));
+opt<int> opt_verbose("v", desc("verbosity, 0 default. From 1 (debug) to -3 (critical)"), init(0), cat(C));
 opt<std::string> opt_test_index("test-index", ValueOptional, init("!"),
                                 desc("run index tests"), cat(C));
 
@@ -86,7 +86,11 @@ int main(int argc, char **argv) {
     PrintHelpMessage();
     return 0;
   }
-  ccls::log::verbosity = ccls::log::Verbosity(opt_verbose.getValue());
+
+  if (!ccls::log::SetVerbosity(opt_verbose.getValue())) {
+    fprintf(stderr, "Unsupported verbosity level set\n");
+  }
+
 
   pipeline::Init();
   const char *env = getenv("CCLS_CRASH_RECOVERY");
