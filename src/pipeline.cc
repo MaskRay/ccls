@@ -106,8 +106,8 @@ bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
   {
     std::lock_guard<std::mutex> lock(vfs->mutex);
     if (prev->mtime < vfs->state[path].timestamp) {
-      LOG_S(INFO) << "timestamp changed for " << path
-                  << (from ? " (via " + *from + ")" : std::string());
+      LOG_V(1) << "timestamp changed for " << path
+               << (from ? " (via " + *from + ")" : std::string());
       return true;
     }
   }
@@ -119,8 +119,8 @@ bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
     if (strcmp(prev->args[i], args[i]) && sys::path::stem(args[i]) != stem)
       changed = true;
   if (changed)
-    LOG_S(INFO) << "args changed for " << path
-                << (from ? " (via " + *from + ")" : std::string());
+    LOG_V(1) << "args changed for " << path
+             << (from ? " (via " + *from + ")" : std::string());
   return changed;
 };
 
@@ -250,10 +250,14 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
           if (auto mtime1 = LastWriteTime(dep.first.val().str())) {
             if (dep.second < *mtime1) {
               reparse = 2;
+              LOG_V(1) << "timestamp changed for " << path_to_index << " via "
+                       << dep.first.val().str();
               break;
             }
           } else {
             reparse = 2;
+            LOG_V(1) << "timestamp changed for " << path_to_index << " via "
+                     << dep.first.val().str();
             break;
           }
         }
@@ -513,6 +517,10 @@ void LaunchStdin() {
       std::string method;
       ReflectMember(reader, "id", id);
       ReflectMember(reader, "method", method);
+      if (id.Valid())
+        LOG_V(2) << "receive RequestMessage: " << id.value << " " << method;
+      else
+        LOG_V(2) << "receive NotificationMessage " << method;
       if (method.empty())
         continue;
       bool should_exit = method == "exit";
@@ -726,6 +734,7 @@ void NotifyOrRequest(const char *method, bool request,
   JsonWriter writer(&w);
   fn(writer);
   w.EndObject();
+  LOG_V(2) << (request ? "RequestMessage: " : "NotificationMessage: ") << method;
   for_stdout->PushBack(output.GetString());
 }
 
@@ -753,6 +762,8 @@ static void Reply(RequestId id, const char *key,
   JsonWriter writer(&w);
   fn(writer);
   w.EndObject();
+  if (id.Valid())
+    LOG_V(2) << "respond to RequestMessage: " << id.value;
   for_stdout->PushBack(output.GetString());
 }
 
