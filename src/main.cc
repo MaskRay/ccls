@@ -49,7 +49,8 @@ namespace {
 OptionCategory C("ccls options");
 
 opt<bool> opt_help("h", desc("Alias for -help"), cat(C));
-opt<int> opt_verbose("v", desc("verbosity"), init(0), cat(C));
+opt<int> opt_verbose("v", desc("verbosity, from -3 (fatal) to 2 (verbose)"),
+                     init(0), cat(C));
 opt<std::string> opt_test_index("test-index", ValueOptional, init("!"),
                                 desc("run index tests"), cat(C));
 
