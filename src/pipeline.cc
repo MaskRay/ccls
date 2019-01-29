@@ -35,6 +35,7 @@ limitations under the License.
 
 #include <chrono>
 #include <mutex>
+#include <charconv>
 #include <shared_mutex>
 #include <thread>
 #ifndef _WIN32
@@ -413,6 +414,42 @@ void Quit(SemaManager &manager) {
   no_active_threads.wait(lock, [] { return !active_threads; });
 }
 
+struct HeadersData {
+  std::size_t content_length;
+};
+
+void ReadHeaders(bool* eof, HeadersData* headers) {
+  static const std::string_view kContentLength("Content-Length: ");
+  std::string buf;
+  while (true) {
+    int c = getchar();
+    if (c == EOF) {
+      *eof = true;
+      return;
+    }
+    if (c == '\n') {
+      if (buf.empty()) {
+        if (headers->content_length == 0)
+          LOG_S(WARNING) << "Content-Length was not defined in header";
+        return;
+      }
+      if (!buf.compare(0, kContentLength.size(), kContentLength)) {
+        std::from_chars_result result = std::from_chars(
+            buf.c_str() + kContentLength.size(),
+            buf.c_str() + buf.size(),
+            headers->content_length);
+        if (result.ec != std::errc() || headers->content_length == 0) {
+          LOG_S(WARNING) << "Content-Length parse error / invalid value";
+          return;
+        }
+      }
+      buf.clear();
+    } else if (c != '\r') {
+      buf.push_back(c);
+    }
+  }
+}
+
 } // namespace
 
 void ThreadEnter() {
@@ -483,52 +520,53 @@ void LaunchStdin() {
   ThreadEnter();
   std::thread([]() {
     set_thread_name("stdin");
+    bool eof = false;
     std::string str;
-    const std::string_view kContentLength("Content-Length: ");
-    while (true) {
-      int len = 0;
+    while (!eof) {
+      HeadersData headers{};
+      ReadHeaders(&eof, &headers);
+      if (eof)
+        return;
+      if (headers.content_length == 0)
+        continue;
+
       str.clear();
-      while (true) {
+      str.reserve(headers.content_length);
+      for (std::size_t i = 0; i < headers.content_length; ++i) {
         int c = getchar();
-        if (c == EOF)
+        if (c == EOF) {
+          eof = true;
           return;
-        if (c == '\n') {
-          if (str.empty())
-            break;
-          if (!str.compare(0, kContentLength.size(), kContentLength))
-            len = atoi(str.c_str() + kContentLength.size());
-          str.clear();
-        } else if (c != '\r') {
-          str += c;
         }
+        str.push_back(c);
       }
 
-      str.resize(len);
-      for (int i = 0; i < len; ++i) {
-        int c = getchar();
-        if (c == EOF)
-          return;
-        str[i] = c;
-      }
-
-      auto message = std::make_unique<char[]>(len);
+      auto message = std::make_unique<char[]>(headers.content_length);
       std::copy(str.begin(), str.end(), message.get());
       auto document = std::make_unique<rapidjson::Document>();
-      document->Parse(message.get(), len);
-      assert(!document->HasParseError());
+      document->Parse(message.get(), headers.content_length);
+      if (document->HasParseError()) {
+        LOG_S(WARNING) << "Json parse error";
+        continue;
+      }
 
       JsonReader reader{document.get()};
       if (!reader.m->HasMember("jsonrpc") ||
-          std::string((*reader.m)["jsonrpc"].GetString()) != "2.0")
-        break;
+          std::string((*reader.m)["jsonrpc"].GetString()) != "2.0") {
+        LOG_S(WARNING) << "Bad jsonrpc member";
+        continue;
+      }
       RequestId id;
       std::string method;
       ReflectMember(reader, "id", id);
       ReflectMember(reader, "method", method);
-      if (method.empty())
+      if (method.empty()) {
+        LOG_S(WARNING) << "Empty method";
         continue;
+      }
       bool should_exit = method == "exit";
       // g_config is not available before "initialize". Use 0 in that case.
+      LOG_S(DEBUG) << "Received method: " << method;
       on_request->PushBack(
           {id, std::move(method), std::move(message), std::move(document),
            chrono::steady_clock::now() +
@@ -738,6 +776,7 @@ void NotifyOrRequest(const char *method, bool request,
   JsonWriter writer(&w);
   fn(writer);
   w.EndObject();
+  LOG_S(DEBUG) << "Notify/Request sent " << method;
   for_stdout->PushBack(output.GetString());
 }
 
@@ -765,6 +804,7 @@ static void Reply(RequestId id, const char *key,
   JsonWriter writer(&w);
   fn(writer);
   w.EndObject();
+  LOG_S(DEBUG) << "Reply sent: " << id.value;
   for_stdout->PushBack(output.GetString());
 }
 

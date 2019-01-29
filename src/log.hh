@@ -15,8 +15,11 @@ enum Verbosity {
   Verbosity_ERROR = -2,
   Verbosity_WARNING = -1,
   Verbosity_INFO = 0,
+  Verbosity_DEBUG = 1,
 };
+
 extern Verbosity verbosity;
+bool SetVerbosity(int value);
 
 struct Message {
   std::stringstream stream_;

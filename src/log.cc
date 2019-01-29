@@ -29,6 +29,13 @@ static std::mutex mtx;
 FILE *file;
 Verbosity verbosity;
 
+bool SetVerbosity(int value) {
+  verbosity = static_cast<Verbosity>(value);
+  if (value > Verbosity_DEBUG || value < Verbosity_FATAL)
+    return false;
+  return true;
+}
+
 Message::Message(Verbosity verbosity, const char *file, int line)
     : verbosity_(verbosity) {
   using namespace llvm;
@@ -60,6 +67,7 @@ Message::Message(Verbosity verbosity, const char *file, int line)
     case Verbosity_ERROR: stream_ << 'E'; break;
     case Verbosity_WARNING: stream_ << 'W'; break;
     case Verbosity_INFO: stream_ << 'I'; break;
+    case Verbosity_DEBUG: stream_ << 'D'; break;
     default: stream_ << "V(" << int(verbosity_) << ')';
   }
   // clang-format on
