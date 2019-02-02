@@ -119,12 +119,11 @@ Kind GetKind(const Decl *D, SymbolKind &kind) {
   case Decl::LinkageSpec:
     return Kind::Invalid;
   case Decl::Namespace:
+  case Decl::NamespaceAlias:
     kind = SymbolKind::Namespace;
     return Kind::Type;
-  case Decl::NamespaceAlias:
-    kind = SymbolKind::TypeAlias;
-    return Kind::Type;
   case Decl::ObjCCategory:
+  case Decl::ObjCCategoryImpl:
   case Decl::ObjCImplementation:
   case Decl::ObjCInterface:
   case Decl::ObjCProtocol:
@@ -165,6 +164,9 @@ Kind GetKind(const Decl *D, SymbolKind &kind) {
   case Decl::ClassTemplateSpecialization:
   case Decl::ClassTemplatePartialSpecialization:
     kind = SymbolKind::Class;
+    return Kind::Type;
+  case Decl::TemplateTypeParm:
+    kind = SymbolKind::TypeParameter;
     return Kind::Type;
   case Decl::TypeAlias:
   case Decl::Typedef:
