@@ -215,88 +215,95 @@ void FilterCandidates(CompletionList &result, const std::string &complete_text,
   finalize();
 }
 
-CompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
-  switch (cursor_kind) {
-  case CXCursor_UnexposedDecl:
-    return CompletionItemKind::Text;
+CompletionItemKind GetCompletionKind(CodeCompletionContext::Kind K,
+                                     const CodeCompletionResult &R) {
+  switch (R.Kind) {
+  case CodeCompletionResult::RK_Declaration: {
+    const Decl *D = R.Declaration;
+    switch (D->getKind()) {
+    case Decl::LinkageSpec:
+      return CompletionItemKind::Keyword;
+    case Decl::Namespace:
+    case Decl::NamespaceAlias:
+      return CompletionItemKind::Module;
+    case Decl::ObjCCategory:
+    case Decl::ObjCCategoryImpl:
+    case Decl::ObjCImplementation:
+    case Decl::ObjCInterface:
+    case Decl::ObjCProtocol:
+      return CompletionItemKind::Interface;
+    case Decl::ObjCMethod:
+      return CompletionItemKind::Method;
+    case Decl::ObjCProperty:
+      return CompletionItemKind::Property;
+    case Decl::ClassTemplate:
+      return CompletionItemKind::Class;
+    case Decl::FunctionTemplate:
+      return CompletionItemKind::Function;
+    case Decl::TypeAliasTemplate:
+      return CompletionItemKind::Class;
+    case Decl::VarTemplate:
+      if (cast<VarTemplateDecl>(D)->getTemplatedDecl()->isConstexpr())
+        return CompletionItemKind::Constant;
+      return CompletionItemKind::Variable;
+    case Decl::TemplateTemplateParm:
+      return CompletionItemKind::TypeParameter;
+    case Decl::Enum:
+      return CompletionItemKind::Enum;
+    case Decl::CXXRecord:
+    case Decl::Record:
+      if (auto *RD = dyn_cast<RecordDecl>(D))
+        if (RD->getTagKind() == TTK_Struct)
+          return CompletionItemKind::Struct;
+      return CompletionItemKind::Class;
+    case Decl::TemplateTypeParm:
+    case Decl::TypeAlias:
+    case Decl::Typedef:
+      return CompletionItemKind::TypeParameter;
+    case Decl::Binding:
+      return CompletionItemKind::Variable;
+    case Decl::Field:
+    case Decl::ObjCIvar:
+      return CompletionItemKind::Field;
+    case Decl::Function:
+      return CompletionItemKind::Function;
+    case Decl::CXXMethod:
+      return CompletionItemKind::Method;
+    case Decl::CXXConstructor:
+      return CompletionItemKind::Constructor;
+    case Decl::CXXConversion:
+    case Decl::CXXDestructor:
+      return CompletionItemKind::Method;
+    case Decl::Var:
+    case Decl::Decomposition:
+    case Decl::ImplicitParam:
+    case Decl::ParmVar:
+    case Decl::VarTemplateSpecialization:
+    case Decl::VarTemplatePartialSpecialization:
+      if (cast<VarDecl>(D)->isConstexpr())
+        return CompletionItemKind::Constant;
+      return CompletionItemKind::Variable;
+    case Decl::EnumConstant:
+      return CompletionItemKind::EnumMember;
+    case Decl::IndirectField:
+      return CompletionItemKind::Field;
 
-  case CXCursor_StructDecl:
-  case CXCursor_UnionDecl:
-    return CompletionItemKind::Struct;
-  case CXCursor_ClassDecl:
-    return CompletionItemKind::Class;
-  case CXCursor_EnumDecl:
-    return CompletionItemKind::Enum;
-  case CXCursor_FieldDecl:
-    return CompletionItemKind::Field;
-  case CXCursor_EnumConstantDecl:
-    return CompletionItemKind::EnumMember;
-  case CXCursor_FunctionDecl:
-    return CompletionItemKind::Function;
-  case CXCursor_VarDecl:
-  case CXCursor_ParmDecl:
-    return CompletionItemKind::Variable;
-  case CXCursor_ObjCInterfaceDecl:
-    return CompletionItemKind::Interface;
-
-  case CXCursor_ObjCInstanceMethodDecl:
-  case CXCursor_CXXMethod:
-  case CXCursor_ObjCClassMethodDecl:
-    return CompletionItemKind::Method;
-
-  case CXCursor_FunctionTemplate:
-    return CompletionItemKind::Function;
-
-  case CXCursor_Constructor:
-  case CXCursor_Destructor:
-  case CXCursor_ConversionFunction:
-    return CompletionItemKind::Constructor;
-
-  case CXCursor_ObjCIvarDecl:
-    return CompletionItemKind::Variable;
-
-  case CXCursor_ClassTemplate:
-  case CXCursor_ClassTemplatePartialSpecialization:
-  case CXCursor_UsingDeclaration:
-  case CXCursor_TypedefDecl:
-  case CXCursor_TypeAliasDecl:
-  case CXCursor_TypeAliasTemplateDecl:
-  case CXCursor_ObjCCategoryDecl:
-  case CXCursor_ObjCProtocolDecl:
-  case CXCursor_ObjCImplementationDecl:
-  case CXCursor_ObjCCategoryImplDecl:
-    return CompletionItemKind::Class;
-
-  case CXCursor_ObjCPropertyDecl:
-    return CompletionItemKind::Property;
-
-  case CXCursor_MacroInstantiation:
-  case CXCursor_MacroDefinition:
-    return CompletionItemKind::Text;
-
-  case CXCursor_Namespace:
-  case CXCursor_NamespaceAlias:
-  case CXCursor_NamespaceRef:
-    return CompletionItemKind::Module;
-
-  case CXCursor_MemberRef:
-  case CXCursor_TypeRef:
-  case CXCursor_ObjCSuperClassRef:
-  case CXCursor_ObjCProtocolRef:
-  case CXCursor_ObjCClassRef:
+    default:
+      LOG_S(WARNING) << "Unhandled " << int(D->getKind());
+      return CompletionItemKind::Text;
+    }
+    break;
+  }
+  case CodeCompletionResult::RK_Keyword:
+    return CompletionItemKind::Keyword;
+  case CodeCompletionResult::RK_Macro:
     return CompletionItemKind::Reference;
-
-  case CXCursor_NotImplemented:
-  case CXCursor_OverloadCandidate:
-    return CompletionItemKind::Text;
-
-  case CXCursor_TemplateTypeParameter:
-  case CXCursor_TemplateTemplateParameter:
-    return CompletionItemKind::TypeParameter;
-
-  default:
-    LOG_S(WARNING) << "Unhandled completion kind " << cursor_kind;
-    return CompletionItemKind::Text;
+  case CodeCompletionResult::RK_Pattern:
+#if LLVM_VERSION_MAJOR >= 8
+    if (K == CodeCompletionContext::CCC_IncludedFile)
+      return CompletionItemKind::File;
+#endif
+    return CompletionItemKind::Snippet;
   }
 }
 
@@ -417,15 +424,12 @@ public:
             NK == DeclarationName::CXXLiteralOperatorName)
           continue;
       }
+
       CodeCompletionString *CCS = R.CreateCodeCompletionString(
           S, Context, getAllocator(), getCodeCompletionTUInfo(),
           includeBriefComments());
       CompletionItem ls_item;
-      ls_item.kind = GetCompletionKind(R.CursorKind);
-#if LLVM_VERSION_MAJOR >= 8
-      if (Context.getKind() == CodeCompletionContext::CCC_IncludedFile)
-        ls_item.kind = CompletionItemKind::File;
-#endif
+      ls_item.kind = GetCompletionKind(Context.getKind(), R);
       if (const char *brief = CCS->getBriefComment())
         ls_item.documentation = brief;
       ls_item.detail = CCS->getParentContextName().str();
