@@ -215,6 +215,8 @@ std::vector<const char *> GetFallback(const std::string path) {
   std::vector<const char *> argv{"clang"};
   if (sys::path::extension(path) == ".h")
     argv.push_back("-xobjective-c++-header");
+  for (const std::string &arg : g_config->clang.extraArgs)
+    argv.push_back(Intern(arg));
   argv.push_back(Intern(path));
   return argv;
 }
