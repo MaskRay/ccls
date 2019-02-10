@@ -41,8 +41,6 @@ using namespace clang;
 namespace ccls {
 namespace {
 
-constexpr int kInitializerMaxLines = 3;
-
 GroupMatch *multiVersionMatcher;
 
 struct File {
@@ -600,7 +598,7 @@ public:
       if (L.isMacroID() || !SM.isBeforeInTranslationUnit(L, R.getBegin()))
         return;
       StringRef Buf = GetSourceInRange(SM, Lang, R);
-      Twine Init = Buf.count('\n') <= kInitializerMaxLines - 1
+      Twine Init = Buf.count('\n') <= g_config->index.maxInitializerLines - 1
                        ? Buf.size() && Buf[0] == ':' ? Twine(" ", Buf)
                                                      : Twine(" = ", Buf)
                        : Twine();
@@ -1098,7 +1096,7 @@ public:
         var.def.short_name_size = Name.size();
         StringRef Buf = GetSourceInRange(SM, Lang, R);
         var.def.hover =
-            Intern(Buf.count('\n') <= kInitializerMaxLines - 1
+            Intern(Buf.count('\n') <= g_config->index.maxInitializerLines - 1
                        ? Twine("#define ", GetSourceInRange(SM, Lang, R)).str()
                        : Twine("#define ", Name).str());
       }
