@@ -42,6 +42,25 @@ struct Config {
   // member has changed.
   SerializeFormat cacheFormat = SerializeFormat::Binary;
 
+  struct ServerCap {
+    struct DocumentOnTypeFormattingOptions {
+      std::string firstTriggerCharacter = "}";
+      std::vector<const char *> moreTriggerCharacter;
+    } documentOnTypeFormattingProvider;
+
+    // Set to false if you don't want folding ranges.
+    bool foldingRangeProvider = true;
+
+    struct Workspace {
+      struct WorkspaceFolders {
+        // Set to false if you don't want workspace folders.
+        bool supported = true;
+
+        bool changeNotifications = true;
+      } workspaceFolders;
+    } workspace;
+  } capabilities;
+
   struct Clang {
     // Arguments that should be excluded, e.g. ["-fopenmp", "-Wall"]
     //
@@ -207,6 +226,10 @@ struct Config {
     std::vector<std::string> initialBlacklist;
     std::vector<std::string> initialWhitelist;
 
+    // If a variable initializer/macro replacement-list has fewer than this many
+    // lines, include the initializer in detailed_name.
+    int maxInitializerLines = 5;
+
     // If not 0, a file will be indexed in each tranlation unit that includes it.
     int multiVersion = 0;
 
@@ -255,6 +278,13 @@ struct Config {
     int maxNum = 2000;
   } xref;
 };
+REFLECT_STRUCT(Config::ServerCap::DocumentOnTypeFormattingOptions,
+               firstTriggerCharacter, moreTriggerCharacter);
+REFLECT_STRUCT(Config::ServerCap::Workspace::WorkspaceFolders, supported,
+               changeNotifications);
+REFLECT_STRUCT(Config::ServerCap::Workspace, workspaceFolders);
+REFLECT_STRUCT(Config::ServerCap, documentOnTypeFormattingProvider,
+               foldingRangeProvider, workspace);
 REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, pathMappings,
                resourceDir);
 REFLECT_STRUCT(Config::ClientCapability, hierarchicalDocumentSymbolSupport,
@@ -269,17 +299,17 @@ REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
                spellChecking, whitelist)
 REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist, whitelist)
 REFLECT_STRUCT(Config::Index, blacklist, comments, initialBlacklist,
-               initialWhitelist, multiVersion, multiVersionBlacklist,
-               multiVersionWhitelist, onChange, threads, trackDependency,
-               whitelist);
+               initialWhitelist, maxInitializerLines, multiVersion,
+               multiVersionBlacklist, multiVersionWhitelist, onChange, threads,
+               trackDependency, whitelist);
 REFLECT_STRUCT(Config::Request, timeout);
 REFLECT_STRUCT(Config::Session, maxNum);
 REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 REFLECT_STRUCT(Config::Xref, maxNum);
 REFLECT_STRUCT(Config, compilationDatabaseCommand, compilationDatabaseDirectory,
-               cacheDirectory, cacheFormat, clang, client, codeLens, completion,
-               diagnostics, highlight, index, request, session, workspaceSymbol,
-               xref);
+               cacheDirectory, cacheFormat, capabilities, clang, client,
+               codeLens, completion, diagnostics, highlight, index, request,
+               session, workspaceSymbol, xref);
 
 extern Config *g_config;
 
