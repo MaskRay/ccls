@@ -76,10 +76,8 @@ struct ServerCap {
   } codeLensProvider;
   bool documentFormattingProvider = true;
   bool documentRangeFormattingProvider = true;
-  struct DocumentOnTypeFormattingOptions {
-    std::string firstTriggerCharacter = "}";
-    std::vector<const char *> moreTriggerCharacter;
-  } documentOnTypeFormattingProvider;
+  Config::ServerCap::DocumentOnTypeFormattingOptions
+      documentOnTypeFormattingProvider;
   bool renameProvider = true;
   struct DocumentLinkOptions {
     bool resolveProvider = true;
@@ -89,28 +87,18 @@ struct ServerCap {
   struct ExecuteCommandOptions {
     std::vector<const char *> commands = {ccls_xref};
   } executeCommandProvider;
-  struct Workspace {
-    struct WorkspaceFolders {
-      bool supported = true;
-      bool changeNotifications = true;
-    } workspaceFolders;
-  } workspace;
+  Config::ServerCap::Workspace workspace;
 };
 REFLECT_STRUCT(ServerCap::CodeActionOptions, codeActionKinds);
 REFLECT_STRUCT(ServerCap::CodeLensOptions, resolveProvider);
 REFLECT_STRUCT(ServerCap::CompletionOptions, resolveProvider,
                triggerCharacters);
 REFLECT_STRUCT(ServerCap::DocumentLinkOptions, resolveProvider);
-REFLECT_STRUCT(ServerCap::DocumentOnTypeFormattingOptions,
-               firstTriggerCharacter, moreTriggerCharacter);
 REFLECT_STRUCT(ServerCap::ExecuteCommandOptions, commands);
 REFLECT_STRUCT(ServerCap::SaveOptions, includeText);
 REFLECT_STRUCT(ServerCap::SignatureHelpOptions, triggerCharacters);
 REFLECT_STRUCT(ServerCap::TextDocumentSyncOptions, openClose, change, willSave,
                willSaveWaitUntil, save);
-REFLECT_STRUCT(ServerCap::Workspace::WorkspaceFolders, supported,
-               changeNotifications);
-REFLECT_STRUCT(ServerCap::Workspace, workspaceFolders);
 REFLECT_STRUCT(ServerCap, textDocumentSync, hoverProvider, completionProvider,
                signatureHelpProvider, declarationProvider, definitionProvider,
                implementationProvider, typeDefinitionProvider,
@@ -318,7 +306,15 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
 
   // Send initialization before starting indexers, so we don't send a
   // status update too early.
-  reply(InitializeResult{});
+  {
+    InitializeResult result;
+    auto &c = result.capabilities;
+    c.documentOnTypeFormattingProvider =
+        g_config->capabilities.documentOnTypeFormattingProvider;
+    c.foldingRangeProvider = g_config->capabilities.foldingRangeProvider;
+    c.workspace = g_config->capabilities.workspace;
+    reply(result);
+  }
 
   // Set project root.
   EnsureEndsInSlash(project_path);
