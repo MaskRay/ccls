@@ -33,6 +33,16 @@ static Pos Decomposed2LineAndCol(const SourceManager &SM,
                                  std::pair<FileID, unsigned> I) {
   int l = (int)SM.getLineNumber(I.first, I.second) - 1,
       c = (int)SM.getColumnNumber(I.first, I.second) - 1;
+  bool Invalid = false;
+  StringRef Buf = SM.getBufferData(I.first, &Invalid);
+  if (!Invalid) {
+    StringRef P = Buf.substr(I.second - c, c);
+    c = 0;
+    for (size_t i = 0; i < P.size(); )
+      if (c++, (uint8_t)P[i++] >= 128)
+        while (i < P.size() && (uint8_t)P[i] >= 128 && (uint8_t)P[i] < 192)
+          i++;
+  }
   return {(int16_t)std::min<int>(l, INT16_MAX),
           (int16_t)std::min<int>(c, INT16_MAX)};
 }
