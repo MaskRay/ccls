@@ -238,12 +238,18 @@ struct WorkspaceFolder {
 enum class MessageType : int { Error = 1, Warning = 2, Info = 3, Log = 4 };
 REFLECT_UNDERLYING(MessageType)
 
+struct DiagnosticRelatedInformation {
+  Location location;
+  std::string message;
+};
+
 struct Diagnostic {
   lsRange range;
   int severity = 0;
   int code = 0;
   std::string source = "ccls";
   std::string message;
+  std::vector<DiagnosticRelatedInformation> relatedInformation;
   std::vector<TextEdit> fixits_;
 };
 

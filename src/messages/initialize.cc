@@ -171,6 +171,10 @@ struct TextDocumentClientCap {
   struct DocumentSymbol {
     bool hierarchicalDocumentSymbolSupport = false;
   } documentSymbol;
+
+  struct PublishDiagnostics {
+    bool relatedInformation = false;
+  } publishDiagnostics;
 };
 
 REFLECT_STRUCT(TextDocumentClientCap::Completion::CompletionItem,
@@ -179,7 +183,8 @@ REFLECT_STRUCT(TextDocumentClientCap::Completion, completionItem);
 REFLECT_STRUCT(TextDocumentClientCap::DocumentSymbol,
                hierarchicalDocumentSymbolSupport);
 REFLECT_STRUCT(TextDocumentClientCap::LinkSupport, linkSupport);
-REFLECT_STRUCT(TextDocumentClientCap, completion, definition, documentSymbol);
+REFLECT_STRUCT(TextDocumentClientCap::PublishDiagnostics, relatedInformation);
+REFLECT_STRUCT(TextDocumentClientCap, completion, definition, documentSymbol, publishDiagnostics);
 
 struct ClientCap {
   WorkspaceClientCap workspace;
@@ -306,6 +311,8 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
       capabilities.textDocument.definition.linkSupport;
   g_config->client.snippetSupport &=
       capabilities.textDocument.completion.completionItem.snippetSupport;
+  g_config->client.diagnosticsRelatedInformation &=
+      capabilities.textDocument.publishDiagnostics.relatedInformation;
   didChangeWatchedFiles =
       capabilities.workspace.didChangeWatchedFiles.dynamicRegistration;
 
