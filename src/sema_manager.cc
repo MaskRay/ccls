@@ -514,7 +514,7 @@ llvm::StringRef diagLeveltoString(DiagnosticsEngine::Level Lvl) {
   }
 }
 
-void printDiag(llvm::raw_string_ostream &OS, const DiagBase &d) {
+void PrintDiag(llvm::raw_string_ostream &OS, const DiagBase &d) {
   if (d.concerned)
     OS << llvm::sys::path::filename(d.file);
   else
@@ -612,27 +612,40 @@ void *DiagnosticMain(void *manager_) {
     for (auto &d : diags) {
       if (!d.concerned)
         continue;
-      std::string buf;
-      llvm::raw_string_ostream OS(buf);
       Diagnostic &ls_diag = ls_diags.emplace_back();
       Fill(d, ls_diag);
       ls_diag.fixits_ = d.edits;
-      OS << d.message;
-      for (auto &n : d.notes) {
-        OS << "\n\n";
-        printDiag(OS, n);
-      }
-      OS.flush();
-      ls_diag.message = std::move(buf);
-      for (auto &n : d.notes) {
-        if (!n.concerned)
-          continue;
-        Diagnostic &ls_diag1 = ls_diags.emplace_back();
-        Fill(n, ls_diag1);
-        OS << n.message << "\n\n";
-        printDiag(OS, d);
+      if (g_config->client.diagnosticsRelatedInformation) {
+        ls_diag.message = d.message;
+        for (const Note &n : d.notes) {
+          SmallString<256> Str(n.file);
+          llvm::sys::path::remove_dots(Str, true);
+          Location loc{DocumentUri::FromPath(Str.str()),
+                       lsRange{{n.range.start.line, n.range.start.column},
+                               {n.range.end.line, n.range.end.column}}};
+          ls_diag.relatedInformation.push_back({loc, n.message});
+        }
+      } else {
+        std::string buf;
+        llvm::raw_string_ostream OS(buf);
+        OS << d.message;
+        for (const Note &n : d.notes) {
+          OS << "\n\n";
+          PrintDiag(OS, n);
+        }
         OS.flush();
-        ls_diag1.message = std::move(buf);
+        ls_diag.message = std::move(buf);
+        for (const Note &n : d.notes) {
+          if (!n.concerned)
+            continue;
+          Diagnostic &ls_diag1 = ls_diags.emplace_back();
+          Fill(n, ls_diag1);
+          buf.clear();
+          OS << n.message << "\n\n";
+          PrintDiag(OS, d);
+          OS.flush();
+          ls_diag1.message = std::move(buf);
+        }
       }
     }
 
