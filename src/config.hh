@@ -40,19 +40,37 @@ struct Config {
   std::string compilationDatabaseCommand;
   // Directory containing compile_commands.json.
   std::string compilationDatabaseDirectory;
-  // Cache directory for indexed files, either absolute or relative to the
-  // project root.
-  // If empty, cache will be stored in memory.
-  std::string cacheDirectory = ".ccls-cache";
-  // Cache serialization format.
-  //
-  // "json" generates `cacheDirectory/.../xxx.json` files which can be pretty
-  // printed with jq.
-  //
-  // "binary" uses a compact binary serialization format.
-  // It is not schema-aware and you need to re-index whenever an internal struct
-  // member has changed.
-  SerializeFormat cacheFormat = SerializeFormat::Binary;
+
+  struct Cache {
+    // Cache directory for indexed files, either absolute or relative to the
+    // project root.
+    //
+    // If empty, retainInMemory will be set to true and cache will be stored in
+    // memory.
+    std::string directory = ".ccls-cache";
+
+    // Cache serialization format.
+    //
+    // "json" generates $directory/.../xxx.json files which can be pretty
+    // printed with jq.
+    //
+    // "binary" uses a compact binary serialization format.
+    // It is not schema-aware and you need to re-index whenever an internal
+    // struct member has changed.
+    SerializeFormat format = SerializeFormat::Binary;
+
+    // If true, keep a copy of file index in memory (which increases memory
+    // usage). During incremental updates, the removed file index will be taken
+    // from the in-memory copy, instead of the on-disk file.
+    bool retainInMemory = true;
+
+    // If false, store cache files as $directory/@a@b/c.cc.blob
+    //
+    // If true, $directory/a/b/c.cc.blob. If cache.directory is absolute, make
+    // sure different projects use different cache.directory as they would have
+    // conflicting cache files for system headers.
+    bool useHierarchy = false;
+  } cache;
 
   struct ServerCap {
     struct DocumentOnTypeFormattingOptions {
@@ -292,6 +310,8 @@ struct Config {
     int maxNum = 2000;
   } xref;
 };
+REFLECT_STRUCT(Config::Cache, directory, format, retainInMemory,
+               useHierarchy);
 REFLECT_STRUCT(Config::ServerCap::DocumentOnTypeFormattingOptions,
                firstTriggerCharacter, moreTriggerCharacter);
 REFLECT_STRUCT(Config::ServerCap::Workspace::WorkspaceFolders, supported,
@@ -321,9 +341,9 @@ REFLECT_STRUCT(Config::Session, maxNum);
 REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 REFLECT_STRUCT(Config::Xref, maxNum);
 REFLECT_STRUCT(Config, compilationDatabaseCommand, compilationDatabaseDirectory,
-               cacheDirectory, cacheFormat, capabilities, clang, client,
-               codeLens, completion, diagnostics, highlight, index, request,
-               session, workspaceSymbol, xref);
+               cache, capabilities, clang, client, codeLens, completion,
+               diagnostics, highlight, index, request, session, workspaceSymbol,
+               xref);
 
 extern Config *g_config;
 
