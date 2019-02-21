@@ -35,6 +35,7 @@ void MessageHandler::textDocument_didClose(TextDocumentParam &param) {
   std::string path = param.textDocument.uri.GetPath();
   wfiles->OnClose(path);
   manager->OnClose(path);
+  pipeline::RemoveCache(path);
 }
 
 void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {

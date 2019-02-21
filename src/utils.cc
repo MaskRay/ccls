@@ -112,9 +112,10 @@ void EnsureEndsInSlash(std::string &path) {
 
 std::string EscapeFileName(std::string path) {
   bool slash = path.size() && path.back() == '/';
-  for (char &c : path)
-    if (c == '\\' || c == '/' || c == ':')
-      c = '@';
+#ifdef _WIN32
+  std::replace(path.begin(), path.end(), ':', '@');
+#endif
+  std::replace(path.begin(), path.end(), '/', '@');
   if (slash)
     path += '/';
   return path;
