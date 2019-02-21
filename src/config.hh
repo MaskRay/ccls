@@ -90,6 +90,8 @@ struct Config {
   } clang;
 
   struct ClientCapability {
+    // TextDocumentClientCapabilities.publishDiagnostics.relatedInformation
+    bool diagnosticsRelatedInformation = true;
     // TextDocumentClientCapabilities.documentSymbol.hierarchicalDocumentSymbolSupport
     bool hierarchicalDocumentSymbolSupport = true;
     // TextDocumentClientCapabilities.definition.linkSupport
@@ -287,8 +289,8 @@ REFLECT_STRUCT(Config::ServerCap, documentOnTypeFormattingProvider,
                foldingRangeProvider, workspace);
 REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, pathMappings,
                resourceDir);
-REFLECT_STRUCT(Config::ClientCapability, hierarchicalDocumentSymbolSupport,
-               linkSupport, snippetSupport);
+REFLECT_STRUCT(Config::ClientCapability, diagnosticsRelatedInformation,
+               hierarchicalDocumentSymbolSupport, linkSupport, snippetSupport);
 REFLECT_STRUCT(Config::CodeLens, localVariables);
 REFLECT_STRUCT(Config::Completion::Include, blacklist, maxPathSize,
                suffixWhitelist, whitelist);
