@@ -108,6 +108,8 @@ struct Config {
     bool linkSupport = true;
     // TextDocumentClientCapabilities.completion.completionItem.snippetSupport
     bool snippetSupport = true;
+    // TextDocumentClientCapabilities.publishDiagnostics.relatedInformation
+    bool diagnosticsRelatedInformation = true;
   } client;
 
   struct CodeLens {
