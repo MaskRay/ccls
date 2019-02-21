@@ -22,13 +22,13 @@ struct VFS {
   struct State {
     int64_t timestamp;
     int step;
-    bool loaded;
+    int loaded;
   };
   std::unordered_map<std::string, State> state;
   std::mutex mutex;
 
   void Clear();
-  bool Loaded(const std::string &path);
+  int Loaded(const std::string &path);
   bool Stamp(const std::string &path, int64_t ts, int step);
 };
 
@@ -55,7 +55,7 @@ void Standalone(const std::string &root);
 
 void Index(const std::string &path, const std::vector<const char *> &args,
            IndexMode mode, bool must_exist, RequestId id = {});
-
+void RemoveCache(const std::string &path);
 std::optional<std::string> LoadIndexedContent(const std::string& path);
 
 void NotifyOrRequest(const char *method, bool request,
