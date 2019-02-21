@@ -57,7 +57,7 @@ void VFS::Clear() {
   state.clear();
 }
 
-bool VFS::Loaded(const std::string &path) {
+int VFS::Loaded(const std::string &path) {
   std::lock_guard lock(mutex);
   return state[path].loaded;
 }
@@ -137,7 +137,7 @@ bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
 };
 
 std::string AppendSerializationFormat(const std::string &base) {
-  switch (g_config->cacheFormat) {
+  switch (g_config->cache.format) {
   case SerializeFormat::Binary:
     return base + ".blob";
   case SerializeFormat::Json:
@@ -145,27 +145,36 @@ std::string AppendSerializationFormat(const std::string &base) {
   }
 }
 
-std::string GetCachePath(const std::string &source_file) {
+std::string GetCachePath(const std::string &src) {
+  if (g_config->cache.hierarchicalPath) {
+    std::string ret =
+        g_config->cache.directory + (src[0] == '/' ? src.substr(1) : src);
+#ifdef _WIN32
+    std::replace(ret.begin(), ret.end(), ':', '@');
+#endif
+    return ret;
+  }
   for (auto &root : g_config->workspaceFolders)
-    if (StringRef(source_file).startswith(root)) {
+    if (StringRef(src).startswith(root)) {
       auto len = root.size();
-      return g_config->cacheDirectory +
+      return g_config->cache.directory +
              EscapeFileName(root.substr(0, len - 1)) + '/' +
-             EscapeFileName(source_file.substr(len));
+             EscapeFileName(src.substr(len));
     }
-  return g_config->cacheDirectory + '@' +
+  return g_config->cache.directory + '@' +
          EscapeFileName(g_config->fallbackFolder.substr(
              0, g_config->fallbackFolder.size() - 1)) +
-         '/' + EscapeFileName(source_file);
+         '/' + EscapeFileName(src);
 }
 
 std::unique_ptr<IndexFile> RawCacheLoad(const std::string &path) {
-  if (g_config->cacheDirectory.empty()) {
+  if (g_config->cache.retainInMemory) {
     std::shared_lock lock(g_index_mutex);
     auto it = g_index.find(path);
-    if (it == g_index.end())
+    if (it != g_index.end())
+      return std::make_unique<IndexFile>(it->second.index);
+    if (g_config->cache.directory.empty())
       return nullptr;
-    return std::make_unique<IndexFile>(it->second.index);
   }
 
   std::string cache_path = GetCachePath(path);
@@ -175,7 +184,7 @@ std::unique_ptr<IndexFile> RawCacheLoad(const std::string &path) {
   if (!file_content || !serialized_indexed_content)
     return nullptr;
 
-  return ccls::Deserialize(g_config->cacheFormat, path,
+  return ccls::Deserialize(g_config->cache.format, path,
                            *serialized_indexed_content, *file_content,
                            IndexFile::kMajorVersion);
 }
@@ -287,7 +296,7 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
         request.mode != IndexMode::NonInteractive);
       {
         std::lock_guard lock1(vfs->mutex);
-        vfs->state[path_to_index].loaded = true;
+        vfs->state[path_to_index].loaded++;
       }
       lock.unlock();
 
@@ -304,7 +313,7 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
           VFS::State &st = vfs->state[path];
           if (st.loaded)
             continue;
-          st.loaded = true;
+          st.loaded++;
           st.timestamp = prev->mtime;
         }
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
@@ -367,31 +376,37 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
                            << " (delta: " << !!prev << ")";
     {
       std::lock_guard lock(GetFileMutex(path));
-      if (vfs->Loaded(path))
+      int loaded = vfs->Loaded(path), retain = g_config->cache.retainInMemory;
+      if (loaded)
         prev = RawCacheLoad(path);
       else
         prev.reset();
-      if (g_config->cacheDirectory.empty()) {
+      if (retain > 0 && retain <= loaded + 1) {
         std::lock_guard lock(g_index_mutex);
         auto it = g_index.insert_or_assign(
           path, InMemoryIndexFile{curr->file_contents, *curr});
         std::string().swap(it.first->second.index.file_contents);
-      } else {
+      }
+      if (g_config->cache.directory.size()) {
         std::string cache_path = GetCachePath(path);
         if (deleted) {
           (void)sys::fs::remove(cache_path);
           (void)sys::fs::remove(AppendSerializationFormat(cache_path));
         } else {
+          if (g_config->cache.hierarchicalPath)
+            sys::fs::create_directories(
+                sys::path::parent_path(cache_path, sys::path::Style::posix),
+                true);
           WriteToFile(cache_path, curr->file_contents);
           WriteToFile(AppendSerializationFormat(cache_path),
-                      Serialize(g_config->cacheFormat, *curr));
+                      Serialize(g_config->cache.format, *curr));
         }
       }
       on_indexed->PushBack(IndexUpdate::CreateDelta(prev.get(), curr.get()),
                            request.mode != IndexMode::NonInteractive);
       {
         std::lock_guard lock1(vfs->mutex);
-        vfs->state[path].loaded = true;
+        vfs->state[path].loaded++;
       }
       if (entry.id >= 0) {
         std::lock_guard lock(project->mtx);
@@ -718,8 +733,15 @@ void Index(const std::string &path, const std::vector<const char *> &args,
                           mode != IndexMode::NonInteractive);
 }
 
+void RemoveCache(const std::string &path) {
+  if (g_config->cache.directory.size()) {
+    std::lock_guard lock(g_index_mutex);
+    g_index.erase(path);
+  }
+}
+
 std::optional<std::string> LoadIndexedContent(const std::string &path) {
-  if (g_config->cacheDirectory.empty()) {
+  if (g_config->cache.directory.empty()) {
     std::shared_lock lock(g_index_mutex);
     auto it = g_index.find(path);
     if (it == g_index.end())
