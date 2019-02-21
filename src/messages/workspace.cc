@@ -34,8 +34,8 @@ void MessageHandler::workspace_didChangeWatchedFiles(
     DidChangeWatchedFilesParam &param) {
   for (auto &event : param.changes) {
     std::string path = event.uri.GetPath();
-    if ((g_config->cacheDirectory.size() &&
-         StringRef(path).startswith(g_config->cacheDirectory)) ||
+    if ((g_config->cache.directory.size() &&
+         StringRef(path).startswith(g_config->cache.directory)) ||
         lookupExtension(path).first == LanguageId::Unknown)
       return;
     for (std::string cur = path; cur.size(); cur = sys::path::parent_path(cur))

@@ -282,12 +282,12 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
     Reflect(json_writer, *g_config);
     LOG_S(INFO) << "initializationOptions: " << output.GetString();
 
-    if (g_config->cacheDirectory.size()) {
-      SmallString<256> Path(g_config->cacheDirectory);
+    if (g_config->cache.directory.size()) {
+      SmallString<256> Path(g_config->cache.directory);
       sys::fs::make_absolute(project_path, Path);
       // Use upper case for the Driver letter on Windows.
-      g_config->cacheDirectory = NormalizePath(Path.str());
-      EnsureEndsInSlash(g_config->cacheDirectory);
+      g_config->cache.directory = NormalizePath(Path.str());
+      EnsureEndsInSlash(g_config->cache.directory);
     }
   }
 
@@ -334,13 +334,16 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
   }
   if (param.workspaceFolders.empty())
     g_config->workspaceFolders.push_back(project_path);
-  if (g_config->cacheDirectory.size())
+
+  if (g_config->cache.directory.empty())
+    g_config->cache.retainInMemory = 1;
+  else if (!g_config->cache.hierarchicalPath)
     for (const std::string &folder : g_config->workspaceFolders) {
       // Create two cache directories for files inside and outside of the
       // project.
       std::string escaped = EscapeFileName(folder.substr(0, folder.size() - 1));
-      sys::fs::create_directories(g_config->cacheDirectory + escaped);
-      sys::fs::create_directories(g_config->cacheDirectory + '@' + escaped);
+      sys::fs::create_directories(g_config->cache.directory + escaped);
+      sys::fs::create_directories(g_config->cache.directory + '@' + escaped);
     }
 
   idx::Init();
