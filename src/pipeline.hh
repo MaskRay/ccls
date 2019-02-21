@@ -19,13 +19,13 @@ struct VFS {
   struct State {
     int64_t timestamp;
     int step;
-    bool loaded;
+    int loaded;
   };
   std::unordered_map<std::string, State> state;
   std::mutex mutex;
 
   void Clear();
-  bool Loaded(const std::string &path);
+  int Loaded(const std::string &path);
   bool Stamp(const std::string &path, int64_t ts, int step);
 };
 
