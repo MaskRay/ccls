@@ -183,7 +183,8 @@ REFLECT_STRUCT(TextDocumentIdentifier, uri);
 REFLECT_STRUCT(TextDocumentItem, uri, languageId, version, text);
 REFLECT_STRUCT(TextEdit, range, newText);
 REFLECT_STRUCT(VersionedTextDocumentIdentifier, uri, version);
-REFLECT_STRUCT(Diagnostic, range, severity, code, source, message);
+REFLECT_STRUCT(DiagnosticRelatedInformation, location, message);
+REFLECT_STRUCT(Diagnostic, range, severity, code, source, message, relatedInformation);
 REFLECT_STRUCT(ShowMessageParam, type, message);
 REFLECT_UNDERLYING_B(LanguageId);
 
