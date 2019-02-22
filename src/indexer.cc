@@ -193,6 +193,10 @@ Kind GetKind(const Decl *D, SymbolKind &kind) {
   case Decl::CXXDestructor:
     kind = SymbolKind::Method;
     return Kind::Func;
+  case Decl::NonTypeTemplateParm:
+    // ccls extension
+    kind = SymbolKind::Parameter;
+    return Kind::Var;
   case Decl::Var:
   case Decl::Decomposition:
     kind = SymbolKind::Variable;
@@ -824,7 +828,7 @@ public:
         if (D->getKind() == Decl::TemplateTypeParm)
           type->def.detailed_name = Intern(info->short_name);
         else
-          SetName(D, info->short_name, info->qualified, type->def);
+          SetName(OrigD, info->short_name, info->qualified, type->def);
       }
       if (is_def || is_decl) {
         const Decl *DC = cast<Decl>(SemDC);
