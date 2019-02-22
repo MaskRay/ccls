@@ -266,6 +266,9 @@ struct Config {
     // May be too slow for big projects, so it is off by default.
     bool onChange = false;
 
+    // If true, index parameters in declarations.
+    bool parametersInDeclarations = true;
+
     // Number of indexer threads. If 0, 80% of cores are used.
     int threads = 0;
 
@@ -326,8 +329,8 @@ REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
 REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist, whitelist)
 REFLECT_STRUCT(Config::Index, blacklist, comments, initialBlacklist,
                initialWhitelist, maxInitializerLines, multiVersion,
-               multiVersionBlacklist, multiVersionWhitelist, onChange, threads,
-               trackDependency, whitelist);
+               multiVersionBlacklist, multiVersionWhitelist, onChange,
+               parametersInDeclarations, threads, trackDependency, whitelist);
 REFLECT_STRUCT(Config::Request, timeout);
 REFLECT_STRUCT(Config::Session, maxNum);
 REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
