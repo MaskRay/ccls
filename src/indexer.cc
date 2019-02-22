@@ -820,8 +820,12 @@ public:
       do_def_decl(type);
       if (Spell != Loc)
         AddMacroUse(db, SM, usr, Kind::Type, Spell);
-      if (type->def.detailed_name[0] == '\0' && info->short_name.size())
-        SetName(D, info->short_name, info->qualified, type->def);
+      if (type->def.detailed_name[0] == '\0' && info->short_name.size()) {
+        if (D->getKind() == Decl::TemplateTypeParm)
+          type->def.detailed_name = Intern(info->short_name);
+        else
+          SetName(D, info->short_name, info->qualified, type->def);
+      }
       if (is_def || is_decl) {
         const Decl *DC = cast<Decl>(SemDC);
         if (GetKind(DC, ls_kind) == Kind::Type)
@@ -853,6 +857,7 @@ public:
             if (!isa<EnumConstantDecl>(D))
               db->ToType(usr1).instances.push_back(usr);
           } else if (const Decl *D1 = GetAdjustedDecl(GetTypeDecl(T))) {
+#if LLVM_VERSION_MAJOR < 9
             if (isa<TemplateTypeParmDecl>(D1)) {
               // e.g. TemplateTypeParmDecl is not handled by
               // handleDeclOccurence.
@@ -875,6 +880,7 @@ public:
                 break;
               }
             }
+#endif
 
             IndexParam::DeclInfo *info1;
             Usr usr1 = GetUsr(D1, &info1);
@@ -1250,6 +1256,10 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
       index::IndexingOptions::SystemSymbolFilterKind::All;
   IndexOpts.IndexFunctionLocals = true;
   IndexOpts.IndexImplicitInstantiation = true;
+#if LLVM_VERSION_MAJOR >= 9
+  IndexOpts.IndexParametersInDeclarations = true;
+  IndexOpts.IndexTemplateParameters = true;
+#endif
 
   std::unique_ptr<FrontendAction> Action = createIndexingAction(
       DataConsumer, IndexOpts, std::make_unique<IndexFrontendAction>(param));
