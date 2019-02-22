@@ -272,6 +272,9 @@ CompletionItemKind GetCompletionKind(CodeCompletionContext::Kind K,
     case Decl::TypeAlias:
     case Decl::Typedef:
       return CompletionItemKind::TypeParameter;
+    case Decl::Using:
+    case Decl::ConstructorUsingShadow:
+      return CompletionItemKind::Keyword;
     case Decl::Binding:
       return CompletionItemKind::Variable;
     case Decl::Field:
