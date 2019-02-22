@@ -828,10 +828,12 @@ public:
       do_def_decl(type);
       if (Spell != Loc)
         AddMacroUse(db, SM, usr, Kind::Type, Spell);
-      if (type->def.detailed_name[0] == '\0' && info->short_name.size()) {
+      if ((is_def || type->def.detailed_name[0] == '\0') &&
+          info->short_name.size()) {
         if (D->getKind() == Decl::TemplateTypeParm)
           type->def.detailed_name = Intern(info->short_name);
         else
+          // OrigD may be detailed, e.g. "struct D : B {}"
           SetName(OrigD, info->short_name, info->qualified, type->def);
       }
       if (is_def || is_decl) {
