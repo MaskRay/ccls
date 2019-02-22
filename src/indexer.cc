@@ -171,6 +171,9 @@ Kind GetKind(const Decl *D, SymbolKind &kind) {
   case Decl::UnresolvedUsingTypename:
     kind = SymbolKind::TypeAlias;
     return Kind::Type;
+  case Decl::Using:
+    kind = SymbolKind::Null; // ignored
+    return Kind::Invalid;
   case Decl::Binding:
     kind = SymbolKind::Variable;
     return Kind::Var;
@@ -193,6 +196,10 @@ Kind GetKind(const Decl *D, SymbolKind &kind) {
   case Decl::CXXDestructor:
     kind = SymbolKind::Method;
     return Kind::Func;
+  case Decl::NonTypeTemplateParm:
+    // ccls extension
+    kind = SymbolKind::Parameter;
+    return Kind::Var;
   case Decl::Var:
   case Decl::Decomposition:
     kind = SymbolKind::Variable;
@@ -216,7 +223,6 @@ Kind GetKind(const Decl *D, SymbolKind &kind) {
     return Kind::Invalid;
 
   default:
-    LOG_S(INFO) << "unhandled " << int(D->getKind());
     return Kind::Invalid;
   }
 }
@@ -736,7 +742,7 @@ public:
     IndexFunc *func = nullptr;
     IndexType *type = nullptr;
     IndexVar *var = nullptr;
-    SymbolKind ls_kind;
+    SymbolKind ls_kind = SymbolKind::Unknown;
     Kind kind = GetKind(D, ls_kind);
 
     if (is_def)
@@ -785,8 +791,10 @@ public:
     };
     switch (kind) {
     case Kind::Invalid:
-      LOG_S(INFO) << "Unhandled " << int(D->getKind()) << " " << info->qualified
-                  << " in " << db->path << ":" << loc.start.line + 1;
+      if (ls_kind == SymbolKind::Unknown)
+        LOG_S(INFO) << "Unhandled " << int(D->getKind()) << " "
+                    << info->qualified << " in " << db->path << ":"
+                    << (loc.start.line + 1) << ":" << (loc.start.column + 1);
       return true;
     case Kind::File:
       return true;
@@ -820,8 +828,12 @@ public:
       do_def_decl(type);
       if (Spell != Loc)
         AddMacroUse(db, SM, usr, Kind::Type, Spell);
-      if (type->def.detailed_name[0] == '\0' && info->short_name.size())
-        SetName(D, info->short_name, info->qualified, type->def);
+      if (type->def.detailed_name[0] == '\0' && info->short_name.size()) {
+        if (D->getKind() == Decl::TemplateTypeParm)
+          type->def.detailed_name = Intern(info->short_name);
+        else
+          SetName(OrigD, info->short_name, info->qualified, type->def);
+      }
       if (is_def || is_decl) {
         const Decl *DC = cast<Decl>(SemDC);
         if (GetKind(DC, ls_kind) == Kind::Type)
@@ -853,6 +865,7 @@ public:
             if (!isa<EnumConstantDecl>(D))
               db->ToType(usr1).instances.push_back(usr);
           } else if (const Decl *D1 = GetAdjustedDecl(GetTypeDecl(T))) {
+#if LLVM_VERSION_MAJOR < 9
             if (isa<TemplateTypeParmDecl>(D1)) {
               // e.g. TemplateTypeParmDecl is not handled by
               // handleDeclOccurence.
@@ -875,6 +888,7 @@ public:
                 break;
               }
             }
+#endif
 
             IndexParam::DeclInfo *info1;
             Usr usr1 = GetUsr(D1, &info1);
@@ -1250,6 +1264,11 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
       index::IndexingOptions::SystemSymbolFilterKind::All;
   IndexOpts.IndexFunctionLocals = true;
   IndexOpts.IndexImplicitInstantiation = true;
+#if LLVM_VERSION_MAJOR >= 9
+  IndexOpts.IndexParametersInDeclarations =
+      g_config->index.parametersInDeclarations;
+  IndexOpts.IndexTemplateParameters = true;
+#endif
 
   std::unique_ptr<FrontendAction> Action = createIndexingAction(
       DataConsumer, IndexOpts, std::make_unique<IndexFrontendAction>(param));
