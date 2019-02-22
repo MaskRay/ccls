@@ -59,33 +59,33 @@ GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
   const char *comments = nullptr;
   std::optional<MarkedString> ls_comments, hover;
   WithEntity(db, sym, [&](const auto &entity) {
-    std::remove_reference_t<decltype(entity.def[0])> *def = nullptr;
     for (auto &d : entity.def) {
       if (d.spell) {
         comments = d.comments[0] ? d.comments : nullptr;
-        def = &d;
+        if (const char *s =
+                d.hover[0] ? d.hover
+                           : d.detailed_name[0] ? d.detailed_name : nullptr) {
+          if (!hover)
+            hover = {LanguageIdentifier(lang), s};
+          else if (strlen(s) > hover->value.size())
+            hover->value = s;
+        }
         if (d.spell->file_id == file_id)
           break;
       }
     }
-    if (!def && entity.def.size()) {
-      def = &entity.def[0];
-      if (def->comments[0])
-        comments = def->comments;
+    if (!hover && entity.def.size()) {
+      auto &d = entity.def[0];
+      if (d.comments[0])
+        comments = d.comments;
+      hover = {LanguageIdentifier(lang)};
+      if (d.hover[0])
+        hover->value = d.hover;
+      else if (d.detailed_name[0])
+        hover->value = d.detailed_name;
     }
-    if (def) {
-      MarkedString m;
-      m.language = LanguageIdentifier(lang);
-      if (def->hover[0]) {
-        m.value = def->hover;
-        hover = m;
-      } else if (def->detailed_name[0]) {
-        m.value = def->detailed_name;
-        hover = m;
-      }
-      if (comments)
-        ls_comments = MarkedString{std::nullopt, comments};
-    }
+    if (comments)
+      ls_comments = MarkedString{std::nullopt, comments};
   });
   return {hover, ls_comments};
 }
