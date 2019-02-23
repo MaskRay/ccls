@@ -28,7 +28,7 @@ limitations under the License.
 namespace ccls {
 Pos Pos::FromString(const std::string &encoded) {
   char *p = const_cast<char *>(encoded.c_str());
-  int16_t line = int16_t(strtol(p, &p, 10)) - 1;
+  uint16_t line = uint16_t(strtoul(p, &p, 10) - 1);
   assert(*p == ':');
   p++;
   int16_t column = int16_t(strtol(p, &p, 10)) - 1;
@@ -44,14 +44,14 @@ std::string Pos::ToString() {
 Range Range::FromString(const std::string &encoded) {
   Pos start, end;
   char *p = const_cast<char *>(encoded.c_str());
-  start.line = int16_t(strtol(p, &p, 10)) - 1;
+  start.line = uint16_t(strtoul(p, &p, 10) - 1);
   assert(*p == ':');
   p++;
   start.column = int16_t(strtol(p, &p, 10)) - 1;
   assert(*p == '-');
   p++;
 
-  end.line = int16_t(strtol(p, &p, 10)) - 1;
+  end.line = uint16_t(strtoul(p, &p, 10) - 1);
   assert(*p == ':');
   p++;
   end.column = int16_t(strtol(p, nullptr, 10)) - 1;
@@ -61,7 +61,7 @@ Range Range::FromString(const std::string &encoded) {
 bool Range::Contains(int line, int column) const {
   if (line > INT16_MAX)
     return false;
-  Pos p{(int16_t)line, (int16_t)std::min<int>(column, INT16_MAX)};
+  Pos p{(uint16_t)line, (int16_t)std::min<int>(column, INT16_MAX)};
   return !(p < start) && p < end;
 }
 

@@ -1164,8 +1164,8 @@ public:
 };
 } // namespace
 
-const int IndexFile::kMajorVersion = 19;
-const int IndexFile::kMinorVersion = 1;
+const int IndexFile::kMajorVersion = 20;
+const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(const std::string &path, const std::string &contents)
     : path(path), file_contents(contents) {}
