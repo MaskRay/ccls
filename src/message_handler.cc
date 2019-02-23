@@ -332,9 +332,9 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
       // but we still want to keep the range for jumping to definition.
       std::string_view concise_name =
           detailed_name.substr(0, detailed_name.find('<'));
-      int16_t start_line = sym.range.start.line;
+      uint16_t start_line = sym.range.start.line;
       int16_t start_col = sym.range.start.column;
-      if (start_line < 0 || start_line >= wfile->index_lines.size())
+      if (start_line >= wfile->index_lines.size())
         continue;
       std::string_view line = wfile->index_lines[start_line];
       sym.range.end.line = start_line;
