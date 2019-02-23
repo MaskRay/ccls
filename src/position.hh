@@ -22,12 +22,12 @@ limitations under the License.
 
 namespace ccls {
 struct Pos {
-  int16_t line = -1;
+  uint16_t line = 0;
   int16_t column = -1;
 
   static Pos FromString(const std::string &encoded);
 
-  bool Valid() const { return line >= 0; }
+  bool Valid() const { return column >= 0; }
   std::string ToString();
 
   // Compare two Positions and check if they are equal. Ignores the value of
