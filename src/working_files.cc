@@ -57,10 +57,23 @@ Position GetPositionForOffset(const std::string &content, int offset) {
 
 std::vector<std::string> ToLines(const std::string &content) {
   std::vector<std::string> result;
-  std::istringstream lines(content);
-  std::string line;
-  while (getline(lines, line))
-    result.push_back(line);
+  size_t startPos = 0;
+  while (startPos < content.size()) {
+    // \r or \n
+    size_t endPos = content.find_first_of("\r\n", startPos);
+    if (endPos == std::string::npos) {
+      // EOF
+      result.push_back(content.substr(startPos));
+      break;
+    }
+    result.push_back(content.substr(startPos, endPos - startPos));
+    if (content[endPos] == '\r' && endPos < content.size() - 1 &&
+        content[endPos + 1] == '\n') {
+      // \r\n
+      endPos++;
+    }
+    startPos = endPos + 1;
+  }
   return result;
 }
 
