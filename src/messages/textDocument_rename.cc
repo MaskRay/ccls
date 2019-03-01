@@ -21,11 +21,17 @@ namespace {
 WorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *wfiles, SymbolRef sym,
                                  const std::string &new_text) {
   std::unordered_map<int, TextDocumentEdit> path_to_edit;
+  Location last_location; // prevent duplicates
 
   EachOccurrence(db, sym, true, [&](Use use) {
     std::optional<Location> ls_location = GetLsLocation(db, wfiles, use);
     if (!ls_location)
       return;
+
+    if (*ls_location == last_location)
+      return;
+    
+    last_location = *ls_location;
 
     int file_id = use.file_id;
     if (path_to_edit.find(file_id) == path_to_edit.end()) {
