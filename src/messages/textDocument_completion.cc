@@ -514,7 +514,7 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   }
 
   std::string filter;
-  Position end_pos = param.position;
+  Position end_pos;
   Position begin_pos =
       wf->GetCompletionPosition(param.position, &filter, &end_pos);
 
