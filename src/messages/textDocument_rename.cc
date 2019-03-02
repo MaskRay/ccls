@@ -4,54 +4,65 @@
 #include "message_handler.hh"
 #include "query.hh"
 
+#include <clang/Basic/CharInfo.h>
+
+#include <unordered_set>
+
+using namespace clang;
+
 namespace ccls {
 namespace {
 WorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *wfiles, SymbolRef sym,
+                                 std::string_view old_text,
                                  const std::string &new_text) {
-  std::unordered_map<int, TextDocumentEdit> path_to_edit;
+  std::unordered_map<int, std::pair<WorkingFile *, TextDocumentEdit>> path2edit;
+  std::unordered_map<int, std::unordered_set<Range>> edited;
 
   EachOccurrence(db, sym, true, [&](Use use) {
-    std::optional<Location> ls_location = GetLsLocation(db, wfiles, use);
-    if (!ls_location)
+    int file_id = use.file_id;
+    QueryFile &file = db->files[file_id];
+    if (!file.def || !edited[file_id].insert(use.range).second)
+      return;
+    std::optional<Location> loc = GetLsLocation(db, wfiles, use);
+    if (!loc)
       return;
 
-    int file_id = use.file_id;
-    if (path_to_edit.find(file_id) == path_to_edit.end()) {
-      path_to_edit[file_id] = TextDocumentEdit();
-
-      QueryFile &file = db->files[file_id];
-      if (!file.def)
-        return;
-
+    auto [it, inserted] = path2edit.try_emplace(file_id);
+    auto &edit = it->second.second;
+    if (inserted) {
       const std::string &path = file.def->path;
-      path_to_edit[file_id].textDocument.uri = DocumentUri::FromPath(path);
-
-      WorkingFile *wf = wfiles->GetFile(path);
-      if (wf)
-        path_to_edit[file_id].textDocument.version = wf->version;
+      edit.textDocument.uri = DocumentUri::FromPath(path);
+      if ((it->second.first = wfiles->GetFile(path)))
+        edit.textDocument.version = it->second.first->version;
     }
-
-    TextEdit &edit = path_to_edit[file_id].edits.emplace_back();
-    edit.range = ls_location->range;
-    edit.newText = new_text;
+    // TODO LoadIndexedContent if wf is nullptr.
+    if (WorkingFile *wf = it->second.first) {
+      int start = GetOffsetForPosition(loc->range.start, wf->buffer_content),
+          end = GetOffsetForPosition(loc->range.end, wf->buffer_content);
+      if (wf->buffer_content.compare(start, end - start, old_text))
+        return;
+    }
+    edit.edits.push_back({loc->range, new_text});
   });
 
-  WorkspaceEdit edit;
-  for (const auto &changes : path_to_edit)
-    edit.documentChanges.push_back(changes.second);
-  return edit;
+  WorkspaceEdit ret;
+  for (auto &x : path2edit)
+    ret.documentChanges.push_back(std::move(x.second.second));
+  return ret;
 }
 } // namespace
 
 void MessageHandler::textDocument_rename(RenameParam &param, ReplyOnce &reply) {
   auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
-  if (!wf) {
+  if (!wf)
     return;
-  }
-
   WorkspaceEdit result;
+
   for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
-    result = BuildWorkspaceEdit(db, wfiles, sym, param.newName);
+    result = BuildWorkspaceEdit(
+        db, wfiles, sym,
+        LexIdentifierAroundPos(param.position, wf->buffer_content),
+        param.newName);
     break;
   }
 
