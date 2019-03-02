@@ -161,7 +161,7 @@ void MessageHandler::textDocument_signatureHelp(
   }
   {
     std::string filter;
-    Position end_pos = param.position;
+    Position end_pos;
     begin_pos = wf->GetCompletionPosition(param.position, &filter, &end_pos);
   }
 
