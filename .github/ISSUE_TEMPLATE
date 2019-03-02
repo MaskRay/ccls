@@ -1,0 +1,36 @@
+Here are some things you should try before filing a bug report:
+
++ For client issues related to [emacs-ccls](https://github.com/MaskRay/emacs-ccls) or [vscode-ccls](https://github.com/MaskRay/vscode-ccls), report in their own repository.
++ For build problems, check https://github.com/MaskRay/ccls/wiki/Build
++ Check https://github.com/MaskRay/ccls/wiki/Debugging
++ Check [the FAQ](https://github.com/MaskRay/ccls/wiki/FAQ) to see if your issue is mentioned.
+
+If none of those help, remove this section and fill out the four sections in the template below.
+
+---
+
+### Observed behavior
+
+Describe what happened. Any aids you can include (that you think could be relevant) are a tremendous help.
+
+* `compile_commands.json` or `.ccls` ([wiki/Project-Setup](https://github.com/MaskRay/ccls/wiki/Project-Setup))
+* Reduce to A minimal set of `.c` `.cc` `.h` `.hh` files that can still demonstrate the issue.
+* Consider a screencast gif.
+
+### Expected behavior
+
+Describe what you expected to happen.
+
+### Steps to reproduce
+
+1. Select these example steps,
+2. Delete them,
+3. And replace them with precise steps to reproduce your issue.
+
+### System information
+
+* ccls version (`git describe --tags --long`): 
+* clang version: 
+* OS: 
+* Editor: 
+* Language client (and version): 
