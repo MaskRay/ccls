@@ -12,7 +12,6 @@
 #include <chrono>
 #include <climits>
 #include <numeric>
-#include <sstream>
 namespace chrono = std::chrono;
 
 using namespace clang;
@@ -43,13 +42,17 @@ Position GetPositionForOffset(const std::string &content, int offset) {
   return {line, col};
 }
 
-std::vector<std::string> ToLines(const std::string &content) {
-  std::vector<std::string> result;
-  std::istringstream lines(content);
-  std::string line;
-  while (getline(lines, line))
-    result.push_back(line);
-  return result;
+std::vector<std::string> ToLines(const std::string &c) {
+  std::vector<std::string> ret;
+  int last = 0, e = c.size();
+  for (int i = 0; i < e; i++)
+    if (c[i] == '\n') {
+      ret.emplace_back(&c[last], i - last - (i && c[i - 1] == '\r'));
+      last = i + 1;
+    }
+  if (last < e)
+    ret.emplace_back(&c[last], e - last);
+  return ret;
 }
 
 // Computes the edit distance of strings [a,a+la) and [b,b+lb) with Eugene W.
