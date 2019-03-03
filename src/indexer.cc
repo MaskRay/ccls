@@ -473,7 +473,8 @@ public:
       info.usr = HashUsr(USR);
       if (auto *ND = dyn_cast<NamedDecl>(D)) {
         info.short_name = ND->getNameAsString();
-        info.qualified = ND->getQualifiedNameAsString();
+        llvm::raw_string_ostream OS(info.qualified);
+        ND->printQualifiedName(OS, GetDefaultPolicy());
         SimplifyAnonymous(info.qualified);
       }
     }
