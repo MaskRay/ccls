@@ -11,7 +11,7 @@ ccls, which originates from [cquery](https://github.com/cquery-project/cquery), 
   * formatting
   * hierarchies: [call (caller/callee) hierarchy](src/messages/ccls_call.cc), [inheritance (base/derived) hierarchy](src/messages/ccls_inheritance.cc), [member hierarchy](src/messages/ccls_member.cc)
   * [symbol rename](src/messages/textDocument_rename.cc)
-  * [document symbols](src/messages/textDocument_document.cc) and approximate search of [workspace symbol](src/messages/workspace_symbol.cc)
+  * [document symbols](src/messages/textDocument_document.cc) and approximate search of [workspace symbol](src/messages/workspace.cc)
   * [hover information](src/messages/textDocument_hover.cc)
   * diagnostics and code actions (clang FixIts)
   * semantic highlighting and preprocessor skipped regions
@@ -24,8 +24,6 @@ Saving files will incrementally update the index.
 # >>> [Getting started](../../wiki/Home) (CLICK HERE) <<<
 
 * [Build](../../wiki/Build)
-* [Emacs](../../wiki/Emacs)
-* [LanguageClient-neovim](../../wiki/LanguageClient-neovim)
 * [FAQ](../../wiki/FAQ)
 
 ccls can index itself (~180MiB RSS when idle, noted on 2018-09-01), FreeBSD, glibc, Linux, LLVM (~1800MiB RSS), musl (~60MiB RSS), ... with decent memory footprint. See [wiki/Project-Setup](../../wiki/Project-Setup) for examples.
