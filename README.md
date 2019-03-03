@@ -41,7 +41,6 @@ cquery has system include path detection (through running the compiler driver) w
 # >>> [Getting started](../../wiki/Home) (CLICK HERE) <<<
 
 * [Build](../../wiki/Build)
-* [Client feature table](../../wiki/Client-feature-table)
 * [FAQ](../../wiki/FAQ)
 
 ccls can index itself (~180MiB RSS when idle, noted on 2018-09-01), FreeBSD, glibc, Linux, LLVM (~1800MiB RSS), musl (~60MiB RSS), ... with decent memory footprint. See [wiki/compile_commands.json](../../wiki/compile_commands.json) for examples.
