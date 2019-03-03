@@ -88,14 +88,14 @@ REFLECT_STRUCT(DocumentLink, range, target);
 void MessageHandler::textDocument_documentLink(TextDocumentParam &param,
                                                ReplyOnce &reply) {
   auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
-  if (!wf) {
+  if (!wf)
     return;
-  }
 
   std::vector<DocumentLink> result;
+  int column;
   for (const IndexInclude &include : file->def->includes)
     if (std::optional<int> bline =
-            wf->GetBufferPosFromIndexPos(include.line, nullptr, false)) {
+            wf->GetBufferPosFromIndexPos(include.line, &column, false)) {
       const std::string &line = wf->buffer_lines[*bline];
       auto start = line.find_first_of("\"<"), end = line.find_last_of("\">");
       if (start < end)
