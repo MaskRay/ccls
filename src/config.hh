@@ -101,6 +101,10 @@ struct Config {
     // e.g. If your project is built by GCC and has an option thag clang does not understand.
     std::vector<std::string> excludeArgs;
 
+    // Arguments matching any of these glob patterns will be excluded.
+    // * ? and [] metacharacters are supported.
+    std::vector<std::string> excludeGlobs;
+
     // Additional arguments to pass to clang.
     std::vector<std::string> extraArgs;
 
@@ -323,8 +327,8 @@ REFLECT_STRUCT(Config::ServerCap::Workspace::WorkspaceFolders, supported,
 REFLECT_STRUCT(Config::ServerCap::Workspace, workspaceFolders);
 REFLECT_STRUCT(Config::ServerCap, documentOnTypeFormattingProvider,
                foldingRangeProvider, workspace);
-REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, pathMappings,
-               resourceDir);
+REFLECT_STRUCT(Config::Clang, excludeArgs, excludeGlobs, extraArgs,
+               pathMappings, resourceDir);
 REFLECT_STRUCT(Config::ClientCapability, hierarchicalDocumentSymbolSupport,
                linkSupport, snippetSupport);
 REFLECT_STRUCT(Config::CodeLens, localVariables);

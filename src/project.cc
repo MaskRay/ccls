@@ -30,6 +30,7 @@ limitations under the License.
 #include <clang/Tooling/CompilationDatabase.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/StringSet.h>
+#include <llvm/Support/GlobPattern.h>
 #include <llvm/Support/LineIterator.h>
 #include <llvm/Support/Program.h>
 
@@ -82,9 +83,33 @@ struct ProjectProcessor {
   Project::Folder &folder;
   std::unordered_set<size_t> command_set;
   StringSet<> excludeArgs;
+  SmallVector<GlobPattern, 0> excludeGlobs;
+
   ProjectProcessor(Project::Folder &folder) : folder(folder) {
     for (auto &arg : g_config->clang.excludeArgs)
       excludeArgs.insert(arg);
+
+    for (const auto &globString : g_config->clang.excludeGlobs) {
+      auto globOrErr = GlobPattern::create(globString);
+
+      if (!globOrErr) {
+        LOG_S(WARNING) << "bad glob: " << globString;
+        continue;
+      }
+      excludeGlobs.push_back(globOrErr.get());
+    }
+  }
+
+  bool ArgExcluded(StringRef arg) {
+    if (excludeArgs.count(arg))
+      return true;
+
+    for (const auto &glob : excludeGlobs) {
+      if (glob.match(arg)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // Expand %c %cpp ... in .ccls
@@ -115,7 +140,7 @@ struct ProjectProcessor {
         }
         if (ok)
           args.push_back(A.data());
-      } else if (!excludeArgs.count(A)) {
+      } else if (!ArgExcluded(A)) {
         args.push_back(arg);
       }
     }
@@ -396,7 +421,7 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
       entry.args.reserve(args.size());
       for (std::string &arg : args) {
         DoPathMapping(arg);
-        if (!proc.excludeArgs.count(arg))
+        if (!proc.ArgExcluded(arg))
           entry.args.push_back(Intern(arg));
       }
       entry.compdb_size = entry.args.size();
