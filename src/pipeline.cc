@@ -504,13 +504,14 @@ void LaunchStdin() {
     set_thread_name("stdin");
     std::string str;
     const std::string_view kContentLength("Content-Length: ");
+    bool received_exit = false;
     while (true) {
       int len = 0;
       str.clear();
       while (true) {
         int c = getchar();
         if (c == EOF)
-          return;
+          goto quit;
         if (c == '\n') {
           if (str.empty())
             break;
@@ -526,7 +527,7 @@ void LaunchStdin() {
       for (int i = 0; i < len; ++i) {
         int c = getchar();
         if (c == EOF)
-          return;
+          goto quit;
         str[i] = c;
       }
 
@@ -550,15 +551,27 @@ void LaunchStdin() {
         LOG_V(2) << "receive NotificationMessage " << method;
       if (method.empty())
         continue;
-      bool should_exit = method == "exit";
+      received_exit = method == "exit";
       // g_config is not available before "initialize". Use 0 in that case.
       on_request->PushBack(
           {id, std::move(method), std::move(message), std::move(document),
            chrono::steady_clock::now() +
                chrono::milliseconds(g_config ? g_config->request.timeout : 0)});
 
-      if (should_exit)
+      if (received_exit)
         break;
+    }
+
+  quit:
+    if (!received_exit) {
+      const std::string_view str("{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}");
+      auto message = std::make_unique<char[]>(str.size());
+      std::copy(str.begin(), str.end(), message.get());
+      auto document = std::make_unique<rapidjson::Document>();
+      document->Parse(message.get(), str.size());
+      on_request->PushBack({RequestId(), std::string("exit"),
+                            std::move(message), std::move(document),
+                            chrono::steady_clock::now()});
     }
     ThreadLeave();
   }).detach();
