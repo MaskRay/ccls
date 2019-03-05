@@ -113,7 +113,17 @@ std::string LowerPathIfInsensitive(const std::string &path) {
     c = tolower(c);
   return ret;
 #else
-  return path;
+  // use this opportunity to get full path
+  char *rpbuf = NULL;
+  std::string fullpath;
+  rpbuf = realpath(path.c_str(), NULL);
+  if (rpbuf != NULL) {
+    fullpath = rpbuf;
+    free(rpbuf);
+  } else {
+    fullpath = path;
+  }
+  return fullpath;
 #endif
 }
 
