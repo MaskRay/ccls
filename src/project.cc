@@ -18,6 +18,7 @@
 #include <clang/Tooling/CompilationDatabase.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/StringSet.h>
+#include <llvm/Support/GlobPattern.h>
 #include <llvm/Support/LineIterator.h>
 #include <llvm/Support/Program.h>
 
@@ -69,10 +70,22 @@ enum OptionClass {
 struct ProjectProcessor {
   Project::Folder &folder;
   std::unordered_set<size_t> command_set;
-  StringSet<> excludeArgs;
+  StringSet<> exclude_args;
+  std::vector<GlobPattern> exclude_globs;
+
   ProjectProcessor(Project::Folder &folder) : folder(folder) {
     for (auto &arg : g_config->clang.excludeArgs)
-      excludeArgs.insert(arg);
+      if (arg.find_first_of("?*[") == std::string::npos)
+        exclude_args.insert(arg);
+      else if (Expected<GlobPattern> glob_or_err = GlobPattern::create(arg))
+        exclude_globs.push_back(std::move(*glob_or_err));
+      else
+        LOG_S(WARNING) << toString(glob_or_err.takeError());
+  }
+
+  bool ExcludesArg(StringRef arg) {
+    return exclude_args.count(arg) || any_of(exclude_globs,
+      [&](const GlobPattern &glob) { return glob.match(arg); });
   }
 
   // Expand %c %cpp ... in .ccls
@@ -103,7 +116,7 @@ struct ProjectProcessor {
         }
         if (ok)
           args.push_back(A.data());
-      } else if (!excludeArgs.count(A)) {
+      } else if (!ExcludesArg(A)) {
         args.push_back(arg);
       }
     }
@@ -384,7 +397,7 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
       entry.args.reserve(args.size());
       for (std::string &arg : args) {
         DoPathMapping(arg);
-        if (!proc.excludeArgs.count(arg))
+        if (!proc.ExcludesArg(arg))
           entry.args.push_back(Intern(arg));
       }
       entry.compdb_size = entry.args.size();

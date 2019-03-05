@@ -84,9 +84,8 @@ struct Config {
   } capabilities;
 
   struct Clang {
-    // Arguments that should be excluded, e.g. ["-fopenmp", "-Wall"]
-    //
-    // e.g. If your project is built by GCC and has an option thag clang does not understand.
+    // Arguments matching any of these glob patterns will be excluded, e.g.
+    // ["-fopenmp", "-m*", "-Wall"].
     std::vector<std::string> excludeArgs;
 
     // Additional arguments to pass to clang.
