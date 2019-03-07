@@ -1,5 +1,13 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.11)
 project(ccls LANGUAGES CXX)
+
+### Colored output
+if(NOT WIN32)
+  string(ASCII 27 Esc)
+  set(Green       "${Esc}[32m")
+  set(BoldBlue    "${Esc}[1;34m")
+endif()
+
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
 include(DefaultCMakeBuildType)
@@ -92,12 +100,48 @@ endif()
 target_compile_definitions(ccls PRIVATE
                            DEFAULT_RESOURCE_DIRECTORY=R"\(${Clang_RESOURCE_DIR}\)")
 
+
+### use local installed RapidJSON or FETCH from git via cmake
+find_package(RapidJSON QUIET)
+if(RapidJSON_FOUND)
+  message("${BoldBlue}\nRapidJSON has been installed by your system before cloning ccls\n\n${ColourReset}")
+  include_directories(${RapidJSON_INCLUDE_DIRS})
+else()
+  message("${Green}====> Downloading RapidJSON ---- A fast JSON parser/generator for C++ with both SAX/DOM style API http://rapidjson.org/
+${ColourReset}")
+  include(FetchContent)
+  FetchContent_Declare(
+    rapidjson
+    GIT_REPOSITORY https://github.com/Tencent/rapidjson
+    GIT_TAG master
+    )
+
+  FetchContent_GetProperties(rapidjson)
+  if (NOT rapidjson_POPULATED)
+    FetchContent_Populate(rapidjson)
+
+    message(${rapidjson_SOURCE_DIR})
+    message(${rapidjson_BINARY_DIR})
+    add_subdirectory(${rapidjson_SOURCE_DIR})
+    message("${BoldBlue}\ngit clone RapidJSON successfully!\n\n${ColourReset}")
+    set(INCLUDE_DIRS ${rapidjson_SOURCE_DIR}/include)
+
+    message("${BoldBlue}\n${rapidjson_SOURCE_DIR}/include ${ColourReset}")
+    message("${BoldBlue}\n${INCLUDE_DIRS} ${ColourReset}")
+    target_include_directories(ccls PUBLIC
+      ${INCLUDE_DIRS}
+      )
+
+  endif()
+
+endif()
+
+
 ### Includes
 
 target_include_directories(ccls PRIVATE src)
 target_include_directories(ccls SYSTEM PRIVATE
-                           third_party
-                           third_party/rapidjson/include)
+                           third_party)
 
 ### Install
 
