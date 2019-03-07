@@ -310,9 +310,9 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
   Update(lid2file_id, u->file_id, std::move(u->funcs_def_update));
   for (auto &[usr, del_add]: u->funcs_declarations) {
     for (DeclRef &dr : del_add.first)
-      RefDecl(prev_lid2file_id, usr, Kind::Func, dr, -1);
+      RefDecl(prev_lid2file_id, usr, Kind::FuncDecl, dr, -1);
     for (DeclRef &dr : del_add.second)
-      RefDecl(lid2file_id, usr, Kind::Func, dr, 1);
+      RefDecl(lid2file_id, usr, Kind::FuncDecl, dr, 1);
   }
   REMOVE_ADD(func, declarations);
   REMOVE_ADD(func, derived);

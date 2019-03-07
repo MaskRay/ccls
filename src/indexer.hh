@@ -45,7 +45,7 @@ using Usr = uint64_t;
 
 // The order matters. In FindSymbolsAtLocation, we want Var/Func ordered in
 // front of others.
-enum class Kind : uint8_t { Invalid, File, Type, Func, Var };
+enum class Kind : uint8_t { Invalid, File, Type, Func, FuncDecl, Var };
 REFLECT_UNDERLYING_B(Kind);
 
 enum class Role : uint16_t {

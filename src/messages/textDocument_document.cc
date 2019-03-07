@@ -182,6 +182,9 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
     for (auto [sym, refcnt] : file->symbol2refcnt) {
       if (refcnt <= 0 || !sym.extent.Valid())
         continue;
+      // For now we do not show function decl because there can be multiple items.
+      if (sym.kind == Kind::FuncDecl)
+        continue;
       auto r = sym2ds.try_emplace(SymbolIdx{sym.usr, sym.kind});
       if (!r.second)
         continue;
