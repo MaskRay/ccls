@@ -7,6 +7,7 @@ include(DefaultCMakeBuildType)
 # Required Clang version
 option(LLVM_ENABLE_RTTI "-fno-rtti if OFF. This should match LLVM libraries" OFF)
 option(USE_SHARED_LLVM "Link against libLLVM.so instead separate LLVM{Option,Support,...}" OFF)
+option(USE_SYSTEM_RAPIDJSON "Use system RapidJSON instead of the git submodule if exists" ON)
 
 # Sources for the executable are specified at end of CMakeLists.txt
 add_executable(ccls "")
@@ -96,8 +97,16 @@ target_compile_definitions(ccls PRIVATE
 
 target_include_directories(ccls PRIVATE src)
 target_include_directories(ccls SYSTEM PRIVATE
-                           third_party
-                           third_party/rapidjson/include)
+                           third_party)
+
+if(USE_SYSTEM_RAPIDJSON)
+  find_package(RapidJSON QUIET)
+endif()
+if(RapidJSON_FOUND)
+  target_include_directories(ccls SYSTEM PRIVATE ${RapidJSON_INCLUDE_DIRS})
+else()
+  target_include_directories(ccls SYSTEM PRIVATE third_party/rapidjson/include)
+endif()
 
 ### Install
 
