@@ -95,13 +95,15 @@ void MessageHandler::textDocument_documentLink(TextDocumentParam &param,
 
 namespace {
 struct DocumentSymbolParam : TextDocumentParam {
-  // false: outline; true: all symbols
-  bool all = false;
+  // Include sym if `!(sym.role & excludeRole)`.
+  Role excludeRole = Role((int)Role::All - (int)Role::Definition -
+                          (int)Role::Declaration - (int)Role::Dynamic);
   // If >= 0, return Range[] instead of SymbolInformation[] to reduce output.
   int startLine = -1;
   int endLine = -1;
 };
-REFLECT_STRUCT(DocumentSymbolParam, textDocument, all, startLine, endLine);
+REFLECT_STRUCT(DocumentSymbolParam, textDocument, excludeRole, startLine,
+               endLine);
 
 struct DocumentSymbol {
   std::string name;
@@ -149,18 +151,22 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
 
   int file_id;
   auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply, &file_id);
-  if (!wf) {
+  if (!wf)
     return;
-  }
+  auto Allows = [&](SymbolRef sym) {
+    return !(sym.role & param.excludeRole);
+  };
 
   if (param.startLine >= 0) {
     std::vector<lsRange> result;
-    for (auto [sym, refcnt] : file->symbol2refcnt)
-      if (refcnt > 0 && (param.all || sym.extent.Valid()) &&
-          param.startLine <= sym.range.start.line &&
-          sym.range.start.line <= param.endLine)
-        if (auto loc = GetLsLocation(db, wfiles, sym, file_id))
-          result.push_back(loc->range);
+    for (auto [sym, refcnt] : file->symbol2refcnt) {
+      if (refcnt <= 0 || !Allows(sym) ||
+          !(param.startLine <= sym.range.start.line &&
+            sym.range.start.line <= param.endLine))
+        continue;
+      if (auto loc = GetLsLocation(db, wfiles, sym, file_id))
+        result.push_back(loc->range);
+    }
     std::sort(result.begin(), result.end());
     reply(result);
   } else if (g_config->client.hierarchicalDocumentSymbolSupport) {
@@ -171,22 +177,26 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
       if (refcnt <= 0 || !sym.extent.Valid())
         continue;
       auto r = sym2ds.try_emplace(SymbolIdx{sym.usr, sym.kind});
+      auto &ds = r.first->second;
+      if (!ds || sym.role & Role::Definition) {
+        if (!ds)
+          ds = std::make_unique<DocumentSymbol>();
+        if (auto range = GetLsRange(wf, sym.range)) {
+          ds->selectionRange = *range;
+          ds->range = ds->selectionRange;
+          // For a macro expansion, M(name), we may use `M` for extent and
+          // `name` for spell, do the check as selectionRange must be a subrange
+          // of range.
+          if (sym.extent.Valid())
+            if (auto range1 = GetLsRange(wf, sym.extent);
+                range1 && range1->Includes(*range))
+              ds->range = *range1;
+        }
+      }
       if (!r.second)
         continue;
-      auto &ds = r.first->second;
-      ds = std::make_unique<DocumentSymbol>();
-      if (auto range = GetLsRange(wf, sym.range)) {
-        ds->selectionRange = *range;
-        ds->range = ds->selectionRange;
-        // For a macro expansion, M(name), we may use `M` for extent and `name`
-        // for spell, do the check as selectionRange must be a subrange of
-        // range.
-        if (sym.extent.Valid())
-          if (auto range1 = GetLsRange(wf, sym.extent);
-              range1 && range1->Includes(*range))
-            ds->range = *range1;
-      }
       std::vector<const void *> def_ptrs;
+      SymbolKind kind = SymbolKind::Unknown;
       WithEntity(db, sym, [&](const auto &entity) {
         auto *def = entity.AnyDef();
         if (!def)
@@ -195,20 +205,14 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
         ds->detail = def->detailed_name;
         for (auto &def : entity.def)
           if (def.file_id == file_id && !Ignore(&def)) {
-            ds->kind = def.kind;
-            if (def.spell || def.kind == SymbolKind::Namespace)
-              def_ptrs.push_back(&def);
+            kind = ds->kind = def.kind;
+            def_ptrs.push_back(&def);
           }
       });
-      if (!(param.all || sym.role & Role::Definition ||
-            ds->kind == SymbolKind::Function ||
-            ds->kind == SymbolKind::Method ||
-            ds->kind == SymbolKind::Namespace)) {
+      if (def_ptrs.empty() || !(kind == SymbolKind::Namespace || Allows(sym))) {
         ds.reset();
         continue;
       }
-      if (def_ptrs.empty())
-        continue;
       if (sym.kind == Kind::Func)
         funcs.emplace_back(std::move(def_ptrs), ds.get());
       else if (sym.kind == Kind::Type)
@@ -252,8 +256,7 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
   } else {
     std::vector<SymbolInformation> result;
     for (auto [sym, refcnt] : file->symbol2refcnt) {
-      if (refcnt <= 0 || !sym.extent.Valid() ||
-          !(param.all || sym.role & Role::Definition))
+      if (refcnt <= 0 || !Allows(sym))
         continue;
       if (std::optional<SymbolInformation> info =
               GetSymbolInfo(db, sym, false)) {
