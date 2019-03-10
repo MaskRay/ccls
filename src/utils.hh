@@ -62,6 +62,8 @@ std::string EscapeFileName(std::string path);
 
 std::string ResolveIfRelative(const std::string &directory,
                               const std::string &path);
+std::string RealPath(const std::string &path);
+bool NormalizeFolder(std::string &path);
 
 std::optional<int64_t> LastWriteTime(const std::string &path);
 std::optional<std::string> ReadContent(const std::string &filename);
