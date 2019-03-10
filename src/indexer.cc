@@ -490,6 +490,7 @@ public:
     PP.PolishForDeclaration = true;
     PP.ConstantsAsWritten = true;
     PP.SuppressTagKeyword = true;
+    PP.SuppressUnwrittenScope = g_config->index.name.suppressUnwrittenScope;
     PP.SuppressInitializers = true;
     PP.FullyQualifiedName = false;
     return PP;

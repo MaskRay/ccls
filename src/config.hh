@@ -273,6 +273,10 @@ struct Config {
     std::vector<std::string> multiVersionBlacklist;
     std::vector<std::string> multiVersionWhitelist;
 
+    struct Name {
+      bool suppressUnwrittenScope = true;
+    } name;
+
     // Allow indexing on textDocument/didChange.
     // May be too slow for big projects, so it is off by default.
     bool onChange = false;
@@ -335,10 +339,11 @@ REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
 REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
                spellChecking, whitelist)
 REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist, whitelist)
+REFLECT_STRUCT(Config::Index::Name, suppressUnwrittenScope);
 REFLECT_STRUCT(Config::Index, blacklist, comments, initialBlacklist,
                initialWhitelist, maxInitializerLines, multiVersion,
-               multiVersionBlacklist, multiVersionWhitelist, onChange, threads,
-               trackDependency, whitelist);
+               multiVersionBlacklist, multiVersionWhitelist, name, onChange,
+               threads, trackDependency, whitelist);
 REFLECT_STRUCT(Config::Request, timeout);
 REFLECT_STRUCT(Config::Session, maxNum);
 REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
