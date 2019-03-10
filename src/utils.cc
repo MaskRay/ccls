@@ -25,7 +25,6 @@ limitations under the License.
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Path.h>
-using namespace llvm;
 
 #include <algorithm>
 #include <assert.h>
@@ -35,6 +34,8 @@ using namespace llvm;
 #include <regex>
 #include <string.h>
 #include <unordered_map>
+
+using namespace llvm;
 
 namespace ccls {
 struct Matcher::Impl {
@@ -140,6 +141,21 @@ std::string ResolveIfRelative(const std::string &directory,
   SmallString<256> Ret;
   sys::path::append(Ret, directory, path);
   return NormalizePath(Ret.str());
+}
+
+std::string RealPath(const std::string &path) {
+  SmallString<256> buf;
+  sys::fs::real_path(path, buf);
+  return buf.empty() ? path : llvm::sys::path::convert_to_slash(buf);
+}
+
+bool NormalizeFolder(std::string &path) {
+  for (auto &[root, real] : g_config->workspaceFolders)
+    if (real.size() && llvm::StringRef(path).startswith(real)) {
+      path = root + path.substr(real.size());
+      return true;
+    }
+  return false;
 }
 
 std::optional<int64_t> LastWriteTime(const std::string &path) {
