@@ -131,6 +131,8 @@ std::string DocumentUri::GetPath() const {
     ret[0] = toupper(ret[0]);
   }
 #endif
+  if (g_config)
+    NormalizeFolder(ret);
   return ret;
 }
 

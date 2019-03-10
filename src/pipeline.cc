@@ -145,7 +145,7 @@ std::string AppendSerializationFormat(const std::string &base) {
   }
 }
 
-std::string GetCachePath(const std::string &src) {
+std::string GetCachePath(std::string src) {
   if (g_config->cache.hierarchicalPath) {
     std::string ret =
         g_config->cache.directory + (src[0] == '/' ? src.substr(1) : src);
@@ -154,7 +154,7 @@ std::string GetCachePath(const std::string &src) {
 #endif
     return ret;
   }
-  for (auto &root : g_config->workspaceFolders)
+  for (auto &[root, _] : g_config->workspaceFolders)
     if (StringRef(src).startswith(root)) {
       auto len = root.size();
       return g_config->cache.directory +
