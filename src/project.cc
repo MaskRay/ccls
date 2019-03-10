@@ -388,11 +388,17 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
       Project::Entry entry;
       entry.root = root;
       DoPathMapping(entry.root);
-      entry.directory = NormalizePath(Cmd.Directory);
+
+      // If workspace folder is real/ but entries use symlink/, convert to
+      // real/.
+      entry.directory = RealPath(Cmd.Directory);
+      NormalizeFolder(entry.directory);
       DoPathMapping(entry.directory);
       entry.filename =
-          NormalizePath(ResolveIfRelative(entry.directory, Cmd.Filename));
+          RealPath(ResolveIfRelative(entry.directory, Cmd.Filename));
+      NormalizeFolder(entry.filename);
       DoPathMapping(entry.filename);
+
       std::vector<std::string> args = std::move(Cmd.CommandLine);
       entry.args.reserve(args.size());
       for (std::string &arg : args) {
