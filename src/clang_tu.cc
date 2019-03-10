@@ -30,10 +30,15 @@ std::string PathFromFileEntry(const FileEntry &file) {
   if (Name.empty())
     Name = file.getName();
   std::string ret = NormalizePath(Name);
-  // Resolve /usr/include/c++/7.3.0 symlink.
-  if (!llvm::any_of(g_config->workspaceFolders, [&](const std::string &root) {
-        return StringRef(ret).startswith(root);
-      })) {
+  // Resolve symlinks outside of workspace folders, e.g. /usr/include/c++/7.3.0
+  bool in_folder = false;
+  for (auto &[root, real] : g_config->workspaceFolders)
+    if (real.size() && StringRef(ret).startswith(real)) {
+      ret = root + ret.substr(real.size());
+      in_folder = true;
+      break;
+    }
+  if (!in_folder) {
     SmallString<256> dest;
     llvm::sys::fs::real_path(ret, dest);
     ret = llvm::sys::path::convert_to_slash(dest.str());

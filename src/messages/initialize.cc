@@ -337,19 +337,35 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
   // Set project root.
   EnsureEndsInSlash(project_path);
   g_config->fallbackFolder = project_path;
+  auto &workspaceFolders = g_config->workspaceFolders;
+  auto Real = [](const std::string &path) {
+    SmallString<256> real;
+    sys::fs::real_path(path, real);
+    return sys::path::convert_to_slash(real) + '/';
+  };
   for (const WorkspaceFolder &wf : param.workspaceFolders) {
     std::string path = wf.uri.GetPath();
     EnsureEndsInSlash(path);
-    g_config->workspaceFolders.push_back(path);
-    LOG_S(INFO) << "add workspace folder " << wf.name << ": " << path;
+    std::string real = Real(path);
+    workspaceFolders.emplace_back(path, path == real ? "" : real);
   }
-  if (param.workspaceFolders.empty())
-    g_config->workspaceFolders.push_back(project_path);
+  if (workspaceFolders.empty()) {
+    std::string real = Real(project_path);
+    workspaceFolders.emplace_back(project_path,
+                                  project_path == real ? "" : real);
+  }
+  llvm::sort(workspaceFolders,
+             [](auto &l, auto &r) { return l.first.size() > r.first.size(); });
+  for (auto &[folder, real] : workspaceFolders)
+    if (real.empty())
+      LOG_S(INFO) << "workspace folder: " << folder;
+    else
+      LOG_S(INFO) << "workspace folder: " << folder << " -> " << real;
 
   if (g_config->cache.directory.empty())
     g_config->cache.retainInMemory = 1;
   else if (!g_config->cache.hierarchicalPath)
-    for (const std::string &folder : g_config->workspaceFolders) {
+    for (auto &[folder, _] : workspaceFolders) {
       // Create two cache directories for files inside and outside of the
       // project.
       std::string escaped = EscapeFileName(folder.substr(0, folder.size() - 1));
@@ -358,7 +374,7 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
     }
 
   idx::Init();
-  for (const std::string &folder : g_config->workspaceFolders)
+  for (auto &[folder, _] : workspaceFolders)
     m->project->Load(folder);
 
   // Start indexer threads. Start this after loading the project, as that

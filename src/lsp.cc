@@ -17,6 +17,8 @@ limitations under the License.
 
 #include "log.hh"
 
+#include <llvm/ADT/StringRef.h>
+
 #include <rapidjson/document.h>
 
 #include <algorithm>
@@ -131,6 +133,10 @@ std::string DocumentUri::GetPath() const {
     ret[0] = toupper(ret[0]);
   }
 #endif
+  if (g_config)
+    for (auto &[root, real] : g_config->workspaceFolders)
+      if (real.size() && llvm::StringRef(ret).startswith(real))
+        return root + ret.substr(real.size());
   return ret;
 }
 
