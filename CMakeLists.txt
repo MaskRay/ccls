@@ -1,38 +1,34 @@
 cmake_minimum_required(VERSION 3.8)
 project(ccls LANGUAGES CXX)
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
-include(DefaultCMakeBuildType)
-
-# Required Clang version
-option(LLVM_ENABLE_RTTI "-fno-rtti if OFF. This should match LLVM libraries" OFF)
-option(USE_SHARED_LLVM "Link against libLLVM.so instead separate LLVM{Option,Support,...}" OFF)
 option(USE_SYSTEM_RAPIDJSON "Use system RapidJSON instead of the git submodule if exists" ON)
 
 # Sources for the executable are specified at end of CMakeLists.txt
 add_executable(ccls "")
 
-### Compile options
+### Default build type
 
-# CMake default compile flags:
-# MSVC + Clang(Windows):
-#   debug: /MDd /Zi /Ob0 /Od /RTC1
-#   release: /MD /O2 /Ob2 /DNDEBUG
-# GCC + Clang(Linux):
-#   debug: -g
-#   release: -O3 -DNDEBUG
+set(DEFAULT_CMAKE_BUILD_TYPE Release)
+
+# CMAKE_BUILD_TYPE is not available if a multi-configuration generator is used
+# (eg Visual Studio generators)
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to '${DEFAULT_CMAKE_BUILD_TYPE}' as none \
+was specified.")
+  set(CMAKE_BUILD_TYPE ${DEFAULT_CMAKE_BUILD_TYPE}
+      CACHE STRING "Choose the type of build." FORCE)
+
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE
+               PROPERTY STRINGS Debug Release MinSizeRel RelWithDebInfo)
+endif()
+
+### Compile options
 
 # Enable C++17 (Required)
 set_property(TARGET ccls PROPERTY CXX_STANDARD 17)
 set_property(TARGET ccls PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET ccls PROPERTY CXX_EXTENSIONS OFF)
-
-if(NOT LLVM_ENABLE_RTTI)
-  # releases.llvm.org libraries are compiled with -fno-rtti
-  # The mismatch between lib{clang,LLVM}* and ccls can make libstdc++ std::make_shared return nullptr
-  # _Sp_counted_ptr_inplace::_M_get_deleter
-  target_compile_options(ccls PRIVATE -fno-rtti)
-endif()
 
 # CMake sets MSVC for both MSVC and Clang(Windows)
 if(MSVC)
@@ -72,9 +68,40 @@ endif()
 
 ### Libraries
 
-# See cmake/FindClang.cmake
-find_package(Clang 7.0.0)
-target_link_libraries(ccls PRIVATE Clang::Clang)
+find_package(Clang REQUIRED)
+
+target_link_libraries(ccls PRIVATE
+  clangIndex
+  clangFormat
+  clangTooling
+  clangToolingInclusions
+  clangToolingCore
+  clangFrontend
+  clangParse
+  clangSerialization
+  clangSema
+  clangAST
+  clangLex
+  clangDriver
+  clangBasic
+)
+
+if(LLVM_LINK_LLVM_DYLIB)
+  target_link_libraries(ccls PRIVATE LLVM)
+else()
+  target_link_libraries(ccls PRIVATE LLVMSupport)
+endif()
+
+if(NOT LLVM_ENABLE_RTTI)
+  # releases.llvm.org libraries are compiled with -fno-rtti
+  # The mismatch between lib{clang,LLVM}* and ccls can make libstdc++ std::make_shared return nullptr
+  # _Sp_counted_ptr_inplace::_M_get_deleter
+  if(MSVC)
+    target_compile_options(ccls PRIVATE /GR-)
+  else()
+    target_compile_options(ccls PRIVATE -fno-rtti)
+  endif()
+endif()
 
 # Enable threading support
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -90,13 +117,34 @@ endif()
 
 ### Definitions
 
+# Find Clang resource directory with Clang executable.
+
+find_program(CLANG_EXECUTABLE clang)
+if(NOT CLANG_EXECUTABLE)
+  message(FATAL_ERROR "clang executable not found.")
+endif()
+
+execute_process(
+  COMMAND ${CLANG_EXECUTABLE} -print-resource-dir
+  RESULT_VARIABLE CLANG_FIND_RESOURCE_DIR_RESULT
+  OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+  ERROR_VARIABLE CLANG_FIND_RESOURCE_DIR_ERROR
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+if(CLANG_FIND_RESOURCE_DIR_RESULT)
+  message(FATAL_ERROR "Error retrieving Clang resource directory with Clang \
+          executable. Output:\n ${CLANG_FIND_RESOURCE_DIR_ERROR}")
+endif()
+
 target_compile_definitions(ccls PRIVATE
-                           DEFAULT_RESOURCE_DIRECTORY=R"\(${Clang_RESOURCE_DIR}\)")
+                           DEFAULT_RESOURCE_DIRECTORY=R"\(${CLANG_RESOURCE_DIR}\)")
 
 ### Includes
 
 target_include_directories(ccls PRIVATE src)
-target_include_directories(ccls SYSTEM PRIVATE third_party)
+target_include_directories(ccls SYSTEM PRIVATE
+  "third_party;${LLVM_INCLUDE_DIRS};${CLANG_INCLUDE_DIRS}")
 
 if(USE_SYSTEM_RAPIDJSON)
   find_package(RapidJSON QUIET)
@@ -109,13 +157,6 @@ target_include_directories(ccls SYSTEM PRIVATE ${RapidJSON_INCLUDE_DIRS})
 ### Install
 
 install(TARGETS ccls RUNTIME DESTINATION bin)
-
-### Tools
-
-# We use glob here since source files are already manually added with
-# target_sources further down
-file(GLOB SOURCES src/*.cc src/*.h src/serializers/*.cc src/serializers/*.h
-                  src/messages/*.h src/messages/*.cc)
 
 ### Sources
 
