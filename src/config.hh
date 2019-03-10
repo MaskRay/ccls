@@ -20,7 +20,7 @@ initialization options specified by the client. For example, in shell syntax:
 struct Config {
   // **Not available for configuration**
   std::string fallbackFolder;
-  std::vector<std::string> workspaceFolders;
+  std::vector<std::pair<std::string, std::string>> workspaceFolders;
   // If specified, this option overrides compile_commands.json and this
   // external command will be executed with an option |projectRoot|.
   // The initialization options will be provided as stdin.

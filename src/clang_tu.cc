@@ -18,15 +18,8 @@ std::string PathFromFileEntry(const FileEntry &file) {
   if (Name.empty())
     Name = file.getName();
   std::string ret = NormalizePath(Name);
-  // Resolve /usr/include/c++/7.3.0 symlink.
-  if (!llvm::any_of(g_config->workspaceFolders, [&](const std::string &root) {
-        return StringRef(ret).startswith(root);
-      })) {
-    SmallString<256> dest;
-    llvm::sys::fs::real_path(ret, dest);
-    ret = llvm::sys::path::convert_to_slash(dest.str());
-  }
-  return ret;
+  // Resolve symlinks outside of workspace folders, e.g. /usr/include/c++/7.3.0
+  return NormalizeFolder(ret) ? ret : RealPath(ret);
 }
 
 static Pos Decomposed2LineAndCol(const SourceManager &SM,

@@ -23,7 +23,7 @@ namespace ccls {
 REFLECT_STRUCT(SymbolInformation, name, kind, location, containerName);
 
 void MessageHandler::workspace_didChangeConfiguration(EmptyParam &) {
-  for (const std::string &folder : g_config->workspaceFolders)
+  for (auto &[folder, _] : g_config->workspaceFolders)
     project->Load(folder);
   project->Index(wfiles, RequestId());
 
@@ -70,7 +70,8 @@ void MessageHandler::workspace_didChangeWorkspaceFolders(
     std::string root = wf.uri.GetPath();
     EnsureEndsInSlash(root);
     LOG_S(INFO) << "delete workspace folder " << wf.name << ": " << root;
-    auto it = llvm::find(g_config->workspaceFolders, root);
+    auto it = llvm::find_if(g_config->workspaceFolders,
+                            [&](auto &folder) { return folder.first == root; });
     if (it != g_config->workspaceFolders.end()) {
       g_config->workspaceFolders.erase(it);
       {
@@ -80,12 +81,21 @@ void MessageHandler::workspace_didChangeWorkspaceFolders(
       project->root2folder.erase(root);
     }
   }
+  auto &workspaceFolders = g_config->workspaceFolders;
   for (const WorkspaceFolder &wf : param.event.added) {
-    std::string root = wf.uri.GetPath();
-    EnsureEndsInSlash(root);
-    LOG_S(INFO) << "add workspace folder " << wf.name << ": " << root;
-    g_config->workspaceFolders.push_back(root);
-    project->Load(root);
+    std::string folder = wf.uri.GetPath();
+    EnsureEndsInSlash(folder);
+    std::string real = RealPath(folder) + '/';
+    if (folder == real)
+      real.clear();
+    LOG_S(INFO) << "add workspace folder " << wf.name << ": "
+                << (real.empty() ? folder : folder + " -> " + real);
+    workspaceFolders.emplace_back();
+    auto it = workspaceFolders.end() - 1;
+    for (; it != workspaceFolders.begin() && folder < it[-1].first; --it)
+      *it = it[-1];
+    *it = {folder, real};
+    project->Load(folder);
   }
 
   project->Index(wfiles, RequestId());
