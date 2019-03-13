@@ -89,7 +89,7 @@ target_link_libraries(ccls PRIVATE
 if(LLVM_LINK_LLVM_DYLIB)
   target_link_libraries(ccls PRIVATE LLVM)
 else()
-  target_link_libraries(ccls PRIVATE LLVMSupport)
+  target_link_libraries(ccls PRIVATE LLVMOption LLVMSupport)
 endif()
 
 if(NOT LLVM_ENABLE_RTTI)
