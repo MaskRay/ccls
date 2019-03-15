@@ -140,4 +140,16 @@ public:
   bool operator==(const Maybe &o) const { return storage == o.storage; }
   bool operator!=(const Maybe &o) const { return !(*this == o); }
 };
+
+template <typename T> struct Vec {
+  std::unique_ptr<T[]> a;
+  int s;
+  const T *begin() const { return a.get(); }
+  T *begin() { return a.get(); }
+  const T *end() const { return a.get() + s; }
+  T *end() { return a.get() + s; }
+  int size() const { return s; }
+  const T &operator[](size_t i) const { return a.get()[i]; }
+  T &operator[](size_t i) { return a.get()[i]; }
+};
 } // namespace ccls
