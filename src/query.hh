@@ -77,7 +77,7 @@ template <typename T>
 using Update =
     std::unordered_map<Usr, std::pair<std::vector<T>, std::vector<T>>>;
 
-struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
+struct QueryFunc : QueryEntity<QueryFunc, FuncDef<Vec>> {
   Usr usr;
   llvm::SmallVector<Def, 1> def;
   std::vector<DeclRef> declarations;
@@ -85,7 +85,7 @@ struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
   std::vector<Use> uses;
 };
 
-struct QueryType : QueryEntity<QueryType, TypeDef> {
+struct QueryType : QueryEntity<QueryType, TypeDef<Vec>> {
   Usr usr;
   llvm::SmallVector<Def, 1> def;
   std::vector<DeclRef> declarations;
@@ -158,9 +158,9 @@ struct DB {
   std::vector<QueryFile> files;
   llvm::StringMap<int> name2file_id;
   llvm::DenseMap<Usr, int, DenseMapInfoForUsr> func_usr, type_usr, var_usr;
-  std::vector<QueryFunc> funcs;
-  std::vector<QueryType> types;
-  std::vector<QueryVar> vars;
+  llvm::SmallVector<QueryFunc, 0> funcs;
+  llvm::SmallVector<QueryType, 0> types;
+  llvm::SmallVector<QueryVar, 0> vars;
 
   void clear();
 
@@ -199,6 +199,7 @@ Maybe<DeclRef> GetDefinitionSpell(DB *db, SymbolIdx sym);
 // Get defining declaration (if exists) or an arbitrary declaration (otherwise)
 // for each id.
 std::vector<Use> GetFuncDeclarations(DB *, const std::vector<Usr> &);
+std::vector<Use> GetFuncDeclarations(DB *, const Vec<Usr> &);
 std::vector<Use> GetTypeDeclarations(DB *, const std::vector<Usr> &);
 std::vector<DeclRef> GetVarDeclarations(DB *, const std::vector<Usr> &, unsigned);
 
@@ -268,8 +269,8 @@ void EachOccurrence(DB *db, SymbolIdx sym, bool include_decl, Fn &&fn) {
 
 SymbolKind GetSymbolKind(DB *db, SymbolIdx sym);
 
-template <typename Fn>
-void EachDefinedFunc(DB *db, const std::vector<Usr> &usrs, Fn &&fn) {
+template <typename C, typename Fn>
+void EachDefinedFunc(DB *db, const C &usrs, Fn &&fn) {
   for (Usr usr : usrs) {
     auto &obj = db->Func(usr);
     if (!obj.def.empty())

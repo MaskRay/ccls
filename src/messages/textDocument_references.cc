@@ -16,7 +16,11 @@ limitations under the License.
 #include "message_handler.hh"
 #include "query.hh"
 
+#include <llvm/ADT/iterator_range.h>
+
 #include <unordered_set>
+
+using namespace llvm;
 
 namespace ccls {
 namespace {
@@ -80,7 +84,7 @@ void MessageHandler::textDocument_references(JsonReader &reader,
           if (def.spell) {
             parent_kind = GetSymbolKind(db, sym);
             if (param.base)
-              for (Usr usr : def.GetBases())
+              for (Usr usr : make_range(def.bases_begin(), def.bases_end()))
                 if (!seen.count(usr)) {
                   seen.insert(usr);
                   stack.push_back(usr);
