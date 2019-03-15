@@ -131,6 +131,9 @@ void Reflect(BinaryWriter &visitor, SymbolRef &value);
 void Reflect(BinaryWriter &visitor, Use &value);
 void Reflect(BinaryWriter &visitor, DeclRef &value);
 
+template <typename T>
+using VectorAdapter = std::vector<T, std::allocator<T>>;
+
 template <typename D> struct NameMixin {
   std::string_view Name(bool qualified) const {
     auto self = static_cast<const D *>(this);
@@ -144,7 +147,8 @@ template <typename D> struct NameMixin {
   }
 };
 
-struct FuncDef : NameMixin<FuncDef> {
+template <template <typename T> class V>
+struct FuncDef : NameMixin<FuncDef<V>> {
   // General metadata.
   const char *detailed_name = "";
   const char *hover = "";
@@ -152,11 +156,11 @@ struct FuncDef : NameMixin<FuncDef> {
   Maybe<DeclRef> spell;
 
   // Method this method overrides.
-  std::vector<Usr> bases;
+  V<Usr> bases;
   // Local variables or parameters.
-  std::vector<Usr> vars;
+  V<Usr> vars;
   // Functions that this function calls.
-  std::vector<SymbolRef> callees;
+  V<SymbolRef> callees;
 
   int file_id = -1; // not serialized
   int16_t qual_name_offset = 0;
@@ -166,14 +170,15 @@ struct FuncDef : NameMixin<FuncDef> {
   SymbolKind parent_kind = SymbolKind::Unknown;
   uint8_t storage = clang::SC_None;
 
-  std::vector<Usr> GetBases() const { return bases; }
+  const Usr *bases_begin() const { return bases.begin(); }
+  const Usr *bases_end() const { return bases.end(); }
 };
-REFLECT_STRUCT(FuncDef, detailed_name, hover, comments, spell, bases, vars,
-                    callees, qual_name_offset, short_name_offset,
-                    short_name_size, kind, parent_kind, storage);
+REFLECT_STRUCT(FuncDef<VectorAdapter>, detailed_name, hover, comments, spell,
+               bases, vars, callees, qual_name_offset, short_name_offset,
+               short_name_size, kind, parent_kind, storage);
 
 struct IndexFunc : NameMixin<IndexFunc> {
-  using Def = FuncDef;
+  using Def = FuncDef<VectorAdapter>;
   Usr usr;
   Def def;
   std::vector<DeclRef> declarations;
@@ -181,17 +186,18 @@ struct IndexFunc : NameMixin<IndexFunc> {
   std::vector<Use> uses;
 };
 
-struct TypeDef : NameMixin<TypeDef> {
+template <template <typename T> class V>
+struct TypeDef : NameMixin<TypeDef<V>> {
   const char *detailed_name = "";
   const char *hover = "";
   const char *comments = "";
   Maybe<DeclRef> spell;
 
-  std::vector<Usr> bases;
+  V<Usr> bases;
   // Types, functions, and variables defined in this type.
-  std::vector<Usr> funcs;
-  std::vector<Usr> types;
-  std::vector<std::pair<Usr, int64_t>> vars;
+  V<Usr> funcs;
+  V<Usr> types;
+  V<std::pair<Usr, int64_t>> vars;
 
   // If set, then this is the same underlying type as the given value (ie, this
   // type comes from a using or typedef statement).
@@ -203,14 +209,15 @@ struct TypeDef : NameMixin<TypeDef> {
   SymbolKind kind = SymbolKind::Unknown;
   SymbolKind parent_kind = SymbolKind::Unknown;
 
-  std::vector<Usr> GetBases() const { return bases; }
+  const Usr *bases_begin() const { return bases.begin(); }
+  const Usr *bases_end() const { return bases.end(); }
 };
-REFLECT_STRUCT(TypeDef, detailed_name, hover, comments, spell, bases,
-                    funcs, types, vars, alias_of, qual_name_offset,
-                    short_name_offset, short_name_size, kind, parent_kind);
+REFLECT_STRUCT(TypeDef<VectorAdapter>, detailed_name, hover, comments, spell,
+               bases, funcs, types, vars, alias_of, qual_name_offset,
+               short_name_offset, short_name_size, kind, parent_kind);
 
 struct IndexType {
-  using Def = TypeDef;
+  using Def = TypeDef<VectorAdapter>;
   Usr usr;
   Def def;
   std::vector<DeclRef> declarations;
@@ -248,7 +255,8 @@ struct VarDef : NameMixin<VarDef> {
             storage == clang::SC_Register);
   }
 
-  std::vector<Usr> GetBases() const { return {}; }
+  const Usr *bases_begin() const { return nullptr; }
+  const Usr *bases_end() const { return nullptr; }
 };
 REFLECT_STRUCT(VarDef, detailed_name, hover, comments, spell, type,
                     qual_name_offset, short_name_offset, short_name_size, kind,

@@ -69,6 +69,51 @@ bool TryReplaceDef(llvm::SmallVectorImpl<Q> &def_list, Q &&def) {
 
 } // namespace
 
+template <typename T> Vec<T> Convert(const std::vector<T> &o) {
+  Vec<T> r{std::make_unique<T[]>(o.size()), (int)o.size()};
+  std::copy(o.begin(), o.end(), r.begin());
+  return r;
+}
+
+QueryFunc::Def Convert(const IndexFunc::Def &o) {
+  QueryFunc::Def r;
+  r.detailed_name = o.detailed_name;
+  r.hover = o.hover;
+  r.comments = o.comments;
+  r.spell = o.spell;
+  r.bases = Convert(o.bases);
+  r.vars = Convert(o.vars);
+  r.callees = Convert(o.callees);
+  // no file_id
+  r.qual_name_offset = o.qual_name_offset;
+  r.short_name_offset = o.short_name_offset;
+  r.short_name_size = o.short_name_size;
+  r.kind = o.kind;
+  r.parent_kind = o.parent_kind;
+  r.storage = o.storage;
+  return r;
+}
+
+QueryType::Def Convert(const IndexType::Def &o) {
+  QueryType::Def r;
+  r.detailed_name = o.detailed_name;
+  r.hover = o.hover;
+  r.comments = o.comments;
+  r.spell = o.spell;
+  r.bases = Convert(o.bases);
+  r.funcs = Convert(o.funcs);
+  r.types = Convert(o.types);
+  r.vars = Convert(o.vars);
+  r.alias_of = o.alias_of;
+  // no file_id
+  r.qual_name_offset = o.qual_name_offset;
+  r.short_name_offset = o.short_name_offset;
+  r.short_name_size = o.short_name_size;
+  r.kind = o.kind;
+  r.parent_kind = o.parent_kind;
+  return r;
+}
+
 IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
   IndexUpdate r;
   static IndexFile empty(current->path, "<empty>");
@@ -82,7 +127,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
   for (auto &it : previous->usr2func) {
     auto &func = it.second;
     if (func.def.detailed_name[0])
-      r.funcs_removed.emplace_back(func.usr, func.def);
+      r.funcs_removed.emplace_back(func.usr, Convert(func.def));
     r.funcs_declarations[func.usr].first = std::move(func.declarations);
     r.funcs_uses[func.usr].first = std::move(func.uses);
     r.funcs_derived[func.usr].first = std::move(func.derived);
@@ -90,7 +135,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
   for (auto &it : current->usr2func) {
     auto &func = it.second;
     if (func.def.detailed_name[0])
-      r.funcs_def_update.emplace_back(it.first, func.def);
+      r.funcs_def_update.emplace_back(it.first, Convert(func.def));
     r.funcs_declarations[func.usr].second = std::move(func.declarations);
     r.funcs_uses[func.usr].second = std::move(func.uses);
     r.funcs_derived[func.usr].second = std::move(func.derived);
@@ -100,7 +145,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
   for (auto &it : previous->usr2type) {
     auto &type = it.second;
     if (type.def.detailed_name[0])
-      r.types_removed.emplace_back(type.usr, type.def);
+      r.types_removed.emplace_back(type.usr, Convert(type.def));
     r.types_declarations[type.usr].first = std::move(type.declarations);
     r.types_uses[type.usr].first = std::move(type.uses);
     r.types_derived[type.usr].first = std::move(type.derived);
@@ -109,7 +154,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
   for (auto &it : current->usr2type) {
     auto &type = it.second;
     if (type.def.detailed_name[0])
-      r.types_def_update.emplace_back(it.first, type.def);
+      r.types_def_update.emplace_back(it.first, Convert(type.def));
     r.types_declarations[type.usr].second = std::move(type.declarations);
     r.types_uses[type.usr].second = std::move(type.uses);
     r.types_derived[type.usr].second = std::move(type.derived);
@@ -202,8 +247,10 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
 #define REMOVE_ADD(C, F)                                                       \
   for (auto &it : u->C##s_##F) {                                               \
     auto R = C##_usr.try_emplace({it.first}, C##_usr.size());                  \
-    if (R.second)                                                              \
-      C##s.emplace_back().usr = it.first;                                      \
+    if (R.second) {                                                            \
+      C##s.emplace_back();                                                     \
+      C##s.back().usr = it.first;                                              \
+    }                                                                          \
     auto &entity = C##s[R.first->second];                                      \
     RemoveRange(entity.F, it.second.first);                                    \
     AddRange(entity.F, it.second.second);                                      \
@@ -250,8 +297,10 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
           llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
           auto &entities, auto &p, bool hint_implicit) {
         auto R = entity_usr.try_emplace(usr, entity_usr.size());
-        if (R.second)
-          entities.emplace_back().usr = usr;
+        if (R.second) {
+          entities.emplace_back();
+          entities.back().usr = usr;
+        }
         auto &entity = entities[R.first->second];
         for (Use &use : p.first) {
           if (hint_implicit && use.role & Role::Implicit) {
@@ -485,10 +534,10 @@ int ComputeRangeSize(const Range &range) {
   return range.end.column - range.start.column;
 }
 
-template <typename Q>
+template <typename Q, typename C>
 std::vector<Use>
 GetDeclarations(llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
-                std::vector<Q> &entities, const std::vector<Usr> &usrs) {
+                llvm::SmallVectorImpl<Q> &entities, const C &usrs) {
   std::vector<Use> ret;
   ret.reserve(usrs.size());
   for (Usr usr : usrs) {
@@ -514,6 +563,9 @@ Maybe<DeclRef> GetDefinitionSpell(DB *db, SymbolIdx sym) {
 }
 
 std::vector<Use> GetFuncDeclarations(DB *db, const std::vector<Usr> &usrs) {
+  return GetDeclarations(db->func_usr, db->funcs, usrs);
+}
+std::vector<Use> GetFuncDeclarations(DB *db, const Vec<Usr> &usrs) {
   return GetDeclarations(db->func_usr, db->funcs, usrs);
 }
 std::vector<Use> GetTypeDeclarations(DB *db, const std::vector<Usr> &usrs) {
