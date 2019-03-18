@@ -35,7 +35,7 @@ struct Matcher {
   std::string pattern;
 
   Matcher(const std::string &pattern); // throw
-  Matcher(Matcher&&) = default;
+  Matcher(Matcher &&) = default;
   ~Matcher();
   bool Matches(const std::string &text) const;
 };
@@ -95,7 +95,7 @@ inline void hash_combine(std::size_t &seed, const T &v, Rest... rest) {
   template <> struct hash<type> {                                              \
     std::size_t operator()(const type &t) const {                              \
       std::size_t ret = 0;                                                     \
-      ccls::hash_combine(ret, __VA_ARGS__);                                          \
+      ccls::hash_combine(ret, __VA_ARGS__);                                    \
       return ret;                                                              \
     }                                                                          \
   };                                                                           \
@@ -143,7 +143,7 @@ public:
 
 template <typename T> struct Vec {
   std::unique_ptr<T[]> a;
-  int s;
+  int s = 0;
   const T *begin() const { return a.get(); }
   T *begin() { return a.get(); }
   const T *end() const { return a.get() + s; }
@@ -151,5 +151,16 @@ template <typename T> struct Vec {
   int size() const { return s; }
   const T &operator[](size_t i) const { return a.get()[i]; }
   T &operator[](size_t i) { return a.get()[i]; }
+  Vec &operator=(Vec &&rhs) {
+    a = std::move(rhs.a);
+    s = rhs.s;
+    return *this;
+  }
+  Vec(const Vec &lhs) : a(std::make_unique<T[]>(lhs.s)), s(lhs.s) {
+    std::copy(lhs.begin(), lhs.end(), begin());
+    s = lhs.s;
+  }
+  Vec(std::unique_ptr<T[]> &&a_, int size) : a(std::move(a_)), s(size) {}
+  Vec(){};
 };
 } // namespace ccls
