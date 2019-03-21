@@ -46,6 +46,7 @@ limitations under the License.
 #include <limits.h>
 #include <unordered_set>
 #include <vector>
+#include <filesystem>
 
 using namespace clang;
 using namespace llvm;
@@ -331,10 +332,12 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
   std::string err_msg;
   folder.entries.clear();
   if (g_config->compilationDatabaseCommand.empty()) {
-    CDBDir = root;
-    if (g_config->compilationDatabaseDirectory.size())
-      sys::path::append(CDBDir, g_config->compilationDatabaseDirectory);
-    sys::path::append(Path, CDBDir, "compile_commands.json");
+    if (g_config->compilationDatabaseDirectory.size()) {
+      if (std::filesystem::path(g_config->compilationDatabaseDirectory).is_relative())
+        sys::path::append(CDBDir, g_config->compilationDatabaseDirectory);
+      else
+        CDBDir = g_config->compilationDatabaseDirectory;
+    }
   } else {
     // If `compilationDatabaseCommand` is specified, execute it to get the
     // compdb.
