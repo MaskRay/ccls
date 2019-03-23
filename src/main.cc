@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
     PrintHelpMessage();
     return 0;
   }
-  ccls::log::verbosity = ccls::log::Verbosity(opt_verbose.getValue());
+  ccls::log::verbosity = static_cast<log::Verbosity>(opt_verbose.getValue());
 
   pipeline::Init();
   const char *env = getenv("CCLS_CRASH_RECOVERY");
