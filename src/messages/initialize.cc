@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "sema_manager.hh"
 #include "filesystem.hh"
 #include "include_complete.hh"
 #include "log.hh"
@@ -21,6 +20,7 @@ limitations under the License.
 #include "pipeline.hh"
 #include "platform.hh"
 #include "project.hh"
+#include "sema_manager.hh"
 #include "working_files.hh"
 
 #include <llvm/ADT/Twine.h>
@@ -29,12 +29,13 @@ limitations under the License.
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 
-#include <stdlib.h>
 #include <stdexcept>
+#include <stdlib.h>
 #include <thread>
 
 namespace ccls {
 using namespace llvm;
+using namespace ccls::log;
 
 extern std::vector<std::string> g_init_options;
 
@@ -184,7 +185,8 @@ REFLECT_STRUCT(TextDocumentClientCap::DocumentSymbol,
                hierarchicalDocumentSymbolSupport);
 REFLECT_STRUCT(TextDocumentClientCap::LinkSupport, linkSupport);
 REFLECT_STRUCT(TextDocumentClientCap::PublishDiagnostics, relatedInformation);
-REFLECT_STRUCT(TextDocumentClientCap, completion, definition, documentSymbol, publishDiagnostics);
+REFLECT_STRUCT(TextDocumentClientCap, completion, definition, documentSymbol,
+               publishDiagnostics);
 
 struct ClientCap {
   WorkspaceClientCap workspace;
@@ -268,8 +270,9 @@ void *Indexer(void *arg_) {
 
 void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
   std::string project_path = NormalizePath(param.rootUri->GetPath());
-  LOG_S(INFO) << "initialize in directory " << project_path << " with uri "
-              << param.rootUri->raw_uri;
+  if (auto v = Verbosity::INFO; LogRequire(v))
+    Log(v, "initialize in directory ", project_path, " with uri ",
+        param.rootUri->raw_uri);
 
   {
     g_config = new Config(param.initializationOptions);
@@ -291,7 +294,8 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
     rapidjson::Writer<rapidjson::StringBuffer> writer(output);
     JsonWriter json_writer(&writer);
     Reflect(json_writer, *g_config);
-    LOG_S(INFO) << "initializationOptions: " << output.GetString();
+    if (auto v = Verbosity::INFO; LogRequire(v))
+      Log(v, "initializationOptions: ", output.GetString());
 
     if (g_config->cache.directory.size()) {
       SmallString<256> Path(g_config->cache.directory);
@@ -320,7 +324,8 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
   if (g_config->clang.resourceDir.empty())
     g_config->clang.resourceDir = GetDefaultResourceDirectory();
   DoPathMapping(g_config->clang.resourceDir);
-  LOG_S(INFO) << "use -resource-dir=" << g_config->clang.resourceDir;
+  if (auto v = Verbosity::INFO; LogRequire(v))
+    Log(v, "use -resource-dir=", g_config->clang.resourceDir);
 
   // Send initialization before starting indexers, so we don't send a
   // status update too early.
@@ -352,11 +357,12 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
   std::sort(workspaceFolders.begin(), workspaceFolders.end(),
             [](auto &l, auto &r) { return l.first.size() > r.first.size(); });
   for (auto &[folder, real] : workspaceFolders)
-    if (real.empty())
-      LOG_S(INFO) << "workspace folder: " << folder;
-    else
-      LOG_S(INFO) << "workspace folder: " << folder << " -> " << real;
-
+    if (auto v = Verbosity::INFO; LogRequire(v)) {
+      if (real.empty())
+        Log(v, "workspace folder: ", folder);
+      else
+        Log(v, "workspace folder: ", folder, " -> ", real);
+    }
   if (g_config->cache.directory.empty())
     g_config->cache.retainInMemory = 1;
   else if (!g_config->cache.hierarchicalPath)
@@ -378,7 +384,8 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
   if (g_config->index.threads == 0)
     g_config->index.threads = std::thread::hardware_concurrency();
 
-  LOG_S(INFO) << "start " << g_config->index.threads << " indexers";
+  if (auto v = Verbosity::INFO; LogRequire(v))
+    Log(v, "start ", g_config->index.threads, " indexers");
   for (int i = 0; i < g_config->index.threads; i++)
     SpawnThread(Indexer, new std::pair<MessageHandler *, int>{m, i});
 
@@ -386,7 +393,8 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
   // files, because that takes a long time.
   m->include_complete->Rescan();
 
-  LOG_S(INFO) << "dispatch initial index requests";
+  if (auto v = Verbosity::INFO; LogRequire(v))
+    Log(v, "dispatch initial index requests");
   m->project->Index(m->wfiles, reply.id);
 
   m->manager->sessions.SetCapacity(g_config->session.maxNum);

@@ -37,9 +37,9 @@ limitations under the License.
 #include <rapidjson/writer.h>
 
 #ifdef _WIN32
-# include <Windows.h>
+#include <Windows.h>
 #else
-# include <unistd.h>
+#include <unistd.h>
 #endif
 
 #include <array>
@@ -49,6 +49,7 @@ limitations under the License.
 
 using namespace clang;
 using namespace llvm;
+using namespace ccls::log;
 
 namespace ccls {
 std::pair<LanguageId, bool> lookupExtension(std::string_view filename) {
@@ -91,13 +92,17 @@ struct ProjectProcessor {
         exclude_args.insert(arg);
       else if (Expected<GlobPattern> glob_or_err = GlobPattern::create(arg))
         exclude_globs.push_back(std::move(*glob_or_err));
-      else
-        LOG_S(WARNING) << toString(glob_or_err.takeError());
+      else {
+        if (auto v = Verbosity::WARNING; LogRequire(v))
+          Log(v, toString(glob_or_err.takeError()));
+      }
   }
 
   bool ExcludesArg(StringRef arg) {
+    // clang-format off
     return exclude_args.count(arg) || any_of(exclude_globs,
       [&](const GlobPattern &glob) { return glob.match(arg); });
+    // clang-format on
   }
 
   // Expand %c %cpp ... in .ccls
@@ -172,12 +177,12 @@ struct ProjectProcessor {
     IgnoringDiagConsumer DiagC;
     IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts(new DiagnosticOptions());
     DiagnosticsEngine Diags(
-      IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs()), &*DiagOpts,
-      &DiagC, false);
+        IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs()), &*DiagOpts,
+        &DiagC, false);
 
     driver::Driver Driver(args[0], llvm::sys::getDefaultTargetTriple(), Diags);
     auto TargetAndMode =
-      driver::ToolChain::getTargetAndModeFromProgramName(args[0]);
+        driver::ToolChain::getTargetAndModeFromProgramName(args[0]);
     if (!TargetAndMode.TargetPrefix.empty()) {
       const char *arr[] = {"-target", TargetAndMode.TargetPrefix.c_str()};
       args.insert(args.begin() + 1, std::begin(arr), std::end(arr));
@@ -193,7 +198,7 @@ struct ProjectProcessor {
 
     auto CI = std::make_unique<CompilerInvocation>();
     CompilerInvocation::CreateFromArgs(*CI, CCArgs.data(),
-      CCArgs.data() + CCArgs.size(), Diags);
+                                       CCArgs.data() + CCArgs.size(), Diags);
     CI->getFrontendOpts().DisableFree = false;
     CI->getCodeGenOpts().DisableFree = false;
 
@@ -265,25 +270,26 @@ void LoadDirectoryListing(ProjectProcessor &proc, const std::string &root,
     return folder.dot_ccls[root];
   };
 
-  GetFilesInFolder(root, true /*recursive*/, true /*add_folder_to_path*/,
-                   [&folder, &files, &Seen](const std::string &path) {
-                     std::pair<LanguageId, bool> lang = lookupExtension(path);
-                     if (lang.first != LanguageId::Unknown && !lang.second) {
-                       if (!Seen.count(path))
-                         files.push_back(path);
-                     } else if (sys::path::filename(path) == ".ccls") {
-                       std::vector<const char *> args = ReadCompilerArgumentsFromFile(path);
-                       folder.dot_ccls.emplace(sys::path::parent_path(path),
-                                               args);
-                       std::string l;
-                       for (size_t i = 0; i < args.size(); i++) {
-                         if (i)
-                           l += ' ';
-                         l += args[i];
-                       }
-                       LOG_S(INFO) << "use " << path << ": " << l;
-                     }
-                   });
+  GetFilesInFolder(
+      root, true /*recursive*/, true /*add_folder_to_path*/,
+      [&folder, &files, &Seen](const std::string &path) {
+        std::pair<LanguageId, bool> lang = lookupExtension(path);
+        if (lang.first != LanguageId::Unknown && !lang.second) {
+          if (!Seen.count(path))
+            files.push_back(path);
+        } else if (sys::path::filename(path) == ".ccls") {
+          std::vector<const char *> args = ReadCompilerArgumentsFromFile(path);
+          folder.dot_ccls.emplace(sys::path::parent_path(path), args);
+          std::string l;
+          for (size_t i = 0; i < args.size(); i++) {
+            if (i)
+              l += ' ';
+            l += args[i];
+          }
+          if (auto v = Verbosity::INFO; LogRequire(v))
+            Log(v, "use ", path, ": ", l);
+        }
+      });
 
   // If the first line of .ccls is %compile_commands.json, append extra flags.
   for (auto &e : folder.entries)
@@ -367,8 +373,9 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
     std::vector<StringRef> args{g_config->compilationDatabaseCommand, root};
     if (sys::ExecuteAndWait(args[0], args, llvm::None, Redir, 0, 0, &err_msg) <
         0) {
-      LOG_S(ERROR) << "failed to execute " << args[0].str() << " "
-                   << args[1].str() << ": " << err_msg;
+      if (auto v = Verbosity::ERROR; LogRequire(v))
+        Log(v, "failed to execute ", args[0].str(), " ", args[1].str(), ": ",
+            err_msg);
       return;
     }
   }
@@ -392,9 +399,11 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
   std::vector<Project::Entry> result;
   if (!CDB) {
     if (g_config->compilationDatabaseCommand.size() || sys::fs::exists(Path))
-      LOG_S(ERROR) << "failed to load " << Path.c_str();
+      if (auto v = Verbosity::ERROR; LogRequire(v))
+        Log(v, "failed to load ", Path.c_str());
   } else {
-    LOG_S(INFO) << "loaded " << Path.c_str();
+    if (auto v = Verbosity::INFO; LogRequire(v))
+      Log(v, "loaded ", Path.c_str());
     for (tooling::CompileCommand &Cmd : CDB->getAllCompileCommands()) {
       static bool once;
       Project::Entry entry;
@@ -458,7 +467,8 @@ void Project::Load(const std::string &root) {
 
   LoadDirectory(root, folder);
   for (auto &[path, kind] : folder.search_dir2kind)
-    LOG_S(INFO) << "search directory: " << path << ' ' << " \"< "[kind];
+    if (auto v = Verbosity::INFO; LogRequire(v))
+      Log(v, "search directory: ", path, ' ', " \"< "[kind]);
 
   // Setup project entries.
   folder.path2entry_index.reserve(folder.entries.size());
@@ -579,8 +589,9 @@ void Project::Index(WorkingFiles *wfiles, RequestId id) {
                                       : IndexMode::NonInteractive,
                           false, id);
         } else {
-          LOG_V(1) << "[" << i << "/" << folder.entries.size() << "]: " << reason
-                   << "; skip " << entry.filename;
+          if (auto v = Verbosity::DEBUG; LogRequire(v))
+            Log(v, "[", i, "/", folder.entries.size(), "]: ", reason, "; skip ",
+                entry.filename);
         }
         i++;
       }

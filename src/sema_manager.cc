@@ -30,6 +30,7 @@ limitations under the License.
 #include <llvm/Support/Threading.h>
 using namespace clang;
 using namespace llvm;
+using namespace ccls::log;
 
 #include <algorithm>
 #include <chrono>
@@ -722,12 +723,13 @@ SemaManager::EnsureSession(const std::string &path, bool *created) {
     session = std::make_shared<ccls::Session>(
         project_->FindEntry(path, false, false), wfiles, PCH);
     std::string line;
-    if (LOG_V_ENABLED(1)) {
+    if (LogRequire(Verbosity::DEBUG)) {
       line = "\n ";
       for (auto &arg : session->file.args)
         (line += ' ') += arg;
     }
-    LOG_S(INFO) << "create session for " << path << line;
+    if (auto v = Verbosity::INFO; LogRequire(v))
+      Log(v, "create session for ", path, line);
     sessions.Insert(path, session);
     if (created)
       *created = true;
@@ -736,7 +738,8 @@ SemaManager::EnsureSession(const std::string &path, bool *created) {
 }
 
 void SemaManager::Clear() {
-  LOG_S(INFO) << "clear all sessions";
+  if (auto v = Verbosity::INFO; LogRequire(v))
+    Log(v, "clear all sessions");
   std::lock_guard lock(mutex);
   sessions.Clear();
 }

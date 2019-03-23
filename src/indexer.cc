@@ -37,6 +37,7 @@ limitations under the License.
 #include <unordered_set>
 
 using namespace clang;
+using namespace ccls::log;
 
 namespace ccls {
 namespace {
@@ -525,8 +526,9 @@ public:
     }
     auto i = name.find(short_name);
     if (short_name.size())
-      while (i != std::string::npos && ((i && isIdentifierBody(name[i - 1])) ||
-                                        isIdentifierBody(name[i + short_name.size()])))
+      while (i != std::string::npos &&
+             ((i && isIdentifierBody(name[i - 1])) ||
+              isIdentifierBody(name[i + short_name.size()])))
         i = name.find(short_name, i + short_name.size());
     if (i == std::string::npos) {
       // e.g. operator type-parameter-1
@@ -751,8 +753,8 @@ public:
       switch (D->getKind()) {
       case Decl::CXXConversion: // *operator* int => *operator int*
       case Decl::CXXDestructor: // *~*A => *~A*
-      case Decl::CXXMethod: // *operator*= => *operator=*
-      case Decl::Function: // operator delete
+      case Decl::CXXMethod:     // *operator*= => *operator=*
+      case Decl::Function:      // operator delete
         if (Loc.isFileID()) {
           SourceRange R =
               cast<FunctionDecl>(OrigD)->getNameInfo().getSourceRange();
@@ -794,9 +796,9 @@ public:
     switch (kind) {
     case Kind::Invalid:
       if (ls_kind == SymbolKind::Unknown)
-        LOG_S(INFO) << "Unhandled " << int(D->getKind()) << " "
-                    << info->qualified << " in " << db->path << ":"
-                    << (loc.start.line + 1) << ":" << (loc.start.column + 1);
+        if (auto v = Verbosity::INFO; LogRequire(v))
+          Log(v, "Unhandled ", int(D->getKind()), " ", info->qualified, " in ",
+              db->path, ":", (loc.start.line + 1), ":", (loc.start.column + 1));
       return true;
     case Kind::File:
       return true;
@@ -952,12 +954,14 @@ public:
       if (auto *RD = dyn_cast<RecordDecl>(D)) {
         if (type->def.detailed_name[0] == '\0' && info->short_name.empty()) {
           StringRef Tag;
+          // clang-format off
           switch (RD->getTagKind()) {
           case TTK_Struct: Tag = "struct"; break;
           case TTK_Interface: Tag = "__interface"; break;
           case TTK_Union: Tag = "union"; break;
           case TTK_Class: Tag = "class"; break;
           case TTK_Enum: Tag = "enum"; break;
+            // clang-format on
           }
           if (TypedefNameDecl *TD = RD->getTypedefNameForAnonDecl()) {
             StringRef Name = TD->getName();
@@ -1220,7 +1224,8 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
       bool &ok) {
   ok = true;
   auto PCH = std::make_shared<PCHContainerOperations>();
-  llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS = llvm::vfs::getRealFileSystem();
+  llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
+      llvm::vfs::getRealFileSystem();
   std::shared_ptr<CompilerInvocation> CI =
       BuildCompilerInvocation(main, args, FS);
   // e.g. .s
@@ -1288,12 +1293,14 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
       ok = true;
     };
     if (!CRC.RunSafely(parse)) {
-      LOG_S(ERROR) << "clang crashed for " << main;
+      if (auto v = Verbosity::ERROR; LogRequire(v))
+        Log(v, "clang crashed for ", main);
       return {};
     }
   }
   if (!ok) {
-    LOG_S(ERROR) << "failed to index " << main;
+    if (auto v = Verbosity::ERROR; LogRequire(v))
+      Log(v, "failed to index ", main);
     return {};
   }
   for (auto &Buf : Bufs)

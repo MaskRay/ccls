@@ -41,6 +41,7 @@ limitations under the License.
 #include <unistd.h>
 #endif
 using namespace llvm;
+using namespace ccls::log;
 namespace chrono = std::chrono;
 
 namespace ccls {
@@ -118,8 +119,9 @@ bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
   {
     std::lock_guard<std::mutex> lock(vfs->mutex);
     if (prev->mtime < vfs->state[path].timestamp) {
-      LOG_V(1) << "timestamp changed for " << path
-               << (from ? " (via " + *from + ")" : std::string());
+      if (auto v = Verbosity::DEBUG; LogRequire(v))
+        Log(v, "timestamp changed for ", path,
+            (from ? " (via " + *from + ")" : std::string()));
       return true;
     }
   }
@@ -131,8 +133,9 @@ bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
     if (strcmp(prev->args[i], args[i]) && sys::path::stem(args[i]) != stem)
       changed = true;
   if (changed)
-    LOG_V(1) << "args changed for " << path
-             << (from ? " (via " + *from + ")" : std::string());
+    if (auto v = Verbosity::DEBUG; LogRequire(v))
+      Log(v, "args changed for ", path,
+          (from ? " (via " + *from + ")" : std::string()));
   return changed;
 };
 
@@ -215,7 +218,8 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
   }
 
   if (!matcher.Matches(request.path)) {
-    LOG_IF_S(INFO, loud) << "skip " << request.path;
+    if (auto v = Verbosity::INFO; LogIf(v, loud))
+      Log(v, "skip ", request.path);
     return false;
   }
 
@@ -264,21 +268,23 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
       std::unique_lock lock(GetFileMutex(path_to_index));
       prev = RawCacheLoad(path_to_index);
       if (!prev || CacheInvalid(vfs, prev.get(), path_to_index, entry.args,
-          std::nullopt))
+                                std::nullopt))
         break;
       if (track)
         for (const auto &dep : prev->dependencies) {
           if (auto mtime1 = LastWriteTime(dep.first.val().str())) {
             if (dep.second < *mtime1) {
               reparse = 2;
-              LOG_V(1) << "timestamp changed for " << path_to_index << " via "
-                       << dep.first.val().str();
+              if (auto v = Verbosity::DEBUG; LogRequire(v))
+                Log(v, "timestamp changed for ", path_to_index, " via ",
+                    dep.first.val().str());
               break;
             }
           } else {
             reparse = 2;
-            LOG_V(1) << "timestamp changed for " << path_to_index << " via "
-                     << dep.first.val().str();
+            if (auto v = Verbosity::DEBUG; LogRequire(v))
+              Log(v, "timestamp changed for ", path_to_index, " via ",
+                  dep.first.val().str());
             break;
           }
         }
@@ -289,11 +295,12 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
 
       if (vfs->Loaded(path_to_index))
         return true;
-      LOG_S(INFO) << "load cache for " << path_to_index;
+      if (auto v = Verbosity::INFO; LogRequire(v))
+        Log(v, "load cache for ", path_to_index);
       auto dependencies = prev->dependencies;
       IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
       on_indexed->PushBack(std::move(update),
-        request.mode != IndexMode::NonInteractive);
+                           request.mode != IndexMode::NonInteractive);
       {
         std::lock_guard lock1(vfs->mutex);
         vfs->state[path_to_index].loaded++;
@@ -318,7 +325,7 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
         }
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
         on_indexed->PushBack(std::move(update),
-          request.mode != IndexMode::NonInteractive);
+                             request.mode != IndexMode::NonInteractive);
         if (entry.id >= 0) {
           std::lock_guard lock2(project->mtx);
           project->root2folder[entry.root].path2entry_index[path] = entry.id;
@@ -329,12 +336,13 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
 
   if (loud) {
     std::string line;
-    if (LOG_V_ENABLED(1)) {
+    if (LogRequire(Verbosity::DEBUG)) {
       line = "\n ";
       for (auto &arg : entry.args)
         (line += ' ') += arg;
     }
-    LOG_S(INFO) << (deleted ? "delete " : "parse ") << path_to_index << line;
+    if (auto v = Verbosity::INFO; LogRequire(v))
+      Log(v, (deleted ? "delete " : "parse "), path_to_index, line);
   }
 
   std::vector<std::unique_ptr<IndexFile>> indexes;
@@ -367,13 +375,13 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
   for (std::unique_ptr<IndexFile> &curr : indexes) {
     std::string path = curr->path;
     if (!matcher.Matches(path)) {
-      LOG_IF_S(INFO, loud) << "skip index for " << path;
+      if (auto v = Verbosity::INFO; LogIf(Verbosity::INFO, loud))
+        Log(v, "skip index for ", path);
       continue;
     }
 
-    if (!deleted)
-      LOG_IF_S(INFO, loud) << "store index for " << path
-                           << " (delta: " << !!prev << ")";
+    if (auto v = Verbosity::INFO; LogIf(v, loud) && !deleted)
+      Log(v, "store index for ", path, " (delta: ", !!prev, ")");
     {
       std::lock_guard lock(GetFileMutex(path));
       int loaded = vfs->Loaded(path), retain = g_config->cache.retainInMemory;
@@ -384,7 +392,7 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
       if (retain > 0 && retain <= loaded + 1) {
         std::lock_guard lock(g_index_mutex);
         auto it = g_index.insert_or_assign(
-          path, InMemoryIndexFile{curr->file_contents, *curr});
+            path, InMemoryIndexFile{curr->file_contents, *curr});
         std::string().swap(it.first->second.index.file_contents);
       }
       if (g_config->cache.directory.size()) {
@@ -468,8 +476,9 @@ void Indexer_Main(SemaManager *manager, VFS *vfs, Project *project,
 
 void Main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
   if (update->refresh) {
-    LOG_S(INFO)
-        << "loaded project. Refresh semantic highlight for all working file.";
+    if (auto v = Verbosity::INFO; LogRequire(v))
+      Log(v,
+          "loaded project. Refresh semantic highlight for all working file.");
     std::lock_guard lock(wfiles->mutex);
     for (auto &[f, wf] : wfiles->files) {
       std::string path = LowerPathIfInsensitive(f);
@@ -545,10 +554,12 @@ void LaunchStdin() {
       std::string method;
       ReflectMember(reader, "id", id);
       ReflectMember(reader, "method", method);
-      if (id.Valid())
-        LOG_V(2) << "receive RequestMessage: " << id.value << " " << method;
-      else
-        LOG_V(2) << "receive NotificationMessage " << method;
+      if (auto v = Verbosity::VERBOSE; LogRequire(v)) {
+        if (id.Valid())
+          Log(v, "receive RequestMessage: ", id.value, " ", method);
+        else
+          Log(v, "receive NotificationMessage ", method);
+      }
       if (method.empty())
         continue;
       received_exit = method == "exit";
@@ -574,7 +585,8 @@ void LaunchStdin() {
                             chrono::steady_clock::now()});
     }
     ThreadLeave();
-  }).detach();
+  })
+      .detach();
 }
 
 void LaunchStdout() {
@@ -592,7 +604,8 @@ void LaunchStdout() {
         break;
     }
     ThreadLeave();
-  }).detach();
+  })
+      .detach();
 }
 
 void MainLoop() {
@@ -702,9 +715,9 @@ void Standalone(const std::string &root) {
   Project project;
   WorkingFiles wfiles;
   VFS vfs;
-  SemaManager manager(
-      nullptr, nullptr, [&](std::string, std::vector<Diagnostic>) {},
-      [](RequestId id) {});
+  SemaManager manager(nullptr, nullptr,
+                      [&](std::string, std::vector<Diagnostic>) {},
+                      [](RequestId id) {});
   IncludeComplete complete(&project);
 
   MessageHandler handler;
@@ -781,7 +794,8 @@ void NotifyOrRequest(const char *method, bool request,
   JsonWriter writer(&w);
   fn(writer);
   w.EndObject();
-  LOG_V(2) << (request ? "RequestMessage: " : "NotificationMessage: ") << method;
+  if (auto v = Verbosity::VERBOSE; LogRequire(v))
+    Log(v, (request ? "RequestMessage: " : "NotificationMessage: "), method);
   for_stdout->PushBack(output.GetString());
 }
 
@@ -809,8 +823,8 @@ static void Reply(RequestId id, const char *key,
   JsonWriter writer(&w);
   fn(writer);
   w.EndObject();
-  if (id.Valid())
-    LOG_V(2) << "respond to RequestMessage: " << id.value;
+  if (auto v = Verbosity::VERBOSE; LogRequire(v) && id.Valid())
+    Log(v, "respond to RequestMessage: ", id.value);
   for_stdout->PushBack(output.GetString());
 }
 

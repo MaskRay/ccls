@@ -28,6 +28,7 @@ namespace chrono = std::chrono;
 
 using namespace clang;
 using namespace llvm;
+using namespace ccls::log;
 
 namespace ccls {
 namespace {
@@ -329,8 +330,9 @@ std::optional<int> WorkingFile::GetBufferPosFromIndexPos(int line, int *column,
   if (line == (int)index_lines.size() && !*column)
     return buffer_content.size();
   if (line < 0 || line >= (int)index_lines.size()) {
-    LOG_S(WARNING) << "bad index_line (got " << line << ", expected [0, "
-                   << index_lines.size() << ")) in " << filename;
+    if (auto v = Verbosity::WARNING; LogRequire(v))
+      Log(v, "bad index_line (got ", line, ", expected [0, ",
+          index_lines.size(), ")) in ", filename);
     return std::nullopt;
   }
 
@@ -406,7 +408,8 @@ void WorkingFiles::OnChange(const TextDocumentDidChangeParam &change) {
   std::string path = change.textDocument.uri.GetPath();
   WorkingFile *file = GetFileUnlocked(path);
   if (!file) {
-    LOG_S(WARNING) << "Could not change " << path << " because it was not open";
+    if (auto v = Verbosity::WARNING; LogRequire(v))
+      Log(v,"Could not change ", path, " because it was not open");
     return;
   }
 
@@ -482,4 +485,4 @@ std::string_view LexIdentifierAroundPos(Position position,
 
   return content.substr(start, end - start);
 }
-}
+} // namespace ccls

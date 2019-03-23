@@ -36,6 +36,7 @@ limitations under the License.
 #include <unordered_map>
 
 using namespace llvm;
+using namespace ccls::log;
 
 namespace ccls {
 struct Matcher::Impl {
@@ -182,7 +183,8 @@ void WriteToFile(const std::string &filename, const std::string &content) {
   FILE *f = fopen(filename.c_str(), "wb");
   if (!f ||
       (content.size() && fwrite(content.c_str(), content.size(), 1, f) != 1)) {
-    LOG_S(ERROR) << "failed to write to " << filename << ' ' << strerror(errno);
+    if (auto v = Verbosity::ERROR; LogRequire(v))
+      Log(v, "failed to write to ", filename, ' ', strerror(errno));
     return;
   }
   fclose(f);
@@ -206,4 +208,4 @@ int ReverseSubseqMatch(std::string_view pat, std::string_view text,
 }
 
 std::string GetDefaultResourceDirectory() { return DEFAULT_RESOURCE_DIRECTORY; }
-}
+} // namespace ccls

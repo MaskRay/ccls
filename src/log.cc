@@ -56,11 +56,13 @@ Message::Message(Verbosity verbosity, const char *file, int line)
   stream_ << ' ';
   // clang-format off
   switch (verbosity_) {
-    case Verbosity_FATAL: stream_ << 'F'; break;
-    case Verbosity_ERROR: stream_ << 'E'; break;
-    case Verbosity_WARNING: stream_ << 'W'; break;
-    case Verbosity_INFO: stream_ << 'I'; break;
-    default: stream_ << "V(" << int(verbosity_) << ')';
+    case Verbosity::FATAL: stream_ << 'F'; break;
+    case Verbosity::ERROR: stream_ << 'E'; break;
+    case Verbosity::WARNING: stream_ << 'W'; break;
+    case Verbosity::INFO: stream_ << 'I'; break;
+    case Verbosity::DEBUG: stream_ << 'D'; break;
+    case Verbosity::VERBOSE: stream_ << 'V'; break;
+    default: stream_ << "V(" << +verbosity_ << ')';
   }
   // clang-format on
   stream_ << ' ';
@@ -73,7 +75,7 @@ Message::~Message() {
   stream_ << '\n';
   fputs(stream_.str().c_str(), file);
   fflush(file);
-  if (verbosity_ == Verbosity_FATAL)
+  if (verbosity_ == Verbosity::FATAL)
     abort();
 }
 } // namespace ccls::log

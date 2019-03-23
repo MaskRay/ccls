@@ -31,6 +31,7 @@ limitations under the License.
 namespace ccls {
 using namespace clang;
 using namespace llvm;
+using namespace ccls::log;
 
 REFLECT_UNDERLYING(InsertTextFormat);
 REFLECT_UNDERLYING(CompletionItemKind);
@@ -61,8 +62,7 @@ REFLECT_STRUCT(CompletionList, isIncomplete, items);
 
 #if LLVM_VERSION_MAJOR < 8
 void DecorateIncludePaths(const std::smatch &match,
-                          std::vector<CompletionItem> *items,
-                          char quote) {
+                          std::vector<CompletionItem> *items, char quote) {
   std::string spaces_after_include = " ";
   if (match[3].compare("include") == 0 && quote != '\0')
     spaces_after_include = match[4].str();
@@ -161,12 +161,15 @@ void FilterCandidates(CompletionList &result, const std::string &complete_text,
       auto &edits = item.additionalTextEdits;
       if (overwrite_len > 0) {
         item.textEdit.range.start = overwrite_begin;
-        std::string orig = buffer_line.substr(overwrite_begin.character, overwrite_len);
+        std::string orig =
+            buffer_line.substr(overwrite_begin.character, overwrite_len);
         if (edits.size() && edits[0].range.end == begin_pos &&
             edits[0].range.start.line == begin_pos.line) {
-          int cur_edit_len = edits[0].range.end.character - edits[0].range.start.character;
+          int cur_edit_len =
+              edits[0].range.end.character - edits[0].range.start.character;
           item.textEdit.newText =
-              buffer_line.substr(overwrite_begin.character, overwrite_len - cur_edit_len) +
+              buffer_line.substr(overwrite_begin.character,
+                                 overwrite_len - cur_edit_len) +
               edits[0].newText + item.textEdit.newText;
           edits.erase(edits.begin());
         } else {
@@ -304,7 +307,8 @@ CompletionItemKind GetCompletionKind(CodeCompletionContext::Kind K,
       return CompletionItemKind::Field;
 
     default:
-      LOG_S(WARNING) << "Unhandled " << int(D->getKind());
+      if (auto v = Verbosity::WARNING; LogRequire(v))
+        Log(v, "Unhandled ", int(D->getKind()));
       return CompletionItemKind::Text;
     }
     break;

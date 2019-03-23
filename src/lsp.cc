@@ -21,6 +21,7 @@ limitations under the License.
 
 #include <algorithm>
 #include <stdio.h>
+using namespace ccls::log;
 
 namespace ccls {
 void Reflect(JsonReader &vis, RequestId &v) {
@@ -103,9 +104,9 @@ void DocumentUri::SetPath(const std::string &path) {
 
 std::string DocumentUri::GetPath() const {
   if (raw_uri.compare(0, 7, "file://")) {
-    LOG_S(WARNING)
-        << "Received potentially bad URI (not starting with file://): "
-        << raw_uri;
+    if (auto v = Verbosity::WARNING; LogRequire(v))
+      Log(v, "Received potentially bad URI (not starting with file://): ",
+          raw_uri);
     return raw_uri;
   }
   std::string ret;

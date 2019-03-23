@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "sema_manager.hh"
 #include "fuzzy_match.hh"
 #include "log.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "project.hh"
 #include "query.hh"
+#include "sema_manager.hh"
 
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/StringRef.h>
@@ -30,6 +30,7 @@ limitations under the License.
 #include <functional>
 #include <limits.h>
 using namespace llvm;
+using namespace ccls::log;
 
 namespace ccls {
 REFLECT_STRUCT(SymbolInformation, name, kind, location, containerName);
@@ -81,7 +82,8 @@ void MessageHandler::workspace_didChangeWorkspaceFolders(
   for (const WorkspaceFolder &wf : param.event.removed) {
     std::string root = wf.uri.GetPath();
     EnsureEndsInSlash(root);
-    LOG_S(INFO) << "delete workspace folder " << wf.name << ": " << root;
+    if (auto v = Verbosity::INFO; LogRequire(v))
+      Log(v, "delete workspace folder ", wf.name, ": ", root);
     auto it = llvm::find_if(g_config->workspaceFolders,
                             [&](auto &folder) { return folder.first == root; });
     if (it != g_config->workspaceFolders.end()) {
@@ -100,8 +102,9 @@ void MessageHandler::workspace_didChangeWorkspaceFolders(
     std::string real = RealPath(folder) + '/';
     if (folder == real)
       real.clear();
-    LOG_S(INFO) << "add workspace folder " << wf.name << ": "
-                << (real.empty() ? folder : folder + " -> " + real);
+    if (auto v = Verbosity::INFO; LogRequire(v))
+      Log(v, "add workspace folder ", wf.name, ": ",
+          (real.empty() ? folder : folder + " -> " + real));
     workspaceFolders.emplace_back();
     auto it = workspaceFolders.end() - 1;
     for (; it != workspaceFolders.begin() && folder < it[-1].first; --it)

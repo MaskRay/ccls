@@ -30,6 +30,7 @@ limitations under the License.
 #include <stdexcept>
 
 using namespace llvm;
+using namespace ccls::log;
 
 bool gTestOutputMode = false;
 
@@ -426,9 +427,7 @@ CachedHashStringRef InternH(StringRef S) {
   return *R.first;
 }
 
-const char *Intern(StringRef S) {
-  return InternH(S).val().data();
-}
+const char *Intern(StringRef S) { return InternH(S).val().data(); }
 
 std::string Serialize(SerializeFormat format, IndexFile &file) {
   switch (format) {
@@ -485,7 +484,8 @@ Deserialize(SerializeFormat format, const std::string &path,
       file = std::make_unique<IndexFile>(path, file_content);
       ReflectFile(reader, *file);
     } catch (std::invalid_argument &e) {
-      LOG_S(INFO) << "failed to deserialize '" << path << "': " << e.what();
+      if (auto v = Verbosity::INFO; LogRequire(v))
+        Log(v, "failed to deserialize '", path, "': ", e.what());
       return nullptr;
     }
     break;
@@ -510,8 +510,9 @@ Deserialize(SerializeFormat format, const std::string &path,
     try {
       ReflectFile(json_reader, *file);
     } catch (std::invalid_argument &e) {
-      LOG_S(INFO) << "'" << path << "': failed to deserialize "
-                  << json_reader.GetPath() << "." << e.what();
+      if (auto v = Verbosity::INFO; LogRequire(v))
+        Log(v, "'", path, "': failed to deserialize ", json_reader.GetPath(),
+            ".", e.what());
       return nullptr;
     }
     break;
