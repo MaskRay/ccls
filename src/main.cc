@@ -68,11 +68,15 @@ void CloseLog() { fclose(ccls::log::file); }
 
 } // namespace
 
+#ifndef CCLS_VERSION
+# define CCLS_VERSION "<unknown>"
+#endif
+
 int main(int argc, char **argv) {
   TraceMe();
   sys::PrintStackTraceOnErrorSignal(argv[0]);
   cl::SetVersionPrinter([](raw_ostream &OS) {
-    OS << clang::getClangToolFullVersion("ccls") << "\n";
+    OS << clang::getClangToolFullVersion("ccls version " CCLS_VERSION " / clang") << "\n";
   });
 
   for (auto &I : TopLevelSubCommand->OptionsMap)
