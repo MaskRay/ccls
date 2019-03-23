@@ -69,11 +69,11 @@ void CloseLog() { fclose(ccls::log::file); }
 } // namespace
 
 int main(int argc, char **argv) {
+  SetVersionPrinter([](llvm::raw_ostream &os) {
+    os << "ccls version: " << "0.20190314" << "\n";
+  });
   TraceMe();
   sys::PrintStackTraceOnErrorSignal(argv[0]);
-  cl::SetVersionPrinter([](raw_ostream &OS) {
-    OS << clang::getClangToolFullVersion("ccls") << "\n";
-  });
 
   for (auto &I : TopLevelSubCommand->OptionsMap)
     if (I.second->Category != &C)
