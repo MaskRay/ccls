@@ -20,7 +20,7 @@ Config *g_config;
 
 void DoPathMapping(std::string &arg) {
   for (const std::string &mapping : g_config->clang.pathMappings) {
-    auto colon = mapping.find(':');
+    auto colon = mapping.find('>');
     if (colon != std::string::npos) {
       auto p = arg.find(mapping.substr(0, colon));
       if (p != std::string::npos)
