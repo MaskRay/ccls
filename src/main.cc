@@ -72,7 +72,8 @@ int main(int argc, char **argv) {
   TraceMe();
   sys::PrintStackTraceOnErrorSignal(argv[0]);
   cl::SetVersionPrinter([](raw_ostream &OS) {
-    OS << clang::getClangToolFullVersion("ccls") << "\n";
+    OS << clang::getClangToolFullVersion("ccls version " CCLS_VERSION "\nclang")
+       << "\n";
   });
 
   for (auto &I : TopLevelSubCommand->OptionsMap)

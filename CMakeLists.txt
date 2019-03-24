@@ -209,3 +209,20 @@ target_sources(ccls PRIVATE
   src/messages/textDocument_signatureHelp.cc
   src/messages/workspace.cc
 )
+
+### Obtain CCLS version information from Git
+### This only happens when cmake is re-run!
+
+if(NOT CCLS_VERSION)
+  execute_process(COMMAND git describe --tag HEAD
+    OUTPUT_VARIABLE CCLS_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+
+  if(NOT CCLS_VERSION)
+    set(CCLS_VERSION "<unknown>")
+  endif()
+endif()
+
+set_property(SOURCE src/main.cc APPEND PROPERTY
+             COMPILE_DEFINITIONS CCLS_VERSION=\"${CCLS_VERSION}\")
