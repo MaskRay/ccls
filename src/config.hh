@@ -255,9 +255,12 @@ struct Config {
     // - https://github.com/autozimu/LanguageClient-neovim/issues/224
     int comments = 2;
 
-    // By default, all project entries will be indexed on initialization. Use
-    // these two options to exclude some. They can still be indexed after you
-    // open them.
+    // If false, names of no linkage are not indexed in the background. They are
+    // indexed after the files are opened.
+    bool initialNoLinkage = false;
+
+    // Use the two options to exclude files that should not be indexed in the
+    // background.
     std::vector<std::string> initialBlacklist;
     std::vector<std::string> initialWhitelist;
 
@@ -344,10 +347,11 @@ REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
                spellChecking, whitelist)
 REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist, whitelist)
 REFLECT_STRUCT(Config::Index::Name, suppressUnwrittenScope);
-REFLECT_STRUCT(Config::Index, blacklist, comments, initialBlacklist,
-               initialWhitelist, maxInitializerLines, multiVersion,
-               multiVersionBlacklist, multiVersionWhitelist, name, onChange,
-               parametersInDeclarations, threads, trackDependency, whitelist);
+REFLECT_STRUCT(Config::Index, blacklist, comments, initialNoLinkage,
+               initialBlacklist, initialWhitelist, maxInitializerLines,
+               multiVersion, multiVersionBlacklist, multiVersionWhitelist, name,
+               onChange, parametersInDeclarations, threads, trackDependency,
+               whitelist);
 REFLECT_STRUCT(Config::Request, timeout);
 REFLECT_STRUCT(Config::Session, maxNum);
 REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);

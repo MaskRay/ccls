@@ -348,7 +348,7 @@ Index(SemaManager *complete, WorkingFiles *wfiles, VFS *vfs,
       const std::string &opt_wdir, const std::string &file,
       const std::vector<const char *> &args,
       const std::vector<std::pair<std::string, std::string>> &remapped,
-      bool &ok);
+      bool all_linkages, bool &ok);
 } // namespace idx
 } // namespace ccls
 
