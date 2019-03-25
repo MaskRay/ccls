@@ -229,18 +229,20 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
   std::string path_to_index = entry.filename;
   std::unique_ptr<IndexFile> prev;
 
-  bool deleted = false;
+  bool deleted = false, no_linkage = g_config->index.initialNoLinkage ||
+                                     request.mode != IndexMode::Background;
   int reparse = 0;
   std::optional<int64_t> write_time = LastWriteTime(path_to_index);
   if (!write_time) {
     deleted = true;
   } else {
-    reparse = vfs->Stamp(path_to_index, *write_time, 0);
+    if (vfs->Stamp(path_to_index, *write_time, no_linkage ? 2 : 0))
+      reparse = no_linkage ? 2 : 1;
     if (request.path != path_to_index) {
       std::optional<int64_t> mtime1 = LastWriteTime(request.path);
       if (!mtime1)
         deleted = true;
-      else if (vfs->Stamp(request.path, *mtime1, 0))
+      else if (vfs->Stamp(request.path, *mtime1, no_linkage ? 2 : 0))
         reparse = 2;
     }
   }
@@ -293,10 +295,13 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
       auto dependencies = prev->dependencies;
       IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
       on_indexed->PushBack(std::move(update),
-        request.mode != IndexMode::NonInteractive);
+                           request.mode != IndexMode::Background);
       {
         std::lock_guard lock1(vfs->mutex);
-        vfs->state[path_to_index].loaded++;
+        VFS::State &st = vfs->state[path_to_index];
+        st.loaded++;
+        if (prev->no_linkage)
+          st.step = 2;
       }
       lock.unlock();
 
@@ -315,10 +320,12 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
             continue;
           st.loaded++;
           st.timestamp = prev->mtime;
+          if (prev->no_linkage)
+            st.step = 3;
         }
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
         on_indexed->PushBack(std::move(update),
-          request.mode != IndexMode::NonInteractive);
+                             request.mode != IndexMode::Background);
         if (entry.id >= 0) {
           std::lock_guard lock2(project->mtx);
           project->root2folder[entry.root].path2entry_index[path] = entry.id;
@@ -339,9 +346,9 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
 
   std::vector<std::unique_ptr<IndexFile>> indexes;
   if (deleted) {
-    indexes.push_back(std::make_unique<IndexFile>(request.path, ""));
+    indexes.push_back(std::make_unique<IndexFile>(request.path, "", false));
     if (request.path != path_to_index)
-      indexes.push_back(std::make_unique<IndexFile>(path_to_index, ""));
+      indexes.push_back(std::make_unique<IndexFile>(path_to_index, "", false));
   } else {
     std::vector<std::pair<std::string, std::string>> remapped;
     if (g_config->index.onChange) {
@@ -351,7 +358,7 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
     }
     bool ok;
     indexes = idx::Index(completion, wfiles, vfs, entry.directory,
-                         path_to_index, entry.args, remapped, ok);
+                         path_to_index, entry.args, remapped, no_linkage, ok);
 
     if (!ok) {
       if (request.id.Valid()) {
@@ -403,7 +410,7 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
         }
       }
       on_indexed->PushBack(IndexUpdate::CreateDelta(prev.get(), curr.get()),
-                           request.mode != IndexMode::NonInteractive);
+                           request.mode != IndexMode::Background);
       {
         std::lock_guard lock1(vfs->mutex);
         vfs->state[path].loaded++;
@@ -743,7 +750,7 @@ void Index(const std::string &path, const std::vector<const char *> &args,
            IndexMode mode, bool must_exist, RequestId id) {
   pending_index_requests++;
   index_request->PushBack({path, args, mode, must_exist, id},
-                          mode != IndexMode::NonInteractive);
+                          mode != IndexMode::Background);
 }
 
 void RemoveCache(const std::string &path) {

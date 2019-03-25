@@ -576,7 +576,7 @@ void Project::Index(WorkingFiles *wfiles, RequestId id) {
           bool interactive = wfiles->GetFile(entry.filename) != nullptr;
           pipeline::Index(entry.filename, entry.args,
                           interactive ? IndexMode::Normal
-                                      : IndexMode::NonInteractive,
+                                      : IndexMode::Background,
                           false, id);
         } else {
           LOG_V(1) << "[" << i << "/" << folder.entries.size() << "]: " << reason
@@ -590,7 +590,7 @@ void Project::Index(WorkingFiles *wfiles, RequestId id) {
   pipeline::loaded_ts = pipeline::tick;
   // Dummy request to indicate that project is loaded and
   // trigger refreshing semantic highlight for all working files.
-  pipeline::Index("", {}, IndexMode::NonInteractive, false);
+  pipeline::Index("", {}, IndexMode::Background, false);
 }
 
 void Project::IndexRelated(const std::string &path) {
@@ -604,7 +604,7 @@ void Project::IndexRelated(const std::string &path) {
         std::string reason;
         if (sys::path::stem(entry.filename) == stem && entry.filename != path &&
             match.Matches(entry.filename, &reason))
-          pipeline::Index(entry.filename, entry.args, IndexMode::NonInteractive,
+          pipeline::Index(entry.filename, entry.args, IndexMode::Background,
                           true);
       }
       break;
