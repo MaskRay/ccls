@@ -62,7 +62,8 @@ struct IndexParam {
 
   VFS &vfs;
   ASTContext *Ctx;
-  IndexParam(VFS &vfs) : vfs(vfs) {}
+  bool no_linkage;
+  IndexParam(VFS &vfs, bool no_linkage) : vfs(vfs), no_linkage(no_linkage) {}
 
   void SeenFile(const FileEntry &File) {
     // If this is the first time we have seen the file (ignoring if we are
@@ -78,9 +79,10 @@ struct IndexParam {
       if (std::optional<std::string> content = ReadContent(path))
         it->second.content = *content;
 
-      if (!vfs.Stamp(path, it->second.mtime, 1))
+      if (!vfs.Stamp(path, it->second.mtime, no_linkage ? 3 : 1))
         return;
-      it->second.db = std::make_unique<IndexFile>(path, it->second.content);
+      it->second.db =
+          std::make_unique<IndexFile>(path, it->second.content, no_linkage);
     }
   }
 
@@ -693,6 +695,12 @@ public:
   bool handleDeclOccurence(const Decl *D, index::SymbolRoleSet Roles,
                            ArrayRef<index::SymbolRelation> Relations,
                            SourceLocation Loc, ASTNodeInfo ASTNode) override {
+    if (!param.no_linkage) {
+      if (auto *ND = dyn_cast<NamedDecl>(D); ND && ND->hasLinkage())
+        ;
+      else
+        return true;
+    }
     SourceManager &SM = Ctx->getSourceManager();
     const LangOptions &Lang = Ctx->getLangOpts();
     FileID LocFID;
@@ -1166,11 +1174,12 @@ public:
 };
 } // namespace
 
-const int IndexFile::kMajorVersion = 20;
+const int IndexFile::kMajorVersion = 21;
 const int IndexFile::kMinorVersion = 0;
 
-IndexFile::IndexFile(const std::string &path, const std::string &contents)
-    : path(path), file_contents(contents) {}
+IndexFile::IndexFile(const std::string &path, const std::string &contents,
+                     bool no_linkage)
+    : path(path), no_linkage(no_linkage), file_contents(contents) {}
 
 IndexFunc &IndexFile::ToFunc(Usr usr) {
   auto [it, inserted] = usr2func.try_emplace(usr);
@@ -1217,7 +1226,7 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
       const std::string &opt_wdir, const std::string &main,
       const std::vector<const char *> &args,
       const std::vector<std::pair<std::string, std::string>> &remapped,
-      bool &ok) {
+      bool no_linkage, bool &ok) {
   ok = true;
   auto PCH = std::make_shared<PCHContainerOperations>();
   llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS = llvm::vfs::getRealFileSystem();
@@ -1231,17 +1240,6 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   // code completion.
   if (g_config->index.comments > 1)
     CI->getLangOpts()->CommentOpts.ParseAllComments = true;
-  {
-    // FileSystemOptions& FSOpts = CI->getFileSystemOpts();
-    // if (FSOpts.WorkingDir.empty())
-    //   FSOpts.WorkingDir = opt_wdir;
-    // HeaderSearchOptions &HSOpts = CI->getHeaderSearchOpts();
-    // llvm::errs() << HSOpts.ResourceDir << "\n";
-    // // lib/clang/7.0.0 is incorrect
-    // if (HSOpts.ResourceDir.compare(0, 3, "lib") == 0 &&
-    //     HSOpts.UseBuiltinIncludes)
-    //   HSOpts.ResourceDir = g_config->clang.resourceDir;
-  }
   std::string buf = wfiles->GetContent(main);
   std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
   if (buf.size())
@@ -1260,19 +1258,22 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   if (!Clang->hasTarget())
     return {};
 
-  IndexParam param(*vfs);
+  IndexParam param(*vfs, no_linkage);
   auto DataConsumer = std::make_shared<IndexDataConsumer>(param);
 
   index::IndexingOptions IndexOpts;
   IndexOpts.SystemSymbolFilter =
       index::IndexingOptions::SystemSymbolFilterKind::All;
-  IndexOpts.IndexFunctionLocals = true;
-  IndexOpts.IndexImplicitInstantiation = true;
+  if (no_linkage) {
+    IndexOpts.IndexFunctionLocals = true;
+    IndexOpts.IndexImplicitInstantiation = true;
 #if LLVM_VERSION_MAJOR >= 9
-  IndexOpts.IndexParametersInDeclarations =
-      g_config->index.parametersInDeclarations;
-  IndexOpts.IndexTemplateParameters = true;
+
+    IndexOpts.IndexParametersInDeclarations =
+        g_config->index.parametersInDeclarations;
+    IndexOpts.IndexTemplateParameters = true;
 #endif
+  }
 
   std::unique_ptr<FrontendAction> Action = createIndexingAction(
       DataConsumer, IndexOpts, std::make_unique<IndexFrontendAction>(param));

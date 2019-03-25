@@ -128,7 +128,7 @@ QueryType::Def Convert(const IndexType::Def &o) {
 
 IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
   IndexUpdate r;
-  static IndexFile empty(current->path, "<empty>");
+  static IndexFile empty(current->path, "<empty>", false);
   if (previous)
     r.prev_lid2path = std::move(previous->lid2path);
   else
