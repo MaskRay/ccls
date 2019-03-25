@@ -362,6 +362,7 @@ template <typename TVisitor> void Reflect1(TVisitor &vis, IndexFile &v) {
   if (!gTestOutputMode) {
     REFLECT_MEMBER(mtime);
     REFLECT_MEMBER(language);
+    REFLECT_MEMBER(no_linkage);
     REFLECT_MEMBER(lid2path);
     REFLECT_MEMBER(import_file);
     REFLECT_MEMBER(args);
@@ -470,7 +471,7 @@ Deserialize(SerializeFormat format, const std::string &path,
       if (major != IndexFile::kMajorVersion ||
           minor != IndexFile::kMinorVersion)
         throw std::invalid_argument("Invalid version");
-      file = std::make_unique<IndexFile>(path, file_content);
+      file = std::make_unique<IndexFile>(path, file_content, false);
       ReflectFile(reader, *file);
     } catch (std::invalid_argument &e) {
       LOG_S(INFO) << "failed to deserialize '" << path << "': " << e.what();
@@ -493,7 +494,7 @@ Deserialize(SerializeFormat format, const std::string &path,
     if (reader.HasParseError())
       return nullptr;
 
-    file = std::make_unique<IndexFile>(path, file_content);
+    file = std::make_unique<IndexFile>(path, file_content, false);
     JsonReader json_reader{&reader};
     try {
       ReflectFile(json_reader, *file);

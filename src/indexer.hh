@@ -292,6 +292,7 @@ struct IndexFile {
   // This is unfortunately time_t as used by clang::FileEntry
   int64_t mtime = 0;
   LanguageId language = LanguageId::C;
+  bool no_linkage;
 
   // uid2lid_and_path is used to generate lid2path, but not serialized.
   std::unordered_map<llvm::sys::fs::UniqueID, std::pair<int, std::string>>
@@ -316,7 +317,8 @@ struct IndexFile {
   // File contents at the time of index. Not serialized.
   std::string file_contents;
 
-  IndexFile(const std::string &path, const std::string &contents);
+  IndexFile(const std::string &path, const std::string &contents,
+            bool no_linkage);
 
   IndexFunc &ToFunc(Usr usr);
   IndexType &ToType(Usr usr);
@@ -336,7 +338,7 @@ Index(SemaManager *complete, WorkingFiles *wfiles, VFS *vfs,
       const std::string &opt_wdir, const std::string &file,
       const std::vector<const char *> &args,
       const std::vector<std::pair<std::string, std::string>> &remapped,
-      bool &ok);
+      bool all_linkages, bool &ok);
 } // namespace idx
 } // namespace ccls
 
