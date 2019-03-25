@@ -33,7 +33,7 @@ struct VFS {
 };
 
 enum class IndexMode {
-  NonInteractive,
+  Background,
   OnChange,
   Normal,
 };

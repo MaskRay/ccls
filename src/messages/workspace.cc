@@ -43,7 +43,7 @@ void MessageHandler::workspace_didChangeWatchedFiles(
         return;
 
     IndexMode mode =
-        wfiles->GetFile(path) ? IndexMode::Normal : IndexMode::NonInteractive;
+        wfiles->GetFile(path) ? IndexMode::Normal : IndexMode::Background;
     switch (event.type) {
     case FileChangeType::Created:
     case FileChangeType::Changed: {
