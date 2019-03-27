@@ -1251,12 +1251,17 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   DiagnosticConsumer DC;
   auto Clang = std::make_unique<CompilerInstance>(PCH);
   Clang->setInvocation(std::move(CI));
-  Clang->setVirtualFileSystem(FS);
   Clang->createDiagnostics(&DC, false);
   Clang->setTarget(TargetInfo::CreateTargetInfo(
       Clang->getDiagnostics(), Clang->getInvocation().TargetOpts));
   if (!Clang->hasTarget())
     return {};
+#if LLVM_VERSION_MAJOR >= 9 // rC357037
+  Clang->createFileManager(FS);
+#else
+  Clang->setVirtualFileSystem(FS);
+  Clang->createFileManager();
+#endif
 
   IndexParam param(*vfs, no_linkage);
   auto DataConsumer = std::make_shared<IndexDataConsumer>(param);
