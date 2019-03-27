@@ -308,7 +308,6 @@ std::unique_ptr<CompilerInstance> BuildCompilerInstance(
 
   auto Clang = std::make_unique<CompilerInstance>(session.PCH);
   Clang->setInvocation(std::move(CI));
-  Clang->setVirtualFileSystem(FS);
   Clang->createDiagnostics(&DC, false);
   Clang->setTarget(TargetInfo::CreateTargetInfo(
       Clang->getDiagnostics(), Clang->getInvocation().TargetOpts));
@@ -317,7 +316,12 @@ std::unique_ptr<CompilerInstance> BuildCompilerInstance(
   // Construct SourceManager with UserFilesAreVolatile: true because otherwise
   // RequiresNullTerminator: true may cause out-of-bounds read when a file is
   // mmap'ed but is saved concurrently.
+#if LLVM_VERSION_MAJOR >= 9 // rC357037
+  Clang->createFileManager(FS);
+#else
+  Clang->setVirtualFileSystem(FS);
   Clang->createFileManager();
+#endif
   Clang->setSourceManager(new SourceManager(Clang->getDiagnostics(),
                                             Clang->getFileManager(), true));
   auto &IS = Clang->getFrontendOpts().Inputs;
