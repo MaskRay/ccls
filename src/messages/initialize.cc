@@ -215,8 +215,8 @@ void Reflect(JsonReader &reader, InitializeParam::Trace &value) {
     value = InitializeParam::Trace::Verbose;
 }
 
-REFLECT_STRUCT(InitializeParam, rootUri, initializationOptions, capabilities,
-               trace, workspaceFolders);
+// initializationOptions is deserialized separately.
+REFLECT_STRUCT(InitializeParam, rootUri, capabilities, trace, workspaceFolders);
 
 struct InitializeResult {
   ServerCap capabilities;
@@ -384,6 +384,17 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
 void MessageHandler::initialize(JsonReader &reader, ReplyOnce &reply) {
   InitializeParam param;
   Reflect(reader, param);
+  auto it = reader.m->FindMember("initializationOptions");
+  if (it != reader.m->MemberEnd() && it->value.IsObject()) {
+    JsonReader m1(&it->value);
+    try {
+      Reflect(m1, param.initializationOptions);
+    } catch (std::invalid_argument &) {
+      reader.path_.push_back("initializationOptions");
+      reader.path_.insert(reader.path_.end(), m1.path_.begin(), m1.path_.end());
+      throw;
+    }
+  }
   if (!param.rootUri) {
     reply.Error(ErrorCode::InvalidRequest, "expected rootUri");
     return;

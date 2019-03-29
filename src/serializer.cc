@@ -397,6 +397,11 @@ void Reflect(JsonWriter &vis, SerializeFormat &v) {
   }
 }
 
+void ReflectMemberStart(JsonReader &vis) {
+  if (!vis.m->IsObject())
+    throw std::invalid_argument("object");
+}
+
 static BumpPtrAllocator Alloc;
 static DenseSet<CachedHashStringRef> Strings;
 static std::mutex AllocMutex;
