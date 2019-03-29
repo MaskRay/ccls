@@ -300,11 +300,11 @@ std::unique_ptr<CompilerInstance> BuildCompilerInstance(
     Session &session, std::unique_ptr<CompilerInvocation> CI,
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS, DiagnosticConsumer &DC,
     const PreambleData *preamble, const std::string &main,
-    std::unique_ptr<llvm::MemoryBuffer> &Buf) {
+    std::unique_ptr<llvm::MemoryBuffer> Buf) {
   if (preamble)
-    preamble->Preamble.OverridePreamble(*CI, FS, Buf.get());
+    preamble->Preamble.OverridePreamble(*CI, FS, Buf.release());
   else
-    CI->getPreprocessorOpts().addRemappedFile(main, Buf.get());
+    CI->getPreprocessorOpts().addRemappedFile(main, Buf.release());
 
   auto Clang = std::make_unique<CompilerInstance>(session.PCH);
   Clang->setInvocation(std::move(CI));
@@ -485,7 +485,7 @@ void *CompletionMain(void *manager_) {
       continue;
     }
     auto Clang = BuildCompilerInstance(*session, std::move(CI), FS, DC,
-                                       preamble.get(), task->path, Buf);
+                                       preamble.get(), task->path, std::move(Buf));
     if (!Clang)
       continue;
 
@@ -493,7 +493,6 @@ void *CompletionMain(void *manager_) {
     Clang->setCodeCompletionConsumer(task->Consumer.release());
     if (!Parse(*Clang))
       continue;
-    Buf.release();
 
     task->on_complete(&Clang->getCodeCompletionConsumer());
   }
@@ -578,12 +577,11 @@ void *DiagnosticMain(void *manager_) {
     std::string content = manager->wfiles->GetContent(task.path);
     auto Buf = llvm::MemoryBuffer::getMemBuffer(content);
     auto Clang = BuildCompilerInstance(*session, std::move(CI), FS, DC,
-                                       preamble.get(), task.path, Buf);
+                                       preamble.get(), task.path, std::move(Buf));
     if (!Clang)
       continue;
     if (!Parse(*Clang))
       continue;
-    Buf.release();
 
     auto Fill = [](const DiagBase &d, Diagnostic &ret) {
       ret.range = lsRange{{d.range.start.line, d.range.start.column},
