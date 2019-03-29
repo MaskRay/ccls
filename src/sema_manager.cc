@@ -302,6 +302,7 @@ std::unique_ptr<CompilerInstance> BuildCompilerInstance(
       Clang->getDiagnostics(), Clang->getInvocation().TargetOpts));
   if (!Clang->hasTarget())
     return nullptr;
+  Clang->getPreprocessorOpts().RetainRemappedFileBuffers = true;
   // Construct SourceManager with UserFilesAreVolatile: true because otherwise
   // RequiresNullTerminator: true may cause out-of-bounds read when a file is
   // mmap'ed but is saved concurrently.
@@ -490,7 +491,6 @@ void *CompletionMain(void *manager_) {
     Clang->setCodeCompletionConsumer(task->Consumer.release());
     if (!Parse(*Clang))
       continue;
-    Buf.release();
 
     task->on_complete(&Clang->getCodeCompletionConsumer());
   }
@@ -580,7 +580,6 @@ void *DiagnosticMain(void *manager_) {
       continue;
     if (!Parse(*Clang))
       continue;
-    Buf.release();
 
     auto Fill = [](const DiagBase &d, Diagnostic &ret) {
       ret.range = lsRange{{d.range.start.line, d.range.start.column},
