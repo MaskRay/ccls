@@ -379,6 +379,7 @@ template <typename T> void Reflect(BinaryWriter &vis, std::vector<T> &v) {
 
 // ReflectMember
 
+void ReflectMemberStart(JsonReader &);
 template <typename T> void ReflectMemberStart(T &) {}
 inline void ReflectMemberStart(JsonWriter &vis) { vis.StartObject(); }
 
