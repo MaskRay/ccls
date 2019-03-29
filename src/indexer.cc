@@ -1244,6 +1244,7 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
       Clang->getDiagnostics(), Clang->getInvocation().TargetOpts));
   if (!Clang->hasTarget())
     return {};
+  Clang->getPreprocessorOpts().RetainRemappedFileBuffers = true;
 #if LLVM_VERSION_MAJOR >= 9 // rC357037
   Clang->createFileManager(FS);
 #else
@@ -1290,8 +1291,6 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
     LOG_S(ERROR) << "failed to index " << main;
     return {};
   }
-  for (auto &Buf : Bufs)
-    Buf.release();
 
   std::vector<std::unique_ptr<IndexFile>> result;
   for (auto &it : param.UID2File) {
