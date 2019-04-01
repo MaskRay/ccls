@@ -429,23 +429,27 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
       // CMAKE splits nvcc compiles into 2 seperates commands, and has (mostly) non-clang arguments. Replace these with a simple call to clang with only "-I /path/header.h" arguments.
       // .ccls will also need:
       // clang
-      // %cu --cuda-gpu-arch=sm_70 --cuda-path=/usr/local/cuda-9.2/
+      // %cu --cuda-gpu-arch=sm_70 --cuda-path=/usr/local/cuda-9.2/ --std=c++11
       if(lang == LanguageId::CUDA) {
         entry.args.push_back(Intern("/usr/bin/clang-7"));
+        entry.args.push_back(Intern("--cuda-gpu-arch=sm_70"));
+        entry.args.push_back(Intern("--cuda-path=/usr/local/cuda-9.2/"));
+        entry.args.push_back(Intern("--std=c++11"));
         entry.args.push_back(Intern("-c"));
         entry.args.push_back(Intern(entry.filename));
         LOG_S(INFO) << entry.filename << ": (CUDA) clang-7 -c filename";
-        bool take_next_arg = false;
         for (std::string &arg : args) {
-          // take header includes (-I /path/to/header.h)
-          if(arg == "-I") {
+          // take header includes (-I/path/to/header.h)
+          if((arg.find("-I") != std::string::npos)
+             ) {            
+            LOG_S(INFO) << entry.filename << ": (CUDA) Adding Arg: " << arg;
             entry.args.push_back(Intern(arg));
-            take_next_arg = true;
           }
-          else if (take_next_arg) {
-            // take actual header include location (/path/to/header.h)
+          else if(arg.find("-isystem") != std::string::npos) {
+            auto equals = arg.find("=");
+            arg.replace(equals,1," ");
+            LOG_S(INFO) << entry.filename << ": (CUDA) Adding Arg: " << arg;
             entry.args.push_back(Intern(arg));
-            take_next_arg = false;
           }
           else {
             LOG_S(INFO) << entry.filename << ": (CUDA) Ignoring arg: " << arg;
