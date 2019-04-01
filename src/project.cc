@@ -51,6 +51,15 @@ using namespace clang;
 using namespace llvm;
 
 namespace ccls {
+
+template <typename Enumeration>
+auto as_integer(Enumeration const value)
+  -> typename std::underlying_type<Enumeration>::type
+{
+  return static_cast<typename std::underlying_type<Enumeration>::type>(value);
+}
+
+
 std::pair<LanguageId, bool> lookupExtension(std::string_view filename) {
   using namespace clang::driver;
   auto I = types::lookupTypeForExtension(
@@ -136,6 +145,7 @@ struct ProjectProcessor {
         args.push_back(arg);
       }
     }
+    
     entry.args = args;
     GetSearchDirs(entry);
   }
@@ -330,12 +340,6 @@ int ComputeGuessScore(std::string_view a, std::string_view b) {
 
 } // namespace
 
-template <typename Enumeration>
-auto as_integer(Enumeration const value)
-  -> typename std::underlying_type<Enumeration>::type
-{
-  return static_cast<typename std::underlying_type<Enumeration>::type>(value);
-}
 
 void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
   SmallString<256> CDBDir, Path, StdinPath;
@@ -432,9 +436,10 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
       // %cu --cuda-gpu-arch=sm_70 --cuda-path=/usr/local/cuda-9.2/ --std=c++11
       if(lang == LanguageId::CUDA) {
         entry.args.push_back(Intern("/usr/bin/clang-7"));
-        entry.args.push_back(Intern("--cuda-gpu-arch=sm_70"));
-        entry.args.push_back(Intern("--cuda-path=/usr/local/cuda-9.2/"));
-        entry.args.push_back(Intern("--std=c++11"));
+        // entry.args.push_back(Intern("--cuda-gpu-arch=sm_70"));
+        // entry.args.push_back(Intern("--cuda-path=/usr/local/cuda-9.2/"));
+        // entry.args.push_back(Intern("-I/home/max/dev/cuml/thirdparty/cuml/googletest/googletest/include"));
+        // entry.args.push_back(Intern("--std=c++11"));
         entry.args.push_back(Intern("-c"));
         entry.args.push_back(Intern(entry.filename));
         LOG_S(INFO) << entry.filename << ": (CUDA) clang-7 -c filename";
@@ -448,6 +453,10 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
           else if(arg.find("-isystem") != std::string::npos) {
             auto equals = arg.find("=");
             arg.replace(equals,1," ");
+            LOG_S(INFO) << entry.filename << ": (CUDA) Adding Arg: " << arg;
+            entry.args.push_back(Intern(arg));
+          }
+          else if(arg.find("-std=") != std::string::npos) {
             LOG_S(INFO) << entry.filename << ": (CUDA) Adding Arg: " << arg;
             entry.args.push_back(Intern(arg));
           }
