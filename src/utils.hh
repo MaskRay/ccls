@@ -144,9 +144,10 @@ public:
 template <typename T> struct Vec {
   std::unique_ptr<T[]> a;
   int s = 0;
-#if !(__clang__ || __GNUC__ > 7 || __GNUC__ == 7 && __GNUC_MINOR__ >= 4)
-  // Work around a bug in GCC<7.4 that optional<IndexUpdate> would not be
-  // construtible.
+#if !(__clang__ || __GNUC__ > 7 || __GNUC__ == 7 && __GNUC_MINOR__ >= 4) ||    \
+    WIN32
+  // Work around a bug in GCC<7.4 and MSVC/clang-cl that optional<IndexUpdate>
+  // would not be construtible.
   Vec() = default;
   Vec(const Vec &o) : a(std::make_unique<T[]>(o.s)), s(o.s) {
     std::copy(o.a.get(), o.a.get() + o.s, a.get());
