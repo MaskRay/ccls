@@ -363,6 +363,7 @@ void BuildPreamble(Session &session, CompilerInvocation &CI,
   CI.getDiagnosticOpts().IgnoreWarnings = false;
   CI.getFrontendOpts().SkipFunctionBodies = true;
   CI.getLangOpts()->CommentOpts.ParseAllComments = g_config->index.comments > 1;
+  CI.getLangOpts()->RetainCommentsFromSystemHeaders = true;
 
   StoreDiags DC(task.path);
   IntrusiveRefCntPtr<DiagnosticsEngine> DE =

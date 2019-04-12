@@ -1238,8 +1238,8 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   ok = false;
   // -fparse-all-comments enables documentation in the indexer and in
   // code completion.
-  if (g_config->index.comments > 1)
-    CI->getLangOpts()->CommentOpts.ParseAllComments = true;
+  CI->getLangOpts()->CommentOpts.ParseAllComments = g_config->index.comments > 1;
+  CI->getLangOpts()->RetainCommentsFromSystemHeaders = true;
   std::string buf = wfiles->GetContent(main);
   std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
   if (buf.size())
