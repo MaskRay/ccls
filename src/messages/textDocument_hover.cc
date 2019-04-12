@@ -48,8 +48,11 @@ GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
   std::optional<MarkedString> ls_comments, hover;
   WithEntity(db, sym, [&](const auto &entity) {
     for (auto &d : entity.def) {
+      if (!comments && d.comments[0])
+        comments = d.comments;
       if (d.spell) {
-        comments = d.comments[0] ? d.comments : nullptr;
+        if (d.comments[0])
+          comments = d.comments;
         if (const char *s =
                 d.hover[0] ? d.hover
                            : d.detailed_name[0] ? d.detailed_name : nullptr) {
@@ -64,8 +67,6 @@ GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
     }
     if (!hover && entity.def.size()) {
       auto &d = entity.def[0];
-      if (d.comments[0])
-        comments = d.comments;
       hover = {LanguageIdentifier(lang)};
       if (d.hover[0])
         hover->value = d.hover;
