@@ -51,6 +51,15 @@ using namespace clang;
 using namespace llvm;
 
 namespace ccls {
+
+template <typename Enumeration>
+auto as_integer(Enumeration const value)
+  -> typename std::underlying_type<Enumeration>::type
+{
+  return static_cast<typename std::underlying_type<Enumeration>::type>(value);
+}
+
+
 std::pair<LanguageId, bool> lookupExtension(std::string_view filename) {
   using namespace clang::driver;
   auto I = types::lookupTypeForExtension(
@@ -59,7 +68,9 @@ std::pair<LanguageId, bool> lookupExtension(std::string_view filename) {
                 I == types::TY_ObjCXXHeader;
   bool objc = types::isObjC(I);
   LanguageId ret;
-  if (types::isCXX(I))
+  if (I == types::TY_CUDA)
+    ret = LanguageId::CUDA;
+  else if (types::isCXX(I))
     ret = objc ? LanguageId::ObjCpp : LanguageId::Cpp;
   else if (objc)
     ret = LanguageId::ObjC;
@@ -123,6 +134,8 @@ struct ProjectProcessor {
             ok |= lang == LanguageId::ObjC;
           else if (A.consume_front("%objective-cpp "))
             ok |= lang == LanguageId::ObjCpp;
+          else if (A.consume_front("%cu "))
+            ok |= lang == LanguageId::CUDA;
           else
             break;
         }
@@ -132,6 +145,7 @@ struct ProjectProcessor {
         args.push_back(arg);
       }
     }
+    
     entry.args = args;
     GetSearchDirs(entry);
   }
@@ -326,6 +340,7 @@ int ComputeGuessScore(std::string_view a, std::string_view b) {
 
 } // namespace
 
+
 void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
   SmallString<256> CDBDir, Path, StdinPath;
   std::string err_msg;
@@ -412,11 +427,54 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
       DoPathMapping(entry.filename);
 
       std::vector<std::string> args = std::move(Cmd.CommandLine);
-      entry.args.reserve(args.size());
-      for (std::string &arg : args) {
-        DoPathMapping(arg);
-        if (!proc.ExcludesArg(arg))
-          entry.args.push_back(Intern(arg));
+      
+      auto [lang, header] = lookupExtension(entry.filename);
+
+      // CMAKE splits nvcc compiles into 2 seperates commands, and has (mostly) non-clang arguments. Replace these with a simple call to clang with only "-I /path/header.h" arguments.
+      // .ccls will also need:
+      // clang
+      // %cu --cuda-gpu-arch=sm_70 --cuda-path=/usr/local/cuda-9.2/ --std=c++11
+      if(lang == LanguageId::CUDA) {
+        entry.args.push_back(Intern("/usr/bin/clang-7"));
+        // entry.args.push_back(Intern("--cuda-gpu-arch=sm_70"));
+        // entry.args.push_back(Intern("--cuda-path=/usr/local/cuda-9.2/"));
+        // entry.args.push_back(Intern("-I/home/max/dev/cuml/thirdparty/cuml/googletest/googletest/include"));
+        // entry.args.push_back(Intern("--std=c++11"));
+        entry.args.push_back(Intern("-c"));
+        entry.args.push_back(Intern(entry.filename));
+        LOG_S(INFO) << entry.filename << ": (CUDA) clang-7 -c filename";
+        for (std::string &arg : args) {
+          // take header includes (-I/path/to/header.h)
+          if((arg.find("-I") != std::string::npos)
+             ) {            
+            LOG_S(INFO) << entry.filename << ": (CUDA) Adding Arg: " << arg;
+            entry.args.push_back(Intern(arg));
+          }
+          else if(arg.find("-isystem") != std::string::npos) {
+            auto equals = arg.find("=");
+            arg.replace(equals,1," ");
+            LOG_S(INFO) << entry.filename << ": (CUDA) Adding Arg: " << arg;
+            entry.args.push_back(Intern(arg));
+          }
+          else if(arg.find("-std=") != std::string::npos) {
+            LOG_S(INFO) << entry.filename << ": (CUDA) Adding Arg: " << arg;
+            entry.args.push_back(Intern(arg));
+          }
+          else {
+            LOG_S(INFO) << entry.filename << ": (CUDA) Ignoring arg: " << arg;
+          }
+        }
+      }
+      else {
+        entry.args.reserve(args.size());
+        for (std::string &arg : args) {
+          DoPathMapping(arg);
+          if (!proc.ExcludesArg(arg)) {
+            // LOG_S(INFO) << entry.filename <<  ": Accepted arg: " << arg <<
+            // "\n";
+            entry.args.push_back(Intern(arg));
+          }
+        }
       }
       entry.compdb_size = entry.args.size();
 
