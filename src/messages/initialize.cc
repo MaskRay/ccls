@@ -72,6 +72,7 @@ struct ServerCap {
   struct SignatureHelpOptions {
     std::vector<const char *> triggerCharacters = {"(", ","};
   } signatureHelpProvider;
+  bool declarationProvider = true;
   bool definitionProvider = true;
   bool typeDefinitionProvider = true;
   bool implementationProvider = true;
@@ -111,7 +112,7 @@ REFLECT_STRUCT(ServerCap::SignatureHelpOptions, triggerCharacters);
 REFLECT_STRUCT(ServerCap::TextDocumentSyncOptions, openClose, change, willSave,
                willSaveWaitUntil, save);
 REFLECT_STRUCT(ServerCap, textDocumentSync, hoverProvider, completionProvider,
-               signatureHelpProvider, definitionProvider,
+               signatureHelpProvider, declarationProvider, definitionProvider,
                implementationProvider, typeDefinitionProvider,
                referencesProvider, documentHighlightProvider,
                documentSymbolProvider, workspaceSymbolProvider,
