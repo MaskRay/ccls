@@ -63,9 +63,14 @@ class SignatureHelpConsumer : public CodeCompleteConsumer {
 public:
   bool from_cache;
   SignatureHelp ls_sighelp;
-  SignatureHelpConsumer(const clang::CodeCompleteOptions &CCOpts,
+  SignatureHelpConsumer(const clang::CodeCompleteOptions &Opts,
                         bool from_cache)
-      : CodeCompleteConsumer(CCOpts, false),
+      :
+#if LLVM_VERSION_MAJOR >= 9 // rC358696
+        CodeCompleteConsumer(Opts),
+#else
+        CodeCompleteConsumer(Opts, false),
+#endif
         Alloc(std::make_shared<GlobalCodeCompletionAllocator>()),
         CCTUInfo(Alloc), from_cache(from_cache) {}
   void ProcessOverloadCandidates(Sema &S, unsigned CurrentArg,
