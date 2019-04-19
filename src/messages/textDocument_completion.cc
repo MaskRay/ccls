@@ -394,7 +394,12 @@ public:
   std::vector<CompletionItem> ls_items;
 
   CompletionConsumer(const CodeCompleteOptions &Opts, bool from_cache)
-      : CodeCompleteConsumer(Opts, false),
+      :
+#if LLVM_VERSION_MAJOR >= 9 // rC358696
+        CodeCompleteConsumer(Opts),
+#else
+        CodeCompleteConsumer(Opts, false),
+#endif
         Alloc(std::make_shared<clang::GlobalCodeCompletionAllocator>()),
         CCTUInfo(Alloc), from_cache(from_cache) {}
 
