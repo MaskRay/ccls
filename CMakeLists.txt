@@ -152,6 +152,10 @@ if(USE_SYSTEM_RAPIDJSON)
 endif()
 if(NOT RapidJSON_FOUND)
   set(RapidJSON_INCLUDE_DIRS third_party/rapidjson/include)
+elseif(NOT RapidJSON_INCLUDE_DIRS)
+  # The variable name was changed in
+  # https://github.com/Tencent/rapidjson/commit/b91c515afea9f0ba6a81fc670889549d77c83db3
+  set(RapidJSON_INCLUDE_DIRS ${RAPIDJSON_INCLUDE_DIRS})
 endif()
 target_include_directories(ccls SYSTEM PRIVATE ${RapidJSON_INCLUDE_DIRS})
 
