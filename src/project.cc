@@ -491,33 +491,38 @@ Project::Entry Project::FindEntry(const std::string &path, bool can_redirect,
 
   bool exists = false;
   std::string dir;
-  const std::vector<const char *> *extra = nullptr;
+  const std::vector<const char *> *args_from_dotccls = nullptr;
   Project::Entry ret;
+  std::string best_dotccls_root;
+  ccls::Project::Folder *best_dotccls_folder = nullptr;
   for (auto &[root, folder] : root2folder)
     if (StringRef(path).startswith(root))
       for (auto &[dir1, args] : folder.dot_ccls)
-        if (StringRef(path).startswith(dir1)) {
+        if (StringRef(path).startswith(dir1) && dir1.length() > dir.length()) {
+          best_dotccls_root = root;
+          best_dotccls_folder = &folder;
           dir = dir1;
-          extra = &args;
-          if (AppendToCDB(args))
-            goto out;
-          exists = true;
-
-          ret.root = ret.directory = root;
-          ret.filename = path;
-          if (args.empty()) {
-            ret.args = GetFallback(path);
-          } else {
-            ret.args = args;
-            ret.args.push_back(Intern(path));
-          }
-          ProjectProcessor(folder).Process(ret);
-          for (const std::string &arg : g_config->clang.extraArgs)
-            ret.args.push_back(Intern(arg));
-          ret.args.push_back(Intern("-working-directory=" + ret.directory));
-          return ret;
+          args_from_dotccls = &args;
         }
-out:
+
+  if (args_from_dotccls && !AppendToCDB(*args_from_dotccls)) {
+    exists = true;
+
+    ret.root = ret.directory = best_dotccls_root;
+    ret.filename = path;
+    if (args_from_dotccls->empty()) {
+      ret.args = GetFallback(path);
+    } else {
+      ret.args = *args_from_dotccls;
+      ret.args.push_back(Intern(path));
+    }
+    ProjectProcessor(*best_dotccls_folder).Process(ret);
+    for (const std::string &arg : g_config->clang.extraArgs)
+      ret.args.push_back(Intern(arg));
+    ret.args.push_back(Intern("-working-directory=" + ret.directory));
+    return ret;
+  }
+
   if (must_exist && !exists)
     return ret;
 
@@ -550,8 +555,9 @@ out:
     ret.directory = best->directory;
     ret.args = best->args;
     ret.args.resize(best->compdb_size);
-    if (extra && extra->size())
-      ret.args.insert(ret.args.end(), extra->begin() + 1, extra->end());
+    if (args_from_dotccls && args_from_dotccls->size())
+      ret.args.insert(ret.args.end(), args_from_dotccls->begin() + 1,
+                      args_from_dotccls->end());
     ProjectProcessor(*best_folder).Process(ret);
     for (const std::string &arg : g_config->clang.extraArgs)
       ret.args.push_back(Intern(arg));
