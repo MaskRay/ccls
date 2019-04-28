@@ -261,7 +261,7 @@ void LoadDirectoryListing(ProjectProcessor &proc, const std::string &root,
                          files.push_back(path);
                      } else if (sys::path::filename(path) == ".ccls") {
                        std::vector<const char *> args = ReadCompilerArgumentsFromFile(path);
-                       folder.dot_ccls.emplace(sys::path::parent_path(path),
+                       folder.dot_ccls.emplace(sys::path::parent_path(path).str() + '/',
                                                args);
                        std::string l;
                        for (size_t i = 0; i < args.size(); i++) {
