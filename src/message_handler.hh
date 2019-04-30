@@ -165,11 +165,22 @@ struct WorkspaceSymbolParam {
 };
 REFLECT_STRUCT(WorkspaceFolder, uri, name);
 
-inline void Reflect(JsonReader &visitor, DocumentUri &value) {
-  Reflect(visitor, value.raw_uri);
+inline void Reflect(JsonReader &vis, DocumentUri &v) {
+  Reflect(vis, v.raw_uri);
 }
-inline void Reflect(JsonWriter &visitor, DocumentUri &value) {
-  Reflect(visitor, value.raw_uri);
+inline void Reflect(JsonWriter &vis, DocumentUri &v) {
+  Reflect(vis, v.raw_uri);
+}
+inline void Reflect(JsonReader &vis, VersionedTextDocumentIdentifier &v) {
+  REFLECT_MEMBER(uri);
+  REFLECT_MEMBER(version);
+}
+inline void Reflect(JsonWriter &vis, VersionedTextDocumentIdentifier &v) {
+  vis.StartObject();
+  REFLECT_MEMBER(uri);
+  vis.Key("version");
+  Reflect(vis, v.version);
+  vis.EndObject();
 }
 
 REFLECT_UNDERLYING(ErrorCode);
@@ -182,7 +193,6 @@ REFLECT_UNDERLYING_B(SymbolKind);
 REFLECT_STRUCT(TextDocumentIdentifier, uri);
 REFLECT_STRUCT(TextDocumentItem, uri, languageId, version, text);
 REFLECT_STRUCT(TextEdit, range, newText);
-REFLECT_STRUCT(VersionedTextDocumentIdentifier, uri, version);
 REFLECT_STRUCT(DiagnosticRelatedInformation, location, message);
 REFLECT_STRUCT(Diagnostic, range, severity, code, source, message, relatedInformation);
 REFLECT_STRUCT(ShowMessageParam, type, message);
