@@ -65,7 +65,11 @@ int main(int argc, char **argv) {
   });
 
   for (auto &I : TopLevelSubCommand->OptionsMap)
+#if LLVM_VERSION_MAJOR >= 9 // rL360179
+    if (I.second->Categories[0] != &C)
+#else
     if (I.second->Category != &C)
+#endif
       I.second->setHiddenFlag(ReallyHidden);
 
   ParseCommandLineOptions(argc, argv,
