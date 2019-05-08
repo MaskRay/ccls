@@ -64,9 +64,7 @@ int main(int argc, char **argv) {
        << "\n";
   });
 
-  for (auto &I : TopLevelSubCommand->OptionsMap)
-    if (I.second->Category != &C)
-      I.second->setHiddenFlag(ReallyHidden);
+  cl::HideUnrelatedOptions(C);
 
   ParseCommandLineOptions(argc, argv,
                           "C/C++/Objective-C language server\n\n"
