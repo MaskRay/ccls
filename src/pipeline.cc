@@ -150,7 +150,7 @@ std::string GetCachePath(std::string src) {
     std::string ret =
         g_config->cache.directory + (src[0] == '/' ? src.substr(1) : src);
 #ifdef _WIN32
-    std::replace(ret.begin(), ret.end(), ':', '@');
+    std::replace(ret.begin()+2, ret.end(), ':', '@');
 #endif
     return ret;
   }
