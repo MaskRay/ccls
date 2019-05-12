@@ -274,6 +274,8 @@ public:
       } else {
         Note &n = last->notes.emplace_back();
         fillDiagBase(n);
+        if (concerned)
+          last->concerned = true;
       }
     } else {
       Flush();
