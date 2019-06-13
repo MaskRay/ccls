@@ -147,7 +147,7 @@ public:
       auto val = std::move(q->front());
       q->pop_front();
       --total_count_;
-      return std::move(val);
+      return val;
     };
     if (!priority_.empty())
       return execute(&priority_);
@@ -162,7 +162,7 @@ public:
       auto val = std::move(q->front());
       q->pop_front();
       --total_count_;
-      return std::move(val);
+      return val;
     };
     if (priority_.size())
       return execute(&priority_);
