@@ -39,9 +39,6 @@ limitations under the License.
 #include <malloc.h>
 #endif
 
-#include <llvm/ADT/SmallString.h>
-#include <llvm/Support/Path.h>
-
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
@@ -52,10 +49,14 @@ namespace pipeline {
 void ThreadEnter();
 }
 
+// Normalize the path, including eliminating redundant . and duplicated /
+// characters.
 std::string NormalizePath(const std::string &path) {
-  llvm::SmallString<256> P(path);
-  llvm::sys::path::remove_dots(P, true);
-  return {P.data(), P.size()};
+  char canonical[PATH_MAX + 1];
+  if (realpath(path.c_str(), canonical)) {
+    return canonical;
+  }
+  return path;
 }
 
 void FreeUnusedMemory() {
