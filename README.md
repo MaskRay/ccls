@@ -38,7 +38,7 @@ The comparison with cquery as noted on 2018-07-15:
 
 cquery has system include path detection (through running the compiler driver) while ccls uses clangDriver.
 
-# >>> [Getting started](../../wiki/Home) (CLICK HERE) <<<
+# >>> [Getting started (CLICK HERE)](../../wiki/Home) <<<
 
 * [Build](../../wiki/Build)
 * [FAQ](../../wiki/FAQ)
