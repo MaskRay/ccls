@@ -144,8 +144,7 @@ set_property(SOURCE src/utils.cc APPEND PROPERTY COMPILE_DEFINITIONS
 ### Includes
 
 target_include_directories(ccls PRIVATE src)
-target_include_directories(ccls SYSTEM PRIVATE
-  third_party ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
+target_include_directories(ccls SYSTEM PRIVATE third_party)
 
 if(USE_SYSTEM_RAPIDJSON)
   find_package(RapidJSON QUIET)
@@ -153,7 +152,33 @@ endif()
 if(NOT RapidJSON_FOUND)
   set(RapidJSON_INCLUDE_DIRS third_party/rapidjson/include)
 endif()
-target_include_directories(ccls SYSTEM PRIVATE ${RapidJSON_INCLUDE_DIRS})
+
+# only add the include directories for LLVM, clang & rapidjson if they aren't in
+# the default list of include directories (these are stored by cmake in
+# CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
+#
+# Adding the same include directory twice with SYSTEM results these being
+# included as -isystem, which causes issues with libstdc++ from gcc9 with their
+# usage of #include_next<>
+# see also: https://github.com/MaskRay/ccls/pull/417
+foreach(include_dir
+    ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS} ${RapidJSON_INCLUDE_DIRS})
+
+  # rapidjson's include dir is a relative path => normalize it
+  get_filename_component(include_dir_realpath ${include_dir} REALPATH)
+  set(dir_already_included FALSE)
+
+  foreach(cxx_include_dir ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+    if("${cxx_include_dir}" STREQUAL "${include_dir_realpath}")
+      set(dir_already_included TRUE)
+    endif()
+  endforeach()
+
+  if(NOT "${dir_already_included}")
+    target_include_directories(ccls SYSTEM PRIVATE ${include_dir})
+  endif()
+endforeach()
+
 
 ### Install
 
