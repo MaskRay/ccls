@@ -143,17 +143,25 @@ set_property(SOURCE src/utils.cc APPEND PROPERTY COMPILE_DEFINITIONS
 
 ### Includes
 
-target_include_directories(ccls PRIVATE src)
-target_include_directories(ccls SYSTEM PRIVATE
-  third_party ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
-
 if(USE_SYSTEM_RAPIDJSON)
   find_package(RapidJSON QUIET)
 endif()
 if(NOT RapidJSON_FOUND)
   set(RapidJSON_INCLUDE_DIRS third_party/rapidjson/include)
 endif()
-target_include_directories(ccls SYSTEM PRIVATE ${RapidJSON_INCLUDE_DIRS})
+
+target_include_directories(ccls PRIVATE src)
+
+foreach(include_dir third_party
+    ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS} ${RapidJSON_INCLUDE_DIRS})
+  get_filename_component(include_dir_realpath ${include_dir} REALPATH)
+  # Don't add as SYSTEM if they are in CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES.
+  # It would reorder the system search paths and cause issues with libstdc++'s
+  # use of #include_next. See https://github.com/MaskRay/ccls/pull/417
+  if(NOT "${include_dir_realpath}" IN_LIST CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
+    target_include_directories(ccls SYSTEM PRIVATE ${include_dir})
+  endif()
+endforeach()
 
 ### Install
 
