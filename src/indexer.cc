@@ -1270,14 +1270,21 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
 
   std::unique_ptr<FrontendAction> Action = createIndexingAction(
       DataConsumer, IndexOpts, std::make_unique<IndexFrontendAction>(param));
-
+  std::string reason;
   {
     llvm::CrashRecoveryContext CRC;
     auto parse = [&]() {
       if (!Action->BeginSourceFile(*Clang, Clang->getFrontendOpts().Inputs[0]))
         return;
+#if LLVM_VERSION_MAJOR >= 9 // rL364464
+      if (llvm::Error E = Action->Execute()) {
+        reason = llvm::toString(std::move(E));
+        return;
+      }
+#else
       if (!Action->Execute())
         return;
+#endif
       Action->EndSourceFile();
       ok = true;
     };
@@ -1287,7 +1294,8 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
     }
   }
   if (!ok) {
-    LOG_S(ERROR) << "failed to index " << main;
+    LOG_S(ERROR) << "failed to index " << main
+                 << (reason.empty() ? "" : ": " + reason);
     return {};
   }
   for (auto &Buf : Bufs)

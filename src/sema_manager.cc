@@ -324,8 +324,15 @@ bool Parse(CompilerInstance &Clang) {
   SyntaxOnlyAction Action;
   if (!Action.BeginSourceFile(Clang, Clang.getFrontendOpts().Inputs[0]))
     return false;
+#if LLVM_VERSION_MAJOR >= 9 // rL364464
+  if (llvm::Error E = Action.Execute()) {
+    llvm::consumeError(std::move(E));
+    return false;
+  }
+#else
   if (!Action.Execute())
     return false;
+#endif
   Action.EndSourceFile();
   return true;
 }
