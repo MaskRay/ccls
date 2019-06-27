@@ -79,14 +79,14 @@ bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
   entry->numChildren = 0;
   if (!def)
     return false;
-  auto handle = [&](SymbolRef sym, int file_id, CallType call_type1) {
+  auto handle = [&](SymbolRef sym, Use use, CallType call_type1) {
     entry->numChildren++;
     if (levels > 0) {
       Out_cclsCall entry1;
       entry1.id = std::to_string(sym.usr);
       entry1.usr = sym.usr;
       if (auto loc = GetLsLocation(m->db, m->wfiles,
-                                   Use{{sym.range, sym.role}, file_id}))
+                                   use))
         entry1.location = *loc;
       entry1.callType = call_type1;
       if (Expand(m, &entry1, callee, call_type, qualified, levels - 1))
@@ -98,7 +98,7 @@ bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
       if (const auto *def = func.AnyDef())
         for (SymbolRef sym : def->callees)
           if (sym.kind == Kind::Func)
-            handle(sym, def->file_id, call_type);
+            handle(sym, Use{{sym.range, sym.role}, def->file_id}, call_type);
     } else {
       for (Use use : func.uses) {
         const QueryFile &file1 = m->db->files[use.file_id];
@@ -110,7 +110,7 @@ bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
               (!best || best->extent.start < sym.extent.start))
             best = sym;
         if (best)
-          handle(*best, use.file_id, call_type);
+          handle(*best, use, call_type);
       }
     }
   };
