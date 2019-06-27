@@ -114,14 +114,20 @@ bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
 
   // For inferred files, allow -o a a.cc -> -o b b.cc
   std::string stem = sys::path::stem(path);
-  bool changed = prev->args.size() != args.size();
-  for (size_t i = 0; !changed && i < args.size(); i++)
-    if (strcmp(prev->args[i], args[i]) && sys::path::stem(args[i]) != stem)
-      changed = true;
-  if (changed)
+  int changed = -1, size = std::min(prev->args.size(), args.size());
+  for (int i = 0; i < size; i++)
+    if (strcmp(prev->args[i], args[i]) && sys::path::stem(args[i]) != stem) {
+      changed = i;
+      break;
+    }
+  if (changed < 0 && prev->args.size() != args.size())
+    changed = size;
+  if (changed >= 0)
     LOG_V(1) << "args changed for " << path
-             << (from ? " (via " + *from + ")" : std::string());
-  return changed;
+             << (from ? " (via " + *from + ")" : std::string()) << "; old: "
+             << (changed < prev->args.size() ? prev->args[changed] : "")
+             << "; new: " << (changed < size ? args[changed] : "");
+  return changed >= 0;
 };
 
 std::string AppendSerializationFormat(const std::string &base) {
