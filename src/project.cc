@@ -60,7 +60,8 @@ std::pair<LanguageId, bool> lookupExtension(std::string_view filename) {
   bool objc = types::isObjC(I);
   LanguageId ret;
   if (types::isCXX(I))
-    ret = objc ? LanguageId::ObjCpp : LanguageId::Cpp;
+    ret = types::isCuda(I) ? LanguageId::Cuda
+                           : objc ? LanguageId::ObjCpp : LanguageId::Cpp;
   else if (objc)
     ret = LanguageId::ObjC;
   else if (I == types::TY_C || I == types::TY_CHeader)
@@ -117,6 +118,8 @@ struct ProjectProcessor {
             ok |= lang == LanguageId::C && header;
           else if (A.consume_front("%cpp "))
             ok |= lang == LanguageId::Cpp;
+          else if (A.consume_front("%cu "))
+            ok |= lang == LanguageId::Cuda;
           else if (A.consume_front("%hpp "))
             ok |= lang == LanguageId::Cpp && header;
           else if (A.consume_front("%objective-c "))
@@ -128,6 +131,9 @@ struct ProjectProcessor {
         }
         if (ok)
           args.push_back(A.data());
+      } else if (A.startswith("-M")) {
+        if (A == "-MF" || A == "-MT" || A == "-MQ")
+          i++;
       } else if (!ExcludesArg(A)) {
         args.push_back(arg);
       }
