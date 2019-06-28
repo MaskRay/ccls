@@ -48,7 +48,8 @@ std::pair<LanguageId, bool> lookupExtension(std::string_view filename) {
   bool objc = types::isObjC(I);
   LanguageId ret;
   if (types::isCXX(I))
-    ret = objc ? LanguageId::ObjCpp : LanguageId::Cpp;
+    ret = types::isCuda(I) ? LanguageId::Cuda
+                           : objc ? LanguageId::ObjCpp : LanguageId::Cpp;
   else if (objc)
     ret = LanguageId::ObjC;
   else if (I == types::TY_C || I == types::TY_CHeader)
@@ -83,7 +84,12 @@ struct ProjectProcessor {
         LOG_S(WARNING) << toString(glob_or_err.takeError());
   }
 
-  bool ExcludesArg(StringRef arg) {
+  bool ExcludesArg(StringRef arg, int &i) {
+    if (arg.startswith("-M")) {
+      if (arg == "-MF" || arg == "-MT" || arg == "-MQ")
+        i++;
+      return true;
+    }
     return exclude_args.count(arg) || any_of(exclude_globs,
       [&](const GlobPattern &glob) { return glob.match(arg); });
   }
@@ -105,6 +111,8 @@ struct ProjectProcessor {
             ok |= lang == LanguageId::C && header;
           else if (A.consume_front("%cpp "))
             ok |= lang == LanguageId::Cpp;
+          else if (A.consume_front("%cu "))
+            ok |= lang == LanguageId::Cuda;
           else if (A.consume_front("%hpp "))
             ok |= lang == LanguageId::Cpp && header;
           else if (A.consume_front("%objective-c "))
@@ -116,7 +124,7 @@ struct ProjectProcessor {
         }
         if (ok)
           args.push_back(A.data());
-      } else if (!ExcludesArg(A)) {
+      } else if (!ExcludesArg(A, i)) {
         args.push_back(arg);
       }
     }
@@ -399,10 +407,10 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
 
       std::vector<std::string> args = std::move(Cmd.CommandLine);
       entry.args.reserve(args.size());
-      for (std::string &arg : args) {
-        DoPathMapping(arg);
-        if (!proc.ExcludesArg(arg))
-          entry.args.push_back(Intern(arg));
+      for (int i = 0; i < args.size(); i++) {
+        DoPathMapping(args[i]);
+        if (!proc.ExcludesArg(args[i], i))
+          entry.args.push_back(Intern(args[i]));
       }
       entry.compdb_size = entry.args.size();
 
