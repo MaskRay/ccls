@@ -23,6 +23,7 @@ limitations under the License.
 
 #include <chrono>
 #include <iosfwd>
+#include <string>
 
 namespace ccls {
 struct RequestId {
@@ -31,7 +32,7 @@ struct RequestId {
   enum Type { kNone, kInt, kString };
   Type type = kNone;
 
-  int value = -1;
+  std::string value;
 
   bool Valid() const { return type != kNone; }
 };
