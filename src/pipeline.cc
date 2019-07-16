@@ -799,11 +799,10 @@ static void Reply(RequestId id, const char *key,
     w.Null();
     break;
   case RequestId::kInt:
-    w.Int(id.value);
+    w.Int(atoll(id.value.c_str()));
     break;
   case RequestId::kString:
-    auto s = std::to_string(id.value);
-    w.String(s.c_str(), s.length());
+    w.String(id.value.c_str(), id.value.size());
     break;
   }
   w.Key(key);
