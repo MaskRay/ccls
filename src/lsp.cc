@@ -14,16 +14,16 @@ namespace ccls {
 void Reflect(JsonReader &vis, RequestId &v) {
   if (vis.m->IsInt64()) {
     v.type = RequestId::kInt;
-    v.value = int(vis.m->GetInt64());
+    v.value = std::to_string(int(vis.m->GetInt64()));
   } else if (vis.m->IsInt()) {
     v.type = RequestId::kInt;
-    v.value = vis.m->GetInt();
+    v.value = std::to_string(vis.m->GetInt());
   } else if (vis.m->IsString()) {
     v.type = RequestId::kString;
-    v.value = atoll(vis.m->GetString());
+    v.value = vis.m->GetString();
   } else {
     v.type = RequestId::kNone;
-    v.value = -1;
+    v.value.clear();
   }
 }
 
@@ -33,11 +33,10 @@ void Reflect(JsonWriter &visitor, RequestId &value) {
     visitor.Null();
     break;
   case RequestId::kInt:
-    visitor.Int(value.value);
+    visitor.Int(atoll(value.value.c_str()));
     break;
   case RequestId::kString:
-    auto s = std::to_string(value.value);
-    visitor.String(s.c_str(), s.size());
+    visitor.String(value.value.c_str(), value.value.size());
     break;
   }
 }
