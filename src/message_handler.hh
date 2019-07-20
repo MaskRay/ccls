@@ -250,7 +250,7 @@ private:
             void (MessageHandler::*handler)(Param &, ReplyOnce &));
 
   void ccls_call(JsonReader &, ReplyOnce &);
-  void ccls_fileInfo(TextDocumentParam &, ReplyOnce &);
+  void ccls_fileInfo(JsonReader &, ReplyOnce &);
   void ccls_info(EmptyParam &, ReplyOnce &);
   void ccls_inheritance(JsonReader &, ReplyOnce &);
   void ccls_member(JsonReader &, ReplyOnce &);
