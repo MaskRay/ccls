@@ -306,15 +306,40 @@ void LoadDirectoryListing(ProjectProcessor &proc, const std::string &root,
 // Computes a score based on how well |a| and |b| match. This is used for
 // argument guessing.
 int ComputeGuessScore(std::string_view a, std::string_view b) {
-  // Increase score based on common prefix and suffix. Prefixes are prioritized.
-  if (a.size() > b.size())
-    std::swap(a, b);
-  size_t i = std::mismatch(a.begin(), a.end(), b.begin()).first - a.begin();
-  size_t j = std::mismatch(a.rbegin(), a.rend(), b.rbegin()).first - a.rbegin();
-  int score = 10 * i + j;
-  if (i + j < a.size())
-    score -= 100 * (std::count(a.begin() + i, a.end() - j, '/') +
-                    std::count(b.begin() + i, b.end() - j, '/'));
+  int score = 0;
+  unsigned h = 0;
+  llvm::SmallDenseMap<unsigned, int> m;
+  for (uint8_t c : a)
+    if (c == '/') {
+      score -= 9;
+      if (h)
+        m[h]++;
+      h = 0;
+    } else {
+      h = h * 33 + c;
+    }
+  h = 0;
+  for (uint8_t c : b)
+    if (c == '/') {
+      score -= 9;
+      auto it = m.find(h);
+      if (it != m.end() && it->second > 0) {
+        it->second--;
+        score += 31;
+      }
+      h = 0;
+    } else {
+      h = h * 33 + c;
+    }
+
+  uint8_t c;
+  int d[127] = {};
+  for (int i = a.size(); i-- && (c = a[i]) != '/'; )
+    if (c < 127)
+      d[c]++;
+  for (int i = b.size(); i-- && (c = b[i]) != '/'; )
+    if (c < 127 && d[c])
+      d[c]--, score++;
   return score;
 }
 
