@@ -212,7 +212,6 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
     return false;
   }
 
-  // must_exist is currently unused.
   Project::Entry entry =
       project->FindEntry(request.path, true, request.must_exist);
   if (request.must_exist && entry.filename.empty())
@@ -222,25 +221,28 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
   std::string path_to_index = entry.filename;
   std::unique_ptr<IndexFile> prev;
 
-  bool deleted = false, no_linkage = g_config->index.initialNoLinkage ||
-                                     request.mode != IndexMode::Background;
+  bool deleted = request.mode == IndexMode::Delete,
+       no_linkage = g_config->index.initialNoLinkage ||
+                    request.mode != IndexMode::Background;
   int reparse = 0;
-  std::optional<int64_t> write_time = LastWriteTime(path_to_index);
-  if (!write_time) {
-    deleted = true;
-  } else {
-    if (vfs->Stamp(path_to_index, *write_time, no_linkage ? 2 : 0))
-      reparse = 1;
-    if (request.path != path_to_index) {
-      std::optional<int64_t> mtime1 = LastWriteTime(request.path);
-      if (!mtime1)
-        deleted = true;
-      else if (vfs->Stamp(request.path, *mtime1, no_linkage ? 2 : 0))
-        reparse = 2;
-    }
-  }
   if (deleted)
     reparse = 2;
+  else if (!(g_config->index.onChange && wfiles->GetFile(path_to_index))) {
+    std::optional<int64_t> write_time = LastWriteTime(path_to_index);
+    if (!write_time) {
+      deleted = true;
+    } else {
+      if (vfs->Stamp(path_to_index, *write_time, no_linkage ? 2 : 0))
+        reparse = 1;
+      if (request.path != path_to_index) {
+        std::optional<int64_t> mtime1 = LastWriteTime(request.path);
+        if (!mtime1)
+          deleted = true;
+        else if (vfs->Stamp(request.path, *mtime1, no_linkage ? 2 : 0))
+          reparse = 2;
+      }
+    }
+  }
 
   if (g_config->index.onChange) {
     reparse = 2;

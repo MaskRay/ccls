@@ -42,11 +42,11 @@ void MessageHandler::workspace_didChangeWatchedFiles(
       if (cur[0] == '.')
         return;
 
-    IndexMode mode =
-        wfiles->GetFile(path) ? IndexMode::Normal : IndexMode::Background;
     switch (event.type) {
     case FileChangeType::Created:
     case FileChangeType::Changed: {
+      IndexMode mode =
+          wfiles->GetFile(path) ? IndexMode::Normal : IndexMode::Background;
       pipeline::Index(path, {}, mode, true);
       if (event.type == FileChangeType::Changed) {
         if (mode == IndexMode::Normal)
@@ -57,7 +57,7 @@ void MessageHandler::workspace_didChangeWatchedFiles(
       break;
     }
     case FileChangeType::Deleted:
-      pipeline::Index(path, {}, mode, false);
+      pipeline::Index(path, {}, IndexMode::Delete, false);
       manager->OnClose(path);
       break;
     }
