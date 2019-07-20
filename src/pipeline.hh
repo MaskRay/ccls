@@ -30,6 +30,7 @@ struct VFS {
 };
 
 enum class IndexMode {
+  Delete,
   Background,
   OnChange,
   Normal,
