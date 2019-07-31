@@ -1251,6 +1251,8 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   Clang->setVirtualFileSystem(FS);
   Clang->createFileManager();
 #endif
+  Clang->setSourceManager(new SourceManager(Clang->getDiagnostics(),
+                                            Clang->getFileManager(), true));
 
   IndexParam param(*vfs, no_linkage);
   auto DataConsumer = std::make_shared<IndexDataConsumer>(param);
