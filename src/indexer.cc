@@ -1264,6 +1264,12 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   Clang->createFileManager();
 #endif
 
+#ifdef _WIN32
+  // Always set UserFilesAreVolatile true to avoid write locks on Windows
+  Clang->setSourceManager(new SourceManager(Clang->getDiagnostics(),
+                                            Clang->getFileManager(), true));
+#endif
+
   IndexParam param(*vfs, no_linkage);
   auto DataConsumer = std::make_shared<IndexDataConsumer>(param);
 
