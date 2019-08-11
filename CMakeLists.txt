@@ -120,22 +120,24 @@ endif()
 
 # Find Clang resource directory with Clang executable.
 
-find_program(CLANG_EXECUTABLE clang)
-if(NOT CLANG_EXECUTABLE)
-  message(FATAL_ERROR "clang executable not found.")
-endif()
+if(NOT CLANG_RESOURCE_DIR)
+  find_program(CLANG_EXECUTABLE clang)
+  if(NOT CLANG_EXECUTABLE)
+    message(FATAL_ERROR "clang executable not found.")
+  endif()
 
-execute_process(
-  COMMAND ${CLANG_EXECUTABLE} -print-resource-dir
-  RESULT_VARIABLE CLANG_FIND_RESOURCE_DIR_RESULT
-  OUTPUT_VARIABLE CLANG_RESOURCE_DIR
-  ERROR_VARIABLE CLANG_FIND_RESOURCE_DIR_ERROR
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+  execute_process(
+    COMMAND ${CLANG_EXECUTABLE} -print-resource-dir
+    RESULT_VARIABLE CLANG_FIND_RESOURCE_DIR_RESULT
+    OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+    ERROR_VARIABLE CLANG_FIND_RESOURCE_DIR_ERROR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
 
-if(CLANG_FIND_RESOURCE_DIR_RESULT)
-  message(FATAL_ERROR "Error retrieving Clang resource directory with Clang \
-          executable. Output:\n ${CLANG_FIND_RESOURCE_DIR_ERROR}")
+  if(CLANG_FIND_RESOURCE_DIR_RESULT)
+    message(FATAL_ERROR "Error retrieving Clang resource directory with Clang \
+            executable. Output:\n ${CLANG_FIND_RESOURCE_DIR_ERROR}")
+  endif()
 endif()
 
 set_property(SOURCE src/utils.cc APPEND PROPERTY COMPILE_DEFINITIONS
