@@ -351,8 +351,12 @@ void Project::LoadDirectory(const std::string &root, Project::Folder &folder) {
   folder.entries.clear();
   if (g_config->compilationDatabaseCommand.empty()) {
     CDBDir = root;
-    if (g_config->compilationDatabaseDirectory.size())
-      sys::path::append(CDBDir, g_config->compilationDatabaseDirectory);
+    if (g_config->compilationDatabaseDirectory.size()) {
+      if (sys::path::is_absolute(g_config->compilationDatabaseDirectory))
+        CDBDir = g_config->compilationDatabaseDirectory;
+      else
+        sys::path::append(CDBDir, g_config->compilationDatabaseDirectory);
+    }
     sys::path::append(Path, CDBDir, "compile_commands.json");
   } else {
     // If `compilationDatabaseCommand` is specified, execute it to get the
