@@ -27,21 +27,21 @@ struct Hover {
   std::optional<lsRange> range;
 };
 
-void Reflect(JsonWriter &vis, MarkedString &v) {
+void reflect(JsonWriter &vis, MarkedString &v) {
   // If there is a language, emit a `{language:string, value:string}` object. If
   // not, emit a string.
   if (v.language) {
-    vis.StartObject();
+    vis.startObject();
     REFLECT_MEMBER(language);
     REFLECT_MEMBER(value);
-    vis.EndObject();
+    vis.endObject();
   } else {
-    Reflect(vis, v.value);
+    reflect(vis, v.value);
   }
 }
 REFLECT_STRUCT(Hover, contents, range);
 
-const char *LanguageIdentifier(LanguageId lang) {
+const char *languageIdentifier(LanguageId lang) {
   switch (lang) {
   // clang-format off
   case LanguageId::C: return "c";
@@ -55,10 +55,10 @@ const char *LanguageIdentifier(LanguageId lang) {
 
 // Returns the hover or detailed name for `sym`, if any.
 std::pair<std::optional<MarkedString>, std::optional<MarkedString>>
-GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
+getHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
   const char *comments = nullptr;
   std::optional<MarkedString> ls_comments, hover;
-  WithEntity(db, sym, [&](const auto &entity) {
+  withEntity(db, sym, [&](const auto &entity) {
     for (auto &d : entity.def) {
       if (!comments && d.comments[0])
         comments = d.comments;
@@ -69,7 +69,7 @@ GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
                 d.hover[0] ? d.hover
                            : d.detailed_name[0] ? d.detailed_name : nullptr) {
           if (!hover)
-            hover = {LanguageIdentifier(lang), s};
+            hover = {languageIdentifier(lang), s};
           else if (strlen(s) > hover->value.size())
             hover->value = s;
         }
@@ -79,7 +79,7 @@ GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
     }
     if (!hover && entity.def.size()) {
       auto &d = entity.def[0];
-      hover = {LanguageIdentifier(lang)};
+      hover = {languageIdentifier(lang)};
       if (d.hover[0])
         hover->value = d.hover;
       else if (d.detailed_name[0])
@@ -94,18 +94,18 @@ GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
 
 void MessageHandler::textDocument_hover(TextDocumentPositionParam &param,
                                         ReplyOnce &reply) {
-  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!wf)
     return;
 
   Hover result;
-  for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
+  for (SymbolRef sym : findSymbolsAtLocation(wf, file, param.position)) {
     std::optional<lsRange> ls_range =
-        GetLsRange(wfiles->GetFile(file->def->path), sym.range);
+        getLsRange(wfiles->getFile(file->def->path), sym.range);
     if (!ls_range)
       continue;
 
-    auto [hover, comments] = GetHover(db, file->def->language, sym, file->id);
+    auto [hover, comments] = getHover(db, file->def->language, sym, file->id);
     if (comments || hover) {
       result.range = *ls_range;
       if (comments)

@@ -63,8 +63,8 @@ REFLECT_STRUCT(FileInfoParam, textDocument, dependencies, includes, skipped_rang
 
 void MessageHandler::ccls_fileInfo(JsonReader &reader, ReplyOnce &reply) {
   FileInfoParam param;
-  Reflect(reader, param);
-  QueryFile *file = FindFile(param.textDocument.uri.GetPath());
+  reflect(reader, param);
+  QueryFile *file = findFile(param.textDocument.uri.getPath());
   if (!file)
     return;
 

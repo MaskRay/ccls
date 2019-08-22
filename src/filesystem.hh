@@ -6,7 +6,7 @@
 #include <functional>
 #include <string>
 
-void GetFilesInFolder(std::string folder,
+void getFilesInFolder(std::string folder,
                       bool recursive,
                       bool add_folder_to_path,
                       const std::function<void(const std::string&)>& handler);

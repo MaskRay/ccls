@@ -37,7 +37,7 @@ struct Matcher {
   Matcher(const std::string &pattern); // throw
   Matcher(Matcher&&) = default;
   ~Matcher();
-  bool Matches(const std::string &text) const;
+  bool matches(const std::string &text) const;
 };
 
 struct GroupMatch {
@@ -45,31 +45,31 @@ struct GroupMatch {
 
   GroupMatch(const std::vector<std::string> &whitelist,
              const std::vector<std::string> &blacklist);
-  bool Matches(const std::string &text,
+  bool matches(const std::string &text,
                std::string *blacklist_pattern = nullptr) const;
 };
 
-uint64_t HashUsr(llvm::StringRef s);
+uint64_t hashUsr(llvm::StringRef s);
 
-std::string LowerPathIfInsensitive(const std::string &path);
+std::string lowerPathIfInsensitive(const std::string &path);
 
 // Ensures that |path| ends in a slash.
-void EnsureEndsInSlash(std::string &path);
+void ensureEndsInSlash(std::string &path);
 
 // Converts a file path to one that can be used as filename.
 // e.g. foo/bar.c => foo_bar.c
-std::string EscapeFileName(std::string path);
+std::string escapeFileName(std::string path);
 
-std::string ResolveIfRelative(const std::string &directory,
+std::string resolveIfRelative(const std::string &directory,
                               const std::string &path);
-std::string RealPath(const std::string &path);
-bool NormalizeFolder(std::string &path);
+std::string realPath(const std::string &path);
+bool normalizeFolder(std::string &path);
 
-std::optional<int64_t> LastWriteTime(const std::string &path);
-std::optional<std::string> ReadContent(const std::string &filename);
-void WriteToFile(const std::string &filename, const std::string &content);
+std::optional<int64_t> lastWriteTime(const std::string &path);
+std::optional<std::string> readContent(const std::string &filename);
+void writeToFile(const std::string &filename, const std::string &content);
 
-int ReverseSubseqMatch(std::string_view pat, std::string_view text,
+int reverseSubseqMatch(std::string_view pat, std::string_view text,
                        int case_sensitivity);
 
 // http://stackoverflow.com/a/38140932
@@ -101,10 +101,10 @@ inline void hash_combine(std::size_t &seed, const T &v, Rest... rest) {
   };                                                                           \
   }
 
-std::string GetDefaultResourceDirectory();
+std::string getDefaultResourceDirectory();
 
 // Like std::optional, but the stored data is responsible for containing the
-// empty state. T should define a function `bool T::Valid()`.
+// empty state. T should define a function `bool T::valid()`.
 template <typename T> class Maybe {
   T storage;
 
@@ -126,10 +126,10 @@ public:
   const T &operator*() const { return storage; }
   T &operator*() { return storage; }
 
-  bool Valid() const { return storage.Valid(); }
-  explicit operator bool() const { return Valid(); }
+  bool valid() const { return storage.valid(); }
+  explicit operator bool() const { return valid(); }
   operator std::optional<T>() const {
-    if (Valid())
+    if (valid())
       return storage;
     return std::nullopt;
   }

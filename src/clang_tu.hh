@@ -47,9 +47,9 @@ Range fromTokenRangeDefaulted(const clang::SourceManager &sm,
                               Range range);
 
 std::unique_ptr<clang::CompilerInvocation>
-BuildCompilerInvocation(const std::string &main,
+buildCompilerInvocation(const std::string &main,
                         std::vector<const char *> args,
                         llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> VFS);
 
-const char *ClangBuiltinTypeName(int);
+const char *clangBuiltinTypeName(int);
 } // namespace ccls

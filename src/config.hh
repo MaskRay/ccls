@@ -363,5 +363,5 @@ REFLECT_STRUCT(Config, compilationDatabaseCommand, compilationDatabaseDirectory,
 
 extern Config *g_config;
 
-void DoPathMapping(std::string &arg);
+void doPathMapping(std::string &arg);
 }
