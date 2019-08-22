@@ -76,7 +76,7 @@ TextEdit ToTextEdit(const clang::SourceManager &SM, const clang::LangOptions &L,
                     const clang::FixItHint &FixIt) {
   TextEdit edit;
   edit.newText = FixIt.CodeToInsert;
-  auto r = FromCharSourceRange(SM, L, FixIt.RemoveRange);
+  auto r = fromCharSourceRange(SM, L, FixIt.RemoveRange);
   edit.range =
       lsRange{{r.start.line, r.start.column}, {r.end.line, r.end.column}};
   return edit;
@@ -194,7 +194,7 @@ public:
                           SrcMgr::CharacteristicKind FileKind) override {
     (void)SM;
     if (File && Seen.insert(File).second)
-      out.emplace_back(PathFromFileEntry(*File), File->getModificationTime());
+      out.emplace_back(pathFromFileEntry(*File), File->getModificationTime());
   }
 };
 
@@ -238,7 +238,7 @@ public:
     auto it = FID2concerned.try_emplace(FID.getHashValue());
     if (it.second) {
       const FileEntry *FE = SM.getFileEntryForID(FID);
-      it.first->second = FE && PathFromFileEntry(*FE) == path;
+      it.first->second = FE && pathFromFileEntry(*FE) == path;
     }
     return it.first->second;
   }
@@ -260,7 +260,7 @@ public:
       llvm::SmallString<64> Message;
       Info.FormatDiagnostic(Message);
       d.range =
-          FromCharSourceRange(SM, *LangOpts, DiagnosticRange(Info, *LangOpts));
+          fromCharSourceRange(SM, *LangOpts, DiagnosticRange(Info, *LangOpts));
       d.message = Message.str();
       d.concerned = concerned;
       d.file = Filename;

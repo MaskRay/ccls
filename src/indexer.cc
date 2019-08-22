@@ -51,8 +51,8 @@ struct File {
 };
 
 struct IndexParam {
-  std::unordered_map<llvm::sys::fs::UniqueID, File> UID2File;
-  std::unordered_map<llvm::sys::fs::UniqueID, bool> UID2multi;
+  std::unordered_map<FileID, File> uid2file;
+  std::unordered_map<FileID, bool> uid2multi;
   struct DeclInfo {
     Usr usr;
     std::string short_name;
@@ -61,18 +61,21 @@ struct IndexParam {
   std::unordered_map<const Decl *, DeclInfo> Decl2Info;
 
   VFS &vfs;
-  ASTContext *Ctx;
+  ASTContext *ctx;
   bool no_linkage;
   IndexParam(VFS &vfs, bool no_linkage) : vfs(vfs), no_linkage(no_linkage) {}
 
-  void SeenFile(const FileEntry &File) {
+  void seenFile(FileID fid) {
     // If this is the first time we have seen the file (ignoring if we are
     // generating an index for it):
-    auto [it, inserted] = UID2File.try_emplace(File.getUniqueID());
+    auto [it, inserted] = uid2file.try_emplace(fid);
     if (inserted) {
-      std::string path = PathFromFileEntry(File);
+      const FileEntry *fe = ctx->getSourceManager().getFileEntryForID(fid);
+      if (!fe)
+        return;
+      std::string path = pathFromFileEntry(*fe);
       it->second.path = path;
-      it->second.mtime = File.getModificationTime();
+      it->second.mtime = fe->getModificationTime();
       if (!it->second.mtime)
         if (auto tim = LastWriteTime(path))
           it->second.mtime = *tim;
@@ -86,15 +89,16 @@ struct IndexParam {
     }
   }
 
-  IndexFile *ConsumeFile(const FileEntry &FE) {
-    SeenFile(FE);
-    return UID2File[FE.getUniqueID()].db.get();
+  IndexFile *consumeFile(FileID fid) {
+    seenFile(fid);
+    return uid2file[fid].db.get();
   }
 
-  bool UseMultiVersion(const FileEntry &FE) {
-    auto it = UID2multi.try_emplace(FE.getUniqueID());
+  bool useMultiVersion(FileID fid) {
+    auto it = uid2multi.try_emplace(fid);
     if (it.second)
-      it.first->second = multiVersionMatcher->Matches(PathFromFileEntry(FE));
+      if (const FileEntry *fe = ctx->getSourceManager().getFileEntryForID(fid))
+        it.first->second = multiVersionMatcher->Matches(pathFromFileEntry(*fe));
     return it.first->second;
   }
 };
@@ -620,31 +624,31 @@ public:
     }
   }
 
-  static int GetFileLID(IndexFile *db, SourceManager &SM, const FileEntry &FE) {
-    auto [it, inserted] = db->uid2lid_and_path.try_emplace(FE.getUniqueID());
+  static int getFileLID(IndexFile *db, SourceManager &SM, FileID fid) {
+    auto [it, inserted] = db->uid2lid_and_path.try_emplace(fid);
     if (inserted) {
-      it->second.first = db->uid2lid_and_path.size() - 1;
-      SmallString<256> Path = FE.tryGetRealPathName();
-      if (Path.empty())
-        Path = FE.getName();
-      if (!llvm::sys::path::is_absolute(Path) &&
-          !SM.getFileManager().makeAbsolutePath(Path))
+      const FileEntry *fe = SM.getFileEntryForID(fid);
+      if (!fe)
         return -1;
-      it->second.second = llvm::sys::path::convert_to_slash(Path.str());
+      it->second.first = db->uid2lid_and_path.size() - 1;
+      SmallString<256> path = fe->tryGetRealPathName();
+      if (path.empty())
+        path = fe->getName();
+      if (!llvm::sys::path::is_absolute(path) &&
+          !SM.getFileManager().makeAbsolutePath(path))
+        return -1;
+      it->second.second = llvm::sys::path::convert_to_slash(path.str());
     }
     return it->second.first;
   }
 
-  void AddMacroUse(IndexFile *db, SourceManager &SM, Usr usr, Kind kind,
-                   SourceLocation Spell) const {
-    const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(Spell));
-    if (!FE)
-      return;
-    int lid = GetFileLID(db, SM, *FE);
+  void AddMacroUse(IndexFile *db, SourceManager &sm, Usr usr, Kind kind,
+                   SourceLocation sl) const {
+    FileID fid = sm.getFileID(sl);
+    int lid = getFileLID(db, sm, fid);
     if (lid < 0)
       return;
-    Range spell =
-        FromTokenRange(SM, Ctx->getLangOpts(), SourceRange(Spell, Spell));
+    Range spell = fromTokenRange(sm, Ctx->getLangOpts(), SourceRange(sl, sl));
     Use use{{spell, Role::Dynamic}, lid};
     switch (kind) {
     case Kind::Func:
@@ -687,11 +691,7 @@ public:
 
 public:
   IndexDataConsumer(IndexParam &param) : param(param) {}
-  void initialize(ASTContext &Ctx) override {
-    this->Ctx = param.Ctx = &Ctx;
-    SourceManager &SM = Ctx.getSourceManager();
-    (void)param.ConsumeFile(*SM.getFileEntryForID(SM.getMainFileID()));
-  }
+  void initialize(ASTContext &ctx) override { this->Ctx = param.ctx = &ctx; }
   bool handleDeclOccurence(const Decl *D, index::SymbolRoleSet Roles,
                            ArrayRef<index::SymbolRelation> Relations,
                            SourceLocation Loc, ASTNodeInfo ASTNode) override {
@@ -703,28 +703,26 @@ public:
     }
     SourceManager &SM = Ctx->getSourceManager();
     const LangOptions &Lang = Ctx->getLangOpts();
-    FileID LocFID;
+    FileID fid;
     SourceLocation Spell = SM.getSpellingLoc(Loc);
-    const FileEntry *FE;
     Range loc;
     auto R = SM.isMacroArgExpansion(Loc) ? CharSourceRange::getTokenRange(Spell)
                                          : SM.getExpansionRange(Loc);
-    loc = FromCharSourceRange(SM, Lang, R);
-    LocFID = SM.getFileID(R.getBegin());
-    FE = SM.getFileEntryForID(LocFID);
-    if (!FE)
+    loc = fromCharSourceRange(SM, Lang, R);
+    fid = SM.getFileID(R.getBegin());
+    if (fid.isInvalid())
       return true;
     int lid = -1;
     IndexFile *db;
-    if (g_config->index.multiVersion && param.UseMultiVersion(*FE)) {
-      db = param.ConsumeFile(*SM.getFileEntryForID(SM.getMainFileID()));
+    if (g_config->index.multiVersion && param.useMultiVersion(fid)) {
+      db = param.consumeFile(SM.getMainFileID());
       if (!db)
         return true;
-      param.SeenFile(*FE);
+      param.seenFile(fid);
       if (!SM.isWrittenInMainFile(R.getBegin()))
-        lid = GetFileLID(db, SM, *FE);
+        lid = getFileLID(db, SM, fid);
     } else {
-      db = param.ConsumeFile(*FE);
+      db = param.consumeFile(fid);
       if (!db)
         return true;
     }
@@ -765,7 +763,7 @@ public:
           SourceRange R =
               cast<FunctionDecl>(OrigD)->getNameInfo().getSourceRange();
           if (R.getEnd().isFileID())
-            loc = FromTokenRange(SM, Lang, R);
+            loc = fromTokenRange(SM, Lang, R);
         }
         break;
       default:
@@ -786,12 +784,12 @@ public:
       if (is_def) {
         SourceRange R = OrigD->getSourceRange();
         entity->def.spell = {use,
-                             FromTokenRangeDefaulted(SM, Lang, R, FE, loc)};
+                             fromTokenRangeDefaulted(SM, Lang, R, fid, loc)};
         GetKind(cast<Decl>(SemDC), entity->def.parent_kind);
       } else if (is_decl) {
         SourceRange R = OrigD->getSourceRange();
         entity->declarations.push_back(
-            {use, FromTokenRangeDefaulted(SM, Lang, R, FE, loc)});
+            {use, fromTokenRangeDefaulted(SM, Lang, R, fid, loc)});
       } else {
         entity->uses.push_back(use);
         return;
@@ -882,15 +880,15 @@ public:
               // e.g. TemplateTypeParmDecl is not handled by
               // handleDeclOccurence.
               SourceRange R1 = D1->getSourceRange();
-              if (SM.getFileID(R1.getBegin()) == LocFID) {
+              if (SM.getFileID(R1.getBegin()) == fid) {
                 IndexParam::DeclInfo *info1;
                 Usr usr1 = GetUsr(D1, &info1);
                 IndexType &type1 = db->ToType(usr1);
                 SourceLocation L1 = D1->getLocation();
                 type1.def.spell = {
-                    Use{{FromTokenRange(SM, Lang, {L1, L1}), Role::Definition},
+                    Use{{fromTokenRange(SM, Lang, {L1, L1}), Role::Definition},
                         lid},
-                    FromTokenRange(SM, Lang, R1)};
+                    fromTokenRange(SM, Lang, R1)};
                 type1.def.detailed_name = Intern(info1->short_name);
                 type1.def.short_name_size = int16_t(info1->short_name.size());
                 type1.def.kind = SymbolKind::TypeParameter;
@@ -912,10 +910,10 @@ public:
       } else if (!var->def.spell && var->declarations.empty()) {
         // e.g. lambda parameter
         SourceLocation L = D->getLocation();
-        if (SM.getFileID(L) == LocFID) {
+        if (SM.getFileID(L) == fid) {
           var->def.spell = {
-              Use{{FromTokenRange(SM, Lang, {L, L}), Role::Definition}, lid},
-              FromTokenRange(SM, Lang, D->getSourceRange())};
+              Use{{fromTokenRange(SM, Lang, {L, L}), Role::Definition}, lid},
+              fromTokenRange(SM, Lang, D->getSourceRange())};
           var->def.parent_kind = SymbolKind::Method;
         }
       }
@@ -1026,9 +1024,9 @@ public:
           if (specialization) {
             const TypeSourceInfo *TSI = TD->getTypeSourceInfo();
             SourceLocation L1 = TSI->getTypeLoc().getBeginLoc();
-            if (SM.getFileID(L1) == LocFID)
+            if (SM.getFileID(L1) == fid)
               type1.uses.push_back(
-                  {{FromTokenRange(SM, Lang, {L1, L1}), Role::Reference}, lid});
+                  {{fromTokenRange(SM, Lang, {L1, L1}), Role::Reference}, lid});
           }
         }
       }
@@ -1064,7 +1062,7 @@ public:
 };
 
 class IndexPPCallbacks : public PPCallbacks {
-  SourceManager &SM;
+  SourceManager &sm;
   IndexParam &param;
 
   std::pair<StringRef, Usr> GetMacro(const Token &Tok) const {
@@ -1076,7 +1074,12 @@ class IndexPPCallbacks : public PPCallbacks {
 
 public:
   IndexPPCallbacks(SourceManager &SM, IndexParam &param)
-      : SM(SM), param(param) {}
+      : sm(SM), param(param) {}
+  void FileChanged(SourceLocation sl, FileChangeReason reason,
+                   SrcMgr::CharacteristicKind, FileID) override {
+    if (reason == FileChangeReason::EnterFile)
+      (void)param.consumeFile(sm.getFileID(sl));
+  }
   void InclusionDirective(SourceLocation HashLoc, const Token &Tok,
                           StringRef Included, bool IsAngled,
                           CharSourceRange FilenameRange, const FileEntry *File,
@@ -1085,76 +1088,66 @@ public:
                           SrcMgr::CharacteristicKind FileType) override {
     if (!File)
       return;
-    llvm::sys::fs::UniqueID UniqueID;
-    auto spell = FromCharSourceRange(SM, param.Ctx->getLangOpts(),
-                                     FilenameRange, &UniqueID);
-    const FileEntry *FE =
-        SM.getFileEntryForID(SM.getFileID(FilenameRange.getBegin()));
-    if (!FE)
-      return;
-    if (IndexFile *db = param.ConsumeFile(*FE)) {
-      std::string path = PathFromFileEntry(*File);
+    auto spell = fromCharSourceRange(sm, param.ctx->getLangOpts(),
+                                     FilenameRange, nullptr);
+    FileID fid = sm.getFileID(FilenameRange.getBegin());
+    if (IndexFile *db = param.consumeFile(fid)) {
+      std::string path = pathFromFileEntry(*File);
       if (path.size())
         db->includes.push_back({spell.start.line, Intern(path)});
     }
   }
   void MacroDefined(const Token &Tok, const MacroDirective *MD) override {
-    llvm::sys::fs::UniqueID UniqueID;
-    const LangOptions &Lang = param.Ctx->getLangOpts();
-    SourceLocation L = MD->getLocation();
-    const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(L));
-    if (!FE)
-      return;
-    if (IndexFile *db = param.ConsumeFile(*FE)) {
+    const LangOptions &lang = param.ctx->getLangOpts();
+    SourceLocation sl = MD->getLocation();
+    FileID fid = sm.getFileID(sl);
+    if (IndexFile *db = param.consumeFile(fid)) {
       auto [Name, usr] = GetMacro(Tok);
       IndexVar &var = db->ToVar(usr);
-      Range range = FromTokenRange(SM, Lang, {L, L}, &UniqueID);
+      Range range = fromTokenRange(sm, lang, {sl, sl}, nullptr);
       var.def.kind = SymbolKind::Macro;
       var.def.parent_kind = SymbolKind::File;
       if (var.def.spell)
         var.declarations.push_back(*var.def.spell);
       const MacroInfo *MI = MD->getMacroInfo();
       SourceRange R(MI->getDefinitionLoc(), MI->getDefinitionEndLoc());
-      Range extent = FromTokenRange(SM, param.Ctx->getLangOpts(), R);
+      Range extent = fromTokenRange(sm, param.ctx->getLangOpts(), R);
       var.def.spell = {Use{{range, Role::Definition}}, extent};
       if (var.def.detailed_name[0] == '\0') {
         var.def.detailed_name = Intern(Name);
         var.def.short_name_size = Name.size();
-        StringRef Buf = GetSourceInRange(SM, Lang, R);
+        StringRef Buf = GetSourceInRange(sm, lang, R);
         var.def.hover =
             Intern(Buf.count('\n') <= g_config->index.maxInitializerLines - 1
-                       ? Twine("#define ", GetSourceInRange(SM, Lang, R)).str()
+                       ? Twine("#define ", GetSourceInRange(sm, lang, R)).str()
                        : Twine("#define ", Name).str());
       }
     }
   }
-  void MacroExpands(const Token &Tok, const MacroDefinition &MD, SourceRange R,
-                    const MacroArgs *Args) override {
-    llvm::sys::fs::UniqueID UniqueID;
-    SourceLocation L = SM.getSpellingLoc(R.getBegin());
-    const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(L));
-    if (!FE)
-      return;
-    if (IndexFile *db = param.ConsumeFile(*FE)) {
-      IndexVar &var = db->ToVar(GetMacro(Tok).second);
+  void MacroExpands(const Token &tok, const MacroDefinition &, SourceRange sr,
+                    const MacroArgs *) override {
+    SourceLocation sl = sm.getSpellingLoc(sr.getBegin());
+    FileID fid = sm.getFileID(sl);
+    if (IndexFile *db = param.consumeFile(fid)) {
+      IndexVar &var = db->ToVar(GetMacro(tok).second);
       var.uses.push_back(
-          {{FromTokenRange(SM, param.Ctx->getLangOpts(), {L, L}, &UniqueID),
+          {{fromTokenRange(sm, param.ctx->getLangOpts(), {sl, sl}, nullptr),
             Role::Dynamic}});
     }
   }
-  void MacroUndefined(const Token &Tok, const MacroDefinition &MD,
-                      const MacroDirective *UD) override {
-    if (UD) {
-      SourceLocation L = UD->getLocation();
-      MacroExpands(Tok, MD, {L, L}, nullptr);
+  void MacroUndefined(const Token &tok, const MacroDefinition &md,
+                      const MacroDirective *ud) override {
+    if (ud) {
+      SourceLocation sl = ud->getLocation();
+      MacroExpands(tok, md, {sl, sl}, nullptr);
     }
   }
-  void SourceRangeSkipped(SourceRange Range, SourceLocation EndifLoc) override {
-    llvm::sys::fs::UniqueID UniqueID;
-    auto range = FromCharRange(SM, param.Ctx->getLangOpts(), Range, &UniqueID);
-    if (const FileEntry *FE =
-            SM.getFileEntryForID(SM.getFileID(Range.getBegin())))
-      if (IndexFile *db = param.ConsumeFile(*FE))
+  void SourceRangeSkipped(SourceRange r, SourceLocation EndifLoc) override {
+    Range range = fromCharSourceRange(sm, param.ctx->getLangOpts(),
+                                      CharSourceRange::getCharRange(r));
+    FileID fid = sm.getFileID(r.getBegin());
+    if (fid.isValid())
+      if (IndexFile *db = param.consumeFile(fid))
         db->skipped_ranges.push_back(range);
   }
 };
@@ -1315,7 +1308,7 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   }
 
   std::vector<std::unique_ptr<IndexFile>> result;
-  for (auto &it : param.UID2File) {
+  for (auto &it : param.uid2file) {
     if (!it.second.db)
       continue;
     std::unique_ptr<IndexFile> &entry = it.second.db;
@@ -1340,8 +1333,10 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
       Uniquify(it.second.uses);
 
     // Update dependencies for the file.
-    for (auto &[_, file] : param.UID2File) {
+    for (auto &[_, file] : param.uid2file) {
       const std::string &path = file.path;
+      if (path.empty())
+        continue;
       if (path == entry->path)
         entry->mtime = file.mtime;
       else if (path != entry->import_file)

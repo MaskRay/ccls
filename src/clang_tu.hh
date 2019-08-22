@@ -30,24 +30,20 @@ namespace vfs = clang::vfs;
 #endif
 
 namespace ccls {
-std::string PathFromFileEntry(const clang::FileEntry &file);
+std::string pathFromFileEntry(const clang::FileEntry &file);
 
-Range FromCharSourceRange(const clang::SourceManager &SM,
-                          const clang::LangOptions &LangOpts,
-                          clang::CharSourceRange R,
-                          llvm::sys::fs::UniqueID *UniqueID = nullptr);
+Range fromCharSourceRange(const clang::SourceManager &sm,
+                          const clang::LangOptions &lang,
+                          clang::CharSourceRange csr,
+                          clang::FileID *fid = nullptr);
 
-Range FromCharRange(const clang::SourceManager &SM,
-                    const clang::LangOptions &LangOpts, clang::SourceRange R,
-                    llvm::sys::fs::UniqueID *UniqueID = nullptr);
+Range fromTokenRange(const clang::SourceManager &sm,
+                     const clang::LangOptions &lang, clang::SourceRange sr,
+                     clang::FileID *fid = nullptr);
 
-Range FromTokenRange(const clang::SourceManager &SM,
-                     const clang::LangOptions &LangOpts, clang::SourceRange R,
-                     llvm::sys::fs::UniqueID *UniqueID = nullptr);
-
-Range FromTokenRangeDefaulted(const clang::SourceManager &SM,
-                              const clang::LangOptions &Lang,
-                              clang::SourceRange R, const clang::FileEntry *FE,
+Range fromTokenRangeDefaulted(const clang::SourceManager &sm,
+                              const clang::LangOptions &lang,
+                              clang::SourceRange sr, clang::FileID fid,
                               Range range);
 
 std::unique_ptr<clang::CompilerInvocation>

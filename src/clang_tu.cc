@@ -25,11 +25,8 @@ limitations under the License.
 using namespace clang;
 
 namespace ccls {
-std::string PathFromFileEntry(const FileEntry &file) {
-  StringRef Name = file.tryGetRealPathName();
-  if (Name.empty())
-    Name = file.getName();
-  std::string ret = NormalizePath(Name);
+std::string pathFromFileEntry(const FileEntry &file) {
+  std::string ret = NormalizePath(file.getName());
   // Resolve symlinks outside of workspace folders, e.g. /usr/include/c++/7.3.0
   return NormalizeFolder(ret) ? ret : RealPath(ret);
 }
@@ -52,45 +49,33 @@ static Pos Decomposed2LineAndCol(const SourceManager &SM,
           (int16_t)std::min<int>(c, INT16_MAX)};
 }
 
-Range FromCharSourceRange(const SourceManager &SM, const LangOptions &LangOpts,
-                          CharSourceRange R,
-                          llvm::sys::fs::UniqueID *UniqueID) {
-  SourceLocation BLoc = R.getBegin(), ELoc = R.getEnd();
-  std::pair<FileID, unsigned> BInfo = SM.getDecomposedLoc(BLoc),
-                              EInfo = SM.getDecomposedLoc(ELoc);
-  if (R.isTokenRange())
-    EInfo.second += Lexer::MeasureTokenLength(ELoc, SM, LangOpts);
-  if (UniqueID) {
-    if (const FileEntry *F = SM.getFileEntryForID(BInfo.first))
-      *UniqueID = F->getUniqueID();
-    else
-      *UniqueID = llvm::sys::fs::UniqueID(0, 0);
-  }
-  return {Decomposed2LineAndCol(SM, BInfo), Decomposed2LineAndCol(SM, EInfo)};
+Range fromCharSourceRange(const SourceManager &sm, const LangOptions &lang,
+                          CharSourceRange csr, FileID *fid) {
+  SourceLocation BLoc = csr.getBegin(), ELoc = csr.getEnd();
+  std::pair<FileID, unsigned> BInfo = sm.getDecomposedLoc(BLoc),
+                              EInfo = sm.getDecomposedLoc(ELoc);
+  if (csr.isTokenRange())
+    EInfo.second += Lexer::MeasureTokenLength(ELoc, sm, lang);
+  if (fid)
+    *fid = BInfo.first;
+  return {Decomposed2LineAndCol(sm, BInfo), Decomposed2LineAndCol(sm, EInfo)};
 }
 
-Range FromCharRange(const SourceManager &SM, const LangOptions &Lang,
-                    SourceRange R, llvm::sys::fs::UniqueID *UniqueID) {
-  return FromCharSourceRange(SM, Lang, CharSourceRange::getCharRange(R),
-                             UniqueID);
+Range fromTokenRange(const SourceManager &sm, const LangOptions &lang,
+                     SourceRange sr, FileID *fid) {
+  return fromCharSourceRange(sm, lang, CharSourceRange::getTokenRange(sr), fid);
 }
 
-Range FromTokenRange(const SourceManager &SM, const LangOptions &Lang,
-                     SourceRange R, llvm::sys::fs::UniqueID *UniqueID) {
-  return FromCharSourceRange(SM, Lang, CharSourceRange::getTokenRange(R),
-                             UniqueID);
-}
-
-Range FromTokenRangeDefaulted(const SourceManager &SM, const LangOptions &Lang,
-                              SourceRange R, const FileEntry *FE, Range range) {
-  auto I = SM.getDecomposedLoc(SM.getExpansionLoc(R.getBegin()));
-  if (SM.getFileEntryForID(I.first) == FE)
-    range.start = Decomposed2LineAndCol(SM, I);
-  SourceLocation L = SM.getExpansionLoc(R.getEnd());
-  I = SM.getDecomposedLoc(L);
-  if (SM.getFileEntryForID(I.first) == FE) {
-    I.second += Lexer::MeasureTokenLength(L, SM, Lang);
-    range.end = Decomposed2LineAndCol(SM, I);
+Range fromTokenRangeDefaulted(const SourceManager &sm, const LangOptions &lang,
+                              SourceRange sr, FileID fid, Range range) {
+  auto decomposed = sm.getDecomposedLoc(sm.getExpansionLoc(sr.getBegin()));
+  if (decomposed.first == fid)
+    range.start = Decomposed2LineAndCol(sm, decomposed);
+  SourceLocation loc = sm.getExpansionLoc(sr.getEnd());
+  decomposed = sm.getDecomposedLoc(loc);
+  if (decomposed.first == fid) {
+    decomposed.second += Lexer::MeasureTokenLength(loc, sm, lang);
+    range.end = Decomposed2LineAndCol(sm, decomposed);
   }
   return range;
 }
