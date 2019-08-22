@@ -20,9 +20,9 @@ struct WorkingFile;
 struct WorkingFiles;
 
 namespace pipeline {
-void Reply(RequestId id, const std::function<void(JsonWriter &)> &fn);
-void ReplyError(RequestId id, const std::function<void(JsonWriter &)> &fn);
-}
+void reply(RequestId id, const std::function<void(JsonWriter &)> &fn);
+void replyError(RequestId id, const std::function<void(JsonWriter &)> &fn);
+} // namespace pipeline
 
 struct CodeActionParam {
   TextDocumentIdentifier textDocument;
@@ -97,10 +97,7 @@ enum class CompletionItemKind {
   Operator = 24,
   TypeParameter = 25,
 };
-enum class InsertTextFormat {
-  PlainText = 1,
-  Snippet = 2
-};
+enum class InsertTextFormat { PlainText = 1, Snippet = 2 };
 struct CompletionItem {
   std::string label;
   CompletionItemKind kind = CompletionItemKind::Text;
@@ -165,22 +162,22 @@ struct WorkspaceSymbolParam {
 };
 REFLECT_STRUCT(WorkspaceFolder, uri, name);
 
-inline void Reflect(JsonReader &vis, DocumentUri &v) {
-  Reflect(vis, v.raw_uri);
+inline void reflect(JsonReader &vis, DocumentUri &v) {
+  reflect(vis, v.raw_uri);
 }
-inline void Reflect(JsonWriter &vis, DocumentUri &v) {
-  Reflect(vis, v.raw_uri);
+inline void reflect(JsonWriter &vis, DocumentUri &v) {
+  reflect(vis, v.raw_uri);
 }
-inline void Reflect(JsonReader &vis, VersionedTextDocumentIdentifier &v) {
+inline void reflect(JsonReader &vis, VersionedTextDocumentIdentifier &v) {
   REFLECT_MEMBER(uri);
   REFLECT_MEMBER(version);
 }
-inline void Reflect(JsonWriter &vis, VersionedTextDocumentIdentifier &v) {
-  vis.StartObject();
+inline void reflect(JsonWriter &vis, VersionedTextDocumentIdentifier &v) {
+  vis.startObject();
   REFLECT_MEMBER(uri);
-  vis.Key("version");
-  Reflect(vis, v.version);
-  vis.EndObject();
+  vis.key("version");
+  reflect(vis, v.version);
+  vis.endObject();
 }
 
 REFLECT_UNDERLYING(ErrorCode);
@@ -194,7 +191,8 @@ REFLECT_STRUCT(TextDocumentIdentifier, uri);
 REFLECT_STRUCT(TextDocumentItem, uri, languageId, version, text);
 REFLECT_STRUCT(TextEdit, range, newText);
 REFLECT_STRUCT(DiagnosticRelatedInformation, location, message);
-REFLECT_STRUCT(Diagnostic, range, severity, code, source, message, relatedInformation);
+REFLECT_STRUCT(Diagnostic, range, severity, code, source, message,
+               relatedInformation);
 REFLECT_STRUCT(ShowMessageParam, type, message);
 REFLECT_UNDERLYING_B(LanguageId);
 
@@ -207,16 +205,16 @@ struct ReplyOnce {
   MessageHandler &handler;
   RequestId id;
   template <typename Res> void operator()(Res &&result) const {
-    if (id.Valid())
-      pipeline::Reply(id, [&](JsonWriter &w) { Reflect(w, result); });
+    if (id.valid())
+      pipeline::reply(id, [&](JsonWriter &w) { reflect(w, result); });
   }
-  void Error(ErrorCode code, std::string message) const {
+  void error(ErrorCode code, std::string message) const {
     ResponseError err{code, std::move(message)};
-    if (id.Valid())
-      pipeline::ReplyError(id, [&](JsonWriter &w) { Reflect(w, err); });
+    if (id.valid())
+      pipeline::replyError(id, [&](JsonWriter &w) { reflect(w, err); });
   }
-  void NotOpened(std::string_view path);
-  void ReplyLocationLink(std::vector<LocationLink> &result);
+  void notOpened(std::string_view path);
+  void replyLocationLink(std::vector<LocationLink> &result);
 };
 
 struct MessageHandler {
@@ -233,20 +231,20 @@ struct MessageHandler {
   bool overdue = false;
 
   MessageHandler();
-  void Run(InMessage &msg);
-  QueryFile *FindFile(const std::string &path, int *out_file_id = nullptr);
-  std::pair<QueryFile *, WorkingFile *> FindOrFail(const std::string &path,
+  void run(InMessage &msg);
+  QueryFile *findFile(const std::string &path, int *out_file_id = nullptr);
+  std::pair<QueryFile *, WorkingFile *> findOrFail(const std::string &path,
                                                    ReplyOnce &reply,
                                                    int *out_file_id = nullptr);
 
 private:
-  void Bind(const char *method, void (MessageHandler::*handler)(JsonReader &));
+  void bind(const char *method, void (MessageHandler::*handler)(JsonReader &));
   template <typename Param>
-  void Bind(const char *method, void (MessageHandler::*handler)(Param &));
-  void Bind(const char *method,
+  void bind(const char *method, void (MessageHandler::*handler)(Param &));
+  void bind(const char *method,
             void (MessageHandler::*handler)(JsonReader &, ReplyOnce &));
   template <typename Param>
-  void Bind(const char *method,
+  void bind(const char *method,
             void (MessageHandler::*handler)(Param &, ReplyOnce &));
 
   void ccls_call(JsonReader &, ReplyOnce &);
@@ -292,7 +290,7 @@ private:
   void workspace_symbol(WorkspaceSymbolParam &, ReplyOnce &);
 };
 
-void EmitSkippedRanges(WorkingFile *wfile, QueryFile &file);
+void emitSkippedRanges(WorkingFile *wfile, QueryFile &file);
 
-void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file);
+void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file);
 } // namespace ccls

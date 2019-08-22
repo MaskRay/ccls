@@ -10,51 +10,51 @@
 
 namespace ccls {
 void MessageHandler::textDocument_didChange(TextDocumentDidChangeParam &param) {
-  std::string path = param.textDocument.uri.GetPath();
-  wfiles->OnChange(param);
+  std::string path = param.textDocument.uri.getPath();
+  wfiles->onChange(param);
   if (g_config->index.onChange)
-    pipeline::Index(path, {}, IndexMode::OnChange, true);
-  manager->OnView(path);
+    pipeline::index(path, {}, IndexMode::OnChange, true);
+  manager->onView(path);
   if (g_config->diagnostics.onChange >= 0)
-    manager->ScheduleDiag(path, g_config->diagnostics.onChange);
+    manager->scheduleDiag(path, g_config->diagnostics.onChange);
 }
 
 void MessageHandler::textDocument_didClose(TextDocumentParam &param) {
-  std::string path = param.textDocument.uri.GetPath();
-  wfiles->OnClose(path);
-  manager->OnClose(path);
-  pipeline::RemoveCache(path);
+  std::string path = param.textDocument.uri.getPath();
+  wfiles->onClose(path);
+  manager->onClose(path);
+  pipeline::removeCache(path);
 }
 
 void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
-  std::string path = param.textDocument.uri.GetPath();
-  WorkingFile *wf = wfiles->OnOpen(param.textDocument);
+  std::string path = param.textDocument.uri.getPath();
+  WorkingFile *wf = wfiles->onOpen(param.textDocument);
   if (std::optional<std::string> cached_file_contents =
-          pipeline::LoadIndexedContent(path))
-    wf->SetIndexContent(*cached_file_contents);
+          pipeline::loadIndexedContent(path))
+    wf->setIndexContent(*cached_file_contents);
 
-  QueryFile *file = FindFile(path);
+  QueryFile *file = findFile(path);
   if (file) {
-    EmitSkippedRanges(wf, *file);
-    EmitSemanticHighlight(db, wf, *file);
+    emitSkippedRanges(wf, *file);
+    emitSemanticHighlight(db, wf, *file);
   }
-  include_complete->AddFile(wf->filename);
+  include_complete->addFile(wf->filename);
 
   // Submit new index request if it is not a header file or there is no
   // pending index request.
   auto [lang, header] = lookupExtension(path);
   if ((lang != LanguageId::Unknown && !header) ||
       !pipeline::pending_index_requests)
-    pipeline::Index(path, {}, IndexMode::Normal, false);
+    pipeline::index(path, {}, IndexMode::Normal, false);
   if (header)
-    project->IndexRelated(path);
+    project->indexRelated(path);
 
-  manager->OnView(path);
+  manager->onView(path);
 }
 
 void MessageHandler::textDocument_didSave(TextDocumentParam &param) {
-  const std::string &path = param.textDocument.uri.GetPath();
-  pipeline::Index(path, {}, IndexMode::Normal, false);
-  manager->OnSave(path);
+  const std::string &path = param.textDocument.uri.getPath();
+  pipeline::index(path, {}, IndexMode::Normal, false);
+  manager->onSave(path);
 }
 } // namespace ccls

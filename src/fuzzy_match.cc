@@ -13,7 +13,7 @@ namespace {
 enum CharClass { Other, Lower, Upper };
 enum CharRole { None, Tail, Head };
 
-CharClass GetCharClass(int c) {
+CharClass getCharClass(int c) {
   if (islower(c))
     return Lower;
   if (isupper(c))
@@ -21,12 +21,12 @@ CharClass GetCharClass(int c) {
   return Other;
 }
 
-void CalculateRoles(std::string_view s, int roles[], int *class_set) {
+void calculateRoles(std::string_view s, int roles[], int *class_set) {
   if (s.empty()) {
     *class_set = 0;
     return;
   }
-  CharClass pre = Other, cur = GetCharClass(s[0]), suc;
+  CharClass pre = Other, cur = getCharClass(s[0]), suc;
   *class_set = 1 << cur;
   auto fn = [&]() {
     if (cur == Other)
@@ -37,7 +37,7 @@ void CalculateRoles(std::string_view s, int roles[], int *class_set) {
                : Tail;
   };
   for (size_t i = 0; i < s.size() - 1; i++) {
-    suc = GetCharClass(s[i + 1]);
+    suc = getCharClass(s[i + 1]);
     *class_set |= 1 << suc;
     roles[i] = fn();
     pre = cur;
@@ -47,7 +47,7 @@ void CalculateRoles(std::string_view s, int roles[], int *class_set) {
 }
 } // namespace
 
-int FuzzyMatcher::MissScore(int j, bool last) {
+int FuzzyMatcher::missScore(int j, bool last) {
   int s = -3;
   if (last)
     s -= 10;
@@ -56,7 +56,7 @@ int FuzzyMatcher::MissScore(int j, bool last) {
   return s;
 }
 
-int FuzzyMatcher::MatchScore(int i, int j, bool last) {
+int FuzzyMatcher::matchScore(int i, int j, bool last) {
   int s = 0;
   // Case matching.
   if (pat[i] == text[j]) {
@@ -81,7 +81,7 @@ int FuzzyMatcher::MatchScore(int i, int j, bool last) {
 }
 
 FuzzyMatcher::FuzzyMatcher(std::string_view pattern, int sensitivity) {
-  CalculateRoles(pattern, pat_role, &pat_set);
+  calculateRoles(pattern, pat_role, &pat_set);
   if (sensitivity == 1)
     sensitivity = pat_set & 1 << Upper ? 2 : 0;
   case_sensitivity = sensitivity;
@@ -95,7 +95,7 @@ FuzzyMatcher::FuzzyMatcher(std::string_view pattern, int sensitivity) {
     }
 }
 
-int FuzzyMatcher::Match(std::string_view text, bool strict) {
+int FuzzyMatcher::match(std::string_view text, bool strict) {
   if (pat.empty() != text.empty())
     return kMinScore;
   int n = int(text.size());
@@ -104,12 +104,12 @@ int FuzzyMatcher::Match(std::string_view text, bool strict) {
   this->text = text;
   for (int i = 0; i < n; i++)
     low_text[i] = (char)::tolower(text[i]);
-  CalculateRoles(text, text_role, &text_set);
+  calculateRoles(text, text_role, &text_set);
   if (strict && n && !!pat_role[0] != !!text_role[0])
     return kMinScore;
   dp[0][0][0] = dp[0][0][1] = 0;
   for (int j = 0; j < n; j++) {
-    dp[0][j + 1][0] = dp[0][j][0] + MissScore(j, false);
+    dp[0][j + 1][0] = dp[0][j][0] + missScore(j, false);
     dp[0][j + 1][1] = kMinScore * 2;
   }
   for (int i = 0; i < int(pat.size()); i++) {
@@ -117,16 +117,16 @@ int FuzzyMatcher::Match(std::string_view text, bool strict) {
     int(*cur)[2] = dp[(i + 1) & 1];
     cur[i][0] = cur[i][1] = kMinScore;
     for (int j = i; j < n; j++) {
-      cur[j + 1][0] = std::max(cur[j][0] + MissScore(j, false),
-                               cur[j][1] + MissScore(j, true));
+      cur[j + 1][0] = std::max(cur[j][0] + missScore(j, false),
+                               cur[j][1] + missScore(j, true));
       // For the first char of pattern, apply extra restriction to filter bad
       // candidates (e.g. |int| in |PRINT|)
       cur[j + 1][1] = (case_sensitivity ? pat[i] == text[j]
                                         : low_pat[i] == low_text[j] &&
                                               (i || text_role[j] != Tail ||
                                                pat[i] == text[j]))
-                          ? std::max(pre[j][0] + MatchScore(i, j, false),
-                                     pre[j][1] + MatchScore(i, j, true))
+                          ? std::max(pre[j][0] + matchScore(i, j, false),
+                                     pre[j][1] + matchScore(i, j, true))
                           : kMinScore * 2;
     }
   }

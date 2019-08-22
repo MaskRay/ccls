@@ -37,22 +37,22 @@
 
 namespace ccls {
 namespace pipeline {
-void ThreadEnter();
+void threadEnter();
 }
 
-std::string NormalizePath(const std::string &path) {
-  llvm::SmallString<256> P(path);
-  llvm::sys::path::remove_dots(P, true);
-  return {P.data(), P.size()};
+std::string normalizePath(const std::string &path) {
+  llvm::SmallString<256> p(path);
+  llvm::sys::path::remove_dots(p, true);
+  return {p.data(), p.size()};
 }
 
-void FreeUnusedMemory() {
+void freeUnusedMemory() {
 #ifdef __GLIBC__
   malloc_trim(4 * 1024 * 1024);
 #endif
 }
 
-void TraceMe() {
+void traceMe() {
   // If the environment variable is defined, wait for a debugger.
   // In gdb, you need to invoke `signal SIGCONT` if you want ccls to continue
   // after detaching.
@@ -61,7 +61,7 @@ void TraceMe() {
     raise(traceme[0] == 's' ? SIGSTOP : SIGTSTP);
 }
 
-void SpawnThread(void *(*fn)(void *), void *arg) {
+void spawnThread(void *(*fn)(void *), void *arg) {
   pthread_t thd;
   pthread_attr_t attr;
   struct rlimit rlim;
@@ -71,7 +71,7 @@ void SpawnThread(void *(*fn)(void *), void *arg) {
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
   pthread_attr_setstacksize(&attr, stack_size);
-  pipeline::ThreadEnter();
+  pipeline::threadEnter();
   pthread_create(&thd, &attr, fn, arg);
   pthread_attr_destroy(&attr);
 }

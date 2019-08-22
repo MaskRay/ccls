@@ -22,7 +22,7 @@ template <typename Lockable> void lock(Lockable &l) { l.lock(); }
 
 namespace ccls {
 struct BaseThreadQueue {
-  virtual bool IsEmpty() = 0;
+  virtual bool isEmpty() = 0;
   virtual ~BaseThreadQueue() = default;
 };
 
@@ -47,19 +47,19 @@ private:
 struct MultiQueueWaiter {
   std::condition_variable_any cv;
 
-  static bool HasState(std::initializer_list<BaseThreadQueue *> queues) {
+  static bool hasState(std::initializer_list<BaseThreadQueue *> queues) {
     for (BaseThreadQueue *queue : queues) {
-      if (!queue->IsEmpty())
+      if (!queue->isEmpty())
         return true;
     }
     return false;
   }
 
   template <typename... BaseThreadQueue>
-  bool Wait(std::atomic<bool> &quit, BaseThreadQueue... queues) {
+  bool wait(std::atomic<bool> &quit, BaseThreadQueue... queues) {
     MultiQueueLock<BaseThreadQueue...> l(queues...);
     while (!quit.load(std::memory_order_relaxed)) {
-      if (HasState({queues...}))
+      if (hasState({queues...}))
         return false;
       cv.wait(l);
     }
@@ -67,10 +67,10 @@ struct MultiQueueWaiter {
   }
 
   template <typename... BaseThreadQueue>
-  void WaitUntil(std::chrono::steady_clock::time_point t,
+  void waitUntil(std::chrono::steady_clock::time_point t,
                  BaseThreadQueue... queues) {
     MultiQueueLock<BaseThreadQueue...> l(queues...);
-    if (!HasState({queues...}))
+    if (!hasState({queues...}))
       cv.wait_until(l, t);
   }
 };
@@ -85,25 +85,25 @@ public:
   explicit ThreadedQueue(MultiQueueWaiter *waiter) : waiter_(waiter) {}
 
   // Returns the number of elements in the queue. This is lock-free.
-  size_t Size() const { return total_count_; }
+  size_t size() const { return total_count_; }
 
   // Add an element to the queue.
-  template <void (std::deque<T>::*push)(T &&)> void Push(T &&t, bool priority) {
+  template <void (std::deque<T>::*Push)(T &&)> void push(T &&t, bool priority) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (priority)
-      (priority_.*push)(std::move(t));
+      (priority_.*Push)(std::move(t));
     else
-      (queue_.*push)(std::move(t));
+      (queue_.*Push)(std::move(t));
     ++total_count_;
     waiter_->cv.notify_one();
   }
 
-  void PushBack(T &&t, bool priority = false) {
-    Push<&std::deque<T>::push_back>(std::move(t), priority);
+  void pushBack(T &&t, bool priority = false) {
+    push<&std::deque<T>::push_back>(std::move(t), priority);
   }
 
   // Return all elements in the queue.
-  std::vector<T> DequeueAll() {
+  std::vector<T> dequeueAll() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     total_count_ = 0;
@@ -123,10 +123,10 @@ public:
   }
 
   // Returns true if the queue is empty. This is lock-free.
-  bool IsEmpty() { return total_count_ == 0; }
+  bool isEmpty() { return total_count_ == 0; }
 
   // Get the first element from the queue. Blocks until one is available.
-  T Dequeue() {
+  T dequeue() {
     std::unique_lock<std::mutex> lock(mutex_);
     waiter_->cv.wait(lock,
                      [&]() { return !priority_.empty() || !queue_.empty(); });
@@ -144,7 +144,7 @@ public:
 
   // Get the first element from the queue without blocking. Returns a null
   // value if the queue is empty.
-  std::optional<T> TryPopFront() {
+  std::optional<T> tryPopFront() {
     std::lock_guard<std::mutex> lock(mutex_);
     auto execute = [&](std::deque<T> *q) {
       auto val = std::move(q->front());
@@ -159,7 +159,7 @@ public:
     return std::nullopt;
   }
 
-  template <typename Fn> void Iterate(Fn fn) {
+  template <typename Fn> void iterate(Fn fn) {
     std::lock_guard<std::mutex> lock(mutex_);
     for (auto &entry : priority_)
       fn(entry);

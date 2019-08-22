@@ -17,17 +17,17 @@ struct IncludeComplete {
   ~IncludeComplete();
 
   // Starts scanning directories. Clears existing cache.
-  void Rescan();
+  void rescan();
 
   // Ensures the one-off file is inside |completion_items|.
-  void AddFile(const std::string &absolute_path);
+  void addFile(const std::string &absolute_path);
 
   std::optional<ccls::CompletionItem>
-  FindCompletionItemForAbsolutePath(const std::string &absolute_path);
+  findCompletionItemForAbsolutePath(const std::string &absolute_path);
 
   // Insert item to |completion_items|.
   // Update |absolute_path_to_completion_item| and |inserted_paths|.
-  void InsertCompletionItem(const std::string &absolute_path,
+  void insertCompletionItem(const std::string &absolute_path,
                             ccls::CompletionItem &&item);
 
   // Guards |completion_items| when |is_scanning| is true.

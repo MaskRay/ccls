@@ -1,13 +1,13 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "sema_manager.hh"
 #include "fuzzy_match.hh"
 #include "log.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "project.hh"
 #include "query.hh"
+#include "sema_manager.hh"
 
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/StringRef.h>
@@ -24,16 +24,16 @@ REFLECT_STRUCT(SymbolInformation, name, kind, location, containerName);
 
 void MessageHandler::workspace_didChangeConfiguration(EmptyParam &) {
   for (auto &[folder, _] : g_config->workspaceFolders)
-    project->Load(folder);
-  project->Index(wfiles, RequestId());
+    project->load(folder);
+  project->index(wfiles, RequestId());
 
-  manager->Clear();
+  manager->clear();
 };
 
 void MessageHandler::workspace_didChangeWatchedFiles(
     DidChangeWatchedFilesParam &param) {
   for (auto &event : param.changes) {
-    std::string path = event.uri.GetPath();
+    std::string path = event.uri.getPath();
     if ((g_config->cache.directory.size() &&
          StringRef(path).startswith(g_config->cache.directory)) ||
         lookupExtension(path).first == LanguageId::Unknown)
@@ -46,19 +46,19 @@ void MessageHandler::workspace_didChangeWatchedFiles(
     case FileChangeType::Created:
     case FileChangeType::Changed: {
       IndexMode mode =
-          wfiles->GetFile(path) ? IndexMode::Normal : IndexMode::Background;
-      pipeline::Index(path, {}, mode, true);
+          wfiles->getFile(path) ? IndexMode::Normal : IndexMode::Background;
+      pipeline::index(path, {}, mode, true);
       if (event.type == FileChangeType::Changed) {
         if (mode == IndexMode::Normal)
-          manager->OnSave(path);
+          manager->onSave(path);
         else
-          manager->OnClose(path);
+          manager->onClose(path);
       }
       break;
     }
     case FileChangeType::Deleted:
-      pipeline::Index(path, {}, IndexMode::Delete, false);
-      manager->OnClose(path);
+      pipeline::index(path, {}, IndexMode::Delete, false);
+      manager->onClose(path);
       break;
     }
   }
@@ -67,8 +67,8 @@ void MessageHandler::workspace_didChangeWatchedFiles(
 void MessageHandler::workspace_didChangeWorkspaceFolders(
     DidChangeWorkspaceFoldersParam &param) {
   for (const WorkspaceFolder &wf : param.event.removed) {
-    std::string root = wf.uri.GetPath();
-    EnsureEndsInSlash(root);
+    std::string root = wf.uri.getPath();
+    ensureEndsInSlash(root);
     LOG_S(INFO) << "delete workspace folder " << wf.name << ": " << root;
     auto it = llvm::find_if(g_config->workspaceFolders,
                             [&](auto &folder) { return folder.first == root; });
@@ -83,9 +83,9 @@ void MessageHandler::workspace_didChangeWorkspaceFolders(
   }
   auto &workspaceFolders = g_config->workspaceFolders;
   for (const WorkspaceFolder &wf : param.event.added) {
-    std::string folder = wf.uri.GetPath();
-    EnsureEndsInSlash(folder);
-    std::string real = RealPath(folder) + '/';
+    std::string folder = wf.uri.getPath();
+    ensureEndsInSlash(folder);
+    std::string real = realPath(folder) + '/';
     if (folder == real)
       real.clear();
     LOG_S(INFO) << "add workspace folder " << wf.name << ": "
@@ -95,27 +95,27 @@ void MessageHandler::workspace_didChangeWorkspaceFolders(
     for (; it != workspaceFolders.begin() && folder < it[-1].first; --it)
       *it = it[-1];
     *it = {folder, real};
-    project->Load(folder);
+    project->load(folder);
   }
 
-  project->Index(wfiles, RequestId());
+  project->index(wfiles, RequestId());
 
-  manager->Clear();
+  manager->clear();
 }
 
 namespace {
 // Lookup |symbol| in |db| and insert the value into |result|.
-bool AddSymbol(
+bool addSymbol(
     DB *db, WorkingFiles *wfiles, const std::vector<uint8_t> &file_set,
     SymbolIdx sym, bool use_detailed,
     std::vector<std::tuple<SymbolInformation, int, SymbolIdx>> *result) {
-  std::optional<SymbolInformation> info = GetSymbolInfo(db, sym, true);
+  std::optional<SymbolInformation> info = getSymbolInfo(db, sym, true);
   if (!info)
     return false;
 
   Maybe<DeclRef> dr;
   bool in_folder = false;
-  WithEntity(db, sym, [&](const auto &entity) {
+  withEntity(db, sym, [&](const auto &entity) {
     for (auto &def : entity.def)
       if (def.spell) {
         dr = def.spell;
@@ -124,7 +124,7 @@ bool AddSymbol(
       }
   });
   if (!dr) {
-    auto &decls = GetNonDefDeclarations(db, sym);
+    auto &decls = getNonDefDeclarations(db, sym);
     for (auto &dr1 : decls) {
       dr = dr1;
       if (!in_folder && (in_folder = file_set[dr1.file_id]))
@@ -134,7 +134,7 @@ bool AddSymbol(
   if (!in_folder)
     return false;
 
-  std::optional<Location> ls_location = GetLsLocation(db, wfiles, *dr);
+  std::optional<Location> ls_location = getLsLocation(db, wfiles, *dr);
   if (!ls_location)
     return false;
   info->location = *ls_location;
@@ -148,8 +148,8 @@ void MessageHandler::workspace_symbol(WorkspaceSymbolParam &param,
   std::vector<SymbolInformation> result;
   const std::string &query = param.query;
   for (auto &folder : param.folders)
-    EnsureEndsInSlash(folder);
-  std::vector<uint8_t> file_set = db->GetFileSet(param.folders);
+    ensureEndsInSlash(folder);
+  std::vector<uint8_t> file_set = db->getFileSet(param.folders);
 
   // {symbol info, matching detailed_name or short_name, index}
   std::vector<std::tuple<SymbolInformation, int, SymbolIdx>> cands;
@@ -162,23 +162,23 @@ void MessageHandler::workspace_symbol(WorkspaceSymbolParam &param,
     if (!isspace(c))
       query_without_space += c;
 
-  auto Add = [&](SymbolIdx sym) {
-    std::string_view detailed_name = db->GetSymbolName(sym, true);
-    int pos = ReverseSubseqMatch(query_without_space, detailed_name, sensitive);
+  auto add = [&](SymbolIdx sym) {
+    std::string_view detailed_name = db->getSymbolName(sym, true);
+    int pos = reverseSubseqMatch(query_without_space, detailed_name, sensitive);
     return pos >= 0 &&
-           AddSymbol(db, wfiles, file_set, sym,
+           addSymbol(db, wfiles, file_set, sym,
                      detailed_name.find(':', pos) != std::string::npos,
                      &cands) &&
            cands.size() >= g_config->workspaceSymbol.maxNum;
   };
   for (auto &func : db->funcs)
-    if (Add({func.usr, Kind::Func}))
+    if (add({func.usr, Kind::Func}))
       goto done_add;
   for (auto &type : db->types)
-    if (Add({type.usr, Kind::Type}))
+    if (add({type.usr, Kind::Type}))
       goto done_add;
   for (auto &var : db->vars)
-    if (var.def.size() && !var.def[0].is_local() && Add({var.usr, Kind::Var}))
+    if (var.def.size() && !var.def[0].is_local() && add({var.usr, Kind::Var}))
       goto done_add;
 done_add:
 
@@ -187,11 +187,11 @@ done_add:
     int longest = 0;
     for (auto &cand : cands)
       longest = std::max(
-          longest, int(db->GetSymbolName(std::get<2>(cand), true).size()));
+          longest, int(db->getSymbolName(std::get<2>(cand), true).size()));
     FuzzyMatcher fuzzy(query, g_config->workspaceSymbol.caseSensitivity);
     for (auto &cand : cands)
-      std::get<1>(cand) = fuzzy.Match(
-          db->GetSymbolName(std::get<2>(cand), std::get<1>(cand)), false);
+      std::get<1>(cand) = fuzzy.match(
+          db->getSymbolName(std::get<2>(cand), std::get<1>(cand)), false);
     std::sort(cands.begin(), cands.end(), [](const auto &l, const auto &r) {
       return std::get<1>(l) > std::get<1>(r);
     });

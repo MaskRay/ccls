@@ -48,7 +48,7 @@ struct QueryFile {
 
 template <typename Q, typename QDef> struct QueryEntity {
   using Def = QDef;
-  Def *AnyDef() {
+  Def *anyDef() {
     Def *ret = nullptr;
     for (auto &i : static_cast<Q *>(this)->def) {
       ret = &i;
@@ -57,8 +57,8 @@ template <typename Q, typename QDef> struct QueryEntity {
     }
     return ret;
   }
-  const Def *AnyDef() const {
-    return const_cast<QueryEntity *>(this)->AnyDef();
+  const Def *anyDef() const {
+    return const_cast<QueryEntity *>(this)->anyDef();
   }
 };
 
@@ -93,7 +93,7 @@ struct QueryVar : QueryEntity<QueryVar, VarDef> {
 struct IndexUpdate {
   // Creates a new IndexUpdate based on the delta from previous to current. If
   // no delta computation should be done just pass null for previous.
-  static IndexUpdate CreateDelta(IndexFile *previous, IndexFile *current);
+  static IndexUpdate createDelta(IndexFile *previous, IndexFile *current);
 
   int file_id;
 
@@ -154,87 +154,87 @@ struct DB {
   void clear();
 
   template <typename Def>
-  void RemoveUsrs(Kind kind, int file_id,
+  void removeUsrs(Kind kind, int file_id,
                   const std::vector<std::pair<Usr, Def>> &to_remove);
   // Insert the contents of |update| into |db|.
-  void ApplyIndexUpdate(IndexUpdate *update);
-  int GetFileId(const std::string &path);
-  int Update(QueryFile::DefUpdate &&u);
-  void Update(const Lid2file_id &, int file_id,
+  void applyIndexUpdate(IndexUpdate *update);
+  int getFileId(const std::string &path);
+  int update(QueryFile::DefUpdate &&u);
+  void update(const Lid2file_id &, int file_id,
               std::vector<std::pair<Usr, QueryType::Def>> &&us);
-  void Update(const Lid2file_id &, int file_id,
+  void update(const Lid2file_id &, int file_id,
               std::vector<std::pair<Usr, QueryFunc::Def>> &&us);
-  void Update(const Lid2file_id &, int file_id,
+  void update(const Lid2file_id &, int file_id,
               std::vector<std::pair<Usr, QueryVar::Def>> &&us);
-  std::string_view GetSymbolName(SymbolIdx sym, bool qualified);
-  std::vector<uint8_t> GetFileSet(const std::vector<std::string> &folders);
+  std::string_view getSymbolName(SymbolIdx sym, bool qualified);
+  std::vector<uint8_t> getFileSet(const std::vector<std::string> &folders);
 
-  bool HasFunc(Usr usr) const { return func_usr.count(usr); }
-  bool HasType(Usr usr) const { return type_usr.count(usr); }
-  bool HasVar(Usr usr) const { return var_usr.count(usr); }
+  bool hasFunc(Usr usr) const { return func_usr.count(usr); }
+  bool hasType(Usr usr) const { return type_usr.count(usr); }
+  bool hasVar(Usr usr) const { return var_usr.count(usr); }
 
-  QueryFunc &Func(Usr usr) { return funcs[func_usr[usr]]; }
-  QueryType &Type(Usr usr) { return types[type_usr[usr]]; }
-  QueryVar &Var(Usr usr) { return vars[var_usr[usr]]; }
+  QueryFunc &getFunc(Usr usr) { return funcs[func_usr[usr]]; }
+  QueryType &getType(Usr usr) { return types[type_usr[usr]]; }
+  QueryVar &getVar(Usr usr) { return vars[var_usr[usr]]; }
 
-  QueryFile &GetFile(SymbolIdx ref) { return files[ref.usr]; }
-  QueryFunc &GetFunc(SymbolIdx ref) { return Func(ref.usr); }
-  QueryType &GetType(SymbolIdx ref) { return Type(ref.usr); }
-  QueryVar &GetVar(SymbolIdx ref) { return Var(ref.usr); }
+  QueryFile &getFile(SymbolIdx ref) { return files[ref.usr]; }
+  QueryFunc &getFunc(SymbolIdx ref) { return getFunc(ref.usr); }
+  QueryType &getType(SymbolIdx ref) { return getType(ref.usr); }
+  QueryVar &getVar(SymbolIdx ref) { return getVar(ref.usr); }
 };
 
-Maybe<DeclRef> GetDefinitionSpell(DB *db, SymbolIdx sym);
+Maybe<DeclRef> getDefinitionSpell(DB *db, SymbolIdx sym);
 
 // Get defining declaration (if exists) or an arbitrary declaration (otherwise)
 // for each id.
-std::vector<Use> GetFuncDeclarations(DB *, const std::vector<Usr> &);
-std::vector<Use> GetFuncDeclarations(DB *, const Vec<Usr> &);
-std::vector<Use> GetTypeDeclarations(DB *, const std::vector<Usr> &);
-std::vector<DeclRef> GetVarDeclarations(DB *, const std::vector<Usr> &, unsigned);
+std::vector<Use> getFuncDeclarations(DB *, const std::vector<Usr> &);
+std::vector<Use> getFuncDeclarations(DB *, const Vec<Usr> &);
+std::vector<Use> getTypeDeclarations(DB *, const std::vector<Usr> &);
+std::vector<DeclRef> getVarDeclarations(DB *, const std::vector<Usr> &,
+                                        unsigned);
 
 // Get non-defining declarations.
-std::vector<DeclRef> &GetNonDefDeclarations(DB *db, SymbolIdx sym);
+std::vector<DeclRef> &getNonDefDeclarations(DB *db, SymbolIdx sym);
 
-std::vector<Use> GetUsesForAllBases(DB *db, QueryFunc &root);
-std::vector<Use> GetUsesForAllDerived(DB *db, QueryFunc &root);
-std::optional<lsRange> GetLsRange(WorkingFile *working_file,
+std::vector<Use> getUsesForAllBases(DB *db, QueryFunc &root);
+std::vector<Use> getUsesForAllDerived(DB *db, QueryFunc &root);
+std::optional<lsRange> getLsRange(WorkingFile *working_file,
                                   const Range &location);
-DocumentUri GetLsDocumentUri(DB *db, int file_id, std::string *path);
-DocumentUri GetLsDocumentUri(DB *db, int file_id);
+DocumentUri getLsDocumentUri(DB *db, int file_id, std::string *path);
+DocumentUri getLsDocumentUri(DB *db, int file_id);
 
-std::optional<Location> GetLsLocation(DB *db, WorkingFiles *wfiles, Use use);
-std::optional<Location> GetLsLocation(DB *db, WorkingFiles *wfiles,
-                                        SymbolRef sym, int file_id);
-LocationLink GetLocationLink(DB *db, WorkingFiles *wfiles, DeclRef dr);
+std::optional<Location> getLsLocation(DB *db, WorkingFiles *wfiles, Use use);
+std::optional<Location> getLsLocation(DB *db, WorkingFiles *wfiles,
+                                      SymbolRef sym, int file_id);
+LocationLink getLocationLink(DB *db, WorkingFiles *wfiles, DeclRef dr);
 
 // Returns a symbol. The symbol will *NOT* have a location assigned.
-std::optional<SymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
-                                                 bool detailed);
+std::optional<SymbolInformation> getSymbolInfo(DB *db, SymbolIdx sym,
+                                               bool detailed);
 
-std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *working_file,
-                                             QueryFile *file,
-                                             Position &ls_pos,
+std::vector<SymbolRef> findSymbolsAtLocation(WorkingFile *working_file,
+                                             QueryFile *file, Position &ls_pos,
                                              bool smallest = false);
 
-template <typename Fn> void WithEntity(DB *db, SymbolIdx sym, Fn &&fn) {
+template <typename Fn> void withEntity(DB *db, SymbolIdx sym, Fn &&fn) {
   switch (sym.kind) {
   case Kind::Invalid:
   case Kind::File:
     break;
   case Kind::Func:
-    fn(db->GetFunc(sym));
+    fn(db->getFunc(sym));
     break;
   case Kind::Type:
-    fn(db->GetType(sym));
+    fn(db->getType(sym));
     break;
   case Kind::Var:
-    fn(db->GetVar(sym));
+    fn(db->getVar(sym));
     break;
   }
 }
 
-template <typename Fn> void EachEntityDef(DB *db, SymbolIdx sym, Fn &&fn) {
-  WithEntity(db, sym, [&](const auto &entity) {
+template <typename Fn> void eachEntityDef(DB *db, SymbolIdx sym, Fn &&fn) {
+  withEntity(db, sym, [&](const auto &entity) {
     for (auto &def : entity.def)
       if (!fn(def))
         break;
@@ -242,8 +242,8 @@ template <typename Fn> void EachEntityDef(DB *db, SymbolIdx sym, Fn &&fn) {
 }
 
 template <typename Fn>
-void EachOccurrence(DB *db, SymbolIdx sym, bool include_decl, Fn &&fn) {
-  WithEntity(db, sym, [&](const auto &entity) {
+void eachOccurrence(DB *db, SymbolIdx sym, bool include_decl, Fn &&fn) {
+  withEntity(db, sym, [&](const auto &entity) {
     for (Use use : entity.uses)
       fn(use);
     if (include_decl) {
@@ -256,12 +256,12 @@ void EachOccurrence(DB *db, SymbolIdx sym, bool include_decl, Fn &&fn) {
   });
 }
 
-SymbolKind GetSymbolKind(DB *db, SymbolIdx sym);
+SymbolKind getSymbolKind(DB *db, SymbolIdx sym);
 
 template <typename C, typename Fn>
-void EachDefinedFunc(DB *db, const C &usrs, Fn &&fn) {
+void eachDefinedFunc(DB *db, const C &usrs, Fn &&fn) {
   for (Usr usr : usrs) {
-    auto &obj = db->Func(usr);
+    auto &obj = db->getFunc(usr);
     if (!obj.def.empty())
       fn(obj);
   }

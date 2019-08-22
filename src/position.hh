@@ -13,10 +13,10 @@ struct Pos {
   uint16_t line = 0;
   int16_t column = -1;
 
-  static Pos FromString(const std::string &encoded);
+  static Pos fromString(const std::string &encoded);
 
-  bool Valid() const { return column >= 0; }
-  std::string ToString();
+  bool valid() const { return column >= 0; }
+  std::string toString();
 
   // Compare two Positions and check if they are equal. Ignores the value of
   // |interesting|.
@@ -35,12 +35,12 @@ struct Range {
   Pos start;
   Pos end;
 
-  static Range FromString(const std::string &encoded);
+  static Range fromString(const std::string &encoded);
 
-  bool Valid() const { return start.Valid(); }
-  bool Contains(int line, int column) const;
+  bool valid() const { return start.valid(); }
+  bool contains(int line, int column) const;
 
-  std::string ToString();
+  std::string toString();
 
   bool operator==(const Range &o) const {
     return start == o.start && end == o.end;
@@ -50,20 +50,20 @@ struct Range {
   }
 };
 
-// Reflection
+// reflection
 struct JsonReader;
 struct JsonWriter;
 struct BinaryReader;
 struct BinaryWriter;
 
-void Reflect(JsonReader &visitor, Pos &value);
-void Reflect(JsonReader &visitor, Range &value);
-void Reflect(JsonWriter &visitor, Pos &value);
-void Reflect(JsonWriter &visitor, Range &value);
-void Reflect(BinaryReader &visitor, Pos &value);
-void Reflect(BinaryReader &visitor, Range &value);
-void Reflect(BinaryWriter &visitor, Pos &value);
-void Reflect(BinaryWriter &visitor, Range &value);
+void reflect(JsonReader &visitor, Pos &value);
+void reflect(JsonReader &visitor, Range &value);
+void reflect(JsonWriter &visitor, Pos &value);
+void reflect(JsonWriter &visitor, Range &value);
+void reflect(BinaryReader &visitor, Pos &value);
+void reflect(BinaryReader &visitor, Range &value);
+void reflect(BinaryWriter &visitor, Pos &value);
+void reflect(BinaryWriter &visitor, Range &value);
 } // namespace ccls
 
 namespace std {

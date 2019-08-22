@@ -1,7 +1,6 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "sema_manager.hh"
 #include "filesystem.hh"
 #include "include_complete.hh"
 #include "log.hh"
@@ -9,6 +8,7 @@
 #include "pipeline.hh"
 #include "platform.hh"
 #include "project.hh"
+#include "sema_manager.hh"
 #include "working_files.hh"
 
 #include <llvm/ADT/Twine.h>
@@ -17,8 +17,8 @@
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 
-#include <stdlib.h>
 #include <stdexcept>
+#include <stdlib.h>
 #include <thread>
 
 namespace ccls {
@@ -173,7 +173,8 @@ REFLECT_STRUCT(TextDocumentClientCap::DocumentSymbol,
                hierarchicalDocumentSymbolSupport);
 REFLECT_STRUCT(TextDocumentClientCap::LinkSupport, linkSupport);
 REFLECT_STRUCT(TextDocumentClientCap::PublishDiagnostics, relatedInformation);
-REFLECT_STRUCT(TextDocumentClientCap, completion, definition, documentSymbol, publishDiagnostics);
+REFLECT_STRUCT(TextDocumentClientCap, completion, definition, documentSymbol,
+               publishDiagnostics);
 
 struct ClientCap {
   WorkspaceClientCap workspace;
@@ -201,7 +202,7 @@ struct InitializeParam {
   std::vector<WorkspaceFolder> workspaceFolders;
 };
 
-void Reflect(JsonReader &reader, InitializeParam::Trace &value) {
+void reflect(JsonReader &reader, InitializeParam::Trace &value) {
   if (!reader.m->IsString()) {
     value = InitializeParam::Trace::Off;
     return;
@@ -241,7 +242,7 @@ REFLECT_STRUCT(DidChangeWatchedFilesRegistration::Option, watchers);
 REFLECT_STRUCT(DidChangeWatchedFilesRegistration, id, method, registerOptions);
 REFLECT_STRUCT(RegistrationParam, registrations);
 
-void *Indexer(void *arg_) {
+void *indexer(void *arg_) {
   MessageHandler *h;
   int idx;
   auto *arg = static_cast<std::pair<MessageHandler *, int> *>(arg_);
@@ -249,14 +250,15 @@ void *Indexer(void *arg_) {
   delete arg;
   std::string name = "indexer" + std::to_string(idx);
   set_thread_name(name.c_str());
-  pipeline::Indexer_Main(h->manager, h->vfs, h->project, h->wfiles);
-  pipeline::ThreadLeave();
+  pipeline::indexer_Main(h->manager, h->vfs, h->project, h->wfiles);
+  pipeline::threadLeave();
   return nullptr;
 }
 } // namespace
 
-void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
-  std::string project_path = NormalizePath(param.rootUri->GetPath());
+void do_initialize(MessageHandler *m, InitializeParam &param,
+                   ReplyOnce &reply) {
+  std::string project_path = normalizePath(param.rootUri->getPath());
   LOG_S(INFO) << "initialize in directory " << project_path << " with uri "
               << param.rootUri->raw_uri;
 
@@ -268,7 +270,7 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
       if (!reader.HasParseError()) {
         JsonReader json_reader{&reader};
         try {
-          Reflect(json_reader, *g_config);
+          reflect(json_reader, *g_config);
         } catch (std::invalid_argument &) {
           // This will not trigger because parse error is handled in
           // MessageRegistry::Parse in lsp.cc
@@ -279,15 +281,15 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
     rapidjson::StringBuffer output;
     rapidjson::Writer<rapidjson::StringBuffer> writer(output);
     JsonWriter json_writer(&writer);
-    Reflect(json_writer, *g_config);
+    reflect(json_writer, *g_config);
     LOG_S(INFO) << "initializationOptions: " << output.GetString();
 
     if (g_config->cache.directory.size()) {
-      SmallString<256> Path(g_config->cache.directory);
-      sys::fs::make_absolute(project_path, Path);
+      SmallString<256> path(g_config->cache.directory);
+      sys::fs::make_absolute(project_path, path);
       // Use upper case for the Driver letter on Windows.
-      g_config->cache.directory = NormalizePath(Path.str());
-      EnsureEndsInSlash(g_config->cache.directory);
+      g_config->cache.directory = normalizePath(path.str());
+      ensureEndsInSlash(g_config->cache.directory);
     }
   }
 
@@ -307,8 +309,8 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
 
   // Ensure there is a resource directory.
   if (g_config->clang.resourceDir.empty())
-    g_config->clang.resourceDir = GetDefaultResourceDirectory();
-  DoPathMapping(g_config->clang.resourceDir);
+    g_config->clang.resourceDir = getDefaultResourceDirectory();
+  doPathMapping(g_config->clang.resourceDir);
   LOG_S(INFO) << "use -resource-dir=" << g_config->clang.resourceDir;
 
   // Send initialization before starting indexers, so we don't send a
@@ -324,17 +326,17 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
   }
 
   // Set project root.
-  EnsureEndsInSlash(project_path);
+  ensureEndsInSlash(project_path);
   g_config->fallbackFolder = project_path;
   auto &workspaceFolders = g_config->workspaceFolders;
   for (const WorkspaceFolder &wf : param.workspaceFolders) {
-    std::string path = wf.uri.GetPath();
-    EnsureEndsInSlash(path);
-    std::string real = RealPath(path) + '/';
+    std::string path = wf.uri.getPath();
+    ensureEndsInSlash(path);
+    std::string real = realPath(path) + '/';
     workspaceFolders.emplace_back(path, path == real ? "" : real);
   }
   if (workspaceFolders.empty()) {
-    std::string real = RealPath(project_path) + '/';
+    std::string real = realPath(project_path) + '/';
     workspaceFolders.emplace_back(project_path,
                                   project_path == real ? "" : real);
   }
@@ -352,14 +354,14 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
     for (auto &[folder, _] : workspaceFolders) {
       // Create two cache directories for files inside and outside of the
       // project.
-      std::string escaped = EscapeFileName(folder.substr(0, folder.size() - 1));
+      std::string escaped = escapeFileName(folder.substr(0, folder.size() - 1));
       sys::fs::create_directories(g_config->cache.directory + escaped);
       sys::fs::create_directories(g_config->cache.directory + '@' + escaped);
     }
 
-  idx::Init();
+  idx::init();
   for (auto &[folder, _] : workspaceFolders)
-    m->project->Load(folder);
+    m->project->load(folder);
 
   // Start indexer threads. Start this after loading the project, as that
   // may take a long time. Indexer threads will emit status/progress
@@ -369,26 +371,26 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
 
   LOG_S(INFO) << "start " << g_config->index.threads << " indexers";
   for (int i = 0; i < g_config->index.threads; i++)
-    SpawnThread(Indexer, new std::pair<MessageHandler *, int>{m, i});
+    spawnThread(indexer, new std::pair<MessageHandler *, int>{m, i});
 
   // Start scanning include directories before dispatching project
   // files, because that takes a long time.
-  m->include_complete->Rescan();
+  m->include_complete->rescan();
 
   LOG_S(INFO) << "dispatch initial index requests";
-  m->project->Index(m->wfiles, reply.id);
+  m->project->index(m->wfiles, reply.id);
 
-  m->manager->sessions.SetCapacity(g_config->session.maxNum);
+  m->manager->sessions.setCapacity(g_config->session.maxNum);
 }
 
 void MessageHandler::initialize(JsonReader &reader, ReplyOnce &reply) {
   InitializeParam param;
-  Reflect(reader, param);
+  reflect(reader, param);
   auto it = reader.m->FindMember("initializationOptions");
   if (it != reader.m->MemberEnd() && it->value.IsObject()) {
     JsonReader m1(&it->value);
     try {
-      Reflect(m1, param.initializationOptions);
+      reflect(m1, param.initializationOptions);
     } catch (std::invalid_argument &) {
       reader.path_.push_back("initializationOptions");
       reader.path_.insert(reader.path_.end(), m1.path_.begin(), m1.path_.end());
@@ -396,23 +398,23 @@ void MessageHandler::initialize(JsonReader &reader, ReplyOnce &reply) {
     }
   }
   if (!param.rootUri) {
-    reply.Error(ErrorCode::InvalidRequest, "expected rootUri");
+    reply.error(ErrorCode::InvalidRequest, "expected rootUri");
     return;
   }
-  Initialize(this, param, reply);
+  do_initialize(this, param, reply);
 }
 
-void StandaloneInitialize(MessageHandler &handler, const std::string &root) {
+void standaloneInitialize(MessageHandler &handler, const std::string &root) {
   InitializeParam param;
-  param.rootUri = DocumentUri::FromPath(root);
+  param.rootUri = DocumentUri::fromPath(root);
   ReplyOnce reply{handler};
-  Initialize(&handler, param, reply);
+  do_initialize(&handler, param, reply);
 }
 
 void MessageHandler::initialized(EmptyParam &) {
   if (didChangeWatchedFiles) {
     RegistrationParam param;
-    pipeline::Request("client/registerCapability", param);
+    pipeline::request("client/registerCapability", param);
   }
 }
 
@@ -421,6 +423,6 @@ void MessageHandler::shutdown(EmptyParam &, ReplyOnce &reply) {
 }
 
 void MessageHandler::exit(EmptyParam &) {
-  pipeline::quit.store(true, std::memory_order_relaxed);
+  pipeline::g_quit.store(true, std::memory_order_relaxed);
 }
 } // namespace ccls
