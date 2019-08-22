@@ -268,7 +268,8 @@ struct Config {
     // lines, include the initializer in detailed_name.
     int maxInitializerLines = 5;
 
-    // If not 0, a file will be indexed in each tranlation unit that includes it.
+    // If not 0, a file will be indexed in each tranlation unit that includes
+    // it.
     int multiVersion = 0;
 
     // If multiVersion != 0, files that match blacklist but not whitelist will
@@ -363,5 +364,5 @@ REFLECT_STRUCT(Config, compilationDatabaseCommand, compilationDatabaseDirectory,
 
 extern Config *g_config;
 
-void DoPathMapping(std::string &arg);
-}
+void doPathMapping(std::string &arg);
+} // namespace ccls

@@ -18,7 +18,7 @@ limitations under the License.
 namespace ccls {
 Config *g_config;
 
-void DoPathMapping(std::string &arg) {
+void doPathMapping(std::string &arg) {
   for (const std::string &mapping : g_config->clang.pathMappings) {
     auto colon = mapping.find('>');
     if (colon != std::string::npos) {
@@ -28,4 +28,4 @@ void DoPathMapping(std::string &arg) {
     }
   }
 }
-}
+} // namespace ccls
