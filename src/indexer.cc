@@ -12,6 +12,7 @@
 #include <clang/AST/AST.h>
 #include <clang/Basic/TargetInfo.h>
 #include <clang/Frontend/FrontendAction.h>
+#include <clang/Frontend/MultiplexConsumer.h>
 #include <clang/Index/IndexDataConsumer.h>
 #include <clang/Index/IndexingAction.h>
 #include <clang/Index/USRGeneration.h>
@@ -1154,16 +1155,43 @@ public:
 };
 
 class IndexFrontendAction : public ASTFrontendAction {
+  std::shared_ptr<IndexDataConsumer> dataConsumer;
+  const index::IndexingOptions &indexOpts;
   IndexParam &param;
 
 public:
-  IndexFrontendAction(IndexParam &param) : param(param) {}
-  std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
-                                                 StringRef InFile) override {
-    Preprocessor &PP = CI.getPreprocessor();
-    PP.addPPCallbacks(
-        std::make_unique<IndexPPCallbacks>(PP.getSourceManager(), param));
-    return std::make_unique<ASTConsumer>();
+  IndexFrontendAction(std::shared_ptr<IndexDataConsumer> dataConsumer,
+                      const index::IndexingOptions &indexOpts,
+                      IndexParam &param)
+      : dataConsumer(std::move(dataConsumer)), indexOpts(indexOpts),
+        param(param) {}
+  std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &ci,
+                                                 StringRef inFile) override {
+    class SkipProcessed : public ASTConsumer {
+      IndexParam &param;
+      const ASTContext *ctx = nullptr;
+
+    public:
+      SkipProcessed(IndexParam &param) : param(param) {}
+      void Initialize(ASTContext &ctx) override { this->ctx = &ctx; }
+      bool shouldSkipFunctionBody(Decl *d) override {
+        const SourceManager &sm = ctx->getSourceManager();
+        FileID fid = sm.getFileID(sm.getExpansionLoc(d->getLocation()));
+        return !(g_config->index.multiVersion && param.useMultiVersion(fid)) &&
+               !param.consumeFile(fid);
+      }
+    };
+
+    std::shared_ptr<Preprocessor> pp = ci.getPreprocessorPtr();
+    pp->addPPCallbacks(
+        std::make_unique<IndexPPCallbacks>(pp->getSourceManager(), param));
+    std::vector<std::unique_ptr<ASTConsumer>> consumers;
+    consumers.push_back(std::make_unique<SkipProcessed>(param));
+#if LLVM_VERSION_MAJOR >= 10 // rC370337
+    consumers.push_back(index::createIndexingASTConsumer(
+        dataConsumer, indexOpts, std::move(pp)));
+#endif
+    return std::make_unique<MultiplexConsumer>(std::move(consumers));
   }
 };
 } // namespace
@@ -1248,6 +1276,7 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   auto clang = std::make_unique<CompilerInstance>(pch);
   clang->setInvocation(std::move(ci));
   clang->createDiagnostics(&dc, false);
+  clang->getDiagnostics().setIgnoreAllWarnings(true);
   clang->setTarget(TargetInfo::CreateTargetInfo(
       clang->getDiagnostics(), clang->getInvocation().TargetOpts));
   if (!clang->hasTarget())
@@ -1263,7 +1292,6 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
                                             clang->getFileManager(), true));
 
   IndexParam param(*vfs, no_linkage);
-  auto dataConsumer = std::make_shared<IndexDataConsumer>(param);
 
   index::IndexingOptions indexOpts;
   indexOpts.SystemSymbolFilter =
@@ -1279,8 +1307,16 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
 #endif
   }
 
-  std::unique_ptr<FrontendAction> action = createIndexingAction(
-      dataConsumer, indexOpts, std::make_unique<IndexFrontendAction>(param));
+#if LLVM_VERSION_MAJOR >= 10 // rC370337
+  auto action = std::make_unique<IndexFrontendAction>(
+      std::make_shared<IndexDataConsumer>(param), indexOpts, param);
+#else
+  auto dataConsumer = std::make_shared<IndexDataConsumer>(param);
+  auto action = createIndexingAction(
+      dataConsumer, indexOpts,
+      std::make_unique<IndexFrontendAction>(dataConsumer, indexOpts, param));
+#endif
+
   std::string reason;
   {
     llvm::CrashRecoveryContext crc;

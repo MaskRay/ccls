@@ -85,6 +85,8 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   if (ci) {
     ci->getDiagnosticOpts().IgnoreWarnings = true;
     ci->getFrontendOpts().DisableFree = false;
+    // Enable IndexFrontendAction::shouldSkipFunctionBody.
+    ci->getFrontendOpts().SkipFunctionBodies = true;
     ci->getLangOpts()->SpellChecking = false;
     auto &isec = ci->getFrontendOpts().Inputs;
     if (isec.size())

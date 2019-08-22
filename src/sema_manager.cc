@@ -467,7 +467,6 @@ void *completionMain(void *manager_) {
     fOpts.CodeCompletionAt.FileName = task->path;
     fOpts.CodeCompletionAt.Line = task->position.line + 1;
     fOpts.CodeCompletionAt.Column = task->position.character + 1;
-    fOpts.SkipFunctionBodies = true;
     ci->getLangOpts()->CommentOpts.ParseAllComments = true;
 
     DiagnosticConsumer dc;
@@ -573,6 +572,7 @@ void *diagnosticMain(void *manager_) {
     if (lookupExtension(session->file.filename).second)
       ci->getDiagnosticOpts().Warnings.push_back("no-unused-function");
     ci->getDiagnosticOpts().IgnoreWarnings = false;
+    ci->getFrontendOpts().SkipFunctionBodies = false;
     ci->getLangOpts()->SpellChecking = g_config->diagnostics.spellChecking;
     StoreDiags dc(task.path);
     std::string content = manager->wfiles->getContent(task.path);
