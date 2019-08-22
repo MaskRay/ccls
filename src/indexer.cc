@@ -40,8 +40,8 @@ struct File {
 };
 
 struct IndexParam {
-  std::unordered_map<llvm::sys::fs::UniqueID, File> uid2file;
-  std::unordered_map<llvm::sys::fs::UniqueID, bool> uid2multi;
+  std::unordered_map<FileID, File> uid2file;
+  std::unordered_map<FileID, bool> uid2multi;
   struct DeclInfo {
     Usr usr;
     std::string short_name;
@@ -54,14 +54,17 @@ struct IndexParam {
   bool no_linkage;
   IndexParam(VFS &vfs, bool no_linkage) : vfs(vfs), no_linkage(no_linkage) {}
 
-  void seenFile(const FileEntry &file) {
+  void seenFile(FileID fid) {
     // If this is the first time we have seen the file (ignoring if we are
     // generating an index for it):
-    auto [it, inserted] = uid2file.try_emplace(file.getUniqueID());
+    auto [it, inserted] = uid2file.try_emplace(fid);
     if (inserted) {
-      std::string path = pathFromFileEntry(file);
+      const FileEntry *fe = ctx->getSourceManager().getFileEntryForID(fid);
+      if (!fe)
+        return;
+      std::string path = pathFromFileEntry(*fe);
       it->second.path = path;
-      it->second.mtime = file.getModificationTime();
+      it->second.mtime = fe->getModificationTime();
       if (!it->second.mtime)
         if (auto tim = lastWriteTime(path))
           it->second.mtime = *tim;
@@ -75,15 +78,16 @@ struct IndexParam {
     }
   }
 
-  IndexFile *consumeFile(const FileEntry &fe) {
-    seenFile(fe);
-    return uid2file[fe.getUniqueID()].db.get();
+  IndexFile *consumeFile(FileID fid) {
+    seenFile(fid);
+    return uid2file[fid].db.get();
   }
 
-  bool useMultiVersion(const FileEntry &fe) {
-    auto it = uid2multi.try_emplace(fe.getUniqueID());
+  bool useMultiVersion(FileID fid) {
+    auto it = uid2multi.try_emplace(fid);
     if (it.second)
-      it.first->second = multiVersionMatcher->matches(pathFromFileEntry(fe));
+      if (const FileEntry *fe = ctx->getSourceManager().getFileEntryForID(fid))
+        it.first->second = multiVersionMatcher->matches(pathFromFileEntry(*fe));
     return it.first->second;
   }
 };
@@ -609,27 +613,24 @@ public:
     }
   }
 
-  static int getFileLID(IndexFile *db, SourceManager &sm, const FileEntry &fe) {
-    auto [it, inserted] = db->uid2lid_and_path.try_emplace(fe.getUniqueID());
+  static int getFileLID(IndexFile *db, SourceManager &sm, FileID fid) {
+    auto [it, inserted] = db->uid2lid_and_path.try_emplace(fid);
     if (inserted) {
-      it->second.first = db->uid2lid_and_path.size() - 1;
-      SmallString<256> path = fe.tryGetRealPathName();
-      if (path.empty())
-        path = fe.getName();
-      if (!llvm::sys::path::is_absolute(path) &&
-          !sm.getFileManager().makeAbsolutePath(path))
+      const FileEntry *fe = sm.getFileEntryForID(fid);
+      if (!fe) {
+        it->second.first = -1;
         return -1;
-      it->second.second = llvm::sys::path::convert_to_slash(path.str());
+      }
+      it->second.first = db->uid2lid_and_path.size() - 1;
+      it->second.second = pathFromFileEntry(*fe);
     }
     return it->second.first;
   }
 
   void addMacroUse(IndexFile *db, SourceManager &sm, Usr usr, Kind kind,
                    SourceLocation sl) const {
-    const FileEntry *FE = sm.getFileEntryForID(sm.getFileID(sl));
-    if (!FE)
-      return;
-    int lid = getFileLID(db, sm, *FE);
+    FileID fid = sm.getFileID(sl);
+    int lid = getFileLID(db, sm, fid);
     if (lid < 0)
       return;
     Range spell = fromTokenRange(sm, ctx->getLangOpts(), SourceRange(sl, sl));
@@ -693,27 +694,25 @@ public:
     const LangOptions &lang = ctx->getLangOpts();
     FileID fid;
     SourceLocation spell = sm.getSpellingLoc(src_loc);
-    const FileEntry *fe;
     Range loc;
     auto r = sm.isMacroArgExpansion(src_loc)
                  ? CharSourceRange::getTokenRange(spell)
                  : sm.getExpansionRange(src_loc);
     loc = fromCharSourceRange(sm, lang, r);
     fid = sm.getFileID(r.getBegin());
-    fe = sm.getFileEntryForID(fid);
-    if (!fe)
+    if (fid.isInvalid())
       return true;
     int lid = -1;
     IndexFile *db;
-    if (g_config->index.multiVersion && param.useMultiVersion(*fe)) {
-      db = param.consumeFile(*sm.getFileEntryForID(sm.getMainFileID()));
+    if (g_config->index.multiVersion && param.useMultiVersion(fid)) {
+      db = param.consumeFile(sm.getMainFileID());
       if (!db)
         return true;
-      param.seenFile(*fe);
+      param.seenFile(fid);
       if (!sm.isWrittenInMainFile(r.getBegin()))
-        lid = getFileLID(db, sm, *fe);
+        lid = getFileLID(db, sm, fid);
     } else {
-      db = param.consumeFile(*fe);
+      db = param.consumeFile(fid);
       if (!db)
         return true;
     }
@@ -775,13 +774,13 @@ public:
       if (is_def) {
         SourceRange sr = origD->getSourceRange();
         entity->def.spell = {use,
-                             fromTokenRangeDefaulted(sm, lang, sr, fe, loc)};
+                             fromTokenRangeDefaulted(sm, lang, sr, fid, loc)};
         entity->def.parent_kind = SymbolKind::File;
         getKind(cast<Decl>(sem_dc), entity->def.parent_kind);
       } else if (is_decl) {
         SourceRange sr = origD->getSourceRange();
         entity->declarations.push_back(
-            {use, fromTokenRangeDefaulted(sm, lang, sr, fe, loc)});
+            {use, fromTokenRangeDefaulted(sm, lang, sr, fid, loc)});
       } else {
         entity->uses.push_back(use);
         return;
@@ -1077,6 +1076,11 @@ class IndexPPCallbacks : public PPCallbacks {
 public:
   IndexPPCallbacks(SourceManager &sm, IndexParam &param)
       : sm(sm), param(param) {}
+  void FileChanged(SourceLocation sl, FileChangeReason reason,
+                   SrcMgr::CharacteristicKind, FileID) override {
+    if (reason == FileChangeReason::EnterFile)
+      (void)param.consumeFile(sm.getFileID(sl));
+  }
   void InclusionDirective(SourceLocation hashLoc, const Token &tok,
                           StringRef included, bool isAngled,
                           CharSourceRange filenameRange, const FileEntry *file,
@@ -1087,11 +1091,8 @@ public:
       return;
     auto spell = fromCharSourceRange(sm, param.ctx->getLangOpts(),
                                      filenameRange, nullptr);
-    const FileEntry *fe =
-        sm.getFileEntryForID(sm.getFileID(filenameRange.getBegin()));
-    if (!fe)
-      return;
-    if (IndexFile *db = param.consumeFile(*fe)) {
+    FileID fid = sm.getFileID(filenameRange.getBegin());
+    if (IndexFile *db = param.consumeFile(fid)) {
       std::string path = pathFromFileEntry(*file);
       if (path.size())
         db->includes.push_back({spell.start.line, intern(path)});
@@ -1100,10 +1101,8 @@ public:
   void MacroDefined(const Token &tok, const MacroDirective *md) override {
     const LangOptions &lang = param.ctx->getLangOpts();
     SourceLocation sl = md->getLocation();
-    const FileEntry *fe = sm.getFileEntryForID(sm.getFileID(sl));
-    if (!fe)
-      return;
-    if (IndexFile *db = param.consumeFile(*fe)) {
+    FileID fid = sm.getFileID(sl);
+    if (IndexFile *db = param.consumeFile(fid)) {
       auto [name, usr] = getMacro(tok);
       IndexVar &var = db->toVar(usr);
       Range range = fromTokenRange(sm, lang, {sl, sl}, nullptr);
@@ -1128,15 +1127,12 @@ public:
   }
   void MacroExpands(const Token &tok, const MacroDefinition &, SourceRange sr,
                     const MacroArgs *) override {
-    llvm::sys::fs::UniqueID uniqueID;
     SourceLocation sl = sm.getSpellingLoc(sr.getBegin());
-    const FileEntry *fe = sm.getFileEntryForID(sm.getFileID(sl));
-    if (!fe)
-      return;
-    if (IndexFile *db = param.consumeFile(*fe)) {
+    FileID fid = sm.getFileID(sl);
+    if (IndexFile *db = param.consumeFile(fid)) {
       IndexVar &var = db->toVar(getMacro(tok).second);
       var.uses.push_back(
-          {{fromTokenRange(sm, param.ctx->getLangOpts(), {sl, sl}, &uniqueID),
+          {{fromTokenRange(sm, param.ctx->getLangOpts(), {sl, sl}, nullptr),
             Role::Dynamic}});
     }
   }
@@ -1150,8 +1146,9 @@ public:
   void SourceRangeSkipped(SourceRange sr, SourceLocation) override {
     Range range = fromCharSourceRange(sm, param.ctx->getLangOpts(),
                                       CharSourceRange::getCharRange(sr));
-    if (const FileEntry *fe = sm.getFileEntryForID(sm.getFileID(sr.getBegin())))
-      if (IndexFile *db = param.consumeFile(*fe))
+    FileID fid = sm.getFileID(sr.getBegin());
+    if (fid.isValid())
+      if (IndexFile *db = param.consumeFile(fid))
         db->skipped_ranges.push_back(range);
   }
 };
@@ -1321,7 +1318,8 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
     entry->import_file = main;
     entry->args = args;
     for (auto &[_, it] : entry->uid2lid_and_path)
-      entry->lid2path.emplace_back(it.first, std::move(it.second));
+      if (it.first >= 0)
+        entry->lid2path.emplace_back(it.first, std::move(it.second));
     entry->uid2lid_and_path.clear();
     for (auto &it : entry->usr2func) {
       // e.g. declaration + out-of-line definition
@@ -1341,6 +1339,8 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
     // Update dependencies for the file.
     for (auto &[_, file] : param.uid2file) {
       const std::string &path = file.path;
+      if (path.empty())
+        continue;
       if (path == entry->path)
         entry->mtime = file.mtime;
       else if (path != entry->import_file)

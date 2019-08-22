@@ -42,42 +42,30 @@ static Pos decomposed2LineAndCol(const SourceManager &sm,
 }
 
 Range fromCharSourceRange(const SourceManager &sm, const LangOptions &lang,
-                          CharSourceRange csr,
-                          llvm::sys::fs::UniqueID *uniqueID) {
+                          CharSourceRange csr, FileID *fid) {
   SourceLocation bloc = csr.getBegin(), eloc = csr.getEnd();
   std::pair<FileID, unsigned> binfo = sm.getDecomposedLoc(bloc),
                               einfo = sm.getDecomposedLoc(eloc);
   if (csr.isTokenRange())
     einfo.second += Lexer::MeasureTokenLength(eloc, sm, lang);
-  if (uniqueID) {
-    if (const FileEntry *F = sm.getFileEntryForID(binfo.first))
-      *uniqueID = F->getUniqueID();
-    else
-      *uniqueID = llvm::sys::fs::UniqueID(0, 0);
-  }
+  if (fid)
+    *fid = binfo.first;
   return {decomposed2LineAndCol(sm, binfo), decomposed2LineAndCol(sm, einfo)};
 }
 
-Range fromCharRange(const SourceManager &sm, const LangOptions &lang,
-                    SourceRange sr, llvm::sys::fs::UniqueID *uniqueID) {
-  return fromCharSourceRange(sm, lang, CharSourceRange::getCharRange(sr),
-                             uniqueID);
-}
-
 Range fromTokenRange(const SourceManager &sm, const LangOptions &lang,
-                     SourceRange sr, llvm::sys::fs::UniqueID *uniqueID) {
-  return fromCharSourceRange(sm, lang, CharSourceRange::getTokenRange(sr),
-                             uniqueID);
+                     SourceRange sr, FileID *fid) {
+  return fromCharSourceRange(sm, lang, CharSourceRange::getTokenRange(sr), fid);
 }
 
 Range fromTokenRangeDefaulted(const SourceManager &sm, const LangOptions &lang,
-                              SourceRange sr, const FileEntry *fe, Range range) {
+                              SourceRange sr, FileID fid, Range range) {
   auto decomposed = sm.getDecomposedLoc(sm.getExpansionLoc(sr.getBegin()));
-  if (sm.getFileEntryForID(decomposed.first) == fe)
+  if (decomposed.first == fid)
     range.start = decomposed2LineAndCol(sm, decomposed);
   SourceLocation sl = sm.getExpansionLoc(sr.getEnd());
   decomposed = sm.getDecomposedLoc(sl);
-  if (sm.getFileEntryForID(decomposed.first) == fe) {
+  if (decomposed.first == fid) {
     decomposed.second += Lexer::MeasureTokenLength(sl, sm, lang);
     range.end = decomposed2LineAndCol(sm, decomposed);
   }

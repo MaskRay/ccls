@@ -8,7 +8,7 @@
 #include "serializer.hh"
 #include "utils.hh"
 
-#include <clang/Basic/FileManager.h>
+#include <clang/Basic/SourceLocation.h>
 #include <clang/Basic/Specifiers.h>
 #include <llvm/ADT/CachedHashString.h>
 #include <llvm/ADT/DenseMap.h>
@@ -19,12 +19,8 @@
 #include <vector>
 
 namespace std {
-template <> struct hash<llvm::sys::fs::UniqueID> {
-  std::size_t operator()(llvm::sys::fs::UniqueID ID) const {
-    size_t ret = ID.getDevice();
-    ccls::hash_combine(ret, ID.getFile());
-    return ret;
-  }
+template <> struct hash<clang::FileID> {
+  std::size_t operator()(clang::FileID fid) const { return fid.getHashValue(); }
 };
 } // namespace std
 
@@ -294,7 +290,7 @@ struct IndexFile {
   bool no_linkage;
 
   // uid2lid_and_path is used to generate lid2path, but not serialized.
-  std::unordered_map<llvm::sys::fs::UniqueID, std::pair<int, std::string>>
+  std::unordered_map<clang::FileID, std::pair<int, std::string>>
       uid2lid_and_path;
   std::vector<std::pair<int, std::string>> lid2path;
 
