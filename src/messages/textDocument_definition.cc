@@ -9,30 +9,6 @@
 #include <stdlib.h>
 
 namespace ccls {
-namespace {
-std::vector<DeclRef> GetNonDefDeclarationTargets(DB *db, SymbolRef sym) {
-  switch (sym.kind) {
-  case Kind::Var: {
-    std::vector<DeclRef> ret = GetNonDefDeclarations(db, sym);
-    // If there is no declaration, jump to its type.
-    if (ret.empty()) {
-      for (auto &def : db->GetVar(sym).def)
-        if (def.type) {
-          if (Maybe<DeclRef> use =
-                  GetDefinitionSpell(db, SymbolIdx{def.type, Kind::Type})) {
-            ret.push_back(*use);
-            break;
-          }
-        }
-    }
-    return ret;
-  }
-  default:
-    return GetNonDefDeclarations(db, sym);
-  }
-}
-} // namespace
-
 void MessageHandler::textDocument_declaration(TextDocumentPositionParam &param,
                                               ReplyOnce &reply) {
   int file_id;
@@ -84,7 +60,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
     // |uses| is empty if on a declaration/definition, otherwise it includes
     // all declarations/definitions.
     if (drs.empty()) {
-      for (DeclRef dr : GetNonDefDeclarationTargets(db, sym))
+      for (DeclRef dr : GetNonDefDeclarations(db, sym))
         if (!(dr.file_id == file_id &&
               dr.range.Contains(ls_pos.line, ls_pos.character)))
           drs.push_back(dr);
