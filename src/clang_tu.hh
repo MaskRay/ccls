@@ -22,20 +22,16 @@ std::string pathFromFileEntry(const clang::FileEntry &file);
 
 Range fromCharSourceRange(const clang::SourceManager &sm,
                           const clang::LangOptions &lang,
-                          clang::CharSourceRange sr,
-                          llvm::sys::fs::UniqueID *uniqueID = nullptr);
-
-Range fromCharRange(const clang::SourceManager &sm,
-                    const clang::LangOptions &lang, clang::SourceRange sr,
-                    llvm::sys::fs::UniqueID *uniqueID = nullptr);
+                          clang::CharSourceRange csr,
+                          clang::FileID *fid = nullptr);
 
 Range fromTokenRange(const clang::SourceManager &sm,
                      const clang::LangOptions &lang, clang::SourceRange sr,
-                     llvm::sys::fs::UniqueID *uniqueID = nullptr);
+                     clang::FileID *fid = nullptr);
 
 Range fromTokenRangeDefaulted(const clang::SourceManager &sm,
                               const clang::LangOptions &lang,
-                              clang::SourceRange sr, const clang::FileEntry *fe,
+                              clang::SourceRange sr, clang::FileID fid,
                               Range range);
 
 std::unique_ptr<clang::CompilerInvocation>
