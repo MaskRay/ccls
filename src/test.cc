@@ -3,16 +3,16 @@
 
 #include "test.hh"
 
-#include "sema_manager.hh"
 #include "filesystem.hh"
 #include "indexer.hh"
 #include "pipeline.hh"
 #include "platform.hh"
+#include "sema_manager.hh"
 #include "serializer.hh"
 #include "utils.hh"
 
-#include <llvm/Config/llvm-config.h>
 #include <llvm/ADT/StringRef.h>
+#include <llvm/Config/llvm-config.h>
 
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
@@ -34,7 +34,7 @@ using namespace llvm;
 extern bool gTestOutputMode;
 
 namespace ccls {
-std::string ToString(const rapidjson::Document &document) {
+std::string toString(const rapidjson::Document &document) {
   rapidjson::StringBuffer buffer;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
   writer.SetFormatOptions(
@@ -54,7 +54,7 @@ struct TextReplacer {
 
   std::vector<Replacement> replacements;
 
-  std::string Apply(const std::string &content) {
+  std::string apply(const std::string &content) {
     std::string result = content;
 
     for (const Replacement &replacement : replacements) {
@@ -73,13 +73,13 @@ struct TextReplacer {
   }
 };
 
-void TrimInPlace(std::string &s) {
+void trimInPlace(std::string &s) {
   auto f = [](char c) { return !isspace(c); };
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), f));
   s.erase(std::find_if(s.rbegin(), s.rend(), f).base(), s.end());
 }
 
-std::vector<std::string> SplitString(const std::string &str,
+std::vector<std::string> splitString(const std::string &str,
                                      const std::string &delimiter) {
   // http://stackoverflow.com/a/13172514
   std::vector<std::string> strings;
@@ -97,7 +97,7 @@ std::vector<std::string> SplitString(const std::string &str,
   return strings;
 }
 
-void ParseTestExpectation(
+void parseTestExpectation(
     const std::string &filename,
     const std::vector<std::string> &lines_with_endings, TextReplacer *replacer,
     std::vector<std::string> *flags,
@@ -161,7 +161,7 @@ void ParseTestExpectation(
   }
 }
 
-void UpdateTestExpectation(const std::string &filename,
+void updateTestExpectation(const std::string &filename,
                            const std::string &expectation,
                            const std::string &actual) {
   // Read the entire file into a string.
@@ -177,13 +177,13 @@ void UpdateTestExpectation(const std::string &filename,
   str.replace(it, expectation.size(), actual);
 
   // Write it back out.
-  WriteToFile(filename, str);
+  writeToFile(filename, str);
 }
 
-void DiffDocuments(std::string path, std::string path_section,
+void diffDocuments(std::string path, std::string path_section,
                    rapidjson::Document &expected, rapidjson::Document &actual) {
-  std::string joined_actual_output = ToString(actual);
-  std::string joined_expected_output = ToString(expected);
+  std::string joined_actual_output = toString(actual);
+  std::string joined_expected_output = toString(expected);
   printf("[FAILED] %s (section %s)\n", path.c_str(), path_section.c_str());
 
 #if _POSIX_C_SOURCE >= 200809L
@@ -210,9 +210,9 @@ void DiffDocuments(std::string path, std::string path_section,
   }
 #endif
   std::vector<std::string> actual_output =
-      SplitString(joined_actual_output, "\n");
+      splitString(joined_actual_output, "\n");
   std::vector<std::string> expected_output =
-      SplitString(joined_expected_output, "\n");
+      splitString(joined_expected_output, "\n");
 
   printf("Expected output for %s (section %s)\n:%s\n", path.c_str(),
          path_section.c_str(), joined_expected_output.c_str());
@@ -220,20 +220,20 @@ void DiffDocuments(std::string path, std::string path_section,
          path_section.c_str(), joined_actual_output.c_str());
 }
 
-void VerifySerializeToFrom(IndexFile *file) {
-  std::string expected = file->ToString();
-  std::string serialized = ccls::Serialize(SerializeFormat::Json, *file);
+void verifySerializeToFrom(IndexFile *file) {
+  std::string expected = file->toString();
+  std::string serialized = ccls::serialize(SerializeFormat::Json, *file);
   std::unique_ptr<IndexFile> result =
-      ccls::Deserialize(SerializeFormat::Json, "--.cc", serialized, "<empty>",
+      ccls::deserialize(SerializeFormat::Json, "--.cc", serialized, "<empty>",
                         std::nullopt /*expected_version*/);
-  std::string actual = result->ToString();
+  std::string actual = result->toString();
   if (expected != actual) {
     fprintf(stderr, "Serialization failure\n");
     // assert(false);
   }
 }
 
-std::string FindExpectedOutputForFilename(
+std::string findExpectedOutputForFilename(
     std::string filename,
     const std::unordered_map<std::string, std::string> &expected) {
   for (const auto &entry : expected) {
@@ -248,7 +248,7 @@ std::string FindExpectedOutputForFilename(
 }
 
 IndexFile *
-FindDbForPathEnding(const std::string &path,
+findDbForPathEnding(const std::string &path,
                     const std::vector<std::unique_ptr<IndexFile>> &dbs) {
   for (auto &db : dbs) {
     if (StringRef(db->path).endswith(path))
@@ -257,7 +257,7 @@ FindDbForPathEnding(const std::string &path,
   return nullptr;
 }
 
-bool RunIndexTests(const std::string &filter_path, bool enable_update) {
+bool runIndexTests(const std::string &filter_path, bool enable_update) {
   gTestOutputMode = true;
   std::string version = LLVM_VERSION_STRING;
 
@@ -279,7 +279,7 @@ bool RunIndexTests(const std::string &filter_path, bool enable_update) {
   SemaManager completion(
       nullptr, nullptr, [&](std::string, std::vector<Diagnostic>) {},
       [](RequestId id) {});
-  GetFilesInFolder(
+  getFilesInFolder(
       "index_tests", true /*recursive*/, true /*add_folder_to_path*/,
       [&](const std::string &path) {
         bool is_fail_allowed = false;
@@ -300,11 +300,11 @@ bool RunIndexTests(const std::string &filter_path, bool enable_update) {
         TextReplacer text_replacer;
         std::vector<std::string> flags;
         std::unordered_map<std::string, std::string> all_expected_output;
-        ParseTestExpectation(path, lines_with_endings, &text_replacer, &flags,
+        parseTestExpectation(path, lines_with_endings, &text_replacer, &flags,
                              &all_expected_output);
 
         // Build flags.
-        flags.push_back("-resource-dir=" + GetDefaultResourceDirectory());
+        flags.push_back("-resource-dir=" + getDefaultResourceDirectory());
         flags.push_back(path);
 
         // Run test.
@@ -315,21 +315,21 @@ bool RunIndexTests(const std::string &filter_path, bool enable_update) {
         for (auto &arg : flags)
           cargs.push_back(arg.c_str());
         bool ok;
-        auto dbs = ccls::idx::Index(&completion, &wfiles, &vfs, "", path, cargs,
+        auto dbs = ccls::idx::index(&completion, &wfiles, &vfs, "", path, cargs,
                                     {}, true, ok);
 
         for (const auto &entry : all_expected_output) {
           const std::string &expected_path = entry.first;
-          std::string expected_output = text_replacer.Apply(entry.second);
+          std::string expected_output = text_replacer.apply(entry.second);
 
           // Get output from index operation.
-          IndexFile *db = FindDbForPathEnding(expected_path, dbs);
+          IndexFile *db = findDbForPathEnding(expected_path, dbs);
           std::string actual_output = "{}";
           if (db) {
-            VerifySerializeToFrom(db);
-            actual_output = db->ToString();
+            verifySerializeToFrom(db);
+            actual_output = db->toString();
           }
-          actual_output = text_replacer.Apply(actual_output);
+          actual_output = text_replacer.apply(actual_output);
 
           // Compare output via rapidjson::Document to ignore any formatting
           // differences.
@@ -343,7 +343,7 @@ bool RunIndexTests(const std::string &filter_path, bool enable_update) {
           } else {
             if (!is_fail_allowed)
               success = false;
-            DiffDocuments(path, expected_path, expected, actual);
+            diffDocuments(path, expected_path, expected, actual);
             puts("\n");
             if (enable_update) {
               printf("[Enter to continue - type u to update test, a to update "
@@ -361,8 +361,8 @@ bool RunIndexTests(const std::string &filter_path, bool enable_update) {
                 // Note: we use |entry.second| instead of |expected_output|
                 // because
                 // |expected_output| has had text replacements applied.
-                UpdateTestExpectation(path, entry.second,
-                                      ToString(actual) + "\n");
+                updateTestExpectation(path, entry.second,
+                                      toString(actual) + "\n");
               }
             }
           }

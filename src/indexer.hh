@@ -31,7 +31,7 @@ template <> struct hash<llvm::sys::fs::UniqueID> {
 namespace ccls {
 using Usr = uint64_t;
 
-// The order matters. In FindSymbolsAtLocation, we want Var/Func ordered in
+// The order matters. In findSymbolsAtLocation, we want Var/Func ordered in
 // front of others.
 enum class Kind : uint8_t { Invalid, File, Type, Func, Var };
 REFLECT_UNDERLYING_B(Kind);
@@ -76,31 +76,31 @@ struct SymbolRef {
   Kind kind;
   Role role;
   operator SymbolIdx() const { return {usr, kind}; }
-  std::tuple<Range, Usr, Kind, Role> ToTuple() const {
+  std::tuple<Range, Usr, Kind, Role> toTuple() const {
     return std::make_tuple(range, usr, kind, role);
   }
-  bool operator==(const SymbolRef &o) const { return ToTuple() == o.ToTuple(); }
-  bool Valid() const { return range.Valid(); }
+  bool operator==(const SymbolRef &o) const { return toTuple() == o.toTuple(); }
+  bool valid() const { return range.valid(); }
 };
 
 struct ExtentRef : SymbolRef {
   Range extent;
-  std::tuple<Range, Usr, Kind, Role, Range> ToTuple() const {
+  std::tuple<Range, Usr, Kind, Role, Range> toTuple() const {
     return std::make_tuple(range, usr, kind, role, extent);
   }
-  bool operator==(const ExtentRef &o) const { return ToTuple() == o.ToTuple(); }
+  bool operator==(const ExtentRef &o) const { return toTuple() == o.toTuple(); }
 };
 
 struct Ref {
   Range range;
   Role role;
 
-  bool Valid() const { return range.Valid(); }
-  std::tuple<Range, Role> ToTuple() const {
+  bool valid() const { return range.valid(); }
+  std::tuple<Range, Role> toTuple() const {
     return std::make_tuple(range, role);
   }
-  bool operator==(const Ref &o) const { return ToTuple() == o.ToTuple(); }
-  bool operator<(const Ref &o) const { return ToTuple() < o.ToTuple(); }
+  bool operator==(const Ref &o) const { return toTuple() == o.toTuple(); }
+  bool operator<(const Ref &o) const { return toTuple() < o.toTuple(); }
 };
 
 // Represents an occurrence of a variable/type, |usr,kind| refer to the lexical
@@ -118,24 +118,23 @@ struct DeclRef : Use {
   Range extent;
 };
 
-void Reflect(JsonReader &visitor, SymbolRef &value);
-void Reflect(JsonReader &visitor, Use &value);
-void Reflect(JsonReader &visitor, DeclRef &value);
-void Reflect(JsonWriter &visitor, SymbolRef &value);
-void Reflect(JsonWriter &visitor, Use &value);
-void Reflect(JsonWriter &visitor, DeclRef &value);
-void Reflect(BinaryReader &visitor, SymbolRef &value);
-void Reflect(BinaryReader &visitor, Use &value);
-void Reflect(BinaryReader &visitor, DeclRef &value);
-void Reflect(BinaryWriter &visitor, SymbolRef &value);
-void Reflect(BinaryWriter &visitor, Use &value);
-void Reflect(BinaryWriter &visitor, DeclRef &value);
+void reflect(JsonReader &visitor, SymbolRef &value);
+void reflect(JsonReader &visitor, Use &value);
+void reflect(JsonReader &visitor, DeclRef &value);
+void reflect(JsonWriter &visitor, SymbolRef &value);
+void reflect(JsonWriter &visitor, Use &value);
+void reflect(JsonWriter &visitor, DeclRef &value);
+void reflect(BinaryReader &visitor, SymbolRef &value);
+void reflect(BinaryReader &visitor, Use &value);
+void reflect(BinaryReader &visitor, DeclRef &value);
+void reflect(BinaryWriter &visitor, SymbolRef &value);
+void reflect(BinaryWriter &visitor, Use &value);
+void reflect(BinaryWriter &visitor, DeclRef &value);
 
-template <typename T>
-using VectorAdapter = std::vector<T, std::allocator<T>>;
+template <typename T> using VectorAdapter = std::vector<T, std::allocator<T>>;
 
 template <typename D> struct NameMixin {
-  std::string_view Name(bool qualified) const {
+  std::string_view name(bool qualified) const {
     auto self = static_cast<const D *>(this);
     return qualified
                ? std::string_view(self->detailed_name + self->qual_name_offset,
@@ -259,8 +258,8 @@ struct VarDef : NameMixin<VarDef> {
   const Usr *bases_end() const { return nullptr; }
 };
 REFLECT_STRUCT(VarDef, detailed_name, hover, comments, spell, type,
-                    qual_name_offset, short_name_offset, short_name_size, kind,
-                    parent_kind, storage);
+               qual_name_offset, short_name_offset, short_name_size, kind,
+               parent_kind, storage);
 
 struct IndexVar {
   using Def = VarDef;
@@ -320,11 +319,11 @@ struct IndexFile {
   IndexFile(const std::string &path, const std::string &contents,
             bool no_linkage);
 
-  IndexFunc &ToFunc(Usr usr);
-  IndexType &ToType(Usr usr);
-  IndexVar &ToVar(Usr usr);
+  IndexFunc &toFunc(Usr usr);
+  IndexType &toType(Usr usr);
+  IndexVar &toVar(Usr usr);
 
-  std::string ToString();
+  std::string toString();
 };
 
 struct SemaManager;
@@ -332,9 +331,9 @@ struct WorkingFiles;
 struct VFS;
 
 namespace idx {
-void Init();
+void init();
 std::vector<std::unique_ptr<IndexFile>>
-Index(SemaManager *complete, WorkingFiles *wfiles, VFS *vfs,
+index(SemaManager *complete, WorkingFiles *wfiles, VFS *vfs,
       const std::string &opt_wdir, const std::string &file,
       const std::vector<const char *> &args,
       const std::vector<std::pair<std::string, std::string>> &remapped,

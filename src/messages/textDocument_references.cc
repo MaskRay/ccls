@@ -36,20 +36,20 @@ REFLECT_STRUCT(ReferenceParam, textDocument, position, context, folders, base,
 void MessageHandler::textDocument_references(JsonReader &reader,
                                              ReplyOnce &reply) {
   ReferenceParam param;
-  Reflect(reader, param);
-  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+  reflect(reader, param);
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!wf)
     return;
 
   for (auto &folder : param.folders)
-    EnsureEndsInSlash(folder);
-  std::vector<uint8_t> file_set = db->GetFileSet(param.folders);
+    ensureEndsInSlash(folder);
+  std::vector<uint8_t> file_set = db->getFileSet(param.folders);
   std::vector<Location> result;
 
   std::unordered_set<Use> seen_uses;
   int line = param.position.line;
 
-  for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
+  for (SymbolRef sym : findSymbolsAtLocation(wf, file, param.position)) {
     // Found symbol. Return references.
     std::unordered_set<Usr> seen;
     seen.insert(sym.usr);
@@ -63,14 +63,14 @@ void MessageHandler::textDocument_references(JsonReader &reader,
         if (file_set[use.file_id] &&
             Role(use.role & param.role) == param.role &&
             !(use.role & param.excludeRole) && seen_uses.insert(use).second)
-          if (auto loc = GetLsLocation(db, wfiles, use))
+          if (auto loc = getLsLocation(db, wfiles, use))
             result.push_back(*loc);
       };
-      WithEntity(db, sym, [&](const auto &entity) {
+      withEntity(db, sym, [&](const auto &entity) {
         SymbolKind parent_kind = SymbolKind::Unknown;
         for (auto &def : entity.def)
           if (def.spell) {
-            parent_kind = GetSymbolKind(db, sym);
+            parent_kind = getSymbolKind(db, sym);
             if (param.base)
               for (Usr usr : make_range(def.bases_begin(), def.bases_end()))
                 if (!seen.count(usr)) {
@@ -112,7 +112,7 @@ void MessageHandler::textDocument_references(JsonReader &reader,
             if (include.resolved_path == path) {
               // Another file |file1| has the same include line.
               Location &loc = result.emplace_back();
-              loc.uri = DocumentUri::FromPath(file1.def->path);
+              loc.uri = DocumentUri::fromPath(file1.def->path);
               loc.range.start.line = loc.range.end.line = include.line;
               break;
             }

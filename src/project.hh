@@ -51,20 +51,20 @@ struct Project {
   // will affect flags in their subtrees (relative paths are relative to the
   // project root, not subdirectories). For compile_commands.json, its entries
   // are indexed.
-  void Load(const std::string &root);
-  void LoadDirectory(const std::string &root, Folder &folder);
+  void load(const std::string &root);
+  void loadDirectory(const std::string &root, Folder &folder);
 
   // Lookup the CompilationEntry for |filename|. If no entry was found this
   // will infer one based on existing project structure.
-  Entry FindEntry(const std::string &path, bool can_redirect, bool must_exist);
+  Entry findEntry(const std::string &path, bool can_redirect, bool must_exist);
 
   // If the client has overridden the flags, or specified them for a file
   // that is not in the compilation_database.json make sure those changes
   // are permanent.
-  void SetArgsForFile(const std::vector<const char *> &args,
+  void setArgsForFile(const std::vector<const char *> &args,
                       const std::string &path);
 
-  void Index(WorkingFiles *wfiles, RequestId id);
-  void IndexRelated(const std::string &path);
+  void index(WorkingFiles *wfiles, RequestId id);
+  void indexRelated(const std::string &path);
 };
 } // namespace ccls

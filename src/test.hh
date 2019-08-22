@@ -6,5 +6,5 @@
 #include <string>
 
 namespace ccls {
-bool RunIndexTests(const std::string &filter_path, bool enable_update);
+bool runIndexTests(const std::string &filter_path, bool enable_update);
 }

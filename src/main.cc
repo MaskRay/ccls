@@ -52,25 +52,25 @@ opt<std::string> opt_log_file("log-file", desc("stderr or log file"),
 opt<bool> opt_log_file_append("log-file-append", desc("append to log file"),
                               cat(C));
 
-void CloseLog() { fclose(ccls::log::file); }
+void closeLog() { fclose(ccls::log::file); }
 
 } // namespace
 
 int main(int argc, char **argv) {
-  TraceMe();
+  traceMe();
   sys::PrintStackTraceOnErrorSignal(argv[0]);
-  cl::SetVersionPrinter([](raw_ostream &OS) {
-    OS << clang::getClangToolFullVersion("ccls version " CCLS_VERSION "\nclang")
+  cl::SetVersionPrinter([](raw_ostream &os) {
+    os << clang::getClangToolFullVersion("ccls version " CCLS_VERSION "\nclang")
        << "\n";
   });
 
-  for (auto &I : TopLevelSubCommand->OptionsMap)
+  for (auto &i : TopLevelSubCommand->OptionsMap)
 #if LLVM_VERSION_MAJOR >= 9 // rL360179
-    if (I.second->Categories[0] != &C)
+    if (i.second->Categories[0] != &C)
 #else
-    if (I.second->Category != &C)
+    if (i.second->Category != &C)
 #endif
-      I.second->setHiddenFlag(ReallyHidden);
+      i.second->setHiddenFlag(ReallyHidden);
 
   ParseCommandLineOptions(argc, argv,
                           "C/C++/Objective-C language server\n\n"
@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
   }
   ccls::log::verbosity = ccls::log::Verbosity(opt_verbose.getValue());
 
-  pipeline::Init();
+  pipeline::init();
   const char *env = getenv("CCLS_CRASH_RECOVERY");
   if (!env || strcmp(env, "0") != 0)
     CrashRecoveryContext::Enable();
@@ -99,12 +99,13 @@ int main(int argc, char **argv) {
       return 2;
     }
     setbuf(ccls::log::file, NULL);
-    atexit(CloseLog);
+    atexit(closeLog);
   }
 
   if (opt_test_index != "!") {
     language_server = false;
-    if (!ccls::RunIndexTests(opt_test_index, sys::Process::StandardInIsUserInput()))
+    if (!ccls::runIndexTests(opt_test_index,
+                             sys::Process::StandardInIsUserInput()))
       return 1;
   }
 
@@ -124,10 +125,10 @@ int main(int argc, char **argv) {
         JsonReader json_reader{&reader};
         try {
           Config config;
-          Reflect(json_reader, config);
+          reflect(json_reader, config);
         } catch (std::invalid_argument &e) {
           fprintf(stderr, "Failed to parse --init %s, expected %s\n",
-                  static_cast<JsonReader &>(json_reader).GetPath().c_str(),
+                  static_cast<JsonReader &>(json_reader).getPath().c_str(),
                   e.what());
           return 1;
         }
@@ -137,18 +138,18 @@ int main(int argc, char **argv) {
     sys::ChangeStdinToBinary();
     sys::ChangeStdoutToBinary();
     if (opt_index.size()) {
-      SmallString<256> Root(opt_index);
-      sys::fs::make_absolute(Root);
-      pipeline::Standalone(Root.str());
+      SmallString<256> root(opt_index);
+      sys::fs::make_absolute(root);
+      pipeline::standalone(root.str());
     } else {
       // The thread that reads from stdin and dispatchs commands to the main
       // thread.
-      pipeline::LaunchStdin();
+      pipeline::launchStdin();
       // The thread that writes responses from the main thread to stdout.
-      pipeline::LaunchStdout();
+      pipeline::launchStdout();
       // Main thread which also spawns indexer threads upon the "initialize"
       // request.
-      pipeline::MainLoop();
+      pipeline::mainLoop();
     }
   }
 

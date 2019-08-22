@@ -22,10 +22,10 @@ struct RequestId {
 
   std::string value;
 
-  bool Valid() const { return type != kNone; }
+  bool valid() const { return type != kNone; }
 };
-void Reflect(JsonReader &visitor, RequestId &value);
-void Reflect(JsonWriter &visitor, RequestId &value);
+void reflect(JsonReader &visitor, RequestId &value);
+void reflect(JsonWriter &visitor, RequestId &value);
 
 struct InMessage {
   RequestId id;
@@ -61,13 +61,13 @@ constexpr char ccls_xref[] = "ccls.xref";
 constexpr char window_showMessage[] = "window/showMessage";
 
 struct DocumentUri {
-  static DocumentUri FromPath(const std::string &path);
+  static DocumentUri fromPath(const std::string &path);
 
   bool operator==(const DocumentUri &o) const { return raw_uri == o.raw_uri; }
   bool operator<(const DocumentUri &o) const { return raw_uri < o.raw_uri; }
 
-  void SetPath(const std::string &path);
-  std::string GetPath() const;
+  void setPath(const std::string &path);
+  std::string getPath() const;
 
   std::string raw_uri;
 };
@@ -84,7 +84,7 @@ struct Position {
   bool operator<=(const Position &o) const {
     return line != o.line ? line < o.line : character <= o.character;
   }
-  std::string ToString() const;
+  std::string toString() const;
 };
 
 struct lsRange {
@@ -96,10 +96,10 @@ struct lsRange {
   bool operator<(const lsRange &o) const {
     return !(start == o.start) ? start < o.start : end < o.end;
   }
-  bool Includes(const lsRange &o) const {
+  bool includes(const lsRange &o) const {
     return start <= o.start && o.end <= end;
   }
-  bool Intersects(const lsRange &o) const {
+  bool intersects(const lsRange &o) const {
     return start < o.end && o.start < end;
   }
 };

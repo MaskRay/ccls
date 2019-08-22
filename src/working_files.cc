@@ -27,7 +27,7 @@ constexpr int kMaxDiff = 20;
 // |kMaxColumnAlignSize|.
 constexpr int kMaxColumnAlignSize = 200;
 
-Position GetPositionForOffset(const std::string &content, int offset) {
+Position getPositionForOffset(const std::string &content, int offset) {
   if (offset >= content.size())
     offset = (int)content.size() - 1;
 
@@ -42,7 +42,7 @@ Position GetPositionForOffset(const std::string &content, int offset) {
   return {line, col};
 }
 
-std::vector<std::string> ToLines(const std::string &c) {
+std::vector<std::string> toLines(const std::string &c) {
   std::vector<std::string> ret;
   int last = 0, e = c.size();
   for (int i = 0; i < e; i++)
@@ -59,7 +59,7 @@ std::vector<std::string> ToLines(const std::string &c) {
 // Myers' O(ND) diff algorithm.
 // Costs: insertion=1, deletion=1, no substitution.
 // If the distance is larger than threshold, returns threshould + 1.
-int MyersDiff(const char *a, int la, const char *b, int lb, int threshold) {
+int myersDiff(const char *a, int la, const char *b, int lb, int threshold) {
   assert(threshold <= kMaxDiff);
   static int v_static[2 * kMaxColumnAlignSize + 2];
   const char *ea = a + la, *eb = b + lb;
@@ -94,8 +94,8 @@ int MyersDiff(const char *a, int la, const char *b, int lb, int threshold) {
   return threshold + 1;
 }
 
-int MyersDiff(const std::string &a, const std::string &b, int threshold) {
-  return MyersDiff(a.data(), a.size(), b.data(), b.size(), threshold);
+int myersDiff(const std::string &a, const std::string &b, int threshold) {
+  return myersDiff(a.data(), a.size(), b.data(), b.size(), threshold);
 }
 
 // Computes edit distance with O(N*M) Needleman-Wunsch algorithm
@@ -104,7 +104,7 @@ int MyersDiff(const std::string &a, const std::string &b, int threshold) {
 // Myers' diff algorithm is used to find best matching line while this one is
 // used to align a single column because Myers' needs some twiddling to return
 // distance vector.
-std::vector<int> EditDistanceVector(std::string a, std::string b) {
+std::vector<int> editDistanceVector(std::string a, std::string b) {
   std::vector<int> d(b.size() + 1);
   std::iota(d.begin(), d.end(), 0);
   for (int i = 0; i < (int)a.size(); i++) {
@@ -121,7 +121,7 @@ std::vector<int> EditDistanceVector(std::string a, std::string b) {
 
 // Find matching position of |a[column]| in |b|.
 // This is actually a single step of Hirschberg's sequence alignment algorithm.
-int AlignColumn(const std::string &a, int column, std::string b, bool is_end) {
+int alignColumn(const std::string &a, int column, std::string b, bool is_end) {
   int head = 0, tail = 0;
   while (head < (int)a.size() && head < (int)b.size() && a[head] == b[head])
     head++;
@@ -139,14 +139,14 @@ int AlignColumn(const std::string &a, int column, std::string b, bool is_end) {
   b = b.substr(head, b.size() - tail - head);
 
   // left[i] = cost of aligning a[head, column) to b[head, head + i)
-  std::vector<int> left = EditDistanceVector(a.substr(head, column - head), b);
+  std::vector<int> left = editDistanceVector(a.substr(head, column - head), b);
 
   // right[i] = cost of aligning a[column, a.size() - tail) to b[head + i,
   // b.size() - tail)
   std::string a_rev = a.substr(column, a.size() - tail - column);
   std::reverse(a_rev.begin(), a_rev.end());
   std::reverse(b.begin(), b.end());
-  std::vector<int> right = EditDistanceVector(a_rev, b);
+  std::vector<int> right = editDistanceVector(a_rev, b);
   std::reverse(right.begin(), right.end());
 
   int best = 0, best_cost = INT_MAX;
@@ -164,7 +164,7 @@ int AlignColumn(const std::string &a, int column, std::string b, bool is_end) {
 // By symmetry, this can also be used to find matching index line of a buffer
 // line.
 std::optional<int>
-FindMatchingLine(const std::vector<std::string> &index_lines,
+findMatchingLine(const std::vector<std::string> &index_lines,
                  const std::vector<int> &index_to_buffer, int line, int *column,
                  const std::vector<std::string> &buffer_lines, bool is_end) {
   // If this is a confident mapping, returns.
@@ -172,7 +172,7 @@ FindMatchingLine(const std::vector<std::string> &index_lines,
     int ret = index_to_buffer[line];
     if (column)
       *column =
-          AlignColumn(index_lines[line], *column, buffer_lines[ret], is_end);
+          alignColumn(index_lines[line], *column, buffer_lines[ret], is_end);
     return ret;
   }
 
@@ -193,7 +193,7 @@ FindMatchingLine(const std::vector<std::string> &index_lines,
   int best = up, best_dist = kMaxDiff + 1;
   const std::string &needle = index_lines[line];
   for (int i = up; i <= down; i++) {
-    int dist = MyersDiff(needle, buffer_lines[i], kMaxDiff);
+    int dist = myersDiff(needle, buffer_lines[i], kMaxDiff);
     if (dist < best_dist) {
       best_dist = dist;
       best = i;
@@ -201,7 +201,7 @@ FindMatchingLine(const std::vector<std::string> &index_lines,
   }
   if (column)
     *column =
-        AlignColumn(index_lines[line], *column, buffer_lines[best], is_end);
+        alignColumn(index_lines[line], *column, buffer_lines[best], is_end);
   return best;
 }
 
@@ -210,20 +210,20 @@ FindMatchingLine(const std::vector<std::string> &index_lines,
 WorkingFile::WorkingFile(const std::string &filename,
                          const std::string &buffer_content)
     : filename(filename), buffer_content(buffer_content) {
-  OnBufferContentUpdated();
+  onBufferContentUpdated();
 
-  // SetIndexContent gets called when the file is opened.
+  // setIndexContent gets called when the file is opened.
 }
 
-void WorkingFile::SetIndexContent(const std::string &index_content) {
-  index_lines = ToLines(index_content);
+void WorkingFile::setIndexContent(const std::string &index_content) {
+  index_lines = toLines(index_content);
 
   index_to_buffer.clear();
   buffer_to_index.clear();
 }
 
-void WorkingFile::OnBufferContentUpdated() {
-  buffer_lines = ToLines(buffer_content);
+void WorkingFile::onBufferContentUpdated() {
+  buffer_lines = toLines(buffer_content);
 
   index_to_buffer.clear();
   buffer_to_index.clear();
@@ -235,7 +235,7 @@ void WorkingFile::OnBufferContentUpdated() {
 // we are confident that the line appeared in index maps to the one appeared in
 // buffer. And then using them as start points to extend upwards and downwards
 // to align other identical lines (but not unique).
-void WorkingFile::ComputeLineMapping() {
+void WorkingFile::computeLineMapping() {
   std::unordered_map<uint64_t, int> hash_to_unique;
   std::vector<uint64_t> index_hashes(index_lines.size());
   std::vector<uint64_t> buffer_hashes(buffer_lines.size());
@@ -247,7 +247,7 @@ void WorkingFile::ComputeLineMapping() {
   // For index line i, set index_to_buffer[i] to -1 if line i is duplicated.
   int i = 0;
   for (StringRef line : index_lines) {
-    uint64_t h = HashUsr(line);
+    uint64_t h = hashUsr(line);
     auto it = hash_to_unique.find(h);
     if (it == hash_to_unique.end()) {
       hash_to_unique[h] = i;
@@ -264,7 +264,7 @@ void WorkingFile::ComputeLineMapping() {
   i = 0;
   hash_to_unique.clear();
   for (StringRef line : buffer_lines) {
-    uint64_t h = HashUsr(line);
+    uint64_t h = hashUsr(line);
     auto it = hash_to_unique.find(h);
     if (it == hash_to_unique.end()) {
       hash_to_unique[h] = i;
@@ -312,7 +312,7 @@ void WorkingFile::ComputeLineMapping() {
       buffer_to_index[index_to_buffer[i]] = i;
 }
 
-std::optional<int> WorkingFile::GetBufferPosFromIndexPos(int line, int *column,
+std::optional<int> WorkingFile::getBufferPosFromIndexPos(int line, int *column,
                                                          bool is_end) {
   if (line == (int)index_lines.size() && !*column)
     return buffer_content.size();
@@ -323,25 +323,25 @@ std::optional<int> WorkingFile::GetBufferPosFromIndexPos(int line, int *column,
   }
 
   if (index_to_buffer.empty())
-    ComputeLineMapping();
-  return FindMatchingLine(index_lines, index_to_buffer, line, column,
+    computeLineMapping();
+  return findMatchingLine(index_lines, index_to_buffer, line, column,
                           buffer_lines, is_end);
 }
 
-std::optional<int> WorkingFile::GetIndexPosFromBufferPos(int line, int *column,
+std::optional<int> WorkingFile::getIndexPosFromBufferPos(int line, int *column,
                                                          bool is_end) {
   if (line < 0 || line >= (int)buffer_lines.size())
     return std::nullopt;
 
   if (buffer_to_index.empty())
-    ComputeLineMapping();
-  return FindMatchingLine(buffer_lines, buffer_to_index, line, column,
+    computeLineMapping();
+  return findMatchingLine(buffer_lines, buffer_to_index, line, column,
                           index_lines, is_end);
 }
 
-Position WorkingFile::GetCompletionPosition(Position pos, std::string *filter,
+Position WorkingFile::getCompletionPosition(Position pos, std::string *filter,
                                             Position *replace_end_pos) const {
-  int start = GetOffsetForPosition(pos, buffer_content);
+  int start = getOffsetForPosition(pos, buffer_content);
   int i = start;
   while (i > 0 && isIdentifierBody(buffer_content[i - 1]))
     --i;
@@ -352,47 +352,47 @@ Position WorkingFile::GetCompletionPosition(Position pos, std::string *filter,
     replace_end_pos->character++;
 
   *filter = buffer_content.substr(i, start - i);
-  return GetPositionForOffset(buffer_content, i);
+  return getPositionForOffset(buffer_content, i);
 }
 
-WorkingFile *WorkingFiles::GetFile(const std::string &path) {
+WorkingFile *WorkingFiles::getFile(const std::string &path) {
   std::lock_guard lock(mutex);
-  return GetFileUnlocked(path);
+  return getFileUnlocked(path);
 }
 
-WorkingFile *WorkingFiles::GetFileUnlocked(const std::string &path) {
+WorkingFile *WorkingFiles::getFileUnlocked(const std::string &path) {
   auto it = files.find(path);
   return it != files.end() ? it->second.get() : nullptr;
 }
 
-std::string WorkingFiles::GetContent(const std::string &path) {
+std::string WorkingFiles::getContent(const std::string &path) {
   std::lock_guard lock(mutex);
   auto it = files.find(path);
   return it != files.end() ? it->second->buffer_content : "";
 }
 
-WorkingFile *WorkingFiles::OnOpen(const TextDocumentItem &open) {
+WorkingFile *WorkingFiles::onOpen(const TextDocumentItem &open) {
   std::lock_guard lock(mutex);
 
-  std::string path = open.uri.GetPath();
+  std::string path = open.uri.getPath();
   std::string content = open.text;
 
   auto &wf = files[path];
   if (wf) {
     wf->version = open.version;
     wf->buffer_content = content;
-    wf->OnBufferContentUpdated();
+    wf->onBufferContentUpdated();
   } else {
     wf = std::make_unique<WorkingFile>(path, content);
   }
   return wf.get();
 }
 
-void WorkingFiles::OnChange(const TextDocumentDidChangeParam &change) {
+void WorkingFiles::onChange(const TextDocumentDidChangeParam &change) {
   std::lock_guard lock(mutex);
 
-  std::string path = change.textDocument.uri.GetPath();
-  WorkingFile *file = GetFileUnlocked(path);
+  std::string path = change.textDocument.uri.getPath();
+  WorkingFile *file = getFileUnlocked(path);
   if (!file) {
     LOG_S(WARNING) << "Could not change " << path << " because it was not open";
     return;
@@ -411,23 +411,23 @@ void WorkingFiles::OnChange(const TextDocumentDidChangeParam &change) {
     // See https://github.com/Microsoft/language-server-protocol/issues/9.
     if (!diff.range) {
       file->buffer_content = diff.text;
-      file->OnBufferContentUpdated();
+      file->onBufferContentUpdated();
     } else {
       int start_offset =
-          GetOffsetForPosition(diff.range->start, file->buffer_content);
+          getOffsetForPosition(diff.range->start, file->buffer_content);
       // Ignore TextDocumentContentChangeEvent.rangeLength which causes trouble
       // when UTF-16 surrogate pairs are used.
       int end_offset =
-          GetOffsetForPosition(diff.range->end, file->buffer_content);
+          getOffsetForPosition(diff.range->end, file->buffer_content);
       file->buffer_content.replace(file->buffer_content.begin() + start_offset,
                                    file->buffer_content.begin() + end_offset,
                                    diff.text);
-      file->OnBufferContentUpdated();
+      file->onBufferContentUpdated();
     }
   }
 }
 
-void WorkingFiles::OnClose(const std::string &path) {
+void WorkingFiles::onClose(const std::string &path) {
   std::lock_guard lock(mutex);
   files.erase(path);
 }
@@ -436,7 +436,7 @@ void WorkingFiles::OnClose(const std::string &path) {
 // text documents.
 // We use a UTF-8 iterator to approximate UTF-16 in the specification (weird).
 // This is good enough and fails only for UTF-16 surrogate pairs.
-int GetOffsetForPosition(Position pos, std::string_view content) {
+int getOffsetForPosition(Position pos, std::string_view content) {
   size_t i = 0;
   for (; pos.line > 0 && i < content.size(); i++)
     if (content[i] == '\n')
@@ -452,9 +452,9 @@ int GetOffsetForPosition(Position pos, std::string_view content) {
   return int(i);
 }
 
-std::string_view LexIdentifierAroundPos(Position position,
+std::string_view lexIdentifierAroundPos(Position position,
                                         std::string_view content) {
-  int start = GetOffsetForPosition(position, content), end = start + 1;
+  int start = getOffsetForPosition(position, content), end = start + 1;
   char c;
 
   // We search for :: before the cursor but not after to get the qualifier.
@@ -470,4 +470,4 @@ std::string_view LexIdentifierAroundPos(Position position,
 
   return content.substr(start, end - start);
 }
-}
+} // namespace ccls

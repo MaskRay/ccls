@@ -10,17 +10,17 @@
 #include <rapidjson/document.h>
 
 #include <assert.h>
-#include <stdint.h>
-#include <limits.h>
 #include <functional>
+#include <limits.h>
 #include <optional>
+#include <stdint.h>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 
 namespace ccls {
 namespace {
-void AssignFileId(const Lid2file_id &lid2file_id, int file_id, Use &use) {
+void assignFileId(const Lid2file_id &lid2file_id, int file_id, Use &use) {
   if (use.file_id == -1)
     use.file_id = file_id;
   else
@@ -28,12 +28,12 @@ void AssignFileId(const Lid2file_id &lid2file_id, int file_id, Use &use) {
 }
 
 template <typename T>
-void AddRange(std::vector<T> &into, const std::vector<T> &from) {
+void addRange(std::vector<T> &into, const std::vector<T> &from) {
   into.insert(into.end(), from.begin(), from.end());
 }
 
 template <typename T>
-void RemoveRange(std::vector<T> &from, const std::vector<T> &to_remove) {
+void removeRange(std::vector<T> &from, const std::vector<T> &to_remove) {
   if (to_remove.size()) {
     std::unordered_set<T> to_remove_set(to_remove.begin(), to_remove.end());
     from.erase(
@@ -43,7 +43,7 @@ void RemoveRange(std::vector<T> &from, const std::vector<T> &to_remove) {
   }
 }
 
-QueryFile::DefUpdate BuildFileDefUpdate(IndexFile &&indexed) {
+QueryFile::DefUpdate buildFileDefUpdate(IndexFile &&indexed) {
   QueryFile::Def def;
   def.path = std::move(indexed.path);
   def.args = std::move(indexed.args);
@@ -58,7 +58,7 @@ QueryFile::DefUpdate BuildFileDefUpdate(IndexFile &&indexed) {
 
 // Returns true if an element with the same file is found.
 template <typename Q>
-bool TryReplaceDef(llvm::SmallVectorImpl<Q> &def_list, Q &&def) {
+bool tryReplaceDef(llvm::SmallVectorImpl<Q> &def_list, Q &&def) {
   for (auto &def1 : def_list)
     if (def1.file_id == def.file_id) {
       def1 = std::move(def);
@@ -69,21 +69,21 @@ bool TryReplaceDef(llvm::SmallVectorImpl<Q> &def_list, Q &&def) {
 
 } // namespace
 
-template <typename T> Vec<T> Convert(const std::vector<T> &o) {
+template <typename T> Vec<T> convert(const std::vector<T> &o) {
   Vec<T> r{std::make_unique<T[]>(o.size()), (int)o.size()};
   std::copy(o.begin(), o.end(), r.begin());
   return r;
 }
 
-QueryFunc::Def Convert(const IndexFunc::Def &o) {
+QueryFunc::Def convert(const IndexFunc::Def &o) {
   QueryFunc::Def r;
   r.detailed_name = o.detailed_name;
   r.hover = o.hover;
   r.comments = o.comments;
   r.spell = o.spell;
-  r.bases = Convert(o.bases);
-  r.vars = Convert(o.vars);
-  r.callees = Convert(o.callees);
+  r.bases = convert(o.bases);
+  r.vars = convert(o.vars);
+  r.callees = convert(o.callees);
   // no file_id
   r.qual_name_offset = o.qual_name_offset;
   r.short_name_offset = o.short_name_offset;
@@ -94,16 +94,16 @@ QueryFunc::Def Convert(const IndexFunc::Def &o) {
   return r;
 }
 
-QueryType::Def Convert(const IndexType::Def &o) {
+QueryType::Def convert(const IndexType::Def &o) {
   QueryType::Def r;
   r.detailed_name = o.detailed_name;
   r.hover = o.hover;
   r.comments = o.comments;
   r.spell = o.spell;
-  r.bases = Convert(o.bases);
-  r.funcs = Convert(o.funcs);
-  r.types = Convert(o.types);
-  r.vars = Convert(o.vars);
+  r.bases = convert(o.bases);
+  r.funcs = convert(o.funcs);
+  r.types = convert(o.types);
+  r.vars = convert(o.vars);
   r.alias_of = o.alias_of;
   // no file_id
   r.qual_name_offset = o.qual_name_offset;
@@ -114,7 +114,7 @@ QueryType::Def Convert(const IndexType::Def &o) {
   return r;
 }
 
-IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
+IndexUpdate IndexUpdate::createDelta(IndexFile *previous, IndexFile *current) {
   IndexUpdate r;
   static IndexFile empty(current->path, "<empty>", false);
   if (previous)
@@ -127,7 +127,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
   for (auto &it : previous->usr2func) {
     auto &func = it.second;
     if (func.def.detailed_name[0])
-      r.funcs_removed.emplace_back(func.usr, Convert(func.def));
+      r.funcs_removed.emplace_back(func.usr, convert(func.def));
     r.funcs_declarations[func.usr].first = std::move(func.declarations);
     r.funcs_uses[func.usr].first = std::move(func.uses);
     r.funcs_derived[func.usr].first = std::move(func.derived);
@@ -135,7 +135,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
   for (auto &it : current->usr2func) {
     auto &func = it.second;
     if (func.def.detailed_name[0])
-      r.funcs_def_update.emplace_back(it.first, Convert(func.def));
+      r.funcs_def_update.emplace_back(it.first, convert(func.def));
     r.funcs_declarations[func.usr].second = std::move(func.declarations);
     r.funcs_uses[func.usr].second = std::move(func.uses);
     r.funcs_derived[func.usr].second = std::move(func.derived);
@@ -145,7 +145,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
   for (auto &it : previous->usr2type) {
     auto &type = it.second;
     if (type.def.detailed_name[0])
-      r.types_removed.emplace_back(type.usr, Convert(type.def));
+      r.types_removed.emplace_back(type.usr, convert(type.def));
     r.types_declarations[type.usr].first = std::move(type.declarations);
     r.types_uses[type.usr].first = std::move(type.uses);
     r.types_derived[type.usr].first = std::move(type.derived);
@@ -154,7 +154,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
   for (auto &it : current->usr2type) {
     auto &type = it.second;
     if (type.def.detailed_name[0])
-      r.types_def_update.emplace_back(it.first, Convert(type.def));
+      r.types_def_update.emplace_back(it.first, convert(type.def));
     r.types_declarations[type.usr].second = std::move(type.declarations);
     r.types_uses[type.usr].second = std::move(type.uses);
     r.types_derived[type.usr].second = std::move(type.derived);
@@ -177,7 +177,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
     r.vars_uses[var.usr].second = std::move(var.uses);
   }
 
-  r.files_def_update = BuildFileDefUpdate(std::move(*current));
+  r.files_def_update = buildFileDefUpdate(std::move(*current));
   return r;
 }
 
@@ -193,15 +193,15 @@ void DB::clear() {
 }
 
 template <typename Def>
-void DB::RemoveUsrs(Kind kind, int file_id,
+void DB::removeUsrs(Kind kind, int file_id,
                     const std::vector<std::pair<Usr, Def>> &to_remove) {
   switch (kind) {
   case Kind::Func: {
     for (auto &[usr, _] : to_remove) {
       // FIXME
-      if (!HasFunc(usr))
+      if (!hasFunc(usr))
         continue;
-      QueryFunc &func = Func(usr);
+      QueryFunc &func = getFunc(usr);
       auto it = llvm::find_if(func.def, [=](const QueryFunc::Def &def) {
         return def.file_id == file_id;
       });
@@ -213,9 +213,9 @@ void DB::RemoveUsrs(Kind kind, int file_id,
   case Kind::Type: {
     for (auto &[usr, _] : to_remove) {
       // FIXME
-      if (!HasType(usr))
+      if (!hasType(usr))
         continue;
-      QueryType &type = Type(usr);
+      QueryType &type = getType(usr);
       auto it = llvm::find_if(type.def, [=](const QueryType::Def &def) {
         return def.file_id == file_id;
       });
@@ -227,9 +227,9 @@ void DB::RemoveUsrs(Kind kind, int file_id,
   case Kind::Var: {
     for (auto &[usr, _] : to_remove) {
       // FIXME
-      if (!HasVar(usr))
+      if (!hasVar(usr))
         continue;
-      QueryVar &var = Var(usr);
+      QueryVar &var = getVar(usr);
       auto it = llvm::find_if(var.def, [=](const QueryVar::Def &def) {
         return def.file_id == file_id;
       });
@@ -243,24 +243,24 @@ void DB::RemoveUsrs(Kind kind, int file_id,
   }
 }
 
-void DB::ApplyIndexUpdate(IndexUpdate *u) {
+void DB::applyIndexUpdate(IndexUpdate *u) {
 #define REMOVE_ADD(C, F)                                                       \
   for (auto &it : u->C##s_##F) {                                               \
-    auto R = C##_usr.try_emplace({it.first}, C##_usr.size());                  \
-    if (R.second) {                                                            \
+    auto r = C##_usr.try_emplace({it.first}, C##_usr.size());                  \
+    if (r.second) {                                                            \
       C##s.emplace_back();                                                     \
       C##s.back().usr = it.first;                                              \
     }                                                                          \
-    auto &entity = C##s[R.first->second];                                      \
-    RemoveRange(entity.F, it.second.first);                                    \
-    AddRange(entity.F, it.second.second);                                      \
+    auto &entity = C##s[r.first->second];                                      \
+    removeRange(entity.F, it.second.first);                                    \
+    addRange(entity.F, it.second.second);                                      \
   }
 
   std::unordered_map<int, int> prev_lid2file_id, lid2file_id;
   for (auto &[lid, path] : u->prev_lid2path)
-    prev_lid2file_id[lid] = GetFileId(path);
+    prev_lid2file_id[lid] = getFileId(path);
   for (auto &[lid, path] : u->lid2path) {
-    int file_id = GetFileId(path);
+    int file_id = getFileId(path);
     lid2file_id[lid] = file_id;
     if (!files[file_id].def) {
       files[file_id].def = QueryFile::Def();
@@ -269,7 +269,7 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
   }
 
   // References (Use &use) in this function are important to update file_id.
-  auto Ref = [&](std::unordered_map<int, int> &lid2fid, Usr usr, Kind kind,
+  auto ref = [&](std::unordered_map<int, int> &lid2fid, Usr usr, Kind kind,
                  Use &use, int delta) {
     use.file_id =
         use.file_id == -1 ? u->file_id : lid2fid.find(use.file_id)->second;
@@ -280,7 +280,7 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
     if (!v)
       files[use.file_id].symbol2refcnt.erase(sym);
   };
-  auto RefDecl = [&](std::unordered_map<int, int> &lid2fid, Usr usr, Kind kind,
+  auto refDecl = [&](std::unordered_map<int, int> &lid2fid, Usr usr, Kind kind,
                      DeclRef &dr, int delta) {
     dr.file_id =
         dr.file_id == -1 ? u->file_id : lid2fid.find(dr.file_id)->second;
@@ -292,16 +292,16 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
       files[dr.file_id].symbol2refcnt.erase(sym);
   };
 
-  auto UpdateUses =
+  auto updateUses =
       [&](Usr usr, Kind kind,
           llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
           auto &entities, auto &p, bool hint_implicit) {
-        auto R = entity_usr.try_emplace(usr, entity_usr.size());
-        if (R.second) {
+        auto r = entity_usr.try_emplace(usr, entity_usr.size());
+        if (r.second) {
           entities.emplace_back();
           entities.back().usr = usr;
         }
-        auto &entity = entities[R.first->second];
+        auto &entity = entities[r.first->second];
         for (Use &use : p.first) {
           if (hint_implicit && use.role & Role::Implicit) {
             // Make ranges of implicit function calls larger (spanning one more
@@ -312,25 +312,25 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
               use.range.start.column--;
             use.range.end.column++;
           }
-          Ref(prev_lid2file_id, usr, kind, use, -1);
+          ref(prev_lid2file_id, usr, kind, use, -1);
         }
-        RemoveRange(entity.uses, p.first);
+        removeRange(entity.uses, p.first);
         for (Use &use : p.second) {
           if (hint_implicit && use.role & Role::Implicit) {
             if (use.range.start.column > 0)
               use.range.start.column--;
             use.range.end.column++;
           }
-          Ref(lid2file_id, usr, kind, use, 1);
+          ref(lid2file_id, usr, kind, use, 1);
         }
-        AddRange(entity.uses, p.second);
+        addRange(entity.uses, p.second);
       };
 
   if (u->files_removed)
-    files[name2file_id[LowerPathIfInsensitive(*u->files_removed)]].def =
+    files[name2file_id[lowerPathIfInsensitive(*u->files_removed)]].def =
         std::nullopt;
   u->file_id =
-      u->files_def_update ? Update(std::move(*u->files_def_update)) : -1;
+      u->files_def_update ? update(std::move(*u->files_def_update)) : -1;
 
   const double grow = 1.3;
   size_t t;
@@ -342,19 +342,19 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
   }
   for (auto &[usr, def] : u->funcs_removed)
     if (def.spell)
-      RefDecl(prev_lid2file_id, usr, Kind::Func, *def.spell, -1);
-  RemoveUsrs(Kind::Func, u->file_id, u->funcs_removed);
-  Update(lid2file_id, u->file_id, std::move(u->funcs_def_update));
-  for (auto &[usr, del_add]: u->funcs_declarations) {
+      refDecl(prev_lid2file_id, usr, Kind::Func, *def.spell, -1);
+  removeUsrs(Kind::Func, u->file_id, u->funcs_removed);
+  update(lid2file_id, u->file_id, std::move(u->funcs_def_update));
+  for (auto &[usr, del_add] : u->funcs_declarations) {
     for (DeclRef &dr : del_add.first)
-      RefDecl(prev_lid2file_id, usr, Kind::Func, dr, -1);
+      refDecl(prev_lid2file_id, usr, Kind::Func, dr, -1);
     for (DeclRef &dr : del_add.second)
-      RefDecl(lid2file_id, usr, Kind::Func, dr, 1);
+      refDecl(lid2file_id, usr, Kind::Func, dr, 1);
   }
   REMOVE_ADD(func, declarations);
   REMOVE_ADD(func, derived);
   for (auto &[usr, p] : u->funcs_uses)
-    UpdateUses(usr, Kind::Func, func_usr, funcs, p, true);
+    updateUses(usr, Kind::Func, func_usr, funcs, p, true);
 
   if ((t = types.size() + u->types_hint) > types.capacity()) {
     t = size_t(t * grow);
@@ -363,20 +363,20 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
   }
   for (auto &[usr, def] : u->types_removed)
     if (def.spell)
-      RefDecl(prev_lid2file_id, usr, Kind::Type, *def.spell, -1);
-  RemoveUsrs(Kind::Type, u->file_id, u->types_removed);
-  Update(lid2file_id, u->file_id, std::move(u->types_def_update));
-  for (auto &[usr, del_add]: u->types_declarations) {
+      refDecl(prev_lid2file_id, usr, Kind::Type, *def.spell, -1);
+  removeUsrs(Kind::Type, u->file_id, u->types_removed);
+  update(lid2file_id, u->file_id, std::move(u->types_def_update));
+  for (auto &[usr, del_add] : u->types_declarations) {
     for (DeclRef &dr : del_add.first)
-      RefDecl(prev_lid2file_id, usr, Kind::Type, dr, -1);
+      refDecl(prev_lid2file_id, usr, Kind::Type, dr, -1);
     for (DeclRef &dr : del_add.second)
-      RefDecl(lid2file_id, usr, Kind::Type, dr, 1);
+      refDecl(lid2file_id, usr, Kind::Type, dr, 1);
   }
   REMOVE_ADD(type, declarations);
   REMOVE_ADD(type, derived);
   REMOVE_ADD(type, instances);
   for (auto &[usr, p] : u->types_uses)
-    UpdateUses(usr, Kind::Type, type_usr, types, p, false);
+    updateUses(usr, Kind::Type, type_usr, types, p, false);
 
   if ((t = vars.size() + u->vars_hint) > vars.capacity()) {
     t = size_t(t * grow);
@@ -385,24 +385,24 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
   }
   for (auto &[usr, def] : u->vars_removed)
     if (def.spell)
-      RefDecl(prev_lid2file_id, usr, Kind::Var, *def.spell, -1);
-  RemoveUsrs(Kind::Var, u->file_id, u->vars_removed);
-  Update(lid2file_id, u->file_id, std::move(u->vars_def_update));
-  for (auto &[usr, del_add]: u->vars_declarations) {
+      refDecl(prev_lid2file_id, usr, Kind::Var, *def.spell, -1);
+  removeUsrs(Kind::Var, u->file_id, u->vars_removed);
+  update(lid2file_id, u->file_id, std::move(u->vars_def_update));
+  for (auto &[usr, del_add] : u->vars_declarations) {
     for (DeclRef &dr : del_add.first)
-      RefDecl(prev_lid2file_id, usr, Kind::Var, dr, -1);
+      refDecl(prev_lid2file_id, usr, Kind::Var, dr, -1);
     for (DeclRef &dr : del_add.second)
-      RefDecl(lid2file_id, usr, Kind::Var, dr, 1);
+      refDecl(lid2file_id, usr, Kind::Var, dr, 1);
   }
   REMOVE_ADD(var, declarations);
   for (auto &[usr, p] : u->vars_uses)
-    UpdateUses(usr, Kind::Var, var_usr, vars, p, false);
+    updateUses(usr, Kind::Var, var_usr, vars, p, false);
 
 #undef REMOVE_ADD
 }
 
-int DB::GetFileId(const std::string &path) {
-  auto it = name2file_id.try_emplace(LowerPathIfInsensitive(path));
+int DB::getFileId(const std::string &path) {
+  auto it = name2file_id.try_emplace(lowerPathIfInsensitive(path));
   if (it.second) {
     int id = files.size();
     it.first->second = files.emplace_back().id = id;
@@ -410,80 +410,80 @@ int DB::GetFileId(const std::string &path) {
   return it.first->second;
 }
 
-int DB::Update(QueryFile::DefUpdate &&u) {
-  int file_id = GetFileId(u.first.path);
+int DB::update(QueryFile::DefUpdate &&u) {
+  int file_id = getFileId(u.first.path);
   files[file_id].def = u.first;
   return file_id;
 }
 
-void DB::Update(const Lid2file_id &lid2file_id, int file_id,
+void DB::update(const Lid2file_id &lid2file_id, int file_id,
                 std::vector<std::pair<Usr, QueryFunc::Def>> &&us) {
   for (auto &u : us) {
     auto &def = u.second;
     assert(def.detailed_name[0]);
     u.second.file_id = file_id;
     if (def.spell) {
-      AssignFileId(lid2file_id, file_id, *def.spell);
+      assignFileId(lid2file_id, file_id, *def.spell);
       files[def.spell->file_id].symbol2refcnt[{
           {def.spell->range, u.first, Kind::Func, def.spell->role},
           def.spell->extent}]++;
     }
 
-    auto R = func_usr.try_emplace({u.first}, func_usr.size());
-    if (R.second)
+    auto r = func_usr.try_emplace({u.first}, func_usr.size());
+    if (r.second)
       funcs.emplace_back();
-    QueryFunc &existing = funcs[R.first->second];
+    QueryFunc &existing = funcs[r.first->second];
     existing.usr = u.first;
-    if (!TryReplaceDef(existing.def, std::move(def)))
+    if (!tryReplaceDef(existing.def, std::move(def)))
       existing.def.push_back(std::move(def));
   }
 }
 
-void DB::Update(const Lid2file_id &lid2file_id, int file_id,
+void DB::update(const Lid2file_id &lid2file_id, int file_id,
                 std::vector<std::pair<Usr, QueryType::Def>> &&us) {
   for (auto &u : us) {
     auto &def = u.second;
     assert(def.detailed_name[0]);
     u.second.file_id = file_id;
     if (def.spell) {
-      AssignFileId(lid2file_id, file_id, *def.spell);
+      assignFileId(lid2file_id, file_id, *def.spell);
       files[def.spell->file_id].symbol2refcnt[{
           {def.spell->range, u.first, Kind::Type, def.spell->role},
           def.spell->extent}]++;
     }
-    auto R = type_usr.try_emplace({u.first}, type_usr.size());
-    if (R.second)
+    auto r = type_usr.try_emplace({u.first}, type_usr.size());
+    if (r.second)
       types.emplace_back();
-    QueryType &existing = types[R.first->second];
+    QueryType &existing = types[r.first->second];
     existing.usr = u.first;
-    if (!TryReplaceDef(existing.def, std::move(def)))
+    if (!tryReplaceDef(existing.def, std::move(def)))
       existing.def.push_back(std::move(def));
   }
 }
 
-void DB::Update(const Lid2file_id &lid2file_id, int file_id,
+void DB::update(const Lid2file_id &lid2file_id, int file_id,
                 std::vector<std::pair<Usr, QueryVar::Def>> &&us) {
   for (auto &u : us) {
     auto &def = u.second;
     assert(def.detailed_name[0]);
     u.second.file_id = file_id;
     if (def.spell) {
-      AssignFileId(lid2file_id, file_id, *def.spell);
+      assignFileId(lid2file_id, file_id, *def.spell);
       files[def.spell->file_id].symbol2refcnt[{
           {def.spell->range, u.first, Kind::Var, def.spell->role},
           def.spell->extent}]++;
     }
-    auto R = var_usr.try_emplace({u.first}, var_usr.size());
-    if (R.second)
+    auto r = var_usr.try_emplace({u.first}, var_usr.size());
+    if (r.second)
       vars.emplace_back();
-    QueryVar &existing = vars[R.first->second];
+    QueryVar &existing = vars[r.first->second];
     existing.usr = u.first;
-    if (!TryReplaceDef(existing.def, std::move(def)))
+    if (!tryReplaceDef(existing.def, std::move(def)))
       existing.def.push_back(std::move(def));
   }
 }
 
-std::string_view DB::GetSymbolName(SymbolIdx sym, bool qualified) {
+std::string_view DB::getSymbolName(SymbolIdx sym, bool qualified) {
   Usr usr = sym.usr;
   switch (sym.kind) {
   default:
@@ -493,22 +493,22 @@ std::string_view DB::GetSymbolName(SymbolIdx sym, bool qualified) {
       return files[usr].def->path;
     break;
   case Kind::Func:
-    if (const auto *def = Func(usr).AnyDef())
-      return def->Name(qualified);
+    if (const auto *def = getFunc(usr).anyDef())
+      return def->name(qualified);
     break;
   case Kind::Type:
-    if (const auto *def = Type(usr).AnyDef())
-      return def->Name(qualified);
+    if (const auto *def = getType(usr).anyDef())
+      return def->name(qualified);
     break;
   case Kind::Var:
-    if (const auto *def = Var(usr).AnyDef())
-      return def->Name(qualified);
+    if (const auto *def = getVar(usr).anyDef())
+      return def->name(qualified);
     break;
   }
   return "";
 }
 
-std::vector<uint8_t> DB::GetFileSet(const std::vector<std::string> &folders) {
+std::vector<uint8_t> DB::getFileSet(const std::vector<std::string> &folders) {
   if (folders.empty())
     return std::vector<uint8_t>(files.size(), 1);
   std::vector<uint8_t> file_set(files.size());
@@ -528,7 +528,7 @@ std::vector<uint8_t> DB::GetFileSet(const std::vector<std::string> &folders) {
 
 namespace {
 // Computes roughly how long |range| is.
-int ComputeRangeSize(const Range &range) {
+int computeRangeSize(const Range &range) {
   if (range.start.line != range.end.line)
     return INT_MAX;
   return range.end.column - range.start.column;
@@ -536,7 +536,7 @@ int ComputeRangeSize(const Range &range) {
 
 template <typename Q, typename C>
 std::vector<Use>
-GetDeclarations(llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
+getDeclarations(llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
                 llvm::SmallVectorImpl<Q> &entities, const C &usrs) {
   std::vector<Use> ret;
   ret.reserve(usrs.size());
@@ -554,29 +554,29 @@ GetDeclarations(llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
   }
   return ret;
 }
-}
+} // namespace
 
-Maybe<DeclRef> GetDefinitionSpell(DB *db, SymbolIdx sym) {
+Maybe<DeclRef> getDefinitionSpell(DB *db, SymbolIdx sym) {
   Maybe<DeclRef> ret;
-  EachEntityDef(db, sym, [&](const auto &def) { return !(ret = def.spell); });
+  eachEntityDef(db, sym, [&](const auto &def) { return !(ret = def.spell); });
   return ret;
 }
 
-std::vector<Use> GetFuncDeclarations(DB *db, const std::vector<Usr> &usrs) {
-  return GetDeclarations(db->func_usr, db->funcs, usrs);
+std::vector<Use> getFuncDeclarations(DB *db, const std::vector<Usr> &usrs) {
+  return getDeclarations(db->func_usr, db->funcs, usrs);
 }
-std::vector<Use> GetFuncDeclarations(DB *db, const Vec<Usr> &usrs) {
-  return GetDeclarations(db->func_usr, db->funcs, usrs);
+std::vector<Use> getFuncDeclarations(DB *db, const Vec<Usr> &usrs) {
+  return getDeclarations(db->func_usr, db->funcs, usrs);
 }
-std::vector<Use> GetTypeDeclarations(DB *db, const std::vector<Usr> &usrs) {
-  return GetDeclarations(db->type_usr, db->types, usrs);
+std::vector<Use> getTypeDeclarations(DB *db, const std::vector<Usr> &usrs) {
+  return getDeclarations(db->type_usr, db->types, usrs);
 }
-std::vector<DeclRef> GetVarDeclarations(DB *db, const std::vector<Usr> &usrs,
+std::vector<DeclRef> getVarDeclarations(DB *db, const std::vector<Usr> &usrs,
                                         unsigned kind) {
   std::vector<DeclRef> ret;
   ret.reserve(usrs.size());
   for (Usr usr : usrs) {
-    QueryVar &var = db->Var(usr);
+    QueryVar &var = db->getVar(usr);
     bool has_def = false;
     for (auto &def : var.def)
       if (def.spell) {
@@ -601,22 +601,22 @@ std::vector<DeclRef> GetVarDeclarations(DB *db, const std::vector<Usr> &usrs,
   return ret;
 }
 
-std::vector<DeclRef> &GetNonDefDeclarations(DB *db, SymbolIdx sym) {
+std::vector<DeclRef> &getNonDefDeclarations(DB *db, SymbolIdx sym) {
   static std::vector<DeclRef> empty;
   switch (sym.kind) {
   case Kind::Func:
-    return db->GetFunc(sym).declarations;
+    return db->getFunc(sym).declarations;
   case Kind::Type:
-    return db->GetType(sym).declarations;
+    return db->getType(sym).declarations;
   case Kind::Var:
-    return db->GetVar(sym).declarations;
+    return db->getVar(sym).declarations;
   default:
     break;
   }
   return empty;
 }
 
-std::vector<Use> GetUsesForAllBases(DB *db, QueryFunc &root) {
+std::vector<Use> getUsesForAllBases(DB *db, QueryFunc &root) {
   std::vector<Use> ret;
   std::vector<QueryFunc *> stack{&root};
   std::unordered_set<Usr> seen;
@@ -624,8 +624,8 @@ std::vector<Use> GetUsesForAllBases(DB *db, QueryFunc &root) {
   while (!stack.empty()) {
     QueryFunc &func = *stack.back();
     stack.pop_back();
-    if (auto *def = func.AnyDef()) {
-      EachDefinedFunc(db, def->bases, [&](QueryFunc &func1) {
+    if (auto *def = func.anyDef()) {
+      eachDefinedFunc(db, def->bases, [&](QueryFunc &func1) {
         if (!seen.count(func1.usr)) {
           seen.insert(func1.usr);
           stack.push_back(&func1);
@@ -638,7 +638,7 @@ std::vector<Use> GetUsesForAllBases(DB *db, QueryFunc &root) {
   return ret;
 }
 
-std::vector<Use> GetUsesForAllDerived(DB *db, QueryFunc &root) {
+std::vector<Use> getUsesForAllDerived(DB *db, QueryFunc &root) {
   std::vector<Use> ret;
   std::vector<QueryFunc *> stack{&root};
   std::unordered_set<Usr> seen;
@@ -646,7 +646,7 @@ std::vector<Use> GetUsesForAllDerived(DB *db, QueryFunc &root) {
   while (!stack.empty()) {
     QueryFunc &func = *stack.back();
     stack.pop_back();
-    EachDefinedFunc(db, func.derived, [&](QueryFunc &func1) {
+    eachDefinedFunc(db, func.derived, [&](QueryFunc &func1) {
       if (!seen.count(func1.usr)) {
         seen.insert(func1.usr);
         stack.push_back(&func1);
@@ -658,17 +658,16 @@ std::vector<Use> GetUsesForAllDerived(DB *db, QueryFunc &root) {
   return ret;
 }
 
-std::optional<lsRange> GetLsRange(WorkingFile *wfile,
-                                  const Range &location) {
+std::optional<lsRange> getLsRange(WorkingFile *wfile, const Range &location) {
   if (!wfile || wfile->index_lines.empty())
     return lsRange{Position{location.start.line, location.start.column},
                    Position{location.end.line, location.end.column}};
 
   int start_column = location.start.column, end_column = location.end.column;
-  std::optional<int> start = wfile->GetBufferPosFromIndexPos(
+  std::optional<int> start = wfile->getBufferPosFromIndexPos(
       location.start.line, &start_column, false);
-  std::optional<int> end = wfile->GetBufferPosFromIndexPos(
-      location.end.line, &end_column, true);
+  std::optional<int> end =
+      wfile->getBufferPosFromIndexPos(location.end.line, &end_column, true);
   if (!start || !end)
     return std::nullopt;
 
@@ -686,61 +685,61 @@ std::optional<lsRange> GetLsRange(WorkingFile *wfile,
   return lsRange{Position{*start, start_column}, Position{*end, end_column}};
 }
 
-DocumentUri GetLsDocumentUri(DB *db, int file_id, std::string *path) {
+DocumentUri getLsDocumentUri(DB *db, int file_id, std::string *path) {
   QueryFile &file = db->files[file_id];
   if (file.def) {
     *path = file.def->path;
-    return DocumentUri::FromPath(*path);
+    return DocumentUri::fromPath(*path);
   } else {
     *path = "";
-    return DocumentUri::FromPath("");
+    return DocumentUri::fromPath("");
   }
 }
 
-DocumentUri GetLsDocumentUri(DB *db, int file_id) {
+DocumentUri getLsDocumentUri(DB *db, int file_id) {
   QueryFile &file = db->files[file_id];
   if (file.def) {
-    return DocumentUri::FromPath(file.def->path);
+    return DocumentUri::fromPath(file.def->path);
   } else {
-    return DocumentUri::FromPath("");
+    return DocumentUri::fromPath("");
   }
 }
 
-std::optional<Location> GetLsLocation(DB *db, WorkingFiles *wfiles, Use use) {
+std::optional<Location> getLsLocation(DB *db, WorkingFiles *wfiles, Use use) {
   std::string path;
-  DocumentUri uri = GetLsDocumentUri(db, use.file_id, &path);
-  std::optional<lsRange> range = GetLsRange(wfiles->GetFile(path), use.range);
+  DocumentUri uri = getLsDocumentUri(db, use.file_id, &path);
+  std::optional<lsRange> range = getLsRange(wfiles->getFile(path), use.range);
   if (!range)
     return std::nullopt;
   return Location{uri, *range};
 }
 
-std::optional<Location> GetLsLocation(DB *db, WorkingFiles *wfiles,
+std::optional<Location> getLsLocation(DB *db, WorkingFiles *wfiles,
                                       SymbolRef sym, int file_id) {
-  return GetLsLocation(db, wfiles, Use{{sym.range, sym.role}, file_id});
+  return getLsLocation(db, wfiles, Use{{sym.range, sym.role}, file_id});
 }
 
-LocationLink GetLocationLink(DB *db, WorkingFiles *wfiles, DeclRef dr) {
+LocationLink getLocationLink(DB *db, WorkingFiles *wfiles, DeclRef dr) {
   std::string path;
-  DocumentUri uri = GetLsDocumentUri(db, dr.file_id, &path);
-  if (auto range = GetLsRange(wfiles->GetFile(path), dr.range))
-    if (auto extent = GetLsRange(wfiles->GetFile(path), dr.extent)) {
+  DocumentUri uri = getLsDocumentUri(db, dr.file_id, &path);
+  if (auto range = getLsRange(wfiles->getFile(path), dr.range))
+    if (auto extent = getLsRange(wfiles->getFile(path), dr.extent)) {
       LocationLink ret;
       ret.targetUri = uri.raw_uri;
       ret.targetSelectionRange = *range;
-      ret.targetRange = extent->Includes(*range) ? *extent : *range;
+      ret.targetRange = extent->includes(*range) ? *extent : *range;
       return ret;
     }
   return {};
 }
 
-SymbolKind GetSymbolKind(DB *db, SymbolIdx sym) {
+SymbolKind getSymbolKind(DB *db, SymbolIdx sym) {
   SymbolKind ret;
   if (sym.kind == Kind::File)
     ret = SymbolKind::File;
   else {
     ret = SymbolKind::Unknown;
-    WithEntity(db, sym, [&](const auto &entity) {
+    withEntity(db, sym, [&](const auto &entity) {
       for (auto &def : entity.def) {
         ret = def.kind;
         break;
@@ -750,13 +749,13 @@ SymbolKind GetSymbolKind(DB *db, SymbolIdx sym) {
   return ret;
 }
 
-std::optional<SymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
+std::optional<SymbolInformation> getSymbolInfo(DB *db, SymbolIdx sym,
                                                bool detailed) {
   switch (sym.kind) {
   case Kind::Invalid:
     break;
   case Kind::File: {
-    QueryFile &file = db->GetFile(sym);
+    QueryFile &file = db->getFile(sym);
     if (!file.def)
       break;
 
@@ -767,11 +766,11 @@ std::optional<SymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
   }
   default: {
     SymbolInformation info;
-    EachEntityDef(db, sym, [&](const auto &def) {
+    eachEntityDef(db, sym, [&](const auto &def) {
       if (detailed)
         info.name = def.detailed_name;
       else
-        info.name = def.Name(true);
+        info.name = def.name(true);
       info.kind = def.kind;
       return false;
     });
@@ -782,14 +781,14 @@ std::optional<SymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
   return std::nullopt;
 }
 
-std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *wfile,
+std::vector<SymbolRef> findSymbolsAtLocation(WorkingFile *wfile,
                                              QueryFile *file, Position &ls_pos,
                                              bool smallest) {
   std::vector<SymbolRef> symbols;
   // If multiVersion > 0, index may not exist and thus index_lines is empty.
   if (wfile && wfile->index_lines.size()) {
-    if (auto line = wfile->GetIndexPosFromBufferPos(
-            ls_pos.line, &ls_pos.character, false)) {
+    if (auto line = wfile->getIndexPosFromBufferPos(ls_pos.line,
+                                                    &ls_pos.character, false)) {
       ls_pos.line = *line;
     } else {
       ls_pos.line = -1;
@@ -798,7 +797,7 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *wfile,
   }
 
   for (auto [sym, refcnt] : file->symbol2refcnt)
-    if (refcnt > 0 && sym.range.Contains(ls_pos.line, ls_pos.character))
+    if (refcnt > 0 && sym.range.contains(ls_pos.line, ls_pos.character))
       symbols.push_back(sym);
 
   // Order shorter ranges first, since they are more detailed/precise. This is
@@ -815,7 +814,7 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *wfile,
   std::sort(
       symbols.begin(), symbols.end(),
       [](const SymbolRef &a, const SymbolRef &b) {
-        int t = ComputeRangeSize(a.range) - ComputeRangeSize(b.range);
+        int t = computeRangeSize(a.range) - computeRangeSize(b.range);
         if (t)
           return t < 0;
         // MacroExpansion

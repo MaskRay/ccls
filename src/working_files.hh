@@ -36,50 +36,50 @@ struct WorkingFile {
   WorkingFile(const std::string &filename, const std::string &buffer_content);
 
   // This should be called when the indexed content has changed.
-  void SetIndexContent(const std::string &index_content);
+  void setIndexContent(const std::string &index_content);
   // This should be called whenever |buffer_content| has changed.
-  void OnBufferContentUpdated();
+  void onBufferContentUpdated();
 
   // Finds the buffer line number which maps to index line number |line|.
   // Also resolves |column| if not NULL.
   // When resolving a range, use is_end = false for begin() and is_end =
   // true for end() to get a better alignment of |column|.
-  std::optional<int> GetBufferPosFromIndexPos(int line, int *column,
+  std::optional<int> getBufferPosFromIndexPos(int line, int *column,
                                               bool is_end);
   // Finds the index line number which maps to buffer line number |line|.
   // Also resolves |column| if not NULL.
-  std::optional<int> GetIndexPosFromBufferPos(int line, int *column,
+  std::optional<int> getIndexPosFromBufferPos(int line, int *column,
                                               bool is_end);
   // Returns the stable completion position (it jumps back until there is a
   // non-alphanumeric character).
-  Position GetCompletionPosition(Position pos, std::string *filter,
+  Position getCompletionPosition(Position pos, std::string *filter,
                                  Position *replace_end_pos) const;
 
 private:
   // Compute index_to_buffer and buffer_to_index.
-  void ComputeLineMapping();
+  void computeLineMapping();
 };
 
 struct WorkingFiles {
-  WorkingFile *GetFile(const std::string &path);
-  WorkingFile *GetFileUnlocked(const std::string &path);
-  std::string GetContent(const std::string &path);
+  WorkingFile *getFile(const std::string &path);
+  WorkingFile *getFileUnlocked(const std::string &path);
+  std::string getContent(const std::string &path);
 
-  template <typename Fn> void WithLock(Fn &&fn) {
+  template <typename Fn> void withLock(Fn &&fn) {
     std::lock_guard lock(mutex);
     fn();
   }
 
-  WorkingFile *OnOpen(const TextDocumentItem &open);
-  void OnChange(const TextDocumentDidChangeParam &change);
-  void OnClose(const std::string &close);
+  WorkingFile *onOpen(const TextDocumentItem &open);
+  void onChange(const TextDocumentDidChangeParam &change);
+  void onClose(const std::string &close);
 
   std::mutex mutex;
   std::unordered_map<std::string, std::unique_ptr<WorkingFile>> files;
 };
 
-int GetOffsetForPosition(Position pos, std::string_view content);
+int getOffsetForPosition(Position pos, std::string_view content);
 
-std::string_view LexIdentifierAroundPos(Position position,
+std::string_view lexIdentifierAroundPos(Position position,
                                         std::string_view content);
 } // namespace ccls

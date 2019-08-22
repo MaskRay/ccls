@@ -19,7 +19,7 @@
 #include <thread>
 
 namespace ccls {
-std::string NormalizePath(const std::string &path) {
+std::string normalizePath(const std::string &path) {
   DWORD retval = 0;
   TCHAR buffer[MAX_PATH] = TEXT("");
   TCHAR **lpp_part = {NULL};
@@ -40,14 +40,14 @@ std::string NormalizePath(const std::string &path) {
   return result;
 }
 
-void FreeUnusedMemory() {}
+void freeUnusedMemory() {}
 
 // TODO Wait for debugger to attach
-void TraceMe() {}
+void traceMe() {}
 
-void SpawnThread(void *(*fn)(void *), void *arg) {
+void spawnThread(void *(*fn)(void *), void *arg) {
   std::thread(fn, arg).detach();
 }
-}
+} // namespace ccls
 
 #endif
