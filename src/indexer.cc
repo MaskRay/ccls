@@ -23,6 +23,7 @@ limitations under the License.
 
 #include <clang/AST/AST.h>
 #include <clang/Frontend/FrontendAction.h>
+#include <clang/Frontend/MultiplexConsumer.h>
 #include <clang/Index/IndexDataConsumer.h>
 #include <clang/Index/IndexingAction.h>
 #include <clang/Index/USRGeneration.h>
@@ -1159,10 +1160,28 @@ public:
   IndexFrontendAction(IndexParam &param) : param(param) {}
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                  StringRef InFile) override {
+    class SkipProcessed : public ASTConsumer {
+      IndexParam &param;
+      const ASTContext *ctx = nullptr;
+
+    public:
+      SkipProcessed(IndexParam &param) : param(param) {}
+      void Initialize(ASTContext &ctx) override { this->ctx = &ctx; }
+      bool shouldSkipFunctionBody(Decl *d) override {
+        const SourceManager &sm = ctx->getSourceManager();
+        FileID fid = sm.getFileID(sm.getExpansionLoc(d->getLocation()));
+        return !(g_config->index.multiVersion && param.useMultiVersion(fid)) &&
+               !param.consumeFile(fid);
+      }
+    };
+
     Preprocessor &PP = CI.getPreprocessor();
     PP.addPPCallbacks(
         std::make_unique<IndexPPCallbacks>(PP.getSourceManager(), param));
-    return std::make_unique<ASTConsumer>();
+    std::vector<std::unique_ptr<ASTConsumer>> Consumers;
+    Consumers.push_back(std::make_unique<SkipProcessed>(param));
+    Consumers.push_back(std::make_unique<ASTConsumer>());
+    return std::make_unique<MultiplexConsumer>(std::move(Consumers));
   }
 };
 } // namespace
@@ -1229,6 +1248,10 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   if (!CI)
     return {};
   ok = false;
+  // Disable computing warnings which will be discarded anyway.
+  CI->getDiagnosticOpts().IgnoreWarnings = true;
+  // Enable IndexFrontendAction::shouldSkipFunctionBody.
+  CI->getFrontendOpts().SkipFunctionBodies = true;
   // -fparse-all-comments enables documentation in the indexer and in
   // code completion.
   CI->getLangOpts()->CommentOpts.ParseAllComments = g_config->index.comments > 1;
@@ -1245,6 +1268,7 @@ Index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   auto Clang = std::make_unique<CompilerInstance>(PCH);
   Clang->setInvocation(std::move(CI));
   Clang->createDiagnostics(&DC, false);
+  Clang->getDiagnostics().setIgnoreAllWarnings(true);
   Clang->setTarget(TargetInfo::CreateTargetInfo(
       Clang->getDiagnostics(), Clang->getInvocation().TargetOpts));
   if (!Clang->hasTarget())
