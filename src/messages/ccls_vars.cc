@@ -18,20 +18,20 @@ REFLECT_STRUCT(Param, textDocument, position, kind);
 
 void MessageHandler::ccls_vars(JsonReader &reader, ReplyOnce &reply) {
   Param param;
-  Reflect(reader, param);
-  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+  reflect(reader, param);
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!wf) {
     return;
   }
 
   std::vector<Location> result;
-  for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
+  for (SymbolRef sym : findSymbolsAtLocation(wf, file, param.position)) {
     Usr usr = sym.usr;
     switch (sym.kind) {
     default:
       break;
     case Kind::Var: {
-      const QueryVar::Def *def = db->GetVar(sym).AnyDef();
+      const QueryVar::Def *def = db->getVar(sym).anyDef();
       if (!def || !def->type)
         continue;
       usr = def->type;
@@ -39,8 +39,8 @@ void MessageHandler::ccls_vars(JsonReader &reader, ReplyOnce &reply) {
     }
     case Kind::Type: {
       for (DeclRef dr :
-           GetVarDeclarations(db, db->Type(usr).instances, param.kind))
-        if (auto loc = GetLocationLink(db, wfiles, dr))
+           getVarDeclarations(db, db->getType(usr).instances, param.kind))
+        if (auto loc = getLocationLink(db, wfiles, dr))
           result.push_back(Location(std::move(loc)));
       break;
     }

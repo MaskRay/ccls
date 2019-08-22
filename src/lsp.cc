@@ -11,7 +11,7 @@
 #include <stdio.h>
 
 namespace ccls {
-void Reflect(JsonReader &vis, RequestId &v) {
+void reflect(JsonReader &vis, RequestId &v) {
   if (vis.m->IsInt64()) {
     v.type = RequestId::kInt;
     v.value = std::to_string(int(vis.m->GetInt64()));
@@ -27,27 +27,27 @@ void Reflect(JsonReader &vis, RequestId &v) {
   }
 }
 
-void Reflect(JsonWriter &visitor, RequestId &value) {
+void reflect(JsonWriter &visitor, RequestId &value) {
   switch (value.type) {
   case RequestId::kNone:
-    visitor.Null();
+    visitor.null_();
     break;
   case RequestId::kInt:
-    visitor.Int(atoll(value.value.c_str()));
+    visitor.int_(atoll(value.value.c_str()));
     break;
   case RequestId::kString:
-    visitor.String(value.value.c_str(), value.value.size());
+    visitor.string(value.value.c_str(), value.value.size());
     break;
   }
 }
 
-DocumentUri DocumentUri::FromPath(const std::string &path) {
+DocumentUri DocumentUri::fromPath(const std::string &path) {
   DocumentUri result;
-  result.SetPath(path);
+  result.setPath(path);
   return result;
 }
 
-void DocumentUri::SetPath(const std::string &path) {
+void DocumentUri::setPath(const std::string &path) {
   // file:///c%3A/Users/jacob/Desktop/superindex/indexer/full_tests
   raw_uri = path;
 
@@ -88,7 +88,7 @@ void DocumentUri::SetPath(const std::string &path) {
   raw_uri = std::move(t);
 }
 
-std::string DocumentUri::GetPath() const {
+std::string DocumentUri::getPath() const {
   if (raw_uri.compare(0, 7, "file://")) {
     LOG_S(WARNING)
         << "Received potentially bad URI (not starting with file://): "
@@ -119,11 +119,11 @@ std::string DocumentUri::GetPath() const {
   }
 #endif
   if (g_config)
-    NormalizeFolder(ret);
+    normalizeFolder(ret);
   return ret;
 }
 
-std::string Position::ToString() const {
+std::string Position::toString() const {
   return std::to_string(line) + ":" + std::to_string(character);
 }
 } // namespace ccls

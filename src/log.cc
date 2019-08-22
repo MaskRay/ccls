@@ -30,9 +30,9 @@ Message::Message(Verbosity verbosity, const char *file, int line)
   snprintf(buf, sizeof buf, "%02d:%02d:%02d ", t.tm_hour, t.tm_min, t.tm_sec);
   stream_ << buf;
   {
-    SmallString<32> Name;
-    get_thread_name(Name);
-    stream_ << std::left << std::setw(13) << Name.c_str();
+    SmallString<32> name;
+    get_thread_name(name);
+    stream_ << std::left << std::setw(13) << name.c_str();
   }
   {
     const char *p = strrchr(file, '/');

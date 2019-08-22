@@ -10,7 +10,7 @@
 
 namespace ccls {
 template <typename Node>
-std::vector<Location> FlattenHierarchy(const std::optional<Node> &root) {
+std::vector<Location> flattenHierarchy(const std::optional<Node> &root) {
   if (!root)
     return {};
   std::vector<Location> ret;

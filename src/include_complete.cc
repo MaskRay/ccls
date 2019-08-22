@@ -24,7 +24,7 @@ struct CompletionCandidate {
   CompletionItem completion_item;
 };
 
-std::string ElideLongPath(const std::string &path) {
+std::string elideLongPath(const std::string &path) {
   if (g_config->completion.include.maxPathSize <= 0 ||
       (int)path.size() <= g_config->completion.include.maxPathSize)
     return path;
@@ -33,7 +33,7 @@ std::string ElideLongPath(const std::string &path) {
   return ".." + path.substr(start + 2);
 }
 
-size_t TrimCommonPathPrefix(const std::string &result,
+size_t trimCommonPathPrefix(const std::string &result,
                             const std::string &trimmer) {
 #ifdef _WIN32
   std::string s = result, t = trimmer;
@@ -48,21 +48,20 @@ size_t TrimCommonPathPrefix(const std::string &result,
   return 0;
 }
 
-int TrimPath(Project *project, std::string &path) {
+int trimPath(Project *project, std::string &path) {
   size_t pos = 0;
   int kind = 0;
   for (auto &[root, folder] : project->root2folder)
     for (auto &[search, search_dir_kind] : folder.search_dir2kind)
-      if (int t = TrimCommonPathPrefix(path, search); t > pos)
+      if (int t = trimCommonPathPrefix(path, search); t > pos)
         pos = t, kind = search_dir_kind;
   path = path.substr(pos);
   return kind;
 }
 
-CompletionItem BuildCompletionItem(const std::string &path,
-                                   int kind) {
+CompletionItem buildCompletionItem(const std::string &path, int kind) {
   CompletionItem item;
-  item.label = ElideLongPath(path);
+  item.label = elideLongPath(path);
   item.detail = path; // the include path, used in de-duplicating
   item.textEdit.newText = path;
   item.insertTextFormat = InsertTextFormat::PlainText;
@@ -82,7 +81,7 @@ IncludeComplete::~IncludeComplete() {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
-void IncludeComplete::Rescan() {
+void IncludeComplete::rescan() {
   if (is_scanning || LLVM_VERSION_MAJOR >= 8)
     return;
 
@@ -104,44 +103,42 @@ void IncludeComplete::Rescan() {
         const std::string &search = search_kind.first;
         int kind = search_kind.second;
         assert(search.back() == '/');
-        if (match_ && !match_->Matches(search))
+        if (match_ && !match_->matches(search))
           return;
         bool include_cpp = search.find("include/c++") != std::string::npos;
 
         std::vector<CompletionCandidate> results;
-        GetFilesInFolder(search, true /*recursive*/,
-                         false /*add_folder_to_path*/,
-                         [&](const std::string &path) {
-                           bool ok = include_cpp;
-                           for (StringRef suffix :
-                                g_config->completion.include.suffixWhitelist)
-                             if (StringRef(path).endswith(suffix))
-                               ok = true;
-                           if (!ok)
-                             return;
-                           if (match_ && !match_->Matches(search + path))
-                             return;
+        getFilesInFolder(
+            search, true /*recursive*/, false /*add_folder_to_path*/,
+            [&](const std::string &path) {
+              bool ok = include_cpp;
+              for (StringRef suffix :
+                   g_config->completion.include.suffixWhitelist)
+                if (StringRef(path).endswith(suffix))
+                  ok = true;
+              if (!ok)
+                return;
+              if (match_ && !match_->matches(search + path))
+                return;
 
-                           CompletionCandidate candidate;
-                           candidate.absolute_path = search + path;
-                           candidate.completion_item =
-                               BuildCompletionItem(path, kind);
-                           results.push_back(candidate);
-                         });
+              CompletionCandidate candidate;
+              candidate.absolute_path = search + path;
+              candidate.completion_item = buildCompletionItem(path, kind);
+              results.push_back(candidate);
+            });
 
         std::lock_guard lock(completion_items_mutex);
         for (CompletionCandidate &result : results)
-          InsertCompletionItem(result.absolute_path,
+          insertCompletionItem(result.absolute_path,
                                std::move(result.completion_item));
       }
     }
 
     is_scanning = false;
-  })
-      .detach();
+  }).detach();
 }
 
-void IncludeComplete::InsertCompletionItem(const std::string &absolute_path,
+void IncludeComplete::insertCompletionItem(const std::string &absolute_path,
                                            CompletionItem &&item) {
   if (inserted_paths.try_emplace(item.detail, inserted_paths.size()).second) {
     completion_items.push_back(item);
@@ -155,28 +152,28 @@ void IncludeComplete::InsertCompletionItem(const std::string &absolute_path,
   }
 }
 
-void IncludeComplete::AddFile(const std::string &path) {
+void IncludeComplete::addFile(const std::string &path) {
   bool ok = false;
   for (StringRef suffix : g_config->completion.include.suffixWhitelist)
     if (StringRef(path).endswith(suffix))
       ok = true;
   if (!ok)
     return;
-  if (match_ && !match_->Matches(path))
+  if (match_ && !match_->matches(path))
     return;
 
   std::string trimmed_path = path;
-  int kind = TrimPath(project_, trimmed_path);
-  CompletionItem item = BuildCompletionItem(trimmed_path, kind);
+  int kind = trimPath(project_, trimmed_path);
+  CompletionItem item = buildCompletionItem(trimmed_path, kind);
 
   std::unique_lock<std::mutex> lock(completion_items_mutex, std::defer_lock);
   if (is_scanning)
     lock.lock();
-  InsertCompletionItem(path, std::move(item));
+  insertCompletionItem(path, std::move(item));
 }
 
 std::optional<CompletionItem>
-IncludeComplete::FindCompletionItemForAbsolutePath(
+IncludeComplete::findCompletionItemForAbsolutePath(
     const std::string &absolute_path) {
   std::lock_guard<std::mutex> lock(completion_items_mutex);
 

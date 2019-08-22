@@ -8,13 +8,13 @@
 #include <vector>
 
 namespace ccls {
-std::string NormalizePath(const std::string &path);
+std::string normalizePath(const std::string &path);
 
 // Free any unused memory and return it to the system.
-void FreeUnusedMemory();
+void freeUnusedMemory();
 
 // Stop self and wait for SIGCONT.
-void TraceMe();
+void traceMe();
 
-void SpawnThread(void *(*fn)(void *), void *arg);
+void spawnThread(void *(*fn)(void *), void *arg);
 } // namespace ccls

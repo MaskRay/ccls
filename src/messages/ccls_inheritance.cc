@@ -42,20 +42,20 @@ struct Out_cclsInheritance {
 REFLECT_STRUCT(Out_cclsInheritance, id, kind, name, location, numChildren,
                children);
 
-bool Expand(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
+bool expand(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
             bool qualified, int levels);
 
 template <typename Q>
-bool ExpandHelper(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
+bool expandHelper(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
                   bool qualified, int levels, Q &entity) {
-  const auto *def = entity.AnyDef();
+  const auto *def = entity.anyDef();
   if (def) {
-    entry->name = def->Name(qualified);
+    entry->name = def->name(qualified);
     if (def->spell) {
-      if (auto loc = GetLsLocation(m->db, m->wfiles, *def->spell))
+      if (auto loc = getLsLocation(m->db, m->wfiles, *def->spell))
         entry->location = *loc;
     } else if (entity.declarations.size()) {
-      if (auto loc = GetLsLocation(m->db, m->wfiles, entity.declarations[0]))
+      if (auto loc = getLsLocation(m->db, m->wfiles, entity.declarations[0]))
         entry->location = *loc;
     }
   } else if (!derived) {
@@ -72,7 +72,7 @@ bool ExpandHelper(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
         entry1.id = std::to_string(usr);
         entry1.usr = usr;
         entry1.kind = entry->kind;
-        if (Expand(m, &entry1, derived, qualified, levels - 1))
+        if (expand(m, &entry1, derived, qualified, levels - 1))
           entry->children.push_back(std::move(entry1));
       }
       entry->numChildren = int(entry->children.size());
@@ -87,7 +87,7 @@ bool ExpandHelper(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
         entry1.id = std::to_string(usr);
         entry1.usr = usr;
         entry1.kind = entry->kind;
-        if (Expand(m, &entry1, derived, qualified, levels - 1))
+        if (expand(m, &entry1, derived, qualified, levels - 1))
           entry->children.push_back(std::move(entry1));
       }
       entry->numChildren = int(entry->children.size());
@@ -97,27 +97,28 @@ bool ExpandHelper(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
   return true;
 }
 
-bool Expand(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
+bool expand(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
             bool qualified, int levels) {
   if (entry->kind == Kind::Func)
-    return ExpandHelper(m, entry, derived, qualified, levels,
-                        m->db->Func(entry->usr));
+    return expandHelper(m, entry, derived, qualified, levels,
+                        m->db->getFunc(entry->usr));
   else
-    return ExpandHelper(m, entry, derived, qualified, levels,
-                        m->db->Type(entry->usr));
+    return expandHelper(m, entry, derived, qualified, levels,
+                        m->db->getType(entry->usr));
 }
 
-std::optional<Out_cclsInheritance> BuildInitial(MessageHandler *m, SymbolRef sym, bool derived,
+std::optional<Out_cclsInheritance> buildInitial(MessageHandler *m,
+                                                SymbolRef sym, bool derived,
                                                 bool qualified, int levels) {
   Out_cclsInheritance entry;
   entry.id = std::to_string(sym.usr);
   entry.usr = sym.usr;
   entry.kind = sym.kind;
-  Expand(m, &entry, derived, qualified, levels);
+  expand(m, &entry, derived, qualified, levels);
   return entry;
 }
 
-void Inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
+void inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
   std::optional<Out_cclsInheritance> result;
   if (param.id.size()) {
     try {
@@ -129,19 +130,19 @@ void Inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
     result->id = std::to_string(param.usr);
     result->usr = param.usr;
     result->kind = param.kind;
-    if (!(((param.kind == Kind::Func && m->db->HasFunc(param.usr)) ||
-           (param.kind == Kind::Type && m->db->HasType(param.usr))) &&
-          Expand(m, &*result, param.derived, param.qualified, param.levels)))
+    if (!(((param.kind == Kind::Func && m->db->hasFunc(param.usr)) ||
+           (param.kind == Kind::Type && m->db->hasType(param.usr))) &&
+          expand(m, &*result, param.derived, param.qualified, param.levels)))
       result.reset();
   } else {
-    auto [file, wf] = m->FindOrFail(param.textDocument.uri.GetPath(), reply);
+    auto [file, wf] = m->findOrFail(param.textDocument.uri.getPath(), reply);
     if (!wf) {
       return;
     }
-    for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position))
+    for (SymbolRef sym : findSymbolsAtLocation(wf, file, param.position))
       if (sym.kind == Kind::Func || sym.kind == Kind::Type) {
-        result = BuildInitial(m, sym, param.derived, param.qualified,
-                              param.levels);
+        result =
+            buildInitial(m, sym, param.derived, param.qualified, param.levels);
         break;
       }
   }
@@ -149,14 +150,14 @@ void Inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
   if (param.hierarchy)
     reply(result);
   else
-    reply(FlattenHierarchy(result));
+    reply(flattenHierarchy(result));
 }
 } // namespace
 
 void MessageHandler::ccls_inheritance(JsonReader &reader, ReplyOnce &reply) {
   Param param;
-  Reflect(reader, param);
-  Inheritance(this, param, reply);
+  reflect(reader, param);
+  inheritance(this, param, reply);
 }
 
 void MessageHandler::textDocument_implementation(
@@ -165,6 +166,6 @@ void MessageHandler::textDocument_implementation(
   param1.textDocument = param.textDocument;
   param1.position = param.position;
   param1.derived = true;
-  Inheritance(this, param1, reply);
+  inheritance(this, param1, reply);
 }
 } // namespace ccls

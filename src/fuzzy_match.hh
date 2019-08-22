@@ -17,7 +17,7 @@ public:
   constexpr static int kMinScore = INT_MIN / 4;
 
   FuzzyMatcher(std::string_view pattern, int case_sensitivity);
-  int Match(std::string_view text, bool strict);
+  int match(std::string_view text, bool strict);
 
 private:
   int case_sensitivity;
@@ -28,7 +28,7 @@ private:
   int pat_role[kMaxPat], text_role[kMaxText];
   int dp[2][kMaxText + 1][2];
 
-  int MatchScore(int i, int j, bool last);
-  int MissScore(int j, bool last);
+  int matchScore(int i, int j, bool last);
+  int missScore(int j, bool last);
 };
 } // namespace ccls

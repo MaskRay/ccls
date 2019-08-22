@@ -12,25 +12,24 @@ namespace ccls {
 using namespace clang;
 
 namespace {
-llvm::Expected<tooling::Replacements>
-FormatCode(std::string_view code, std::string_view file, tooling::Range Range) {
-  StringRef Code(code.data(), code.size()), File(file.data(), file.size());
-  auto Style = format::getStyle("file", File, "LLVM", Code, nullptr);
-  if (!Style)
-    return Style.takeError();
-  tooling::Replacements IncludeReplaces =
-      format::sortIncludes(*Style, Code, {Range}, File);
-  auto Changed = tooling::applyAllReplacements(Code, IncludeReplaces);
-  if (!Changed)
-    return Changed.takeError();
-  return IncludeReplaces.merge(format::reformat(
-      *Style, *Changed,
-      tooling::calculateRangesAfterReplacements(IncludeReplaces, {Range}),
-      File));
+llvm::Expected<tooling::Replacements> formatCode(StringRef code, StringRef file,
+                                                 tooling::Range range) {
+  auto style = format::getStyle("file", file, "LLVM", code, nullptr);
+  if (!style)
+    return style.takeError();
+  tooling::Replacements includeReplaces =
+      format::sortIncludes(*style, code, {range}, file);
+  auto changed = tooling::applyAllReplacements(code, includeReplaces);
+  if (!changed)
+    return changed.takeError();
+  return includeReplaces.merge(format::reformat(
+      *style, *changed,
+      tooling::calculateRangesAfterReplacements(includeReplaces, {range}),
+      file));
 }
 
-std::vector<TextEdit> ReplacementsToEdits(std::string_view code,
-                                          const tooling::Replacements &Repls) {
+std::vector<TextEdit> replacementsToEdits(std::string_view code,
+                                          const tooling::Replacements &repls) {
   std::vector<TextEdit> ret;
   int i = 0, line = 0, col = 0;
   auto move = [&](int p) {
@@ -46,57 +45,59 @@ std::vector<TextEdit> ReplacementsToEdits(std::string_view code,
         col++;
       }
   };
-  for (const auto &R : Repls) {
-    move(R.getOffset());
+  for (const auto &r : repls) {
+    move(r.getOffset());
     int l = line, c = col;
-    move(R.getOffset() + R.getLength());
-    ret.push_back({{{l, c}, {line, col}}, R.getReplacementText().str()});
+    move(r.getOffset() + r.getLength());
+    ret.push_back({{{l, c}, {line, col}}, r.getReplacementText().str()});
   }
   return ret;
 }
 
-void Format(ReplyOnce &reply, WorkingFile *wfile, tooling::Range range) {
+void format(ReplyOnce &reply, WorkingFile *wfile, tooling::Range range) {
   std::string_view code = wfile->buffer_content;
-  auto ReplsOrErr = FormatCode(code, wfile->filename, range);
-  if (ReplsOrErr)
-    reply(ReplacementsToEdits(code, *ReplsOrErr));
+  auto replsOrErr = formatCode(
+      StringRef(code.data(), code.size()),
+      StringRef(wfile->filename.data(), wfile->filename.size()), range);
+  if (replsOrErr)
+    reply(replacementsToEdits(code, *replsOrErr));
   else
-    reply.Error(ErrorCode::UnknownErrorCode,
-                llvm::toString(ReplsOrErr.takeError()));
+    reply.error(ErrorCode::UnknownErrorCode,
+                llvm::toString(replsOrErr.takeError()));
 }
 } // namespace
 
 void MessageHandler::textDocument_formatting(DocumentFormattingParam &param,
                                              ReplyOnce &reply) {
-  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!wf)
     return;
-  Format(reply, wf, {0, (unsigned)wf->buffer_content.size()});
+  format(reply, wf, {0, (unsigned)wf->buffer_content.size()});
 }
 
 void MessageHandler::textDocument_onTypeFormatting(
     DocumentOnTypeFormattingParam &param, ReplyOnce &reply) {
-  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!wf) {
     return;
   }
   std::string_view code = wf->buffer_content;
-  int pos = GetOffsetForPosition(param.position, code);
+  int pos = getOffsetForPosition(param.position, code);
   auto lbrace = code.find_last_of('{', pos);
   if (lbrace == std::string::npos)
     lbrace = pos;
-  Format(reply, wf, {(unsigned)lbrace, unsigned(pos - lbrace)});
+  format(reply, wf, {(unsigned)lbrace, unsigned(pos - lbrace)});
 }
 
 void MessageHandler::textDocument_rangeFormatting(
     DocumentRangeFormattingParam &param, ReplyOnce &reply) {
-  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!wf) {
     return;
   }
   std::string_view code = wf->buffer_content;
-  int begin = GetOffsetForPosition(param.range.start, code),
-      end = GetOffsetForPosition(param.range.end, code);
-  Format(reply, wf, {(unsigned)begin, unsigned(end - begin)});
+  int begin = getOffsetForPosition(param.range.start, code),
+      end = getOffsetForPosition(param.range.end, code);
+  format(reply, wf, {(unsigned)begin, unsigned(end - begin)});
 }
 } // namespace ccls

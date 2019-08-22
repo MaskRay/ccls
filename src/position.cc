@@ -14,7 +14,7 @@
 #include <stdlib.h>
 
 namespace ccls {
-Pos Pos::FromString(const std::string &encoded) {
+Pos Pos::fromString(const std::string &encoded) {
   char *p = const_cast<char *>(encoded.c_str());
   uint16_t line = uint16_t(strtoul(p, &p, 10) - 1);
   assert(*p == ':');
@@ -23,13 +23,13 @@ Pos Pos::FromString(const std::string &encoded) {
   return {line, column};
 }
 
-std::string Pos::ToString() {
+std::string Pos::toString() {
   char buf[99];
   snprintf(buf, sizeof buf, "%d:%d", line + 1, column + 1);
   return buf;
 }
 
-Range Range::FromString(const std::string &encoded) {
+Range Range::fromString(const std::string &encoded) {
   Pos start, end;
   char *p = const_cast<char *>(encoded.c_str());
   start.line = uint16_t(strtoul(p, &p, 10) - 1);
@@ -46,53 +46,53 @@ Range Range::FromString(const std::string &encoded) {
   return {start, end};
 }
 
-bool Range::Contains(int line, int column) const {
+bool Range::contains(int line, int column) const {
   if (line > INT16_MAX)
     return false;
   Pos p{(uint16_t)line, (int16_t)std::min<int>(column, INT16_MAX)};
   return !(p < start) && p < end;
 }
 
-std::string Range::ToString() {
+std::string Range::toString() {
   char buf[99];
   snprintf(buf, sizeof buf, "%d:%d-%d:%d", start.line + 1, start.column + 1,
            end.line + 1, end.column + 1);
   return buf;
 }
 
-void Reflect(JsonReader &vis, Pos &v) { v = Pos::FromString(vis.GetString()); }
-void Reflect(JsonReader &vis, Range &v) {
-  v = Range::FromString(vis.GetString());
+void reflect(JsonReader &vis, Pos &v) { v = Pos::fromString(vis.getString()); }
+void reflect(JsonReader &vis, Range &v) {
+  v = Range::fromString(vis.getString());
 }
 
-void Reflect(JsonWriter &vis, Pos &v) {
-  std::string output = v.ToString();
-  vis.String(output.c_str(), output.size());
+void reflect(JsonWriter &vis, Pos &v) {
+  std::string output = v.toString();
+  vis.string(output.c_str(), output.size());
 }
-void Reflect(JsonWriter &vis, Range &v) {
-  std::string output = v.ToString();
-  vis.String(output.c_str(), output.size());
-}
-
-void Reflect(BinaryReader &visitor, Pos &value) {
-  Reflect(visitor, value.line);
-  Reflect(visitor, value.column);
-}
-void Reflect(BinaryReader &visitor, Range &value) {
-  Reflect(visitor, value.start.line);
-  Reflect(visitor, value.start.column);
-  Reflect(visitor, value.end.line);
-  Reflect(visitor, value.end.column);
+void reflect(JsonWriter &vis, Range &v) {
+  std::string output = v.toString();
+  vis.string(output.c_str(), output.size());
 }
 
-void Reflect(BinaryWriter &vis, Pos &v) {
-  Reflect(vis, v.line);
-  Reflect(vis, v.column);
+void reflect(BinaryReader &visitor, Pos &value) {
+  reflect(visitor, value.line);
+  reflect(visitor, value.column);
 }
-void Reflect(BinaryWriter &vis, Range &v) {
-  Reflect(vis, v.start.line);
-  Reflect(vis, v.start.column);
-  Reflect(vis, v.end.line);
-  Reflect(vis, v.end.column);
+void reflect(BinaryReader &visitor, Range &value) {
+  reflect(visitor, value.start.line);
+  reflect(visitor, value.start.column);
+  reflect(visitor, value.end.line);
+  reflect(visitor, value.end.column);
+}
+
+void reflect(BinaryWriter &vis, Pos &v) {
+  reflect(vis, v.line);
+  reflect(vis, v.column);
+}
+void reflect(BinaryWriter &vis, Range &v) {
+  reflect(vis, v.start.line);
+  reflect(vis, v.start.column);
+  reflect(vis, v.end.line);
+  reflect(vis, v.end.column);
 }
 } // namespace ccls

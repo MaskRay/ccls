@@ -21,7 +21,7 @@ MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
 namespace ccls {
 REFLECT_STRUCT(CodeActionParam::Context, diagnostics);
 REFLECT_STRUCT(CodeActionParam, textDocument, range, context);
-void Reflect(JsonReader &, EmptyParam &) {}
+void reflect(JsonReader &, EmptyParam &) {}
 REFLECT_STRUCT(TextDocumentParam, textDocument);
 REFLECT_STRUCT(DidOpenTextDocumentParam, textDocument);
 REFLECT_STRUCT(TextDocumentContentChangeEvent, range, rangeLength, text);
@@ -97,11 +97,11 @@ struct ScanLineEvent {
 };
 } // namespace
 
-void ReplyOnce::NotOpened(std::string_view path) {
-  Error(ErrorCode::InvalidRequest, std::string(path) + " is not opened");
+void ReplyOnce::notOpened(std::string_view path) {
+  error(ErrorCode::InvalidRequest, std::string(path) + " is not opened");
 }
 
-void ReplyOnce::ReplyLocationLink(std::vector<LocationLink> &result) {
+void ReplyOnce::replyLocationLink(std::vector<LocationLink> &result) {
   std::sort(result.begin(), result.end());
   result.erase(std::unique(result.begin(), result.end()), result.end());
   if (result.size() > g_config->xref.maxNum)
@@ -116,7 +116,7 @@ void ReplyOnce::ReplyLocationLink(std::vector<LocationLink> &result) {
   }
 }
 
-void MessageHandler::Bind(const char *method,
+void MessageHandler::bind(const char *method,
                           void (MessageHandler::*handler)(JsonReader &)) {
   method2notification[method] = [this, handler](JsonReader &reader) {
     (this->*handler)(reader);
@@ -124,16 +124,16 @@ void MessageHandler::Bind(const char *method,
 }
 
 template <typename Param>
-void MessageHandler::Bind(const char *method,
+void MessageHandler::bind(const char *method,
                           void (MessageHandler::*handler)(Param &)) {
   method2notification[method] = [this, handler](JsonReader &reader) {
     Param param{};
-    Reflect(reader, param);
+    reflect(reader, param);
     (this->*handler)(param);
   };
 }
 
-void MessageHandler::Bind(const char *method,
+void MessageHandler::bind(const char *method,
                           void (MessageHandler::*handler)(JsonReader &,
                                                           ReplyOnce &)) {
   method2request[method] = [this, handler](JsonReader &reader,
@@ -143,83 +143,84 @@ void MessageHandler::Bind(const char *method,
 }
 
 template <typename Param>
-void MessageHandler::Bind(const char *method,
+void MessageHandler::bind(const char *method,
                           void (MessageHandler::*handler)(Param &,
                                                           ReplyOnce &)) {
   method2request[method] = [this, handler](JsonReader &reader,
                                            ReplyOnce &reply) {
     Param param{};
-    Reflect(reader, param);
+    reflect(reader, param);
     (this->*handler)(param, reply);
   };
 }
 
 MessageHandler::MessageHandler() {
   // clang-format off
-  Bind("$ccls/call", &MessageHandler::ccls_call);
-  Bind("$ccls/fileInfo", &MessageHandler::ccls_fileInfo);
-  Bind("$ccls/info", &MessageHandler::ccls_info);
-  Bind("$ccls/inheritance", &MessageHandler::ccls_inheritance);
-  Bind("$ccls/member", &MessageHandler::ccls_member);
-  Bind("$ccls/navigate", &MessageHandler::ccls_navigate);
-  Bind("$ccls/reload", &MessageHandler::ccls_reload);
-  Bind("$ccls/vars", &MessageHandler::ccls_vars);
-  Bind("exit", &MessageHandler::exit);
-  Bind("initialize", &MessageHandler::initialize);
-  Bind("initialized", &MessageHandler::initialized);
-  Bind("shutdown", &MessageHandler::shutdown);
-  Bind("textDocument/codeAction", &MessageHandler::textDocument_codeAction);
-  Bind("textDocument/codeLens", &MessageHandler::textDocument_codeLens);
-  Bind("textDocument/completion", &MessageHandler::textDocument_completion);
-  Bind("textDocument/declaration", &MessageHandler::textDocument_declaration);
-  Bind("textDocument/definition", &MessageHandler::textDocument_definition);
-  Bind("textDocument/didChange", &MessageHandler::textDocument_didChange);
-  Bind("textDocument/didClose", &MessageHandler::textDocument_didClose);
-  Bind("textDocument/didOpen", &MessageHandler::textDocument_didOpen);
-  Bind("textDocument/didSave", &MessageHandler::textDocument_didSave);
-  Bind("textDocument/documentHighlight", &MessageHandler::textDocument_documentHighlight);
-  Bind("textDocument/documentLink", &MessageHandler::textDocument_documentLink);
-  Bind("textDocument/documentSymbol", &MessageHandler::textDocument_documentSymbol);
-  Bind("textDocument/foldingRange", &MessageHandler::textDocument_foldingRange);
-  Bind("textDocument/formatting", &MessageHandler::textDocument_formatting);
-  Bind("textDocument/hover", &MessageHandler::textDocument_hover);
-  Bind("textDocument/implementation", &MessageHandler::textDocument_implementation);
-  Bind("textDocument/onTypeFormatting", &MessageHandler::textDocument_onTypeFormatting);
-  Bind("textDocument/rangeFormatting", &MessageHandler::textDocument_rangeFormatting);
-  Bind("textDocument/references", &MessageHandler::textDocument_references);
-  Bind("textDocument/rename", &MessageHandler::textDocument_rename);
-  Bind("textDocument/signatureHelp", &MessageHandler::textDocument_signatureHelp);
-  Bind("textDocument/typeDefinition", &MessageHandler::textDocument_typeDefinition);
-  Bind("workspace/didChangeConfiguration", &MessageHandler::workspace_didChangeConfiguration);
-  Bind("workspace/didChangeWatchedFiles", &MessageHandler::workspace_didChangeWatchedFiles);
-  Bind("workspace/didChangeWorkspaceFolders", &MessageHandler::workspace_didChangeWorkspaceFolders);
-  Bind("workspace/executeCommand", &MessageHandler::workspace_executeCommand);
-  Bind("workspace/symbol", &MessageHandler::workspace_symbol);
+  bind("$ccls/call", &MessageHandler::ccls_call);
+  bind("$ccls/fileInfo", &MessageHandler::ccls_fileInfo);
+  bind("$ccls/info", &MessageHandler::ccls_info);
+  bind("$ccls/inheritance", &MessageHandler::ccls_inheritance);
+  bind("$ccls/member", &MessageHandler::ccls_member);
+  bind("$ccls/navigate", &MessageHandler::ccls_navigate);
+  bind("$ccls/reload", &MessageHandler::ccls_reload);
+  bind("$ccls/vars", &MessageHandler::ccls_vars);
+  bind("exit", &MessageHandler::exit);
+  bind("initialize", &MessageHandler::initialize);
+  bind("initialized", &MessageHandler::initialized);
+  bind("shutdown", &MessageHandler::shutdown);
+  bind("textDocument/codeAction", &MessageHandler::textDocument_codeAction);
+  bind("textDocument/codeLens", &MessageHandler::textDocument_codeLens);
+  bind("textDocument/completion", &MessageHandler::textDocument_completion);
+  bind("textDocument/declaration", &MessageHandler::textDocument_declaration);
+  bind("textDocument/definition", &MessageHandler::textDocument_definition);
+  bind("textDocument/didChange", &MessageHandler::textDocument_didChange);
+  bind("textDocument/didClose", &MessageHandler::textDocument_didClose);
+  bind("textDocument/didOpen", &MessageHandler::textDocument_didOpen);
+  bind("textDocument/didSave", &MessageHandler::textDocument_didSave);
+  bind("textDocument/documentHighlight", &MessageHandler::textDocument_documentHighlight);
+  bind("textDocument/documentLink", &MessageHandler::textDocument_documentLink);
+  bind("textDocument/documentSymbol", &MessageHandler::textDocument_documentSymbol);
+  bind("textDocument/foldingRange", &MessageHandler::textDocument_foldingRange);
+  bind("textDocument/formatting", &MessageHandler::textDocument_formatting);
+  bind("textDocument/hover", &MessageHandler::textDocument_hover);
+  bind("textDocument/implementation", &MessageHandler::textDocument_implementation);
+  bind("textDocument/onTypeFormatting", &MessageHandler::textDocument_onTypeFormatting);
+  bind("textDocument/rangeFormatting", &MessageHandler::textDocument_rangeFormatting);
+  bind("textDocument/references", &MessageHandler::textDocument_references);
+  bind("textDocument/rename", &MessageHandler::textDocument_rename);
+  bind("textDocument/signatureHelp", &MessageHandler::textDocument_signatureHelp);
+  bind("textDocument/typeDefinition", &MessageHandler::textDocument_typeDefinition);
+  bind("workspace/didChangeConfiguration", &MessageHandler::workspace_didChangeConfiguration);
+  bind("workspace/didChangeWatchedFiles", &MessageHandler::workspace_didChangeWatchedFiles);
+  bind("workspace/didChangeWorkspaceFolders", &MessageHandler::workspace_didChangeWorkspaceFolders);
+  bind("workspace/executeCommand", &MessageHandler::workspace_executeCommand);
+  bind("workspace/symbol", &MessageHandler::workspace_symbol);
   // clang-format on
 }
 
-void MessageHandler::Run(InMessage &msg) {
+void MessageHandler::run(InMessage &msg) {
   rapidjson::Document &doc = *msg.document;
   rapidjson::Value null;
   auto it = doc.FindMember("params");
   JsonReader reader(it != doc.MemberEnd() ? &it->value : &null);
-  if (msg.id.Valid()) {
+  if (msg.id.valid()) {
     ReplyOnce reply{*this, msg.id};
     auto it = method2request.find(msg.method);
     if (it != method2request.end()) {
       try {
         it->second(reader, reply);
       } catch (std::invalid_argument &ex) {
-        reply.Error(ErrorCode::InvalidParams,
+        reply.error(ErrorCode::InvalidParams,
                     "invalid params of " + msg.method + ": expected " +
-                        ex.what() + " for " + reader.GetPath());
+                        ex.what() + " for " + reader.getPath());
       } catch (NotIndexed &) {
         throw;
       } catch (...) {
-        reply.Error(ErrorCode::InternalError, "failed to process " + msg.method);
+        reply.error(ErrorCode::InternalError,
+                    "failed to process " + msg.method);
       }
     } else {
-      reply.Error(ErrorCode::MethodNotFound, "unknown request " + msg.method);
+      reply.error(ErrorCode::MethodNotFound, "unknown request " + msg.method);
     }
   } else {
     auto it = method2notification.find(msg.method);
@@ -229,15 +230,14 @@ void MessageHandler::Run(InMessage &msg) {
       } catch (...) {
         ShowMessageParam param{MessageType::Error,
                                std::string("failed to process ") + msg.method};
-        pipeline::Notify(window_showMessage, param);
+        pipeline::notify(window_showMessage, param);
       }
   }
 }
 
-QueryFile *MessageHandler::FindFile(const std::string &path,
-                                    int *out_file_id) {
+QueryFile *MessageHandler::findFile(const std::string &path, int *out_file_id) {
   QueryFile *ret = nullptr;
-  auto it = db->name2file_id.find(LowerPathIfInsensitive(path));
+  auto it = db->name2file_id.find(lowerPathIfInsensitive(path));
   if (it != db->name2file_id.end()) {
     QueryFile &file = db->files[it->second];
     if (file.def) {
@@ -253,44 +253,45 @@ QueryFile *MessageHandler::FindFile(const std::string &path,
 }
 
 std::pair<QueryFile *, WorkingFile *>
-MessageHandler::FindOrFail(const std::string &path, ReplyOnce &reply,
+MessageHandler::findOrFail(const std::string &path, ReplyOnce &reply,
                            int *out_file_id) {
-  WorkingFile *wf = wfiles->GetFile(path);
+  WorkingFile *wf = wfiles->getFile(path);
   if (!wf) {
-    reply.NotOpened(path);
+    reply.notOpened(path);
     return {nullptr, nullptr};
   }
-  QueryFile *file = FindFile(path, out_file_id);
+  QueryFile *file = findFile(path, out_file_id);
   if (!file) {
     if (!overdue)
       throw NotIndexed{path};
-    reply.Error(ErrorCode::InvalidRequest, "not indexed");
+    reply.error(ErrorCode::InvalidRequest, "not indexed");
     return {nullptr, nullptr};
   }
   return {file, wf};
 }
 
-void EmitSkippedRanges(WorkingFile *wfile, QueryFile &file) {
+void emitSkippedRanges(WorkingFile *wfile, QueryFile &file) {
   CclsSetSkippedRanges params;
-  params.uri = DocumentUri::FromPath(wfile->filename);
+  params.uri = DocumentUri::fromPath(wfile->filename);
   for (Range skipped : file.def->skipped_ranges)
-    if (auto ls_skipped = GetLsRange(wfile, skipped))
+    if (auto ls_skipped = getLsRange(wfile, skipped))
       params.skippedRanges.push_back(*ls_skipped);
-  pipeline::Notify("$ccls/publishSkippedRanges", params);
+  pipeline::notify("$ccls/publishSkippedRanges", params);
 }
 
-void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
+void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
   static GroupMatch match(g_config->highlight.whitelist,
                           g_config->highlight.blacklist);
   assert(file.def);
   if (wfile->buffer_content.size() > g_config->highlight.largeFileSize ||
-      !match.Matches(file.def->path))
+      !match.matches(file.def->path))
     return;
 
   // Group symbols together.
   std::unordered_map<SymbolIdx, CclsSemanticHighlightSymbol> grouped_symbols;
   for (auto [sym, refcnt] : file.symbol2refcnt) {
-    if (refcnt <= 0) continue;
+    if (refcnt <= 0)
+      continue;
     std::string_view detailed_name;
     SymbolKind parent_kind = SymbolKind::Unknown;
     SymbolKind kind = SymbolKind::Unknown;
@@ -301,12 +302,12 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
     case Kind::Func: {
       idx = db->func_usr[sym.usr];
       const QueryFunc &func = db->funcs[idx];
-      const QueryFunc::Def *def = func.AnyDef();
+      const QueryFunc::Def *def = func.anyDef();
       if (!def)
         continue; // applies to for loop
       // Don't highlight overloadable operators or implicit lambda ->
       // std::function constructor.
-      std::string_view short_name = def->Name(false);
+      std::string_view short_name = def->name(false);
       if (short_name.compare(0, 8, "operator") == 0)
         continue; // applies to for loop
       kind = def->kind;
@@ -363,7 +364,7 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
       continue; // applies to for loop
     }
 
-    if (std::optional<lsRange> loc = GetLsRange(wfile, sym.range)) {
+    if (std::optional<lsRange> loc = getLsRange(wfile, sym.range)) {
       auto it = grouped_symbols.find(sym);
       if (it != grouped_symbols.end()) {
         it->second.lsRanges.push_back(*loc);
@@ -419,7 +420,7 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
   }
 
   CclsSemanticHighlight params;
-  params.uri = DocumentUri::FromPath(wfile->filename);
+  params.uri = DocumentUri::fromPath(wfile->filename);
   // Transform lsRange into pair<int, int> (offset pairs)
   if (!g_config->highlight.lsRanges) {
     std::vector<std::pair<lsRange, CclsSemanticHighlightSymbol *>> scratch;
@@ -465,6 +466,6 @@ void EmitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
   for (auto &entry : grouped_symbols)
     if (entry.second.ranges.size() || entry.second.lsRanges.size())
       params.symbols.push_back(std::move(entry.second));
-  pipeline::Notify("$ccls/publishSemanticHighlight", params);
+  pipeline::notify("$ccls/publishSemanticHighlight", params);
 }
 } // namespace ccls

@@ -37,12 +37,11 @@ struct Diag : DiagBase {
   std::vector<TextEdit> edits;
 };
 
-TextEdit ToTextEdit(const clang::SourceManager &SM,
-                      const clang::LangOptions &L,
-                      const clang::FixItHint &FixIt);
+TextEdit toTextEdit(const clang::SourceManager &SM, const clang::LangOptions &L,
+                    const clang::FixItHint &FixIt);
 
 template <typename K, typename V> struct LruCache {
-  std::shared_ptr<V> Get(const K &key) {
+  std::shared_ptr<V> get(const K &key) {
     for (auto it = items.begin(); it != items.end(); ++it)
       if (it->first == key) {
         auto x = std::move(*it);
@@ -52,7 +51,7 @@ template <typename K, typename V> struct LruCache {
       }
     return nullptr;
   }
-  std::shared_ptr<V> Take(const K &key) {
+  std::shared_ptr<V> take(const K &key) {
     for (auto it = items.begin(); it != items.end(); ++it)
       if (it->first == key) {
         auto x = std::move(it->second);
@@ -61,13 +60,13 @@ template <typename K, typename V> struct LruCache {
       }
     return nullptr;
   }
-  void Insert(const K &key, std::shared_ptr<V> value) {
+  void insert(const K &key, std::shared_ptr<V> value) {
     if ((int)items.size() >= capacity)
       items.pop_back();
     items.emplace(items.begin(), key, std::move(value));
   }
-  void Clear() { items.clear(); }
-  void SetCapacity(int cap) { capacity = cap; }
+  void clear() { items.clear(); }
+  void setCapacity(int cap) { capacity = cap; }
 
 private:
   std::vector<std::pair<K, std::shared_ptr<V>>> items;
@@ -83,20 +82,20 @@ struct Session {
   bool inferred = false;
 
   // TODO share
-  llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS =
+  llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> fs =
       llvm::vfs::getRealFileSystem();
-  std::shared_ptr<clang::PCHContainerOperations> PCH;
+  std::shared_ptr<clang::PCHContainerOperations> pch;
 
   Session(const Project::Entry &file, WorkingFiles *wfiles,
-                    std::shared_ptr<clang::PCHContainerOperations> PCH)
-      : file(file), wfiles(wfiles), PCH(PCH) {}
+          std::shared_ptr<clang::PCHContainerOperations> pch)
+      : file(file), wfiles(wfiles), pch(pch) {}
 
-  std::shared_ptr<PreambleData> GetPreamble();
+  std::shared_ptr<PreambleData> getPreamble();
 };
 
 struct SemaManager {
-  using OnDiagnostic = std::function<void(
-      std::string path, std::vector<Diagnostic> diagnostics)>;
+  using OnDiagnostic = std::function<void(std::string path,
+                                          std::vector<Diagnostic> diagnostics)>;
   // If OptConsumer is nullptr, the request has been cancelled.
   using OnComplete =
       std::function<void(clang::CodeCompleteConsumer *OptConsumer)>;
@@ -107,14 +106,14 @@ struct SemaManager {
              const Position &position,
              std::unique_ptr<clang::CodeCompleteConsumer> Consumer,
              clang::CodeCompleteOptions CCOpts, const OnComplete &on_complete)
-        : id(id), path(path), position(position), Consumer(std::move(Consumer)),
-          CCOpts(CCOpts), on_complete(on_complete) {}
+        : id(id), path(path), position(position), consumer(std::move(Consumer)),
+          cc_opts(CCOpts), on_complete(on_complete) {}
 
     RequestId id;
     std::string path;
     Position position;
-    std::unique_ptr<clang::CodeCompleteConsumer> Consumer;
-    clang::CodeCompleteOptions CCOpts;
+    std::unique_ptr<clang::CodeCompleteConsumer> consumer;
+    clang::CodeCompleteOptions cc_opts;
     OnComplete on_complete;
   };
   struct DiagTask {
@@ -129,16 +128,16 @@ struct SemaManager {
   };
 
   SemaManager(Project *project, WorkingFiles *wfiles,
-                    OnDiagnostic on_diagnostic, OnDropped on_dropped);
+              OnDiagnostic on_diagnostic, OnDropped on_dropped);
 
-  void ScheduleDiag(const std::string &path, int debounce);
-  void OnView(const std::string &path);
-  void OnSave(const std::string &path);
-  void OnClose(const std::string &path);
-  std::shared_ptr<ccls::Session> EnsureSession(const std::string &path,
+  void scheduleDiag(const std::string &path, int debounce);
+  void onView(const std::string &path);
+  void onSave(const std::string &path);
+  void onClose(const std::string &path);
+  std::shared_ptr<ccls::Session> ensureSession(const std::string &path,
                                                bool *created = nullptr);
-  void Clear();
-  void Quit();
+  void clear();
+  void quit();
 
   // Global state.
   Project *project_;
@@ -156,24 +155,23 @@ struct SemaManager {
   ThreadedQueue<DiagTask> diag_tasks;
   ThreadedQueue<PreambleTask> preamble_tasks;
 
-  std::shared_ptr<clang::PCHContainerOperations> PCH;
+  std::shared_ptr<clang::PCHContainerOperations> pch;
 };
 
 // Cached completion information, so we can give fast completion results when
 // the user erases a character. vscode will resend the completion request if
 // that happens.
-template <typename T>
-struct CompleteConsumerCache {
+template <typename T> struct CompleteConsumerCache {
   std::mutex mutex;
   std::string path;
   Position position;
   T result;
 
-  template <typename Fn> void WithLock(Fn &&fn) {
+  template <typename Fn> void withLock(Fn &&fn) {
     std::lock_guard lock(mutex);
     fn();
   }
-  bool IsCacheValid(const std::string path, Position position) {
+  bool isCacheValid(const std::string path, Position position) {
     std::lock_guard lock(mutex);
     return this->path == path && this->position == position;
   }

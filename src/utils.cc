@@ -39,7 +39,7 @@ Matcher::Matcher(const std::string &pattern)
 
 Matcher::~Matcher() {}
 
-bool Matcher::Matches(const std::string &text) const {
+bool Matcher::matches(const std::string &text) const {
   return std::regex_search(text, impl->regex, std::regex_constants::match_any);
 }
 
@@ -50,7 +50,7 @@ GroupMatch::GroupMatch(const std::vector<std::string> &whitelist,
     params.type = MessageType::Error;
     params.message =
         "failed to parse EMCAScript regex " + pattern + " : " + what;
-    pipeline::Notify(window_showMessage, params);
+    pipeline::notify(window_showMessage, params);
   };
   for (const std::string &pattern : whitelist) {
     try {
@@ -68,13 +68,13 @@ GroupMatch::GroupMatch(const std::vector<std::string> &whitelist,
   }
 }
 
-bool GroupMatch::Matches(const std::string &text,
+bool GroupMatch::matches(const std::string &text,
                          std::string *blacklist_pattern) const {
   for (const Matcher &m : whitelist)
-    if (m.Matches(text))
+    if (m.matches(text))
       return true;
   for (const Matcher &m : blacklist)
-    if (m.Matches(text)) {
+    if (m.matches(text)) {
       if (blacklist_pattern)
         *blacklist_pattern = m.pattern;
       return false;
@@ -82,7 +82,7 @@ bool GroupMatch::Matches(const std::string &text,
   return true;
 }
 
-uint64_t HashUsr(llvm::StringRef s) {
+uint64_t hashUsr(llvm::StringRef s) {
   union {
     uint64_t ret;
     uint8_t out[8];
@@ -95,7 +95,7 @@ uint64_t HashUsr(llvm::StringRef s) {
   return ret;
 }
 
-std::string LowerPathIfInsensitive(const std::string &path) {
+std::string lowerPathIfInsensitive(const std::string &path) {
 #if defined(_WIN32)
   std::string ret = path;
   for (char &c : ret)
@@ -106,12 +106,12 @@ std::string LowerPathIfInsensitive(const std::string &path) {
 #endif
 }
 
-void EnsureEndsInSlash(std::string &path) {
+void ensureEndsInSlash(std::string &path) {
   if (path.empty() || path[path.size() - 1] != '/')
     path += '/';
 }
 
-std::string EscapeFileName(std::string path) {
+std::string escapeFileName(std::string path) {
   bool slash = path.size() && path.back() == '/';
 #ifdef _WIN32
   std::replace(path.begin(), path.end(), ':', '@');
@@ -122,22 +122,22 @@ std::string EscapeFileName(std::string path) {
   return path;
 }
 
-std::string ResolveIfRelative(const std::string &directory,
+std::string resolveIfRelative(const std::string &directory,
                               const std::string &path) {
   if (sys::path::is_absolute(path))
     return path;
-  SmallString<256> Ret;
-  sys::path::append(Ret, directory, path);
-  return NormalizePath(Ret.str());
+  SmallString<256> ret;
+  sys::path::append(ret, directory, path);
+  return normalizePath(ret.str());
 }
 
-std::string RealPath(const std::string &path) {
+std::string realPath(const std::string &path) {
   SmallString<256> buf;
   sys::fs::real_path(path, buf);
   return buf.empty() ? path : llvm::sys::path::convert_to_slash(buf);
 }
 
-bool NormalizeFolder(std::string &path) {
+bool normalizeFolder(std::string &path) {
   for (auto &[root, real] : g_config->workspaceFolders)
     if (real.size() && llvm::StringRef(path).startswith(real)) {
       path = root + path.substr(real.size());
@@ -146,14 +146,14 @@ bool NormalizeFolder(std::string &path) {
   return false;
 }
 
-std::optional<int64_t> LastWriteTime(const std::string &path) {
-  sys::fs::file_status Status;
-  if (sys::fs::status(path, Status))
+std::optional<int64_t> lastWriteTime(const std::string &path) {
+  sys::fs::file_status status;
+  if (sys::fs::status(path, status))
     return {};
-  return sys::toTimeT(Status.getLastModificationTime());
+  return sys::toTimeT(status.getLastModificationTime());
 }
 
-std::optional<std::string> ReadContent(const std::string &filename) {
+std::optional<std::string> readContent(const std::string &filename) {
   char buf[4096];
   std::string ret;
   FILE *f = fopen(filename.c_str(), "rb");
@@ -166,7 +166,7 @@ std::optional<std::string> ReadContent(const std::string &filename) {
   return ret;
 }
 
-void WriteToFile(const std::string &filename, const std::string &content) {
+void writeToFile(const std::string &filename, const std::string &content) {
   FILE *f = fopen(filename.c_str(), "wb");
   if (!f ||
       (content.size() && fwrite(content.c_str(), content.size(), 1, f) != 1)) {
@@ -178,7 +178,7 @@ void WriteToFile(const std::string &filename, const std::string &content) {
 
 // Find discontinous |search| in |content|.
 // Return |found| and the count of skipped chars before found.
-int ReverseSubseqMatch(std::string_view pat, std::string_view text,
+int reverseSubseqMatch(std::string_view pat, std::string_view text,
                        int case_sensitivity) {
   if (case_sensitivity == 1)
     case_sensitivity = std::any_of(pat.begin(), pat.end(), isupper) ? 2 : 0;
@@ -193,5 +193,5 @@ int ReverseSubseqMatch(std::string_view pat, std::string_view text,
   return -1;
 }
 
-std::string GetDefaultResourceDirectory() { return CLANG_RESOURCE_DIRECTORY; }
+std::string getDefaultResourceDirectory() { return CLANG_RESOURCE_DIRECTORY; }
 } // namespace ccls

@@ -27,9 +27,9 @@ struct VFS {
   std::unordered_map<std::string, State> state;
   std::mutex mutex;
 
-  void Clear();
-  int Loaded(const std::string &path);
-  bool Stamp(const std::string &path, int64_t ts, int step);
+  void clear();
+  int loaded(const std::string &path);
+  bool stamp(const std::string &path, int64_t ts, int step);
 };
 
 enum class IndexMode {
@@ -40,39 +40,39 @@ enum class IndexMode {
 };
 
 namespace pipeline {
-extern std::atomic<bool> quit;
+extern std::atomic<bool> g_quit;
 extern std::atomic<int64_t> loaded_ts, pending_index_requests;
 extern int64_t tick;
 
-void ThreadEnter();
-void ThreadLeave();
-void Init();
-void LaunchStdin();
-void LaunchStdout();
-void Indexer_Main(SemaManager *manager, VFS *vfs, Project *project,
+void threadEnter();
+void threadLeave();
+void init();
+void launchStdin();
+void launchStdout();
+void indexer_Main(SemaManager *manager, VFS *vfs, Project *project,
                   WorkingFiles *wfiles);
-void MainLoop();
-void Standalone(const std::string &root);
+void mainLoop();
+void standalone(const std::string &root);
 
-void Index(const std::string &path, const std::vector<const char *> &args,
+void index(const std::string &path, const std::vector<const char *> &args,
            IndexMode mode, bool must_exist, RequestId id = {});
-void RemoveCache(const std::string &path);
-std::optional<std::string> LoadIndexedContent(const std::string& path);
+void removeCache(const std::string &path);
+std::optional<std::string> loadIndexedContent(const std::string &path);
 
-void NotifyOrRequest(const char *method, bool request,
+void notifyOrRequest(const char *method, bool request,
                      const std::function<void(JsonWriter &)> &fn);
-template <typename T> void Notify(const char *method, T &result) {
-  NotifyOrRequest(method, false, [&](JsonWriter &w) { Reflect(w, result); });
+template <typename T> void notify(const char *method, T &result) {
+  notifyOrRequest(method, false, [&](JsonWriter &w) { reflect(w, result); });
 }
-template <typename T> void Request(const char *method, T &result) {
-  NotifyOrRequest(method, true, [&](JsonWriter &w) { Reflect(w, result); });
+template <typename T> void request(const char *method, T &result) {
+  notifyOrRequest(method, true, [&](JsonWriter &w) { reflect(w, result); });
 }
 
-void Reply(RequestId id, const std::function<void(JsonWriter &)> &fn);
+void reply(RequestId id, const std::function<void(JsonWriter &)> &fn);
 
-void ReplyError(RequestId id, const std::function<void(JsonWriter &)> &fn);
-template <typename T> void ReplyError(RequestId id, T &result) {
-  ReplyError(id, [&](JsonWriter &w) { Reflect(w, result); });
+void replyError(RequestId id, const std::function<void(JsonWriter &)> &fn);
+template <typename T> void replyError(RequestId id, T &result) {
+  replyError(id, [&](JsonWriter &w) { reflect(w, result); });
 }
 } // namespace pipeline
 } // namespace ccls

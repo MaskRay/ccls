@@ -28,12 +28,12 @@ REFLECT_STRUCT(ParameterInformation, label);
 REFLECT_STRUCT(SignatureInformation, label, documentation, parameters);
 REFLECT_STRUCT(SignatureHelp, signatures, activeSignature, activeParameter);
 
-void BuildOptional(const CodeCompletionString &CCS, std::string &label,
+void buildOptional(const CodeCompletionString &ccs, std::string &label,
                    std::vector<ParameterInformation> &ls_params) {
-  for (const auto &Chunk : CCS) {
-    switch (Chunk.Kind) {
+  for (const auto &chunk : ccs) {
+    switch (chunk.Kind) {
     case CodeCompletionString::CK_Optional:
-      BuildOptional(*Chunk.Optional, label, ls_params);
+      buildOptional(*chunk.Optional, label, ls_params);
       break;
     case CodeCompletionString::CK_Placeholder:
       // A string that acts as a placeholder for, e.g., a function call
@@ -44,79 +44,81 @@ void BuildOptional(const CodeCompletionString &CCS, std::string &label,
       // the code-completion location within a function call, message send,
       // macro invocation, etc.
       int off = (int)label.size();
-      label += Chunk.Text;
+      label += chunk.Text;
       ls_params.push_back({{off, (int)label.size()}});
       break;
     }
     case CodeCompletionString::CK_VerticalSpace:
       break;
     default:
-      label += Chunk.Text;
+      label += chunk.Text;
       break;
     }
   }
 }
 
 class SignatureHelpConsumer : public CodeCompleteConsumer {
-  std::shared_ptr<GlobalCodeCompletionAllocator> Alloc;
-  CodeCompletionTUInfo CCTUInfo;
+  std::shared_ptr<GlobalCodeCompletionAllocator> alloc;
+  CodeCompletionTUInfo cCTUInfo;
+
 public:
   bool from_cache;
   SignatureHelp ls_sighelp;
-  SignatureHelpConsumer(const clang::CodeCompleteOptions &Opts,
-                        bool from_cache)
+  SignatureHelpConsumer(const clang::CodeCompleteOptions &opts, bool from_cache)
       :
 #if LLVM_VERSION_MAJOR >= 9 // rC358696
-        CodeCompleteConsumer(Opts),
+        CodeCompleteConsumer(opts),
 #else
-        CodeCompleteConsumer(Opts, false),
+        CodeCompleteConsumer(opts, false),
 #endif
-        Alloc(std::make_shared<GlobalCodeCompletionAllocator>()),
-        CCTUInfo(Alloc), from_cache(from_cache) {}
-  void ProcessOverloadCandidates(Sema &S, unsigned CurrentArg,
-                                 OverloadCandidate *Candidates,
-                                 unsigned NumCandidates
+        alloc(std::make_shared<GlobalCodeCompletionAllocator>()),
+        cCTUInfo(alloc), from_cache(from_cache) {
+  }
+  void ProcessOverloadCandidates(Sema &s, unsigned currentArg,
+                                 OverloadCandidate *candidates,
+                                 unsigned numCandidates
 #if LLVM_VERSION_MAJOR >= 8
                                  ,
-                                 SourceLocation OpenParLoc
+                                 SourceLocation openParLoc
 #endif
                                  ) override {
-    ls_sighelp.activeParameter = (int)CurrentArg;
-    for (unsigned i = 0; i < NumCandidates; i++) {
-      OverloadCandidate Cand = Candidates[i];
+    ls_sighelp.activeParameter = (int)currentArg;
+    for (unsigned i = 0; i < numCandidates; i++) {
+      OverloadCandidate cand = candidates[i];
       // We want to avoid showing instantiated signatures, because they may be
       // long in some cases (e.g. when 'T' is substituted with 'std::string', we
       // would get 'std::basic_string<char>').
-      if (auto *Func = Cand.getFunction())
-        if (auto *Pattern = Func->getTemplateInstantiationPattern())
-          Cand = OverloadCandidate(Pattern);
+      if (auto *func = cand.getFunction())
+        if (auto *pattern = func->getTemplateInstantiationPattern())
+          cand = OverloadCandidate(pattern);
 
-      const auto *CCS =
-          Cand.CreateSignatureString(CurrentArg, S, *Alloc, CCTUInfo, true);
+      const auto *ccs =
+          cand.CreateSignatureString(currentArg, s, *alloc, cCTUInfo, true);
 
       const char *ret_type = nullptr;
       SignatureInformation &ls_sig = ls_sighelp.signatures.emplace_back();
-      const RawComment *RC = getCompletionComment(S.getASTContext(), Cand.getFunction());
-      ls_sig.documentation = RC ? RC->getBriefText(S.getASTContext()) : "";
-      for (const auto &Chunk : *CCS)
-        switch (Chunk.Kind) {
+      const RawComment *rc =
+          getCompletionComment(s.getASTContext(), cand.getFunction());
+      ls_sig.documentation = rc ? rc->getBriefText(s.getASTContext()) : "";
+      for (const auto &chunk : *ccs)
+        switch (chunk.Kind) {
         case CodeCompletionString::CK_ResultType:
-          ret_type = Chunk.Text;
+          ret_type = chunk.Text;
           break;
         case CodeCompletionString::CK_Placeholder:
         case CodeCompletionString::CK_CurrentParameter: {
           int off = (int)ls_sig.label.size();
-          ls_sig.label += Chunk.Text;
+          ls_sig.label += chunk.Text;
           ls_sig.parameters.push_back({{off, (int)ls_sig.label.size()}});
           break;
         }
         case CodeCompletionString::CK_Optional:
-          BuildOptional(*Chunk.Optional, ls_sig.label, ls_sig.parameters);
+          buildOptional(*chunk.Optional, ls_sig.label, ls_sig.parameters);
           break;
         case CodeCompletionString::CK_VerticalSpace:
           break;
         default:
-          ls_sig.label += Chunk.Text;
+          ls_sig.label += chunk.Text;
           break;
         }
       if (ret_type) {
@@ -124,19 +126,18 @@ public:
         ls_sig.label += ret_type;
       }
     }
-    std::sort(
-        ls_sighelp.signatures.begin(), ls_sighelp.signatures.end(),
-        [](const SignatureInformation &l, const SignatureInformation &r) {
-          if (l.parameters.size() != r.parameters.size())
-            return l.parameters.size() < r.parameters.size();
-          if (l.label.size() != r.label.size())
-            return l.label.size() < r.label.size();
-          return l.label < r.label;
-        });
+    std::sort(ls_sighelp.signatures.begin(), ls_sighelp.signatures.end(),
+              [](const SignatureInformation &l, const SignatureInformation &r) {
+                if (l.parameters.size() != r.parameters.size())
+                  return l.parameters.size() < r.parameters.size();
+                if (l.label.size() != r.label.size())
+                  return l.label.size() < r.label.size();
+                return l.label < r.label;
+              });
   }
 
-  CodeCompletionAllocator &getAllocator() override { return *Alloc; }
-  CodeCompletionTUInfo &getCodeCompletionTUInfo() override { return CCTUInfo; }
+  CodeCompletionAllocator &getAllocator() override { return *alloc; }
+  CodeCompletionTUInfo &getCodeCompletionTUInfo() override { return cCTUInfo; }
 };
 } // namespace
 
@@ -144,45 +145,45 @@ void MessageHandler::textDocument_signatureHelp(
     TextDocumentPositionParam &param, ReplyOnce &reply) {
   static CompleteConsumerCache<SignatureHelp> cache;
   Position begin_pos = param.position;
-  std::string path = param.textDocument.uri.GetPath();
-  WorkingFile *wf = wfiles->GetFile(path);
+  std::string path = param.textDocument.uri.getPath();
+  WorkingFile *wf = wfiles->getFile(path);
   if (!wf) {
-    reply.NotOpened(path);
+    reply.notOpened(path);
     return;
   }
   {
     std::string filter;
     Position end_pos;
-    begin_pos = wf->GetCompletionPosition(param.position, &filter, &end_pos);
+    begin_pos = wf->getCompletionPosition(param.position, &filter, &end_pos);
   }
 
   SemaManager::OnComplete callback =
-      [reply, path, begin_pos](CodeCompleteConsumer *OptConsumer) {
-        if (!OptConsumer)
+      [reply, path, begin_pos](CodeCompleteConsumer *optConsumer) {
+        if (!optConsumer)
           return;
-        auto *Consumer = static_cast<SignatureHelpConsumer *>(OptConsumer);
-        reply(Consumer->ls_sighelp);
-        if (!Consumer->from_cache) {
-          cache.WithLock([&]() {
+        auto *consumer = static_cast<SignatureHelpConsumer *>(optConsumer);
+        reply(consumer->ls_sighelp);
+        if (!consumer->from_cache) {
+          cache.withLock([&]() {
             cache.path = path;
             cache.position = begin_pos;
-            cache.result = Consumer->ls_sighelp;
+            cache.result = consumer->ls_sighelp;
           });
         }
       };
 
-  CodeCompleteOptions CCOpts;
-  CCOpts.IncludeGlobals = false;
-  CCOpts.IncludeMacros = false;
-  CCOpts.IncludeBriefComments = true;
-  if (cache.IsCacheValid(path, begin_pos)) {
-    SignatureHelpConsumer Consumer(CCOpts, true);
-    cache.WithLock([&]() { Consumer.ls_sighelp = cache.result; });
-    callback(&Consumer);
+  CodeCompleteOptions ccOpts;
+  ccOpts.IncludeGlobals = false;
+  ccOpts.IncludeMacros = false;
+  ccOpts.IncludeBriefComments = true;
+  if (cache.isCacheValid(path, begin_pos)) {
+    SignatureHelpConsumer consumer(ccOpts, true);
+    cache.withLock([&]() { consumer.ls_sighelp = cache.result; });
+    callback(&consumer);
   } else {
-    manager->comp_tasks.PushBack(std::make_unique<SemaManager::CompTask>(
-        reply.id, param.textDocument.uri.GetPath(), param.position,
-        std::make_unique<SignatureHelpConsumer>(CCOpts, false), CCOpts,
+    manager->comp_tasks.pushBack(std::make_unique<SemaManager::CompTask>(
+        reply.id, param.textDocument.uri.getPath(), param.position,
+        std::make_unique<SignatureHelpConsumer>(ccOpts, false), ccOpts,
         callback));
   }
 }

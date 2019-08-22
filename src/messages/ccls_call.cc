@@ -60,10 +60,10 @@ struct Out_cclsCall {
 REFLECT_STRUCT(Out_cclsCall, id, name, location, callType, numChildren,
                children);
 
-bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
+bool expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
             CallType call_type, bool qualified, int levels) {
-  const QueryFunc &func = m->db->Func(entry->usr);
-  const QueryFunc::Def *def = func.AnyDef();
+  const QueryFunc &func = m->db->getFunc(entry->usr);
+  const QueryFunc::Def *def = func.anyDef();
   entry->numChildren = 0;
   if (!def)
     return false;
@@ -73,17 +73,17 @@ bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
       Out_cclsCall entry1;
       entry1.id = std::to_string(sym.usr);
       entry1.usr = sym.usr;
-      if (auto loc = GetLsLocation(m->db, m->wfiles,
+      if (auto loc = getLsLocation(m->db, m->wfiles,
                                    Use{{sym.range, sym.role}, file_id}))
         entry1.location = *loc;
       entry1.callType = call_type1;
-      if (Expand(m, &entry1, callee, call_type, qualified, levels - 1))
+      if (expand(m, &entry1, callee, call_type, qualified, levels - 1))
         entry->children.push_back(std::move(entry1));
     }
   };
   auto handle_uses = [&](const QueryFunc &func, CallType call_type) {
     if (callee) {
-      if (const auto *def = func.AnyDef())
+      if (const auto *def = func.anyDef())
         for (SymbolRef sym : def->callees)
           if (sym.kind == Kind::Func)
             handle(sym, def->file_id, call_type);
@@ -92,7 +92,7 @@ bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
         const QueryFile &file1 = m->db->files[use.file_id];
         Maybe<ExtentRef> best;
         for (auto [sym, refcnt] : file1.symbol2refcnt)
-          if (refcnt > 0 && sym.extent.Valid() && sym.kind == Kind::Func &&
+          if (refcnt > 0 && sym.extent.valid() && sym.kind == Kind::Func &&
               sym.extent.start <= use.range.start &&
               use.range.end <= sym.extent.end &&
               (!best || best->extent.start < sym.extent.start))
@@ -106,7 +106,7 @@ bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
   std::unordered_set<Usr> seen;
   seen.insert(func.usr);
   std::vector<const QueryFunc *> stack;
-  entry->name = def->Name(qualified);
+  entry->name = def->name(qualified);
   handle_uses(func, CallType::Direct);
 
   // Callers/callees of base functions.
@@ -115,8 +115,8 @@ bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
     while (stack.size()) {
       const QueryFunc &func1 = *stack.back();
       stack.pop_back();
-      if (auto *def1 = func1.AnyDef()) {
-        EachDefinedFunc(m->db, def1->bases, [&](QueryFunc &func2) {
+      if (auto *def1 = func1.anyDef()) {
+        eachDefinedFunc(m->db, def1->bases, [&](QueryFunc &func2) {
           if (!seen.count(func2.usr)) {
             seen.insert(func2.usr);
             stack.push_back(&func2);
@@ -133,7 +133,7 @@ bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
     while (stack.size()) {
       const QueryFunc &func1 = *stack.back();
       stack.pop_back();
-      EachDefinedFunc(m->db, func1.derived, [&](QueryFunc &func2) {
+      eachDefinedFunc(m->db, func1.derived, [&](QueryFunc &func2) {
         if (!seen.count(func2.usr)) {
           seen.insert(func2.usr);
           stack.push_back(&func2);
@@ -150,10 +150,10 @@ bool Expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
   return true;
 }
 
-std::optional<Out_cclsCall> BuildInitial(MessageHandler *m, Usr root_usr,
+std::optional<Out_cclsCall> buildInitial(MessageHandler *m, Usr root_usr,
                                          bool callee, CallType call_type,
                                          bool qualified, int levels) {
-  const auto *def = m->db->Func(root_usr).AnyDef();
+  const auto *def = m->db->getFunc(root_usr).anyDef();
   if (!def)
     return {};
 
@@ -162,17 +162,17 @@ std::optional<Out_cclsCall> BuildInitial(MessageHandler *m, Usr root_usr,
   entry.usr = root_usr;
   entry.callType = CallType::Direct;
   if (def->spell) {
-    if (auto loc = GetLsLocation(m->db, m->wfiles, *def->spell))
+    if (auto loc = getLsLocation(m->db, m->wfiles, *def->spell))
       entry.location = *loc;
   }
-  Expand(m, &entry, callee, call_type, qualified, levels);
+  expand(m, &entry, callee, call_type, qualified, levels);
   return entry;
 }
 } // namespace
 
 void MessageHandler::ccls_call(JsonReader &reader, ReplyOnce &reply) {
   Param param;
-  Reflect(reader, param);
+  reflect(reader, param);
   std::optional<Out_cclsCall> result;
   if (param.id.size()) {
     try {
@@ -184,16 +184,16 @@ void MessageHandler::ccls_call(JsonReader &reader, ReplyOnce &reply) {
     result->id = std::to_string(param.usr);
     result->usr = param.usr;
     result->callType = CallType::Direct;
-    if (db->HasFunc(param.usr))
-      Expand(this, &*result, param.callee, param.callType, param.qualified,
+    if (db->hasFunc(param.usr))
+      expand(this, &*result, param.callee, param.callType, param.qualified,
              param.levels);
   } else {
-    auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+    auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
     if (!wf)
       return;
-    for (SymbolRef sym : FindSymbolsAtLocation(wf, file, param.position)) {
+    for (SymbolRef sym : findSymbolsAtLocation(wf, file, param.position)) {
       if (sym.kind == Kind::Func) {
-        result = BuildInitial(this, sym.usr, param.callee, param.callType,
+        result = buildInitial(this, sym.usr, param.callee, param.callType,
                               param.qualified, param.levels);
         break;
       }
@@ -203,6 +203,6 @@ void MessageHandler::ccls_call(JsonReader &reader, ReplyOnce &reply) {
   if (param.hierarchy)
     reply(result);
   else
-    reply(FlattenHierarchy(result));
+    reply(flattenHierarchy(result));
 }
 } // namespace ccls

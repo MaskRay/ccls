@@ -20,20 +20,20 @@ struct CodeAction {
   WorkspaceEdit edit;
 };
 REFLECT_STRUCT(CodeAction, title, kind, edit);
-}
+} // namespace
 void MessageHandler::textDocument_codeAction(CodeActionParam &param,
                                              ReplyOnce &reply) {
-  WorkingFile *wf = FindOrFail(param.textDocument.uri.GetPath(), reply).second;
+  WorkingFile *wf = findOrFail(param.textDocument.uri.getPath(), reply).second;
   if (!wf)
     return;
   std::vector<CodeAction> result;
   std::vector<Diagnostic> diagnostics;
-  wfiles->WithLock([&]() { diagnostics = wf->diagnostics; });
+  wfiles->withLock([&]() { diagnostics = wf->diagnostics; });
   for (Diagnostic &diag : diagnostics)
     if (diag.fixits_.size() &&
-        (param.range.Intersects(diag.range) ||
+        (param.range.intersects(diag.range) ||
          llvm::any_of(diag.fixits_, [&](const TextEdit &edit) {
-           return param.range.Intersects(edit.range);
+           return param.range.intersects(edit.range);
          }))) {
       CodeAction &cmd = result.emplace_back();
       cmd.title = "FixIt: " + diag.message;
@@ -64,12 +64,11 @@ REFLECT_STRUCT(Cmd_xref, usr, kind, field);
 REFLECT_STRUCT(Command, title, command, arguments);
 REFLECT_STRUCT(CodeLens, range, command);
 
-template <typename T>
-std::string ToString(T &v) {
+template <typename T> std::string toString(T &v) {
   rapidjson::StringBuffer output;
   rapidjson::Writer<rapidjson::StringBuffer> writer(output);
   JsonWriter json_writer(&writer);
-  Reflect(json_writer, v);
+  reflect(json_writer, v);
   return output.GetString();
 }
 
@@ -82,16 +81,16 @@ struct CommonCodeLensParams {
 
 void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
                                            ReplyOnce &reply) {
-  auto [file, wf] = FindOrFail(param.textDocument.uri.GetPath(), reply);
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!wf)
     return;
 
   std::vector<CodeLens> result;
-  auto Add = [&, wf = wf](const char *singular, Cmd_xref show, Range range,
+  auto add = [&, wf = wf](const char *singular, Cmd_xref show, Range range,
                           int num, bool force_display = false) {
     if (!num && !force_display)
       return;
-    std::optional<lsRange> ls_range = GetLsRange(wf, range);
+    std::optional<lsRange> ls_range = getLsRange(wf, range);
     if (!ls_range)
       return;
     CodeLens &code_lens = result.emplace_back();
@@ -101,52 +100,52 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
     bool plural = num > 1 && singular[strlen(singular) - 1] != 'd';
     code_lens.command->title =
         llvm::formatv("{0} {1}{2}", num, singular, plural ? "s" : "").str();
-    code_lens.command->arguments.push_back(ToString(show));
+    code_lens.command->arguments.push_back(toString(show));
   };
 
   std::unordered_set<Range> seen;
   for (auto [sym, refcnt] : file->symbol2refcnt) {
-    if (refcnt <= 0 || !sym.extent.Valid() || !seen.insert(sym.range).second)
+    if (refcnt <= 0 || !sym.extent.valid() || !seen.insert(sym.range).second)
       continue;
     switch (sym.kind) {
     case Kind::Func: {
-      QueryFunc &func = db->GetFunc(sym);
-      const QueryFunc::Def *def = func.AnyDef();
+      QueryFunc &func = db->getFunc(sym);
+      const QueryFunc::Def *def = func.anyDef();
       if (!def)
         continue;
-      std::vector<Use> base_uses = GetUsesForAllBases(db, func);
-      std::vector<Use> derived_uses = GetUsesForAllDerived(db, func);
-      Add("ref", {sym.usr, Kind::Func, "uses"}, sym.range, func.uses.size(),
+      std::vector<Use> base_uses = getUsesForAllBases(db, func);
+      std::vector<Use> derived_uses = getUsesForAllDerived(db, func);
+      add("ref", {sym.usr, Kind::Func, "uses"}, sym.range, func.uses.size(),
           base_uses.empty());
       if (base_uses.size())
-        Add("b.ref", {sym.usr, Kind::Func, "bases uses"}, sym.range,
+        add("b.ref", {sym.usr, Kind::Func, "bases uses"}, sym.range,
             base_uses.size());
       if (derived_uses.size())
-        Add("d.ref", {sym.usr, Kind::Func, "derived uses"}, sym.range,
+        add("d.ref", {sym.usr, Kind::Func, "derived uses"}, sym.range,
             derived_uses.size());
       if (base_uses.empty())
-        Add("base", {sym.usr, Kind::Func, "bases"}, sym.range,
+        add("base", {sym.usr, Kind::Func, "bases"}, sym.range,
             def->bases.size());
-      Add("derived", {sym.usr, Kind::Func, "derived"}, sym.range,
+      add("derived", {sym.usr, Kind::Func, "derived"}, sym.range,
           func.derived.size());
       break;
     }
     case Kind::Type: {
-      QueryType &type = db->GetType(sym);
-      Add("ref", {sym.usr, Kind::Type, "uses"}, sym.range, type.uses.size(),
+      QueryType &type = db->getType(sym);
+      add("ref", {sym.usr, Kind::Type, "uses"}, sym.range, type.uses.size(),
           true);
-      Add("derived", {sym.usr, Kind::Type, "derived"}, sym.range,
+      add("derived", {sym.usr, Kind::Type, "derived"}, sym.range,
           type.derived.size());
-      Add("var", {sym.usr, Kind::Type, "instances"}, sym.range,
+      add("var", {sym.usr, Kind::Type, "instances"}, sym.range,
           type.instances.size());
       break;
     }
     case Kind::Var: {
-      QueryVar &var = db->GetVar(sym);
-      const QueryVar::Def *def = var.AnyDef();
+      QueryVar &var = db->getVar(sym);
+      const QueryVar::Def *def = var.anyDef();
       if (!def || (def->is_local() && !g_config->codeLens.localVariables))
         continue;
-      Add("ref", {sym.usr, Kind::Var, "uses"}, sym.range, var.uses.size(),
+      add("ref", {sym.usr, Kind::Var, "uses"}, sym.range, var.uses.size(),
           def->kind != SymbolKind::Macro);
       break;
     }
@@ -162,7 +161,7 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
 void MessageHandler::workspace_executeCommand(JsonReader &reader,
                                               ReplyOnce &reply) {
   Command param;
-  Reflect(reader, param);
+  reflect(reader, param);
   if (param.arguments.empty()) {
     return;
   }
@@ -171,45 +170,45 @@ void MessageHandler::workspace_executeCommand(JsonReader &reader,
   JsonReader json_reader{&reader1};
   if (param.command == ccls_xref) {
     Cmd_xref cmd;
-    Reflect(json_reader, cmd);
+    reflect(json_reader, cmd);
     std::vector<Location> result;
-    auto Map = [&](auto &&uses) {
+    auto map = [&](auto &&uses) {
       for (auto &use : uses)
-        if (auto loc = GetLsLocation(db, wfiles, use))
+        if (auto loc = getLsLocation(db, wfiles, use))
           result.push_back(std::move(*loc));
     };
     switch (cmd.kind) {
     case Kind::Func: {
-      QueryFunc &func = db->Func(cmd.usr);
+      QueryFunc &func = db->getFunc(cmd.usr);
       if (cmd.field == "bases") {
-        if (auto *def = func.AnyDef())
-          Map(GetFuncDeclarations(db, def->bases));
+        if (auto *def = func.anyDef())
+          map(getFuncDeclarations(db, def->bases));
       } else if (cmd.field == "bases uses") {
-        Map(GetUsesForAllBases(db, func));
+        map(getUsesForAllBases(db, func));
       } else if (cmd.field == "derived") {
-        Map(GetFuncDeclarations(db, func.derived));
+        map(getFuncDeclarations(db, func.derived));
       } else if (cmd.field == "derived uses") {
-        Map(GetUsesForAllDerived(db, func));
+        map(getUsesForAllDerived(db, func));
       } else if (cmd.field == "uses") {
-        Map(func.uses);
+        map(func.uses);
       }
       break;
     }
     case Kind::Type: {
-      QueryType &type = db->Type(cmd.usr);
+      QueryType &type = db->getType(cmd.usr);
       if (cmd.field == "derived") {
-        Map(GetTypeDeclarations(db, type.derived));
+        map(getTypeDeclarations(db, type.derived));
       } else if (cmd.field == "instances") {
-        Map(GetVarDeclarations(db, type.instances, 7));
+        map(getVarDeclarations(db, type.instances, 7));
       } else if (cmd.field == "uses") {
-        Map(type.uses);
+        map(type.uses);
       }
       break;
     }
     case Kind::Var: {
-      QueryVar &var = db->Var(cmd.usr);
+      QueryVar &var = db->getVar(cmd.usr);
       if (cmd.field == "uses")
-        Map(var.uses);
+        map(var.uses);
       break;
     }
     default:

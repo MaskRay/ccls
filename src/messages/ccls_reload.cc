@@ -22,13 +22,13 @@ REFLECT_STRUCT(Param, dependencies, whitelist, blacklist);
 
 void MessageHandler::ccls_reload(JsonReader &reader) {
   Param param;
-  Reflect(reader, param);
-    // Send index requests for every file.
+  reflect(reader, param);
+  // Send index requests for every file.
   if (param.whitelist.empty() && param.blacklist.empty()) {
-    vfs->Clear();
+    vfs->clear();
     db->clear();
-    project->Index(wfiles, RequestId());
-    manager->Clear();
+    project->index(wfiles, RequestId());
+    manager->clear();
     return;
   }
 }
