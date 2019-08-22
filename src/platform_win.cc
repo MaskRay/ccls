@@ -60,6 +60,6 @@ void TraceMe() {}
 void SpawnThread(void *(*fn)(void *), void *arg) {
   std::thread(fn, arg).detach();
 }
-}
+} // namespace ccls
 
 #endif

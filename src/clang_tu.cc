@@ -26,23 +26,23 @@ using namespace clang;
 
 namespace ccls {
 std::string pathFromFileEntry(const FileEntry &file) {
-  std::string ret = NormalizePath(file.getName());
+  std::string ret = normalizePath(file.getName());
   // Resolve symlinks outside of workspace folders, e.g. /usr/include/c++/7.3.0
-  return NormalizeFolder(ret) ? ret : RealPath(ret);
+  return normalizeFolder(ret) ? ret : realPath(ret);
 }
 
-static Pos Decomposed2LineAndCol(const SourceManager &SM,
-                                 std::pair<FileID, unsigned> I) {
-  int l = SM.getLineNumber(I.first, I.second) - 1,
-      c = SM.getColumnNumber(I.first, I.second) - 1;
-  bool Invalid = false;
-  StringRef Buf = SM.getBufferData(I.first, &Invalid);
-  if (!Invalid) {
-    StringRef P = Buf.substr(I.second - c, c);
+static Pos decomposed2LineAndCol(const SourceManager &sm,
+                                 std::pair<FileID, unsigned> i) {
+  int l = sm.getLineNumber(i.first, i.second) - 1,
+      c = sm.getColumnNumber(i.first, i.second) - 1;
+  bool invalid = false;
+  StringRef buf = sm.getBufferData(i.first, &invalid);
+  if (!invalid) {
+    StringRef p = buf.substr(i.second - c, c);
     c = 0;
-    for (size_t i = 0; i < P.size(); )
-      if (c++, (uint8_t)P[i++] >= 128)
-        while (i < P.size() && (uint8_t)P[i] >= 128 && (uint8_t)P[i] < 192)
+    for (size_t i = 0; i < p.size();)
+      if (c++, (uint8_t)p[i++] >= 128)
+        while (i < p.size() && (uint8_t)p[i] >= 128 && (uint8_t)p[i] < 192)
           i++;
   }
   return {(uint16_t)std::min<int>(l, UINT16_MAX),
@@ -51,14 +51,14 @@ static Pos Decomposed2LineAndCol(const SourceManager &SM,
 
 Range fromCharSourceRange(const SourceManager &sm, const LangOptions &lang,
                           CharSourceRange csr, FileID *fid) {
-  SourceLocation BLoc = csr.getBegin(), ELoc = csr.getEnd();
-  std::pair<FileID, unsigned> BInfo = sm.getDecomposedLoc(BLoc),
-                              EInfo = sm.getDecomposedLoc(ELoc);
+  SourceLocation bloc = csr.getBegin(), eloc = csr.getEnd();
+  std::pair<FileID, unsigned> binfo = sm.getDecomposedLoc(bloc),
+                              einfo = sm.getDecomposedLoc(eloc);
   if (csr.isTokenRange())
-    EInfo.second += Lexer::MeasureTokenLength(ELoc, sm, lang);
+    einfo.second += Lexer::MeasureTokenLength(eloc, sm, lang);
   if (fid)
-    *fid = BInfo.first;
-  return {Decomposed2LineAndCol(sm, BInfo), Decomposed2LineAndCol(sm, EInfo)};
+    *fid = binfo.first;
+  return {decomposed2LineAndCol(sm, binfo), decomposed2LineAndCol(sm, einfo)};
 }
 
 Range fromTokenRange(const SourceManager &sm, const LangOptions &lang,
@@ -70,39 +70,39 @@ Range fromTokenRangeDefaulted(const SourceManager &sm, const LangOptions &lang,
                               SourceRange sr, FileID fid, Range range) {
   auto decomposed = sm.getDecomposedLoc(sm.getExpansionLoc(sr.getBegin()));
   if (decomposed.first == fid)
-    range.start = Decomposed2LineAndCol(sm, decomposed);
+    range.start = decomposed2LineAndCol(sm, decomposed);
   SourceLocation loc = sm.getExpansionLoc(sr.getEnd());
   decomposed = sm.getDecomposedLoc(loc);
   if (decomposed.first == fid) {
     decomposed.second += Lexer::MeasureTokenLength(loc, sm, lang);
-    range.end = Decomposed2LineAndCol(sm, decomposed);
+    range.end = decomposed2LineAndCol(sm, decomposed);
   }
   return range;
 }
 
 std::unique_ptr<CompilerInvocation>
-BuildCompilerInvocation(const std::string &main, std::vector<const char *> args,
-                        IntrusiveRefCntPtr<llvm::vfs::FileSystem> VFS) {
+buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
+                        IntrusiveRefCntPtr<llvm::vfs::FileSystem> vfs) {
   std::string save = "-resource-dir=" + g_config->clang.resourceDir;
   args.push_back(save.c_str());
-  IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
+  IntrusiveRefCntPtr<DiagnosticsEngine> diags(
       CompilerInstance::createDiagnostics(new DiagnosticOptions,
                                           new IgnoringDiagConsumer, true));
-  std::unique_ptr<CompilerInvocation> CI =
-      createInvocationFromCommandLine(args, Diags, VFS);
-  if (CI) {
-    CI->getDiagnosticOpts().IgnoreWarnings = true;
-    CI->getFrontendOpts().DisableFree = false;
-    CI->getLangOpts()->SpellChecking = false;
-    auto &IS = CI->getFrontendOpts().Inputs;
-    if (IS.size())
-      IS[0] = FrontendInputFile(main, IS[0].getKind(), IS[0].isSystem());
+  std::unique_ptr<CompilerInvocation> ci =
+      createInvocationFromCommandLine(args, diags, vfs);
+  if (ci) {
+    ci->getDiagnosticOpts().IgnoreWarnings = true;
+    ci->getFrontendOpts().DisableFree = false;
+    ci->getLangOpts()->SpellChecking = false;
+    auto &isec = ci->getFrontendOpts().Inputs;
+    if (isec.size())
+      isec[0] = FrontendInputFile(main, isec[0].getKind(), isec[0].isSystem());
   }
-  return CI;
+  return ci;
 }
 
 // clang::BuiltinType::getName without PrintingPolicy
-const char *ClangBuiltinTypeName(int kind) {
+const char *clangBuiltinTypeName(int kind) {
   switch (BuiltinType::Kind(kind)) {
   case BuiltinType::Void:
     return "void";

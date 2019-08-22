@@ -17,8 +17,8 @@ limitations under the License.
 
 #include "position.hh"
 
-#include <clang/Basic/LangOptions.h>
 #include <clang/Basic/FileManager.h>
+#include <clang/Basic/LangOptions.h>
 #include <clang/Basic/SourceManager.h>
 #include <clang/Frontend/CompilerInstance.h>
 
@@ -47,9 +47,8 @@ Range fromTokenRangeDefaulted(const clang::SourceManager &sm,
                               Range range);
 
 std::unique_ptr<clang::CompilerInvocation>
-BuildCompilerInvocation(const std::string &main,
-                        std::vector<const char *> args,
+buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
                         llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> VFS);
 
-const char *ClangBuiltinTypeName(int);
+const char *clangBuiltinTypeName(int);
 } // namespace ccls
