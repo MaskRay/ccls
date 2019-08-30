@@ -378,7 +378,7 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
 #ifdef _WIN32
     char tmpdir[L_tmpnam];
     tmpnam_s(tmpdir, L_tmpnam);
-    CDBDir = tmpdir;
+    cDBDir = tmpdir;
     if (sys::fs::create_directory(tmpdir, false))
       return;
 #else
@@ -414,9 +414,9 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
       tooling::CompilationDatabase::loadFromDirectory(cDBDir, err_msg);
   if (!g_config->compilationDatabaseCommand.empty()) {
 #ifdef _WIN32
-    DeleteFileA(StdinPath.c_str());
-    DeleteFileA(Path.c_str());
-    RemoveDirectoryA(CDBDir.c_str());
+    DeleteFileA(stdinPath.c_str());
+    DeleteFileA(path.c_str());
+    RemoveDirectoryA(cDBDir.c_str());
 #else
     unlink(stdinPath.c_str());
     unlink(path.c_str());
