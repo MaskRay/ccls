@@ -90,6 +90,10 @@ struct ProjectProcessor {
         i++;
       return true;
     }
+    if (arg == "-Xclang") {
+      i++;
+      return true;
+    }
     return exclude_args.count(arg) ||
            any_of(exclude_globs,
                   [&](const GlobPattern &glob) { return glob.match(arg); });
