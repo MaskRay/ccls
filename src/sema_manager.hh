@@ -164,6 +164,7 @@ struct SemaManager {
 template <typename T> struct CompleteConsumerCache {
   std::mutex mutex;
   std::string path;
+  std::string line;
   Position position;
   T result;
 
@@ -171,9 +172,11 @@ template <typename T> struct CompleteConsumerCache {
     std::lock_guard lock(mutex);
     fn();
   }
-  bool isCacheValid(const std::string path, Position position) {
+  bool isCacheValid(const std::string &path, const std::string &line,
+                    Position position) {
     std::lock_guard lock(mutex);
-    return this->path == path && this->position == position;
+    return this->path == path && this->position == position &&
+           this->line == line;
   }
 };
 } // namespace ccls
