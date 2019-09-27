@@ -577,13 +577,14 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
         if (!consumer->from_cache) {
           cache.withLock([&]() {
             cache.path = path;
+            cache.line = buffer_line;
             cache.position = begin_pos;
             cache.result = consumer->ls_items;
           });
         }
       };
 
-  if (cache.isCacheValid(path, begin_pos)) {
+  if (cache.isCacheValid(path, buffer_line, begin_pos)) {
     CompletionConsumer consumer(cCOpts, true);
     cache.withLock([&]() { consumer.ls_items = cache.result; });
     callback(&consumer);
