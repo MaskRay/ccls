@@ -151,6 +151,9 @@ void MessageHandler::textDocument_signatureHelp(
     reply.notOpened(path);
     return;
   }
+  std::string buffer_line;
+  if (param.position.line >= 0 && param.position.line < wf->buffer_lines.size())
+    buffer_line = wf->buffer_lines[param.position.line];
   {
     std::string filter;
     Position end_pos;
@@ -158,7 +161,7 @@ void MessageHandler::textDocument_signatureHelp(
   }
 
   SemaManager::OnComplete callback =
-      [reply, path, begin_pos](CodeCompleteConsumer *optConsumer) {
+      [reply, path, begin_pos, buffer_line](CodeCompleteConsumer *optConsumer) {
         if (!optConsumer)
           return;
         auto *consumer = static_cast<SignatureHelpConsumer *>(optConsumer);
@@ -166,6 +169,7 @@ void MessageHandler::textDocument_signatureHelp(
         if (!consumer->from_cache) {
           cache.withLock([&]() {
             cache.path = path;
+            cache.line = buffer_line;
             cache.position = begin_pos;
             cache.result = consumer->ls_sighelp;
           });
@@ -176,7 +180,7 @@ void MessageHandler::textDocument_signatureHelp(
   ccOpts.IncludeGlobals = false;
   ccOpts.IncludeMacros = false;
   ccOpts.IncludeBriefComments = true;
-  if (cache.isCacheValid(path, begin_pos)) {
+  if (cache.isCacheValid(path, buffer_line, begin_pos)) {
     SignatureHelpConsumer consumer(ccOpts, true);
     cache.withLock([&]() { consumer.ls_sighelp = cache.result; });
     callback(&consumer);
