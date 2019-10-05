@@ -11,7 +11,7 @@ ccls, which originates from [cquery](https://github.com/cquery-project/cquery), 
   * formatting
   * hierarchies: [call (caller/callee) hierarchy](src/messages/ccls_call.cc), [inheritance (base/derived) hierarchy](src/messages/ccls_inheritance.cc), [member hierarchy](src/messages/ccls_member.cc)
   * [symbol rename](src/messages/textDocument_rename.cc)
-  * [document symbols](src/messages/textDocument_documentSymbol.cc) and approximate search of [workspace symbol](src/messages/workspace_symbol.cc)
+  * [document symbols](src/messages/textDocument_document.cc) and approximate search of [workspace symbol](src/messages/workspace.cc)
   * [hover information](src/messages/textDocument_hover.cc)
   * diagnostics and code actions (clang FixIts)
   * semantic highlighting and preprocessor skipped regions
