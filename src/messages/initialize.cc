@@ -307,6 +307,9 @@ void do_initialize(MessageHandler *m, InitializeParam &param,
   didChangeWatchedFiles =
       capabilities.workspace.didChangeWatchedFiles.dynamicRegistration;
 
+  if (!g_config->client.snippetSupport)
+    g_config->completion.duplicateOptional = false;
+
   // Ensure there is a resource directory.
   if (g_config->clang.resourceDir.empty())
     g_config->clang.resourceDir = getDefaultResourceDirectory();

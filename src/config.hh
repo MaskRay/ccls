@@ -117,6 +117,8 @@ struct Config {
     bool hierarchicalDocumentSymbolSupport = true;
     // TextDocumentClientCapabilities.definition.linkSupport
     bool linkSupport = true;
+
+    // If false, disable snippets and complete just the identifier part.
     // TextDocumentClientCapabilities.completion.completionItem.snippetSupport
     bool snippetSupport = true;
   } client;
@@ -164,9 +166,6 @@ struct Config {
     // that implement their own filtering and sorting logic.
     bool filterAndSort = true;
 
-    // Maxmum number of results.
-    int maxNum = 100;
-
     struct Include {
       // Regex patterns to match include completion candidates against. They
       // receive the absolute file path.
@@ -188,6 +187,15 @@ struct Config {
 
       std::vector<std::string> whitelist;
     } include;
+
+    // Maxmum number of results.
+    int maxNum = 100;
+
+    // Add placeholder text. Effective only if client.snippetSupport is true.
+    //
+    // false: foo($1)$0
+    // true: foo(${1:int a}, ${2:int b})$0
+    bool placeholder = true;
   } completion;
 
   struct Diagnostics {
@@ -331,7 +339,7 @@ REFLECT_STRUCT(Config::Completion::Include, blacklist, maxPathSize,
                suffixWhitelist, whitelist);
 REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
                dropOldRequests, duplicateOptional, filterAndSort, include,
-               maxNum);
+               maxNum, placeholder);
 REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
                spellChecking, whitelist)
 REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist, whitelist)
