@@ -23,6 +23,7 @@ limitations under the License.
 
 #include <clang/Sema/CodeCompleteConsumer.h>
 #include <clang/Sema/Sema.h>
+#include <llvm/ADT/Twine.h>
 
 #if LLVM_VERSION_MAJOR < 8
 #include <regex>
@@ -382,7 +383,7 @@ void buildItem(const CodeCompletionResult &r, const CodeCompletionString &ccs,
           continue;
         }
         out[i].textEdit.newText +=
-            "${" + std::to_string(out[i].parameters_.size()) + ":" + text + "}";
+            ("${" + Twine(out[i].parameters_.size()) + ":" + text + "}").str();
         out[i].insertTextFormat = InsertTextFormat::Snippet;
       } else if (kind != CodeCompletionString::CK_Informative) {
         out[i].textEdit.newText += text;
@@ -462,9 +463,24 @@ public:
       buildItem(r, *ccs, ls_items);
 
       for (size_t j = first_idx; j < ls_items.size(); j++) {
-        if (g_config->client.snippetSupport &&
-            ls_items[j].insertTextFormat == InsertTextFormat::Snippet)
+        if (!g_config->client.snippetSupport) {
+          std::string &s = ls_items[j].textEdit.newText;
+          if (s.size()) {
+            // Delete non-identifier parts.
+            if (s.back() == '(' || s.back() == '<')
+              s.pop_back();
+            else if (s.size() >= 2 && !s.compare(s.size() - 2, 2, "()"))
+              s.resize(s.size() - 2);
+          }
+        } else if (ls_items[j].insertTextFormat == InsertTextFormat::Snippet) {
+          std::string &s = ls_items[j].textEdit.newText;
+          if (!g_config->completion.placeholder) {
+            // foo(${1:int a}, ${2:int b}) -> foo($1)$0
+            auto p = s.find("${"), q = s.rfind('}');
+            ls_items[j].textEdit.newText = s.replace(p, q - p + 1, "$1");
+          }
           ls_items[j].textEdit.newText += "$0";
+        }
         ls_items[j].priority_ = ccs->getPriority();
         if (!g_config->completion.detailedLabel) {
           ls_items[j].detail = ls_items[j].label;
