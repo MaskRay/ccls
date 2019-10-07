@@ -35,7 +35,7 @@ bool gTestOutputMode = false;
 
 namespace ccls {
 
-void JsonReader::iterArray(std::function<void()> fn) {
+void JsonReader::iterArray(const llvm::function_ref<void()> fn) {
   if (!m->IsArray())
     throw std::invalid_argument("array");
   // Use "0" to indicate any element for now.
@@ -48,7 +48,7 @@ void JsonReader::iterArray(std::function<void()> fn) {
   }
   path_.pop_back();
 }
-void JsonReader::member(const char *name, std::function<void()> fn) {
+void JsonReader::member(const char *name, const llvm::function_ref<void()> fn) {
   path_.push_back(name);
   auto it = m->FindMember(name);
   if (it != m->MemberEnd()) {

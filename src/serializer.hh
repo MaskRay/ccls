@@ -17,6 +17,7 @@ limitations under the License.
 
 #include "utils.hh"
 
+#include <llvm/ADT/STLExtras.h>
 #include <llvm/Support/Compiler.h>
 
 #include <macro_map.h>
@@ -48,8 +49,8 @@ struct JsonReader {
   JsonReader(rapidjson::Value *m) : m(m) {}
   void startObject() {}
   void endObject() {}
-  void iterArray(std::function<void()> fn);
-  void member(const char *name, std::function<void()> fn);
+  void iterArray(const llvm::function_ref<void()> fn);
+  void member(const char *name, const llvm::function_ref<void()> fn);
   bool isNull();
   std::string getString();
   std::string getPath() const;

@@ -231,7 +231,7 @@ class StoreDiags : public DiagnosticConsumer {
   }
 
 public:
-  StoreDiags(std::string path) : path(path) {}
+  StoreDiags(std::string path) : path{std::move(path)} {}
   std::vector<Diag> take() { return std::move(output); }
   bool isConcerned(const SourceManager &sm, SourceLocation l) {
     FileID fid = sm.getFileID(l);
@@ -683,8 +683,10 @@ std::shared_ptr<PreambleData> Session::getPreamble() {
 
 SemaManager::SemaManager(Project *project, WorkingFiles *wfiles,
                          OnDiagnostic on_diagnostic, OnDropped on_dropped)
-    : project_(project), wfiles(wfiles), on_diagnostic_(on_diagnostic),
-      on_dropped_(on_dropped), pch(std::make_shared<PCHContainerOperations>()) {
+    : project_(project), wfiles(wfiles),
+      on_diagnostic_(std::move(on_diagnostic)),
+      on_dropped_(std::move(on_dropped)),
+      pch(std::make_shared<PCHContainerOperations>()) {
   spawnThread(ccls::preambleMain, this);
   spawnThread(ccls::completionMain, this);
   spawnThread(ccls::diagnosticMain, this);

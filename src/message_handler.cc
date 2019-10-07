@@ -121,9 +121,8 @@ void ReplyOnce::replyLocationLink(std::vector<LocationLink> &result) {
   if (g_config->client.linkSupport) {
     (*this)(result);
   } else {
-    std::vector<Location> result1;
-    for (auto &loc : result)
-      result1.emplace_back(std::move(loc));
+    std::vector<Location> result1{std::make_move_iterator(result.begin()),
+                                  std::make_move_iterator(result.end())};
     (*this)(result1);
   }
 }
