@@ -49,8 +49,8 @@ struct JsonReader {
   JsonReader(rapidjson::Value *m) : m(m) {}
   void startObject() {}
   void endObject() {}
-  void iterArray(const llvm::function_ref<void()> fn);
-  void member(const char *name, const llvm::function_ref<void()> fn);
+  void iterArray(llvm::function_ref<void()> fn);
+  void member(const char *name, llvm::function_ref<void()> fn);
   bool isNull();
   std::string getString();
   std::string getPath() const;

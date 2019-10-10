@@ -231,7 +231,7 @@ class StoreDiags : public DiagnosticConsumer {
   }
 
 public:
-  StoreDiags(std::string path) : path{std::move(path)} {}
+  StoreDiags(std::string path) : path(std::move(path)) {}
   std::vector<Diag> take() { return std::move(output); }
   bool isConcerned(const SourceManager &sm, SourceLocation l) {
     FileID fid = sm.getFileID(l);

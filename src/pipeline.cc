@@ -616,7 +616,7 @@ void mainLoop() {
 
   SemaManager manager(
       &project, &wfiles,
-      [&](const std::string &path, std::vector<Diagnostic> diagnostics) {
+      [](const std::string &path, std::vector<Diagnostic> diagnostics) {
         PublishDiagnosticParam params;
         params.uri = DocumentUri::fromPath(path);
         params.diagnostics = std::move(diagnostics);
@@ -718,7 +718,7 @@ void standalone(const std::string &root) {
   VFS vfs;
   SemaManager manager(
       nullptr, nullptr,
-      [&](const std::string &, const std::vector<Diagnostic> &) {},
+      [](const std::string &, const std::vector<Diagnostic> &) {},
       [](const RequestId &id) {});
   IncludeComplete complete(&project);
 
