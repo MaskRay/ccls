@@ -131,7 +131,7 @@ int alignColumn(const std::string &a, int column, std::string b, bool is_end) {
   if (column < head)
     return column;
   if ((int)a.size() - tail < column)
-    return column + b.size() - a.size();
+    return column + (int)b.size() - (int)a.size();
   if (std::max(a.size(), b.size()) - head - tail >= kMaxColumnAlignSize)
     return std::min(column, (int)b.size());
 

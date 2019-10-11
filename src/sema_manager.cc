@@ -604,7 +604,7 @@ void *diagnosticMain(void *manager_) {
         ret.severity = 1;
         break;
       }
-      ret.code = d.category;
+      ret.code = (int)d.category;
       return ret;
     };
 
@@ -673,8 +673,10 @@ std::shared_ptr<PreambleData> Session::getPreamble() {
 
 SemaManager::SemaManager(Project *project, WorkingFiles *wfiles,
                          OnDiagnostic on_diagnostic, OnDropped on_dropped)
-    : project_(project), wfiles(wfiles), on_diagnostic_(on_diagnostic),
-      on_dropped_(on_dropped), pch(std::make_shared<PCHContainerOperations>()) {
+    : project_(project), wfiles(wfiles),
+      on_diagnostic_(std::move(on_diagnostic)),
+      on_dropped_(std::move(on_dropped)),
+      pch(std::make_shared<PCHContainerOperations>()) {
   spawnThread(ccls::preambleMain, this);
   spawnThread(ccls::completionMain, this);
   spawnThread(ccls::diagnosticMain, this);

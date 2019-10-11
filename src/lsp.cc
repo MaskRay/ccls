@@ -33,7 +33,7 @@ void reflect(JsonWriter &visitor, RequestId &value) {
     visitor.null_();
     break;
   case RequestId::kInt:
-    visitor.int_(atoll(value.value.c_str()));
+    visitor.int64(atoll(value.value.c_str()));
     break;
   case RequestId::kString:
     visitor.string(value.value.c_str(), value.value.size());
@@ -51,7 +51,7 @@ void DocumentUri::setPath(const std::string &path) {
   // file:///c%3A/Users/jacob/Desktop/superindex/indexer/full_tests
   raw_uri = path;
 
-  size_t index = raw_uri.find(":");
+  size_t index = raw_uri.find(':');
   if (index == 1) { // widows drive letters must always be 1 char
     raw_uri.replace(raw_uri.begin() + index, raw_uri.begin() + index + 1,
                     "%3A");

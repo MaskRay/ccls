@@ -13,6 +13,7 @@
 
 #include <llvm/ADT/CachedHashString.h>
 #include <llvm/ADT/DenseSet.h>
+#include <llvm/ADT/STLExtras.h>
 #include <llvm/Support/Allocator.h>
 
 #include <mutex>
@@ -24,7 +25,7 @@ bool gTestOutputMode = false;
 
 namespace ccls {
 
-void JsonReader::iterArray(std::function<void()> fn) {
+void JsonReader::iterArray(llvm::function_ref<void()> fn) {
   if (!m->IsArray())
     throw std::invalid_argument("array");
   // Use "0" to indicate any element for now.
@@ -37,7 +38,7 @@ void JsonReader::iterArray(std::function<void()> fn) {
   }
   path_.pop_back();
 }
-void JsonReader::member(const char *name, std::function<void()> fn) {
+void JsonReader::member(const char *name, llvm::function_ref<void()> fn) {
   path_.push_back(name);
   auto it = m->FindMember(name);
   if (it != m->MemberEnd()) {
@@ -70,7 +71,7 @@ void JsonWriter::startObject() { m->StartObject(); }
 void JsonWriter::endObject() { m->EndObject(); }
 void JsonWriter::key(const char *name) { m->Key(name); }
 void JsonWriter::null_() { m->Null(); }
-void JsonWriter::int_(int v) { m->Int(v); }
+void JsonWriter::int64(int64_t v) { m->Int64(v); }
 void JsonWriter::string(const char *s) { m->String(s); }
 void JsonWriter::string(const char *s, size_t len) { m->String(s, len); }
 

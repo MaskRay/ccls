@@ -663,7 +663,7 @@ public:
           rd->isInvalidDecl() || !validateRecord(rd))
         offset = -1;
       for (FieldDecl *fd : rd->fields()) {
-        int offset1 = offset < 0 ? -1 : offset + ctx->getFieldOffset(fd);
+        int offset1 = offset < 0 ? -1 : int(offset + ctx->getFieldOffset(fd));
         if (fd->getIdentifier())
           type.def.vars.emplace_back(getUsr(fd), offset1);
         else if (const auto *rt1 = fd->getType()->getAs<RecordType>()) {
