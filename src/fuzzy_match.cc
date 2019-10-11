@@ -101,7 +101,7 @@ FuzzyMatcher::FuzzyMatcher(std::string_view pattern, int sensitivity) {
   for (size_t i = 0; i < pattern.size(); i++)
     if (pattern[i] != ' ') {
       pat += pattern[i];
-      low_pat[n] = ::tolower(pattern[i]);
+      low_pat[n] = (char)::tolower(pattern[i]);
       pat_role[n] = pat_role[i];
       n++;
     }
@@ -115,7 +115,7 @@ int FuzzyMatcher::match(std::string_view text, bool strict) {
     return kMinScore + 1;
   this->text = text;
   for (int i = 0; i < n; i++)
-    low_text[i] = ::tolower(text[i]);
+    low_text[i] = (char)::tolower(text[i]);
   calculateRoles(text, text_role, &text_set);
   if (strict && n && !!pat_role[0] != !!text_role[0])
     return kMinScore;

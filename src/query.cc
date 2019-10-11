@@ -135,7 +135,7 @@ IndexUpdate IndexUpdate::createDelta(IndexFile *previous, IndexFile *current) {
     previous = &empty;
   r.lid2path = std::move(current->lid2path);
 
-  r.funcs_hint = current->usr2func.size() - previous->usr2func.size();
+  r.funcs_hint = int(current->usr2func.size() - previous->usr2func.size());
   for (auto &it : previous->usr2func) {
     auto &func = it.second;
     if (func.def.detailed_name[0])
@@ -153,7 +153,7 @@ IndexUpdate IndexUpdate::createDelta(IndexFile *previous, IndexFile *current) {
     r.funcs_derived[func.usr].second = std::move(func.derived);
   }
 
-  r.types_hint = current->usr2type.size() - previous->usr2type.size();
+  r.types_hint = int(current->usr2type.size() - previous->usr2type.size());
   for (auto &it : previous->usr2type) {
     auto &type = it.second;
     if (type.def.detailed_name[0])
@@ -173,7 +173,7 @@ IndexUpdate IndexUpdate::createDelta(IndexFile *previous, IndexFile *current) {
     r.types_instances[type.usr].second = std::move(type.instances);
   };
 
-  r.vars_hint = current->usr2var.size() - previous->usr2var.size();
+  r.vars_hint = int(current->usr2var.size() - previous->usr2var.size());
   for (auto &it : previous->usr2var) {
     auto &var = it.second;
     if (var.def.detailed_name[0])

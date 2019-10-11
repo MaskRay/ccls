@@ -36,8 +36,8 @@ std::string pathFromFileEntry(const FileEntry &file) {
 
 static Pos decomposed2LineAndCol(const SourceManager &sm,
                                  std::pair<FileID, unsigned> i) {
-  int l = sm.getLineNumber(i.first, i.second) - 1,
-      c = sm.getColumnNumber(i.first, i.second) - 1;
+  int l = (int)sm.getLineNumber(i.first, i.second) - 1,
+      c = (int)sm.getColumnNumber(i.first, i.second) - 1;
   bool invalid = false;
   StringRef buf = sm.getBufferData(i.first, &invalid);
   if (!invalid) {
@@ -114,7 +114,6 @@ const char *clangBuiltinTypeName(int kind) {
   case BuiltinType::Bool:
     return "bool";
   case BuiltinType::Char_S:
-    return "char";
   case BuiltinType::Char_U:
     return "char";
   case BuiltinType::SChar:
