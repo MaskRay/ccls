@@ -68,10 +68,11 @@ template <typename T> void request(const char *method, T &result) {
   notifyOrRequest(method, true, [&](JsonWriter &w) { reflect(w, result); });
 }
 
-void reply(RequestId id, const std::function<void(JsonWriter &)> &fn);
+void reply(const RequestId &id, const std::function<void(JsonWriter &)> &fn);
 
-void replyError(RequestId id, const std::function<void(JsonWriter &)> &fn);
-template <typename T> void replyError(RequestId id, T &result) {
+void replyError(const RequestId &id,
+                const std::function<void(JsonWriter &)> &fn);
+template <typename T> void replyError(const RequestId &id, T &result) {
   replyError(id, [&](JsonWriter &w) { reflect(w, result); });
 }
 } // namespace pipeline

@@ -89,7 +89,7 @@ void MessageHandler::workspace_didChangeWorkspaceFolders(
     if (folder == real)
       real.clear();
     LOG_S(INFO) << "add workspace folder " << wf.name << ": "
-                << (real.empty() ? folder : folder + " -> " + real);
+                << (real.empty() ? folder : (folder + " -> ").append(real));
     workspaceFolders.emplace_back();
     auto it = workspaceFolders.end() - 1;
     for (; it != workspaceFolders.begin() && folder < it[-1].first; --it)

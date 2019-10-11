@@ -20,8 +20,9 @@ struct WorkingFile;
 struct WorkingFiles;
 
 namespace pipeline {
-void reply(RequestId id, const std::function<void(JsonWriter &)> &fn);
-void replyError(RequestId id, const std::function<void(JsonWriter &)> &fn);
+void reply(const RequestId &id, const std::function<void(JsonWriter &)> &fn);
+void replyError(const RequestId &id,
+                const std::function<void(JsonWriter &)> &fn);
 } // namespace pipeline
 
 struct CodeActionParam {

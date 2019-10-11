@@ -237,7 +237,7 @@ bool appendToCDB(const std::vector<const char *> &args) {
   return args.size() && StringRef("%compile_commands.json") == args[0];
 }
 
-std::vector<const char *> getFallback(const std::string path) {
+std::vector<const char *> getFallback(const std::string &path) {
   std::vector<const char *> argv{"clang"};
   if (sys::path::extension(path) == ".h")
     argv.push_back("-xobjective-c++-header");
@@ -595,7 +595,7 @@ Project::Entry Project::findEntry(const std::string &path, bool can_redirect,
   return ret;
 }
 
-void Project::index(WorkingFiles *wfiles, RequestId id) {
+void Project::index(WorkingFiles *wfiles, const RequestId &id) {
   auto &gi = g_config->index;
   GroupMatch match(gi.whitelist, gi.blacklist),
       match_i(gi.initialWhitelist, gi.initialBlacklist);

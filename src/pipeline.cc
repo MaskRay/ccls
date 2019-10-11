@@ -605,13 +605,13 @@ void mainLoop() {
 
   SemaManager manager(
       &project, &wfiles,
-      [&](std::string path, std::vector<Diagnostic> diagnostics) {
+      [](const std::string &path, std::vector<Diagnostic> diagnostics) {
         PublishDiagnosticParam params;
         params.uri = DocumentUri::fromPath(path);
-        params.diagnostics = diagnostics;
+        params.diagnostics = std::move(diagnostics);
         notify("textDocument/publishDiagnostics", params);
       },
-      [](RequestId id) {
+      [](const RequestId &id) {
         if (id.valid()) {
           ResponseError err;
           err.code = ErrorCode::InternalError;
@@ -706,8 +706,9 @@ void standalone(const std::string &root) {
   WorkingFiles wfiles;
   VFS vfs;
   SemaManager manager(
-      nullptr, nullptr, [&](std::string, std::vector<Diagnostic>) {},
-      [](RequestId id) {});
+      nullptr, nullptr,
+      [](const std::string &, const std::vector<Diagnostic> &) {},
+      [](const RequestId &id) {});
   IncludeComplete complete(&project);
 
   MessageHandler handler;
@@ -745,7 +746,7 @@ void standalone(const std::string &root) {
 void index(const std::string &path, const std::vector<const char *> &args,
            IndexMode mode, bool must_exist, RequestId id) {
   pending_index_requests++;
-  index_request->pushBack({path, args, mode, must_exist, id},
+  index_request->pushBack({path, args, mode, must_exist, std::move(id)},
                           mode != IndexMode::Background);
 }
 
@@ -789,7 +790,7 @@ void notifyOrRequest(const char *method, bool request,
   for_stdout->pushBack(output.GetString());
 }
 
-static void reply(RequestId id, const char *key,
+static void reply(const RequestId &id, const char *key,
                   const std::function<void(JsonWriter &)> &fn) {
   rapidjson::StringBuffer output;
   rapidjson::Writer<rapidjson::StringBuffer> w(output);
@@ -802,7 +803,7 @@ static void reply(RequestId id, const char *key,
     w.Null();
     break;
   case RequestId::kInt:
-    w.Int(atoll(id.value.c_str()));
+    w.Int64(atoll(id.value.c_str()));
     break;
   case RequestId::kString:
     w.String(id.value.c_str(), id.value.size());
@@ -817,11 +818,12 @@ static void reply(RequestId id, const char *key,
   for_stdout->pushBack(output.GetString());
 }
 
-void reply(RequestId id, const std::function<void(JsonWriter &)> &fn) {
+void reply(const RequestId &id, const std::function<void(JsonWriter &)> &fn) {
   reply(id, "result", fn);
 }
 
-void replyError(RequestId id, const std::function<void(JsonWriter &)> &fn) {
+void replyError(const RequestId &id,
+                const std::function<void(JsonWriter &)> &fn) {
   reply(id, "error", fn);
 }
 } // namespace pipeline

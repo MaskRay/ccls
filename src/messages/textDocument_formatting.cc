@@ -32,8 +32,8 @@ std::vector<TextEdit> replacementsToEdits(std::string_view code,
                                           const tooling::Replacements &repls) {
   std::vector<TextEdit> ret;
   int i = 0, line = 0, col = 0;
-  auto move = [&](int p) {
-    for (; i < p; i++)
+  auto move = [&](unsigned p) {
+    for (; i < (int)p; i++)
       if (code[i] == '\n')
         line++, col = 0;
       else {
