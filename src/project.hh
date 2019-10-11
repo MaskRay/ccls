@@ -64,7 +64,7 @@ struct Project {
   void setArgsForFile(const std::vector<const char *> &args,
                       const std::string &path);
 
-  void index(WorkingFiles *wfiles, RequestId id);
+  void index(WorkingFiles *wfiles, const RequestId &id);
   void indexRelated(const std::string &path);
 };
 } // namespace ccls

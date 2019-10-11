@@ -22,6 +22,7 @@
 namespace llvm {
 class CachedHashStringRef;
 class StringRef;
+template <typename Fn> class function_ref;
 } // namespace llvm
 
 namespace ccls {
@@ -36,8 +37,8 @@ struct JsonReader {
   JsonReader(rapidjson::Value *m) : m(m) {}
   void startObject() {}
   void endObject() {}
-  void iterArray(std::function<void()> fn);
-  void member(const char *name, std::function<void()> fn);
+  void iterArray(llvm::function_ref<void()> fn);
+  void member(const char *name, llvm::function_ref<void()> fn);
   bool isNull();
   std::string getString();
   std::string getPath() const;
@@ -57,7 +58,7 @@ struct JsonWriter {
   void endObject();
   void key(const char *name);
   void null_();
-  void int_(int v);
+  void int64(int64_t v);
   void string(const char *s);
   void string(const char *s, size_t len);
 };
