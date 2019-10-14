@@ -784,6 +784,7 @@ public:
         SourceRange sr = origD->getSourceRange();
         entity->def.spell = {use,
                              fromTokenRangeDefaulted(sm, lang, sr, fid, loc)};
+        entity->def.parent_kind = SymbolKind::File;
         getKind(cast<Decl>(sem_dc), entity->def.parent_kind);
       } else if (is_decl) {
         SourceRange sr = origD->getSourceRange();
