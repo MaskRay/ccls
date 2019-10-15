@@ -423,22 +423,23 @@ public:
     unsigned start_column = sm.getLineNumber(bInfo.first, bInfo.second);
     std::string ret;
     int pad = -1;
-    for (const char *p = raw.data(), *e = raw.end(); p < e;) {
+    for (const uint8_t *p = raw.bytes_begin(), *e = raw.bytes_end(); p < e;) {
       // The first line starts with a comment marker, but the rest needs
       // un-indenting.
       unsigned skip = start_column - 1;
       for (; skip > 0 && p < e && (*p == ' ' || *p == '\t'); p++)
         skip--;
-      const char *q = p;
+      bool high = false;
+      const uint8_t *q = p;
       while (q < e && *q != '\n')
-        q++;
+        high |= *q++ >= 0x80;
       if (q < e)
         q++;
       // A minimalist approach to skip Doxygen comment markers.
       // See https://www.stack.nl/~dimitri/doxygen/manual/docblocks.html
       if (pad < 0) {
         // First line, detect the length of comment marker and put into |pad|
-        const char *begin = p;
+        const uint8_t *begin = p;
         while (p < e && (*p == '/' || *p == '*' || *p == '-' || *p == '='))
           p++;
         if (p < e && (*p == '<' || *p == '!'))
@@ -456,7 +457,24 @@ public:
                (*p == ' ' || *p == '/' || *p == '*' || *p == '<' || *p == '!'))
           prefix--, p++;
       }
-      ret.insert(ret.end(), p, q);
+      if (high) {
+        while (p < q) {
+          int i = 0, c = *p < 0x80 ? 0
+                                   : *p < 0xc0 || *p >= 0xf8
+                                         ? -1
+                                         : *p >= 0xf0 ? 3 : *p >= 0xe0 ? 2 : 1;
+          const uint8_t *r = p + 1;
+          for (; i < c && r < q && *r >= 0x80; i++, r++)
+            ;
+          if (i == c)
+            ret.insert(ret.end(), (const char *)p, (const char *)r);
+          else
+            ret += '?';
+          p = r;
+        }
+      } else {
+        ret.insert(ret.end(), (const char *)p, (const char *)q);
+      }
       p = q;
     }
     while (ret.size() && isspace(ret.back()))
