@@ -7,6 +7,10 @@
 #include "platform.hh"
 
 #include <clang/AST/Type.h>
+#include <clang/Driver/Action.h>
+#include <clang/Driver/Compilation.h>
+#include <clang/Driver/Driver.h>
+#include <clang/Driver/Tool.h>
 #include <clang/Lex/Lexer.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/Path.h>
@@ -77,21 +81,66 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
                         IntrusiveRefCntPtr<llvm::vfs::FileSystem> vfs) {
   std::string save = "-resource-dir=" + g_config->clang.resourceDir;
   args.push_back(save.c_str());
+  args.push_back("-fsyntax-only");
+
+  // Similar to clang/tools/driver/driver.cpp:insertTargetAndModeArgs but don't
+  // require llvm::InitializeAllTargetInfos().
+  auto target_and_mode =
+      driver::ToolChain::getTargetAndModeFromProgramName(args[0]);
+  if (target_and_mode.DriverMode)
+    args.insert(args.begin() + 1, target_and_mode.DriverMode);
+  if (!target_and_mode.TargetPrefix.empty()) {
+    const char *arr[] = {"-target", target_and_mode.TargetPrefix.c_str()};
+    args.insert(args.begin() + 1, std::begin(arr), std::end(arr));
+  }
+
   IntrusiveRefCntPtr<DiagnosticsEngine> diags(
       CompilerInstance::createDiagnostics(new DiagnosticOptions,
                                           new IgnoringDiagConsumer, true));
-  std::unique_ptr<CompilerInvocation> ci =
-      createInvocationFromCommandLine(args, diags, vfs);
-  if (ci) {
-    ci->getDiagnosticOpts().IgnoreWarnings = true;
-    ci->getFrontendOpts().DisableFree = false;
-    // Enable IndexFrontendAction::shouldSkipFunctionBody.
-    ci->getFrontendOpts().SkipFunctionBodies = true;
-    ci->getLangOpts()->SpellChecking = false;
-    auto &isec = ci->getFrontendOpts().Inputs;
-    if (isec.size())
-      isec[0] = FrontendInputFile(main, isec[0].getKind(), isec[0].isSystem());
+  driver::Driver d(args[0], llvm::sys::getDefaultTargetTriple(), *diags, vfs);
+  d.setCheckInputsExist(false);
+  std::unique_ptr<driver::Compilation> comp(d.BuildCompilation(args));
+  if (!comp)
+    return nullptr;
+  const driver::JobList &jobs = comp->getJobs();
+  bool offload_compilation = false;
+  if (jobs.size() > 1) {
+    for (auto &a : comp->getActions()){
+      // On MacOSX real actions may end up being wrapped in BindArchAction
+      if (isa<driver::BindArchAction>(a))
+        a = *a->input_begin();
+      if (isa<driver::OffloadAction>(a)) {
+        offload_compilation = true;
+        break;
+      }
+    }
+    if (!offload_compilation)
+      return nullptr;
   }
+  if (jobs.size() == 0 || !isa<driver::Command>(*jobs.begin()))
+    return nullptr;
+
+  const driver::Command &cmd = cast<driver::Command>(*jobs.begin());
+  if (StringRef(cmd.getCreator().getName()) != "clang")
+    return nullptr;
+  const llvm::opt::ArgStringList &cc_args = cmd.getArguments();
+  auto ci = std::make_unique<CompilerInvocation>();
+#if LLVM_VERSION_MAJOR >= 10 // rC370122
+  if (!CompilerInvocation::CreateFromArgs(*ci, cc_args, *diags))
+#else
+  if (!CompilerInvocation::CreateFromArgs(
+          *ci, cc_args.data(), cc_args.data() + cc_args.size(), *diags))
+#endif
+    return nullptr;
+
+  ci->getDiagnosticOpts().IgnoreWarnings = true;
+  ci->getFrontendOpts().DisableFree = false;
+  // Enable IndexFrontendAction::shouldSkipFunctionBody.
+  ci->getFrontendOpts().SkipFunctionBodies = true;
+  ci->getLangOpts()->SpellChecking = false;
+  auto &isec = ci->getFrontendOpts().Inputs;
+  if (isec.size())
+    isec[0] = FrontendInputFile(main, isec[0].getKind(), isec[0].isSystem());
   return ci;
 }
 
