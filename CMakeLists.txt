@@ -70,21 +70,25 @@ endif()
 
 find_package(Clang REQUIRED)
 
-target_link_libraries(ccls PRIVATE
-  clangIndex
-  clangFormat
-  clangTooling
-  clangToolingInclusions
-  clangToolingCore
-  clangFrontend
-  clangParse
-  clangSerialization
-  clangSema
-  clangAST
-  clangLex
-  clangDriver
-  clangBasic
-)
+if(CLANG_LINK_CLANG_DYLIB)
+  target_link_libraries(ccls PRIVATE clang-cpp)
+else()
+  target_link_libraries(ccls PRIVATE
+    clangIndex
+    clangFormat
+    clangTooling
+    clangToolingInclusions
+    clangToolingCore
+    clangFrontend
+    clangParse
+    clangSerialization
+    clangSema
+    clangAST
+    clangLex
+    clangDriver
+    clangBasic
+  )
+endif()
 
 if(LLVM_LINK_LLVM_DYLIB)
   target_link_libraries(ccls PRIVATE LLVM)
