@@ -68,23 +68,33 @@ endif()
 
 ### Libraries
 
+# LLVM >= 9 ships the C++ libraries by default in a single library libclang-cpp,
+# but this is not universally enabled on all distributions.
+# If clang-cpp is available, then link against it, otherwise link against the
+# individual clang libraries.
 find_package(Clang REQUIRED)
 
-target_link_libraries(ccls PRIVATE
-  clangIndex
-  clangFormat
-  clangTooling
-  clangToolingInclusions
-  clangToolingCore
-  clangFrontend
-  clangParse
-  clangSerialization
-  clangSema
-  clangAST
-  clangLex
-  clangDriver
-  clangBasic
-)
+if(TARGET clang-cpp AND NOT TARGET clangBasic)
+  target_link_libraries(ccls PRIVATE
+    clang-cpp
+    )
+else()
+  target_link_libraries(ccls PRIVATE
+    clangIndex
+    clangFormat
+    clangTooling
+    clangToolingInclusions
+    clangToolingCore
+    clangFrontend
+    clangParse
+    clangSerialization
+    clangSema
+    clangAST
+    clangLex
+    clangDriver
+    clangBasic
+    )
+endif()
 
 if(LLVM_LINK_LLVM_DYLIB)
   target_link_libraries(ccls PRIVATE LLVM)
