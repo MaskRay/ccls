@@ -7,6 +7,7 @@
 #include "platform.hh"
 
 #include <clang/AST/Type.h>
+#include <clang/Driver/Driver.h>
 #include <clang/Lex/Lexer.h>
 #include <llvm/Support/Path.h>
 
@@ -79,6 +80,19 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   IntrusiveRefCntPtr<DiagnosticsEngine> diags(
       CompilerInstance::createDiagnostics(new DiagnosticOptions,
                                           new IgnoringDiagConsumer, true));
+
+  // Similar to clang/tools/driver/driver.cpp:insertTargetAndModeArgs but don't
+  // require llvm::InitializeAllTargetInfos().
+  driver::Driver d(args[0], llvm::sys::getDefaultTargetTriple(), *diags);
+  auto target_and_mode =
+      driver::ToolChain::getTargetAndModeFromProgramName(args[0]);
+  if (target_and_mode.DriverMode)
+    args.insert(args.begin() + 1, target_and_mode.DriverMode);
+  if (!target_and_mode.TargetPrefix.empty()) {
+    const char *arr[] = {"-target", target_and_mode.TargetPrefix.c_str()};
+    args.insert(args.begin() + 1, std::begin(arr), std::end(arr));
+  }
+
   std::unique_ptr<CompilerInvocation> ci =
       createInvocationFromCommandLine(args, diags, vfs);
   if (ci) {
