@@ -159,8 +159,8 @@ struct SemaManager {
 };
 
 // Cached completion information, so we can give fast completion results when
-// the user erases a character. vscode will resend the completion request if
-// that happens.
+// the user adds or erases a character. vscode will resend the completion request
+// if that happens.
 template <typename T> struct CompleteConsumerCache {
   std::mutex mutex;
   std::string path;
