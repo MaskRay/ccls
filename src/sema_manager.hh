@@ -176,7 +176,7 @@ template <typename T> struct CompleteConsumerCache {
                     Position position) {
     std::lock_guard lock(mutex);
     return this->path == path && this->position == position &&
-           this->line == line;
+            line.substr(0,position.character) == this->line.substr(0, position.character);
   }
 };
 } // namespace ccls
