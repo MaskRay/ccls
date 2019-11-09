@@ -358,7 +358,7 @@ const Decl *getAdjustedDecl(const Decl *d) {
   while (d) {
     if (auto *r = dyn_cast<CXXRecordDecl>(d)) {
       if (auto *s = dyn_cast<ClassTemplateSpecializationDecl>(r)) {
-        if (!s->getTypeAsWritten()) {
+        if (!s->isExplicitSpecialization()) {
           llvm::PointerUnion<ClassTemplateDecl *,
                              ClassTemplatePartialSpecializationDecl *>
               result = s->getSpecializedTemplateOrPartial();
@@ -534,7 +534,8 @@ public:
       name.replace(i, short_name.size(), qualified);
       def.short_name_offset = i + qualified.size() - short_name.size();
     }
-    def.short_name_size = short_name.size();
+    // name may be empty while short_name is not.
+    def.short_name_size = name.empty() ? 0 : short_name.size();
     for (int paren = 0; i; i--) {
       // Skip parentheses in "(anon struct)::name"
       if (name[i - 1] == ')')
