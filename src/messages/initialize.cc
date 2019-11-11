@@ -221,8 +221,13 @@ REFLECT_STRUCT(InitializeParam, rootUri, capabilities, trace, workspaceFolders);
 
 struct InitializeResult {
   ServerCap capabilities;
+  struct ServerInfo {
+    const char *name = "ccls";
+    const char *version = CCLS_VERSION;
+  } serverInfo;
 };
-REFLECT_STRUCT(InitializeResult, capabilities);
+REFLECT_STRUCT(InitializeResult::ServerInfo, name, version);
+REFLECT_STRUCT(InitializeResult, capabilities, serverInfo);
 
 struct FileSystemWatcher {
   std::string globPattern = "**/*";
