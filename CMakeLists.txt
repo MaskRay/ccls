@@ -240,3 +240,5 @@ endif()
 
 set_property(SOURCE src/main.cc APPEND PROPERTY
              COMPILE_DEFINITIONS CCLS_VERSION=\"${CCLS_VERSION}\")
+set_property(SOURCE src/messages/initialize.cc APPEND PROPERTY
+             COMPILE_DEFINITIONS CCLS_VERSION=\"${CCLS_VERSION}\")
