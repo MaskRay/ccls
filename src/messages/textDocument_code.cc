@@ -21,12 +21,27 @@ struct CodeAction {
 };
 REFLECT_STRUCT(CodeAction, title, kind, edit);
 } // namespace
+
+template <typename T> bool vec_has(const std::vector<T> &vec, const T &key) {
+  return std::find(std::begin(vec), std::end(vec), key) != std::end(vec);
+}
+
 void MessageHandler::textDocument_codeAction(CodeActionParam &param,
                                              ReplyOnce &reply) {
   WorkingFile *wf = findOrFail(param.textDocument.uri.getPath(), reply).second;
   if (!wf)
     return;
+  std::vector<std::string> only = param.context.only;
   std::vector<CodeAction> result;
+  if (!only.empty() && !vec_has(only, std::string("quickfix"))) {
+    reply(result);
+    return;
+  }
+  auto kinds = g_config->client.codeActionKind;
+  if (!kinds.empty() && !vec_has(kinds, std::string("quickfix"))) {
+    reply(result);
+    return;
+  }
   std::vector<Diagnostic> diagnostics;
   wfiles->withLock([&]() { diagnostics = wf->diagnostics; });
   for (Diagnostic &diag : diagnostics)

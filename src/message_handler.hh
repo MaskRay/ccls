@@ -30,6 +30,7 @@ struct CodeActionParam {
   lsRange range;
   struct Context {
     std::vector<Diagnostic> diagnostics;
+    std::vector<std::string> only;
   } context;
 };
 struct EmptyParam {};
