@@ -947,11 +947,12 @@ public:
             }
       }
       [[fallthrough]];
+    case Decl::Enum:
     case Decl::Record:
-      if (auto *rd = dyn_cast<RecordDecl>(d)) {
+      if (auto *tag_d = dyn_cast<TagDecl>(d)) {
         if (type->def.detailed_name[0] == '\0' && info->short_name.empty()) {
           StringRef tag;
-          switch (rd->getTagKind()) {
+          switch (tag_d->getTagKind()) {
           case TTK_Struct:
             tag = "struct";
             break;
@@ -968,7 +969,7 @@ public:
             tag = "enum";
             break;
           }
-          if (TypedefNameDecl *td = rd->getTypedefNameForAnonDecl()) {
+          if (TypedefNameDecl *td = tag_d->getTypedefNameForAnonDecl()) {
             StringRef name = td->getName();
             std::string detailed = ("anon " + tag + " " + name).str();
             type->def.detailed_name = intern(detailed);
@@ -979,7 +980,7 @@ public:
             type->def.short_name_size = name.size();
           }
         }
-        if (is_def)
+        if (is_def && !isa<EnumDecl>(d))
           if (auto *ord = dyn_cast<RecordDecl>(origD))
             collectRecordMembers(*type, ord);
       }
