@@ -70,7 +70,7 @@ struct ServerCap {
   bool documentSymbolProvider = true;
   bool workspaceSymbolProvider = true;
   struct CodeActionOptions {
-    std::vector<const char *> codeActionKinds = {"quickfix"};
+    std::vector<const char *> codeActionKinds = {"quickfix", "reference"};
   } codeActionProvider;
   struct CodeLensOptions {
     bool resolveProvider = false;
