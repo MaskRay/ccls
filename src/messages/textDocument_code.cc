@@ -119,9 +119,9 @@ void MessageHandler::textDocument_codeAction(CodeActionParam &param,
     add("navigate-left",  "$ccls/navigate", false, "L");
     add("inheritance",         "$ccls/inheritance");
     add("inheritance-derived", "$ccls/inheritance", false, "", true);
-    add("member-var",  "$ccls/member", false, "", 4);
-    add("member-fun",  "$ccls/member", false, "", 3);
-    add("member-type", "$ccls/member", false, "", 2);
+    add("member-var",  "$ccls/member", false, "", false, 4);
+    add("member-fun",  "$ccls/member", false, "", false, 3);
+    add("member-type", "$ccls/member", false, "", false, 2);
     add("vars", "$ccls/vars");
   }
 
