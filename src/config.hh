@@ -8,6 +8,10 @@
 #include <string>
 
 namespace ccls {
+
+// Select a reasonable default number of threads to use for indexing.
+int defaultIndexThreadCount();
+
 /*
 The language client plugin needs to send initialization options in the
 `initialize` request to the ccls language server.
@@ -286,7 +290,7 @@ struct Config {
     bool parametersInDeclarations = true;
 
     // Number of indexer threads. If 0, 80% of cores are used.
-    int threads = 0;
+    int threads = defaultIndexThreadCount();
 
     // Whether to reparse a file if write times of its dependencies have
     // changed. The file will always be reparsed if its own write time changes.

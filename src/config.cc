@@ -3,6 +3,9 @@
 
 #include "config.hh"
 
+#include <algorithm>
+#include <thread>
+
 namespace ccls {
 Config *g_config;
 
@@ -15,5 +18,11 @@ void doPathMapping(std::string &arg) {
         arg.replace(p, sep, mapping.substr(sep + 1));
     }
   }
+}
+
+int defaultIndexThreadCount() {
+  constexpr float kIndexThreadUtilization = 0.8;
+  return std::max(1, static_cast<int>(std::thread::hardware_concurrency() *
+                                      kIndexThreadUtilization));
 }
 } // namespace ccls

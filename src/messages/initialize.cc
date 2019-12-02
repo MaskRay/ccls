@@ -374,6 +374,10 @@ void do_initialize(MessageHandler *m, InitializeParam &param,
   // Start indexer threads. Start this after loading the project, as that
   // may take a long time. Indexer threads will emit status/progress
   // reports.
+  //
+  // By default config.hh will select 80% of the available cores to use as
+  // index threads, but explicitly specifying threads=0 will instead use all
+  // available cores.
   if (g_config->index.threads == 0)
     g_config->index.threads = (int)std::thread::hardware_concurrency();
 
