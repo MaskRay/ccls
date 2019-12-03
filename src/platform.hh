@@ -17,4 +17,6 @@ void freeUnusedMemory();
 void traceMe();
 
 void spawnThread(void *(*fn)(void *), void *arg);
+
+void setBatchPriority();
 } // namespace ccls

@@ -255,6 +255,7 @@ void *indexer(void *arg_) {
   delete arg;
   std::string name = "indexer" + std::to_string(idx);
   set_thread_name(name.c_str());
+  setBatchPriority();
   pipeline::indexer_Main(h->manager, h->vfs, h->project, h->wfiles);
   pipeline::threadLeave();
   return nullptr;

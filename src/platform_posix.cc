@@ -4,6 +4,7 @@
 #if defined(__unix__) || defined(__APPLE__)
 #include "platform.hh"
 
+#include "log.hh"
 #include "utils.hh"
 
 #include <assert.h>
@@ -17,6 +18,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <sched.h>
 #include <signal.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
@@ -75,6 +77,26 @@ void spawnThread(void *(*fn)(void *), void *arg) {
   pthread_create(&thd, &attr, fn, arg);
   pthread_attr_destroy(&attr);
 }
+
+void setBatchPriority() {
+#ifdef SCHED_BATCH
+  pid_t this_thread_id = gettid();
+
+  // get a sched_param with the existing thread sched_priority
+  errno = 0;
+  struct sched_param p;
+  p.sched_priority = getpriority(PRIO_PROCESS, this_thread_id);
+  if (p.sched_priority == -1 && errno != 0) {
+    LOG_S(ERROR) << "failed to getpriority(): " << strerror(errno);
+    return;
+  }
+
+  // retain the existing sched_priority, but use SCHED_BATCH policy
+  if (sched_setscheduler(this_thread_id, SCHED_BATCH, &p) == -1) {
+    LOG_S(ERROR) << "failed to sched_setscheduler(): " << strerror(errno);
+  }
+}
+#endif
 } // namespace ccls
 
 #endif

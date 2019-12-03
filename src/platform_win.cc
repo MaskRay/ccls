@@ -48,6 +48,8 @@ void traceMe() {}
 void spawnThread(void *(*fn)(void *), void *arg) {
   std::thread(fn, arg).detach();
 }
+
+void setBatchPriority() {}
 } // namespace ccls
 
 #endif
