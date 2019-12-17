@@ -678,9 +678,12 @@ public:
     SourceManager &SM = Ctx.getSourceManager();
     (void)param.ConsumeFile(*SM.getFileEntryForID(SM.getMainFileID()));
   }
-  bool handleDeclOccurence(const Decl *D, index::SymbolRoleSet Roles,
-                           ArrayRef<index::SymbolRelation> Relations,
-                           SourceLocation Loc, ASTNodeInfo ASTNode) override {
+#if LLVM_VERSION_MAJOR < 10 // llvmorg-10-init-12036-g3b9715cb219
+# define handleDeclOccurrence handleDeclOccurence
+#endif
+  bool handleDeclOccurrence(const Decl *D, index::SymbolRoleSet Roles,
+                            ArrayRef<index::SymbolRelation> Relations,
+                            SourceLocation Loc, ASTNodeInfo ASTNode) override {
     if (!param.no_linkage) {
       if (auto *ND = dyn_cast<NamedDecl>(D); ND && ND->hasLinkage())
         ;
