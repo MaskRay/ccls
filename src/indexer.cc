@@ -678,10 +678,13 @@ public:
 public:
   IndexDataConsumer(IndexParam &param) : param(param) {}
   void initialize(ASTContext &ctx) override { this->ctx = param.ctx = &ctx; }
-  bool handleDeclOccurence(const Decl *d, index::SymbolRoleSet roles,
-                           ArrayRef<index::SymbolRelation> relations,
-                           SourceLocation src_loc,
-                           ASTNodeInfo ast_node) override {
+#if LLVM_VERSION_MAJOR < 10 // llvmorg-10-init-12036-g3b9715cb219
+# define handleDeclOccurrence handleDeclOccurence
+#endif
+  bool handleDeclOccurrence(const Decl *d, index::SymbolRoleSet roles,
+                            ArrayRef<index::SymbolRelation> relations,
+                            SourceLocation src_loc,
+                            ASTNodeInfo ast_node) override {
     if (!param.no_linkage) {
       if (auto *nd = dyn_cast<NamedDecl>(d); nd && nd->hasLinkage())
         ;
