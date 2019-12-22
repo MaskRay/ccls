@@ -551,11 +551,16 @@ Project::Entry Project::findEntry(const std::string &path, bool can_redirect,
     if (!best) {
       // Infer args from a similar path.
       int best_score = INT_MIN;
+      auto [lang, header] = lookupExtension(path);
       for (auto &[root, folder] : root2folder)
         if (StringRef(path).startswith(root))
           for (const Entry &e : folder.entries)
             if (e.compdb_size) {
               int score = computeGuessScore(path, e.filename);
+              // Decrease score if .c is matched against .hh
+              auto [lang1, header1] = lookupExtension(e.filename);
+              if (lang != lang1 && !(lang == LanguageId::C && header))
+                score -= 30;
               if (score > best_score) {
                 best_score = score;
                 best_compdb_folder = &folder;
