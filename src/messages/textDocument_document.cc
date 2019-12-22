@@ -147,8 +147,8 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
 
   int file_id;
   auto [file, wf] =
-      findOrFail(param.textDocument.uri.getPath(), reply, &file_id);
-  if (!wf)
+      findOrFail(param.textDocument.uri.getPath(), reply, &file_id, true);
+  if (!file)
     return;
   auto allows = [&](SymbolRef sym) { return !(sym.role & param.excludeRole); };
 

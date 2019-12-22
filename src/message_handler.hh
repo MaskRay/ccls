@@ -236,7 +236,8 @@ struct MessageHandler {
   QueryFile *findFile(const std::string &path, int *out_file_id = nullptr);
   std::pair<QueryFile *, WorkingFile *> findOrFail(const std::string &path,
                                                    ReplyOnce &reply,
-                                                   int *out_file_id = nullptr);
+                                                   int *out_file_id = nullptr,
+                                                   bool allow_unopened = false);
 
 private:
   void bind(const char *method, void (MessageHandler::*handler)(JsonReader &));
