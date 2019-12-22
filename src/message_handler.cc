@@ -252,9 +252,9 @@ QueryFile *MessageHandler::findFile(const std::string &path, int *out_file_id) {
 
 std::pair<QueryFile *, WorkingFile *>
 MessageHandler::findOrFail(const std::string &path, ReplyOnce &reply,
-                           int *out_file_id) {
+                           int *out_file_id, bool allow_unopened) {
   WorkingFile *wf = wfiles->getFile(path);
-  if (!wf) {
+  if (!wf && !allow_unopened) {
     reply.notOpened(path);
     return {nullptr, nullptr};
   }
