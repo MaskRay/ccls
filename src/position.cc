@@ -47,7 +47,7 @@ Range Range::fromString(const std::string &encoded) {
 }
 
 bool Range::contains(int line, int column) const {
-  if (line > INT16_MAX)
+  if (line > UINT16_MAX)
     return false;
   Pos p{(uint16_t)line, (int16_t)std::min<int>(column, INT16_MAX)};
   return !(p < start) && p < end;
