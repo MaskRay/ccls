@@ -1,4 +1,4 @@
-// Copyright 2017-2018 ccls Authors
+// Copyright 2017-2020 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #include "serializer.hh"
@@ -13,6 +13,7 @@
 
 #include <llvm/ADT/CachedHashString.h>
 #include <llvm/ADT/DenseSet.h>
+#include <llvm/Support/Allocator.h>
 
 #include <mutex>
 #include <stdexcept>
