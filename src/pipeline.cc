@@ -113,7 +113,7 @@ bool cacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
   }
 
   // For inferred files, allow -o a a.cc -> -o b b.cc
-  std::string stem = sys::path::stem(path);
+  StringRef stem = sys::path::stem(path);
   int changed = -1, size = std::min(prev->args.size(), args.size());
   for (int i = 0; i < size; i++)
     if (strcmp(prev->args[i], args[i]) && sys::path::stem(args[i]) != stem) {

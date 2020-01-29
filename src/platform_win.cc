@@ -19,17 +19,12 @@
 #include <thread>
 
 namespace ccls {
-std::string normalizePath(const std::string &path) {
-  DWORD retval = 0;
+std::string normalizePath(llvm::StringRef path) {
   TCHAR buffer[MAX_PATH] = TEXT("");
   TCHAR **lpp_part = {NULL};
 
-  std::string result;
-  retval = GetFullPathName(path.c_str(), MAX_PATH, buffer, lpp_part);
-  // fail, return original
-  if (retval == 0)
-    result = path;
-  else
+  std::string result(path);
+  if (GetFullPathName(result.c_str(), MAX_PATH, buffer, lpp_part) != 0)
     result = buffer;
 
   std::replace(result.begin(), result.end(), '\\', '/');

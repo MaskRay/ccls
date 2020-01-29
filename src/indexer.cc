@@ -504,7 +504,7 @@ public:
     llvm::raw_svector_ostream os(str);
     d->print(os, getDefaultPolicy());
 
-    std::string name = os.str();
+    std::string name(str.data(), str.size());
     simplifyAnonymous(name);
     // Remove \n in DeclPrinter.cpp "{\n" + if(!TerseOutput)something + "}"
     for (std::string::size_type i = 0;;) {

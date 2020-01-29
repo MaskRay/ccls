@@ -623,9 +623,10 @@ void *diagnosticMain(void *manager_) {
         for (const Note &n : d.notes) {
           SmallString<256> str(n.file);
           llvm::sys::path::remove_dots(str, true);
-          Location loc{DocumentUri::fromPath(str.str()),
-                       lsRange{{n.range.start.line, n.range.start.column},
-                               {n.range.end.line, n.range.end.column}}};
+          Location loc{
+              DocumentUri::fromPath(std::string(str.data(), str.size())),
+              lsRange{{n.range.start.line, n.range.start.column},
+                      {n.range.end.line, n.range.end.column}}};
           ls_diag.relatedInformation.push_back({loc, n.message});
         }
       } else {

@@ -31,7 +31,8 @@ void getFilesInFolder(std::string folder, bool recursive, bool dir_prefix,
       curr.pop_back();
       for (sys::fs::directory_iterator i(folder1, ec, false), e; i != e && !ec;
            i.increment(ec)) {
-        std::string path = i->path(), filename = sys::path::filename(path);
+        std::string path = i->path();
+        std::string filename(sys::path::filename(path));
         if ((filename[0] == '.' && filename != ".ccls") ||
             sys::fs::status(path, status, false))
           continue;

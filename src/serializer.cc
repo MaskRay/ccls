@@ -217,7 +217,7 @@ void reflect(JsonWriter &vis, IndexInclude &v) {
   reflectMemberStart(vis);
   REFLECT_MEMBER(line);
   if (gTestOutputMode) {
-    std::string basename = llvm::sys::path::filename(v.resolved_path);
+    std::string basename(llvm::sys::path::filename(v.resolved_path));
     if (v.resolved_path[0] != '&')
       basename = "&" + basename;
     REFLECT_MEMBER2("resolved_path", basename);
