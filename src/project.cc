@@ -226,7 +226,7 @@ readCompilerArgumentsFromFile(const std::string &path) {
     return {};
   std::vector<const char *> args;
   for (line_iterator i(*mbOrErr.get(), true, '#'), e; i != e; ++i) {
-    std::string line = *i;
+    std::string line = i->str();
     doPathMapping(line);
     args.push_back(intern(line));
   }
@@ -641,7 +641,7 @@ void Project::index(WorkingFiles *wfiles, const RequestId &id) {
 void Project::indexRelated(const std::string &path) {
   auto &gi = g_config->index;
   GroupMatch match(gi.whitelist, gi.blacklist);
-  std::string stem = sys::path::stem(path);
+  std::string stem = sys::path::stem(path).str();
   std::vector<const char *> args, extra_args;
   for (const std::string &arg : g_config->clang.extraArgs)
     extra_args.push_back(intern(arg));

@@ -128,7 +128,7 @@ std::string resolveIfRelative(const std::string &directory,
     return path;
   SmallString<256> ret;
   sys::path::append(ret, directory, path);
-  return normalizePath(ret.str());
+  return normalizePath(ret.str().str());
 }
 
 std::string realPath(const std::string &path) {

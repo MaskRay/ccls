@@ -21,7 +21,7 @@ std::string pathFromFileEntry(const FileEntry &file) {
   StringRef name = file.tryGetRealPathName();
   if (name.empty())
     name = file.getName();
-  std::string ret = normalizePath(name);
+  std::string ret = normalizePath(name.str());
   // Resolve symlinks outside of workspace folders, e.g. /usr/include/c++/7.3.0
   return normalizeFolder(ret) ? ret : realPath(ret);
 }
