@@ -40,7 +40,7 @@ namespace pipeline {
 void threadEnter();
 }
 
-std::string normalizePath(const std::string &path) {
+std::string normalizePath(llvm::StringRef path) {
   llvm::SmallString<256> p(path);
   llvm::sys::path::remove_dots(p, true);
   return {p.data(), p.size()};
