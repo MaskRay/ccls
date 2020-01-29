@@ -1,14 +1,14 @@
-// Copyright 2017-2018 ccls Authors
+// Copyright 2017-2020 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 
+#include <llvm/ADT/StringRef.h>
+
 #include <string>
-#include <string_view>
-#include <vector>
 
 namespace ccls {
-std::string normalizePath(const std::string &path);
+std::string normalizePath(llvm::StringRef path);
 
 // Free any unused memory and return it to the system.
 void freeUnusedMemory();

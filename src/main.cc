@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
     if (opt_index.size()) {
       SmallString<256> root(opt_index);
       sys::fs::make_absolute(root);
-      pipeline::standalone(root.str());
+      pipeline::standalone(std::string(root.data(), root.size()));
     } else {
       // The thread that reads from stdin and dispatchs commands to the main
       // thread.
