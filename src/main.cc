@@ -64,13 +64,7 @@ int main(int argc, char **argv) {
        << "\n";
   });
 
-  for (auto &i : TopLevelSubCommand->OptionsMap)
-#if LLVM_VERSION_MAJOR >= 9 // rL360179
-    if (i.second->Categories[0] != &C)
-#else
-    if (i.second->Category != &C)
-#endif
-      i.second->setHiddenFlag(ReallyHidden);
+  cl::HideUnrelatedOptions(C);
 
   ParseCommandLineOptions(argc, argv,
                           "C/C++/Objective-C language server\n\n"
