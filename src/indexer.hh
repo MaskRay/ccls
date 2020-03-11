@@ -247,7 +247,7 @@ struct VarDef : NameMixin<VarDef> {
             parent_kind == SymbolKind::StaticMethod ||
             parent_kind == SymbolKind::Constructor) &&
            (storage == clang::SC_None || storage == clang::SC_Auto ||
-            storage == clang::SC_Register);
+            storage == clang::SC_Register || storage == clang::SC_Static);
   }
 
   const Usr *bases_begin() const { return nullptr; }
