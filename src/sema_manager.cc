@@ -9,6 +9,7 @@
 #include "pipeline.hh"
 #include "platform.hh"
 
+#include <clang/Basic/TargetInfo.h>
 #include <clang/Lex/PreprocessorOptions.h>
 #include <clang/Sema/CodeCompleteConsumer.h>
 #include <clang/Sema/Sema.h>

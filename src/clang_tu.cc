@@ -8,6 +8,7 @@
 
 #include <clang/AST/Type.h>
 #include <clang/Lex/Lexer.h>
+#include <llvm/Support/Host.h>
 #include <llvm/Support/Path.h>
 
 using namespace clang;
