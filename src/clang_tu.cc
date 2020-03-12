@@ -12,6 +12,7 @@
 #include <clang/Driver/Driver.h>
 #include <clang/Driver/Tool.h>
 #include <clang/Lex/Lexer.h>
+#include <llvm/Support/Host.h>
 #include <llvm/Support/Path.h>
 
 using namespace clang;
