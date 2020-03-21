@@ -1,6 +1,6 @@
 .*
-build
-debug
-release
+[Bb]uild
+[Dd]ebug
+[Rr]elease
 /compile_commands.json
 !.github/
