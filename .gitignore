@@ -1,6 +1,11 @@
-.*
-build
-debug
-release
-/compile_commands.json
-!.github/
+/*
+!/.github/
+!/index_tests/
+!/src/
+!/third_party/
+!/.appveyor.yml
+!/.clang-format
+!/CMakeLists.txt
+!/LICENSE
+!/README.md
+!/meow/
