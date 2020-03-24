@@ -285,7 +285,8 @@ struct Config {
     // If true, index parameters in declarations.
     bool parametersInDeclarations = true;
 
-    // Number of indexer threads. If 0, 80% of cores are used.
+    // Number of indexer threads. If 0, the number of index threads will match
+    // the number of cores (as reported by std::thread::hardware_concurrency).
     int threads = 0;
 
     // Whether to reparse a file if write times of its dependencies have
