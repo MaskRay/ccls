@@ -685,7 +685,7 @@ public:
   bool handleDeclOccurrence(const Decl *d, index::SymbolRoleSet roles,
                             ArrayRef<index::SymbolRelation> relations,
                             SourceLocation src_loc,
-                            ASTNodeInfo ast_node) override {
+                            ASTNodeInfo ast_node) {
     if (!param.no_linkage) {
       if (auto *nd = dyn_cast<NamedDecl>(d); nd && nd->hasLinkage())
         ;
