@@ -196,7 +196,14 @@ Kind getKind(const Decl *d, SymbolKind &kind) {
     // ccls extension
     kind = SymbolKind::Parameter;
     return Kind::Var;
-  case Decl::Var:
+  case Decl::Var: {
+    auto vd = cast<VarDecl>(d);
+    if (vd->isStaticDataMember()) {
+      kind = SymbolKind::Field;
+      return Kind::Var;
+    }
+    [[fallthrough]];
+  }
   case Decl::Decomposition:
     kind = SymbolKind::Variable;
     return Kind::Var;
