@@ -20,6 +20,8 @@ namespace vfs = clang::vfs;
 namespace ccls {
 std::string pathFromFileEntry(const clang::FileEntry &file);
 
+bool isInsideMainFile(const clang::SourceManager &sm, clang::SourceLocation sl);
+
 Range fromCharSourceRange(const clang::SourceManager &sm,
                           const clang::LangOptions &lang,
                           clang::CharSourceRange csr,

@@ -243,7 +243,7 @@ public:
       return;
     const SourceManager &sm = info.getSourceManager();
     StringRef filename = sm.getFilename(info.getLocation());
-    bool concerned = sm.isWrittenInMainFile(l);
+    bool concerned = isInsideMainFile(sm, l);
     auto fillDiagBase = [&](DiagBase &d) {
       llvm::SmallString<64> message;
       info.FormatDiagnostic(message);

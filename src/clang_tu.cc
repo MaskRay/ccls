@@ -27,6 +27,13 @@ std::string pathFromFileEntry(const FileEntry &file) {
   return normalizeFolder(ret) ? ret : realPath(ret);
 }
 
+bool isInsideMainFile(const SourceManager &sm, SourceLocation sl) {
+  if (!sl.isValid())
+    return false;
+  FileID fid = sm.getFileID(sm.getExpansionLoc(sl));
+  return fid == sm.getMainFileID() || fid == sm.getPreambleFileID();
+}
+
 static Pos decomposed2LineAndCol(const SourceManager &sm,
                                  std::pair<FileID, unsigned> i) {
   int l = (int)sm.getLineNumber(i.first, i.second) - 1,
