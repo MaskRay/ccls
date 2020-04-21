@@ -70,6 +70,11 @@ endif()
 
 find_package(Clang REQUIRED)
 
+# Workaround for clang 10
+if(LLVM_PACKAGE_VERSION VERSION_GREATER_EQUAL 10.0.0)
+  set(CLANG_LINK_CLANG_DYLIB ON CACHE BOOL "Force to use DYLIB" FORCE)
+endif()
+
 if(CLANG_LINK_CLANG_DYLIB)
   target_link_libraries(ccls PRIVATE clang-cpp)
 else()
