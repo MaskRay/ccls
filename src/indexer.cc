@@ -675,11 +675,7 @@ public:
 
 public:
   IndexDataConsumer(IndexParam &param) : param(param) {}
-  void initialize(ASTContext &ctx) override {
-    this->ctx = param.ctx = &ctx;
-    SourceManager &sm = ctx.getSourceManager();
-    (void)param.consumeFile(*sm.getFileEntryForID(sm.getMainFileID()));
-  }
+  void initialize(ASTContext &ctx) override { this->ctx = param.ctx = &ctx; }
 #if LLVM_VERSION_MAJOR < 10 // llvmorg-10-init-12036-g3b9715cb219
 # define handleDeclOccurrence handleDeclOccurence
 #endif
