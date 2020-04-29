@@ -1,4 +1,4 @@
-// Copyright 2017-2018 ccls Authors
+// Copyright 2017-2020 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -72,16 +72,16 @@ struct SymbolRef {
   Kind kind;
   Role role;
   operator SymbolIdx() const { return {usr, kind}; }
-  std::tuple<Range, Usr, Kind, Role> toTuple() const {
+  [[nodiscard]] std::tuple<Range, Usr, Kind, Role> toTuple() const {
     return std::make_tuple(range, usr, kind, role);
   }
   bool operator==(const SymbolRef &o) const { return toTuple() == o.toTuple(); }
-  bool valid() const { return range.valid(); }
+  [[nodiscard]] bool valid() const { return range.valid(); }
 };
 
 struct ExtentRef : SymbolRef {
   Range extent;
-  std::tuple<Range, Usr, Kind, Role, Range> toTuple() const {
+  [[nodiscard]] std::tuple<Range, Usr, Kind, Role, Range> toTuple() const {
     return std::make_tuple(range, usr, kind, role, extent);
   }
   bool operator==(const ExtentRef &o) const { return toTuple() == o.toTuple(); }
@@ -92,7 +92,7 @@ struct Ref {
   Role role;
 
   bool valid() const { return range.valid(); }
-  std::tuple<Range, Role> toTuple() const {
+  [[nodiscard]] std::tuple<Range, Role> toTuple() const {
     return std::make_tuple(range, role);
   }
   bool operator==(const Ref &o) const { return toTuple() == o.toTuple(); }
@@ -130,7 +130,7 @@ void reflect(BinaryWriter &visitor, DeclRef &value);
 template <typename T> using VectorAdapter = std::vector<T, std::allocator<T>>;
 
 template <typename D> struct NameMixin {
-  std::string_view name(bool qualified) const {
+  [[nodiscard]] std::string_view name(bool qualified) const {
     auto self = static_cast<const D *>(this);
     return qualified
                ? std::string_view(self->detailed_name + self->qual_name_offset,
@@ -165,8 +165,8 @@ struct FuncDef : NameMixin<FuncDef<V>> {
   SymbolKind parent_kind = SymbolKind::Unknown;
   uint8_t storage = clang::SC_None;
 
-  const Usr *bases_begin() const { return bases.begin(); }
-  const Usr *bases_end() const { return bases.end(); }
+  [[nodiscard]] const Usr *bases_begin() const { return bases.begin(); }
+  [[nodiscard]] const Usr *bases_end() const { return bases.end(); }
 };
 REFLECT_STRUCT(FuncDef<VectorAdapter>, detailed_name, hover, comments, spell,
                bases, vars, callees, qual_name_offset, short_name_offset,
@@ -204,8 +204,8 @@ struct TypeDef : NameMixin<TypeDef<V>> {
   SymbolKind kind = SymbolKind::Unknown;
   SymbolKind parent_kind = SymbolKind::Unknown;
 
-  const Usr *bases_begin() const { return bases.begin(); }
-  const Usr *bases_end() const { return bases.end(); }
+  [[nodiscard]] const Usr *bases_begin() const { return bases.begin(); }
+  [[nodiscard]] const Usr *bases_end() const { return bases.end(); }
 };
 REFLECT_STRUCT(TypeDef<VectorAdapter>, detailed_name, hover, comments, spell,
                bases, funcs, types, vars, alias_of, qual_name_offset,
@@ -240,7 +240,7 @@ struct VarDef : NameMixin<VarDef> {
   // (declaration).
   uint8_t storage = clang::SC_None;
 
-  bool is_local() const {
+  [[nodiscard]] bool is_local() const {
     return spell &&
            (parent_kind == SymbolKind::Function ||
             parent_kind == SymbolKind::Method ||
@@ -250,8 +250,8 @@ struct VarDef : NameMixin<VarDef> {
             storage == clang::SC_Register);
   }
 
-  const Usr *bases_begin() const { return nullptr; }
-  const Usr *bases_end() const { return nullptr; }
+  [[nodiscard]] const Usr *bases_begin() const { return nullptr; }
+  [[nodiscard]] const Usr *bases_end() const { return nullptr; }
 };
 REFLECT_STRUCT(VarDef, detailed_name, hover, comments, spell, type,
                qual_name_offset, short_name_offset, short_name_size, kind,

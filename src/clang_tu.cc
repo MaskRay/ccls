@@ -1,4 +1,4 @@
-// Copyright 2017-2018 ccls Authors
+// Copyright 2017-2020 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #include "clang_tu.hh"
@@ -124,7 +124,7 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
     if (!offload_compilation)
       return nullptr;
   }
-  if (jobs.size() == 0 || !isa<driver::Command>(*jobs.begin()))
+  if (jobs.empty() || !isa<driver::Command>(*jobs.begin()))
     return nullptr;
 
   const driver::Command &cmd = cast<driver::Command>(*jobs.begin());

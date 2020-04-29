@@ -1,4 +1,4 @@
-// Copyright 2017-2018 ccls Authors
+// Copyright 2017-2020 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #include "message_handler.hh"
@@ -37,7 +37,7 @@ const char *languageIdentifier(LanguageId lang) {
   case LanguageId::ObjC: return "objective-c";
   case LanguageId::ObjCpp: return "objective-cpp";
   default: return "";
-    // clang-format on
+  // clang-format on
   }
 }
 

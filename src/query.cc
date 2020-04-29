@@ -1,4 +1,4 @@
-// Copyright 2017-2018 ccls Authors
+// Copyright 2017-2020 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #include "query.hh"
@@ -61,7 +61,7 @@ template <typename Q>
 bool tryReplaceDef(llvm::SmallVectorImpl<Q> &def_list, Q &&def) {
   for (auto &def1 : def_list)
     if (def1.file_id == def.file_id) {
-      def1 = std::move(def);
+      def1 = std::forward<Q>(def);
       return true;
     }
   return false;

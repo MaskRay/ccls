@@ -1,4 +1,4 @@
-// Copyright 2017-2018 ccls Authors
+// Copyright 2017-2020 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -57,7 +57,7 @@ template <typename Q, typename QDef> struct QueryEntity {
     }
     return ret;
   }
-  const Def *anyDef() const {
+  [[nodiscard]] const Def *anyDef() const {
     return const_cast<QueryEntity *>(this)->anyDef();
   }
 };

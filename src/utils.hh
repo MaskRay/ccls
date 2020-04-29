@@ -1,4 +1,4 @@
-// Copyright 2017-2018 ccls Authors
+// Copyright 2017-2020 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -25,7 +25,7 @@ struct Matcher {
   Matcher(const std::string &pattern); // throw
   Matcher(Matcher &&) = default;
   ~Matcher();
-  bool matches(const std::string &text) const;
+  [[nodiscard]] bool matches(const std::string &text) const;
 };
 
 struct GroupMatch {
@@ -114,7 +114,7 @@ public:
   const T &operator*() const { return storage; }
   T &operator*() { return storage; }
 
-  bool valid() const { return storage.valid(); }
+  [[nodiscard]] bool valid() const { return storage.valid(); }
   explicit operator bool() const { return valid(); }
   operator std::optional<T>() const {
     if (valid())
@@ -148,7 +148,7 @@ template <typename T> struct Vec {
   T *begin() { return a.get(); }
   const T *end() const { return a.get() + s; }
   T *end() { return a.get() + s; }
-  int size() const { return s; }
+  [[nodiscard]] int size() const { return s; }
   const T &operator[](size_t i) const { return a.get()[i]; }
   T &operator[](size_t i) { return a.get()[i]; }
 };

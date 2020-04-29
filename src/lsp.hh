@@ -1,4 +1,4 @@
-// Copyright 2017-2018 ccls Authors
+// Copyright 2017-2020 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -22,7 +22,7 @@ struct RequestId {
 
   std::string value;
 
-  bool valid() const { return type != kNone; }
+  [[nodiscard]] bool valid() const { return type != kNone; }
 };
 void reflect(JsonReader &visitor, RequestId &value);
 void reflect(JsonWriter &visitor, RequestId &value);
@@ -67,7 +67,7 @@ struct DocumentUri {
   bool operator<(const DocumentUri &o) const { return raw_uri < o.raw_uri; }
 
   void setPath(const std::string &path);
-  std::string getPath() const;
+  [[nodiscard]] std::string getPath() const;
 
   std::string raw_uri;
 };
@@ -84,7 +84,7 @@ struct Position {
   bool operator<=(const Position &o) const {
     return line != o.line ? line < o.line : character <= o.character;
   }
-  std::string toString() const;
+  [[nodiscard]] std::string toString() const;
 };
 
 struct lsRange {
@@ -96,10 +96,10 @@ struct lsRange {
   bool operator<(const lsRange &o) const {
     return !(start == o.start) ? start < o.start : end < o.end;
   }
-  bool includes(const lsRange &o) const {
+  [[nodiscard]] bool includes(const lsRange &o) const {
     return start <= o.start && o.end <= end;
   }
-  bool intersects(const lsRange &o) const {
+  [[nodiscard]] bool intersects(const lsRange &o) const {
     return start < o.end && o.start < end;
   }
 };

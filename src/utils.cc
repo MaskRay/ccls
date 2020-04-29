@@ -1,4 +1,4 @@
-// Copyright 2017-2018 ccls Authors
+// Copyright 2017-2020 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #include "utils.hh"
@@ -37,7 +37,7 @@ Matcher::Matcher(const std::string &pattern)
                                         std::regex_constants::optimize);
 }
 
-Matcher::~Matcher() {}
+Matcher::~Matcher() = default;
 
 bool Matcher::matches(const std::string &text) const {
   return std::regex_search(text, impl->regex, std::regex_constants::match_any);

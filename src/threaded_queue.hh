@@ -1,4 +1,4 @@
-// Copyright 2017-2018 ccls Authors
+// Copyright 2017-2020 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -29,8 +29,8 @@ struct BaseThreadQueue {
 template <typename... Queue> struct MultiQueueLock {
   MultiQueueLock(Queue... lockable) : tuple_{lockable...} { lock(); }
   ~MultiQueueLock() { unlock(); }
-  void lock() { lock_impl(typename std::index_sequence_for<Queue...>{}); }
-  void unlock() { unlock_impl(typename std::index_sequence_for<Queue...>{}); }
+  void lock() { lock_impl(std::index_sequence_for<Queue...>{}); }
+  void unlock() { unlock_impl(std::index_sequence_for<Queue...>{}); }
 
 private:
   template <size_t... Is> void lock_impl(std::index_sequence<Is...>) {
@@ -123,7 +123,7 @@ public:
   }
 
   // Returns true if the queue is empty. This is lock-free.
-  bool isEmpty() { return total_count_ == 0; }
+  [[nodiscard]] bool isEmpty() override { return total_count_ == 0; }
 
   // Get the first element from the queue. Blocks until one is available.
   T dequeue() {

@@ -1,4 +1,4 @@
-// Copyright 2017-2018 ccls Authors
+// Copyright 2017-2020 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #include "filesystem.hh"
@@ -255,7 +255,7 @@ void *indexer(void *arg_) {
   std::tie(h, idx) = *arg;
   delete arg;
   std::string name = "indexer" + std::to_string(idx);
-  set_thread_name(name.c_str());
+  set_thread_name(name);
   // Don't lower priority on __APPLE__. getpriority(2) says "When setting a
   // thread into background state the scheduling priority is set to lowest
   // value, disk and network IO are throttled."
