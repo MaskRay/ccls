@@ -6,6 +6,7 @@
 #include "log.hh"
 
 #include <rapidjson/document.h>
+#include <filesystem> 
 
 #include <algorithm>
 #include <stdio.h>
@@ -120,6 +121,8 @@ std::string DocumentUri::getPath() const {
 #endif
   if (g_config)
     normalizeFolder(ret);
+  if(std::filesystem::exists(ret))
+    ret = std::filesystem::canonical(ret);
   return ret;
 }
 
