@@ -12,6 +12,7 @@
 #include <clang/Driver/Driver.h>
 #include <clang/Driver/Tool.h>
 #include <clang/Lex/Lexer.h>
+#include <clang/Lex/PreprocessorOptions.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/Path.h>
 
@@ -148,6 +149,11 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   auto &isec = ci->getFrontendOpts().Inputs;
   if (isec.size())
     isec[0] = FrontendInputFile(main, isec[0].getKind(), isec[0].isSystem());
+  // clangSerialization has an unstable format. Disable PCH reading/writing
+  // to work around PCH mismatch problems.
+  ci->getPreprocessorOpts().ImplicitPCHInclude.clear();
+  ci->getPreprocessorOpts().PrecompiledPreambleBytes = {0, false};
+  ci->getPreprocessorOpts().PCHThroughHeader.clear();
   return ci;
 }
 
