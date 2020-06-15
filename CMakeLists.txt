@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.8)
 project(ccls LANGUAGES CXX)
 
-option(USE_SYSTEM_RAPIDJSON "Use system RapidJSON instead of the git submodule if exists" ON)
+option(USE_SYSTEM_RAPIDJSON "Use system RapidJSON instead of the git submodule if exists" OFF)
 
 # Sources for the executable are specified at end of CMakeLists.txt
 add_executable(ccls "")
