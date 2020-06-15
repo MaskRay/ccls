@@ -151,6 +151,9 @@ set_property(SOURCE src/utils.cc APPEND PROPERTY COMPILE_DEFINITIONS
 
 if(USE_SYSTEM_RAPIDJSON)
   find_package(RapidJSON QUIET)
+  if(NOT DEFINED RapidJSON_INCLUDE_DIRS AND DEFINED RAPIDJSON_INCLUDE_DIRS)
+    message(FATAL_ERROR "RapidJSON version is likely too old. See https://github.com/MaskRay/ccls/issues/455")
+  endif()
 endif()
 if(NOT RapidJSON_FOUND)
   set(RapidJSON_INCLUDE_DIRS third_party/rapidjson/include)
