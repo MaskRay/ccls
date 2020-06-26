@@ -6,6 +6,7 @@
 #include "query.hh"
 
 #include <algorithm>
+#include <type_traits>
 
 MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
 
@@ -166,7 +167,11 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
     reply(result);
   } else if (g_config->client.hierarchicalDocumentSymbolSupport) {
     std::unordered_map<SymbolIdx, std::unique_ptr<DocumentSymbol>> sym2ds;
-    std::vector<std::pair<std::vector<const void *>, DocumentSymbol *>> funcs,
+    std::vector<
+        std::pair<std::vector<const QueryFunc::Def *>, DocumentSymbol *>>
+        funcs;
+    std::vector<
+        std::pair<std::vector<const QueryType::Def *>, DocumentSymbol *>>
         types;
     for (auto [sym, refcnt] : file->symbol2refcnt) {
       if (refcnt <= 0 || !sym.extent.valid())
@@ -190,51 +195,53 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
       }
       if (!r.second)
         continue;
-      std::vector<const void *> def_ptrs;
-      SymbolKind kind = SymbolKind::Unknown;
-      withEntity(db, sym, [&](const auto &entity) {
+      withEntity(db, sym, [&, sym = sym](const auto &entity) {
         auto *def = entity.anyDef();
+        using Def = std::remove_cv_t<std::remove_reference_t<decltype(*def)>>;
         if (!def)
           return;
         ds->name = def->name(false);
         ds->detail = def->detailed_name;
+
+        std::vector<const Def *> def_ptrs;
         for (auto &def : entity.def)
           if (def.file_id == file_id && !ignore(&def)) {
-            kind = ds->kind = def.kind;
+            ds->kind = def.kind;
             def_ptrs.push_back(&def);
           }
+        if (def_ptrs.empty() ||
+            !(ds->kind == SymbolKind::Namespace || allows(sym))) {
+          ds.reset();
+          return;
+        }
+
+        if constexpr (std::is_same_v<Def, QueryFunc::Def>)
+          funcs.emplace_back(std::move(def_ptrs), ds.get());
+        else if constexpr (std::is_same_v<Def, QueryType::Def>)
+          types.emplace_back(std::move(def_ptrs), ds.get());
       });
-      if (def_ptrs.empty() || !(kind == SymbolKind::Namespace || allows(sym))) {
-        ds.reset();
-        continue;
-      }
-      if (sym.kind == Kind::Func)
-        funcs.emplace_back(std::move(def_ptrs), ds.get());
-      else if (sym.kind == Kind::Type)
-        types.emplace_back(std::move(def_ptrs), ds.get());
     }
 
     for (auto &[def_ptrs, ds] : funcs)
-      for (const void *def_ptr : def_ptrs)
-        for (Usr usr1 : ((const QueryFunc::Def *)def_ptr)->vars) {
+      for (const auto *def_ptr : def_ptrs)
+        for (Usr usr1 : def_ptr->vars) {
           auto it = sym2ds.find(SymbolIdx{usr1, Kind::Var});
           if (it != sym2ds.end() && it->second)
             ds->children.push_back(std::move(it->second));
         }
     for (auto &[def_ptrs, ds] : types)
-      for (const void *def_ptr : def_ptrs) {
-        auto *def = (const QueryType::Def *)def_ptr;
-        for (Usr usr1 : def->funcs) {
+      for (const auto *def_ptr : def_ptrs) {
+        for (Usr usr1 : def_ptr->funcs) {
           auto it = sym2ds.find(SymbolIdx{usr1, Kind::Func});
           if (it != sym2ds.end() && it->second)
             ds->children.push_back(std::move(it->second));
         }
-        for (Usr usr1 : def->types) {
+        for (Usr usr1 : def_ptr->types) {
           auto it = sym2ds.find(SymbolIdx{usr1, Kind::Type});
           if (it != sym2ds.end() && it->second)
             ds->children.push_back(std::move(it->second));
         }
-        for (auto [usr1, _] : def->vars) {
+        for (auto [usr1, _] : def_ptr->vars) {
           auto it = sym2ds.find(SymbolIdx{usr1, Kind::Var});
           if (it != sym2ds.end() && it->second)
             ds->children.push_back(std::move(it->second));
