@@ -25,6 +25,7 @@
 #include <inttypes.h>
 #include <map>
 #include <unordered_set>
+#include <filesystem>
 
 using namespace clang;
 
@@ -1355,6 +1356,11 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
     return {};
   }
 
+  std::string abs_main;
+  if (std::filesystem::exists(main)) {
+    abs_main = std::filesystem::canonical(main);
+  }
+
   std::vector<std::unique_ptr<IndexFile>> result;
   for (auto &it : param.uid2file) {
     if (!it.second.db)
@@ -1391,6 +1397,13 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
       else if (path != entry->import_file)
         entry->dependencies[llvm::CachedHashStringRef(intern(path))] =
             file.mtime;
+    }
+    std::string abs_entry;
+    if (std::filesystem::exists(entry->path)) {
+      abs_entry = std::filesystem::canonical(entry->path);
+      if (abs_entry == abs_main){
+        entry->path = main;
+      }
     }
     result.push_back(std::move(entry));
   }
