@@ -330,17 +330,9 @@ bool indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
       return true;
     } while (0);
 
-  if (loud) {
-    std::string line;
-    if (LOG_V_ENABLED(1)) {
-      line = "\n ";
-      for (auto &arg : entry.args)
-        (line += ' ') += arg;
-    }
-    LOG_S(INFO) << (deleted ? "delete " : "parse ") << path_to_index << line;
-  }
-
   std::vector<std::unique_ptr<IndexFile>> indexes;
+  int n_errs = 0;
+  std::string first_error;
   if (deleted) {
     indexes.push_back(std::make_unique<IndexFile>(request.path, "", false));
     if (request.path != path_to_index)
@@ -353,8 +345,12 @@ bool indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
         remapped.emplace_back(path_to_index, content);
     }
     bool ok;
-    indexes = idx::index(completion, wfiles, vfs, entry.directory,
-                         path_to_index, entry.args, remapped, no_linkage, ok);
+    auto result =
+        idx::index(completion, wfiles, vfs, entry.directory, path_to_index,
+                   entry.args, remapped, no_linkage, ok);
+    indexes = std::move(result.indexes);
+    n_errs = result.n_errs;
+    first_error = std::move(result.first_error);
 
     if (!ok) {
       if (request.id.valid()) {
@@ -365,6 +361,21 @@ bool indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
       }
       return true;
     }
+  }
+
+  if (loud || n_errs) {
+    std::string line;
+    SmallString<64> tmp;
+    SmallString<256> msg;
+    (Twine(deleted ? "delete " : "parse ") + path_to_index).toVector(msg);
+    if (n_errs)
+      msg += (" error:" + Twine(n_errs) + " " + first_error).toStringRef(tmp);
+    if (LOG_V_ENABLED(1)) {
+      msg += "\n ";
+      for (const char *arg : entry.args)
+        (msg += ' ') += arg;
+    }
+    LOG_S(INFO) << std::string_view(msg.data(), msg.size());
   }
 
   for (std::unique_ptr<IndexFile> &curr : indexes) {

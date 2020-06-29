@@ -1203,6 +1203,17 @@ public:
     return std::make_unique<MultiplexConsumer>(std::move(consumers));
   }
 };
+
+class IndexDiags : public DiagnosticConsumer {
+public:
+  llvm::SmallString<64> message;
+  void HandleDiagnostic(DiagnosticsEngine::Level level,
+    const clang::Diagnostic &info) override {
+    DiagnosticConsumer::HandleDiagnostic(level, info);
+    if (message.empty())
+      info.FormatDiagnostic(message);
+  }
+};
 } // namespace
 
 const int IndexFile::kMajorVersion = 21;
@@ -1252,7 +1263,7 @@ void init() {
                                        g_config->index.multiVersionBlacklist);
 }
 
-std::vector<std::unique_ptr<IndexFile>>
+IndexResult
 index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
       const std::string &opt_wdir, const std::string &main,
       const std::vector<const char *> &args,
@@ -1281,7 +1292,7 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
       ci->getPreprocessorOpts().addRemappedFile(filename, bufs.back().get());
     }
 
-  DiagnosticConsumer dc;
+  IndexDiags dc;
   auto clang = std::make_unique<CompilerInstance>(pch);
   clang->setInvocation(std::move(ci));
   clang->createDiagnostics(&dc, false);
@@ -1355,7 +1366,10 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
     return {};
   }
 
-  std::vector<std::unique_ptr<IndexFile>> result;
+  IndexResult result;
+  result.n_errs = (int)dc.getNumErrors();
+  // clang 7 does not implement operator std::string.
+  result.first_error = std::string(dc.message.data(), dc.message.size());
   for (auto &it : param.uid2file) {
     if (!it.second.db)
       continue;
@@ -1392,7 +1406,7 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
         entry->dependencies[llvm::CachedHashStringRef(intern(path))] =
             file.mtime;
     }
-    result.push_back(std::move(entry));
+    result.indexes.push_back(std::move(entry));
   }
 
   return result;

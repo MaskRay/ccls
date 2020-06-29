@@ -322,13 +322,19 @@ struct IndexFile {
   std::string toString();
 };
 
+struct IndexResult {
+  std::vector<std::unique_ptr<IndexFile>> indexes;
+  int n_errs = 0;
+  std::string first_error;
+};
+
 struct SemaManager;
 struct WorkingFiles;
 struct VFS;
 
 namespace idx {
 void init();
-std::vector<std::unique_ptr<IndexFile>>
+IndexResult
 index(SemaManager *complete, WorkingFiles *wfiles, VFS *vfs,
       const std::string &opt_wdir, const std::string &file,
       const std::vector<const char *> &args,
