@@ -785,7 +785,10 @@ public:
         entity->def.spell = {use,
                              fromTokenRangeDefaulted(sm, lang, sr, fid, loc)};
         entity->def.parent_kind = SymbolKind::File;
-        getKind(cast<Decl>(sem_dc), entity->def.parent_kind);
+        const Decl *dc = cast<Decl>(sem_dc);
+        if (Kind parent_kind = getKind(dc, entity->def.parent_kind);
+            parent_kind != Kind::Invalid)
+          entity->def.parent = {getUsr(dc), parent_kind};
       } else if (is_decl) {
         SourceRange sr = origD->getSourceRange();
         entity->declarations.push_back(
@@ -1205,7 +1208,7 @@ public:
 };
 } // namespace
 
-const int IndexFile::kMajorVersion = 21;
+const int IndexFile::kMajorVersion = 22;
 const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(const std::string &path, const std::string &contents,

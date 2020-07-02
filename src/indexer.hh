@@ -65,6 +65,8 @@ struct SymbolIdx {
   }
 };
 
+REFLECT_STRUCT(SymbolIdx, usr, kind);
+
 // |id,kind| refer to the referenced entity.
 struct SymbolRef {
   Range range;
@@ -163,6 +165,7 @@ struct FuncDef : NameMixin<FuncDef<V>> {
   int16_t short_name_size = 0;
   SymbolKind kind = SymbolKind::Unknown;
   SymbolKind parent_kind = SymbolKind::Unknown;
+  SymbolIdx parent = {0, Kind::Invalid};
   uint8_t storage = clang::SC_None;
 
   const Usr *bases_begin() const { return bases.begin(); }
@@ -170,7 +173,7 @@ struct FuncDef : NameMixin<FuncDef<V>> {
 };
 REFLECT_STRUCT(FuncDef<VectorAdapter>, detailed_name, hover, comments, spell,
                bases, vars, callees, qual_name_offset, short_name_offset,
-               short_name_size, kind, parent_kind, storage);
+               short_name_size, kind, parent_kind, parent, storage);
 
 struct IndexFunc : NameMixin<IndexFunc> {
   using Def = FuncDef<VectorAdapter>;
@@ -203,13 +206,14 @@ struct TypeDef : NameMixin<TypeDef<V>> {
   int16_t short_name_size = 0;
   SymbolKind kind = SymbolKind::Unknown;
   SymbolKind parent_kind = SymbolKind::Unknown;
+  SymbolIdx parent = {0, Kind::Invalid};
 
   const Usr *bases_begin() const { return bases.begin(); }
   const Usr *bases_end() const { return bases.end(); }
 };
 REFLECT_STRUCT(TypeDef<VectorAdapter>, detailed_name, hover, comments, spell,
                bases, funcs, types, vars, alias_of, qual_name_offset,
-               short_name_offset, short_name_size, kind, parent_kind);
+               short_name_offset, short_name_size, kind, parent_kind, parent);
 
 struct IndexType {
   using Def = TypeDef<VectorAdapter>;
@@ -236,6 +240,7 @@ struct VarDef : NameMixin<VarDef> {
   int16_t short_name_size = 0;
   SymbolKind kind = SymbolKind::Unknown;
   SymbolKind parent_kind = SymbolKind::Unknown;
+  SymbolIdx parent = {0, Kind::Invalid};
   // Note a variable may have instances of both |None| and |Extern|
   // (declaration).
   uint8_t storage = clang::SC_None;
@@ -255,7 +260,7 @@ struct VarDef : NameMixin<VarDef> {
 };
 REFLECT_STRUCT(VarDef, detailed_name, hover, comments, spell, type,
                qual_name_offset, short_name_offset, short_name_size, kind,
-               parent_kind, storage);
+               parent_kind, parent, storage);
 
 struct IndexVar {
   using Def = VarDef;

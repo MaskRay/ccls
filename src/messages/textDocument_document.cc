@@ -247,6 +247,26 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
             ds->children.push_back(std::move(it->second));
         }
       }
+
+    // put member definition in their namespace
+    // when definition is in separate file(cpp), we have NS -> Type -> member
+    // but the Type is not defined here(in .cpp), so we do NS -> member instead
+    for (auto &[sym, ds] : sym2ds) {
+      if (!ds)
+        continue;
+
+      SymbolKind sym_kind = getSymbolKind(db, sym);
+      std::optional<SymbolIdx> ns;
+      bool is_member = sym_kind == SymbolKind::Field ||
+                       sym_kind == SymbolKind::Method ||
+                       sym_kind == SymbolKind::StaticMethod;
+      if (is_member && (ns = getNamespace(db, sym))) {
+        auto it = sym2ds.find(*ns);
+        if (it != sym2ds.end() && it->second)
+          it->second->children.push_back(std::move(ds));
+      }
+    }
+
     std::vector<std::unique_ptr<DocumentSymbol>> result;
     for (auto &[_, ds] : sym2ds)
       if (ds) {

@@ -297,6 +297,7 @@ template <typename TVisitor> void reflect1(TVisitor &vis, IndexFunc &v) {
   REFLECT_MEMBER2("callees", v.def.callees);
   REFLECT_MEMBER2("kind", v.def.kind);
   REFLECT_MEMBER2("parent_kind", v.def.parent_kind);
+  REFLECT_MEMBER2("parent", v.def.parent);
   REFLECT_MEMBER2("storage", v.def.storage);
 
   REFLECT_MEMBER2("declarations", v.declarations);
@@ -324,6 +325,7 @@ template <typename Vis> void reflect1(Vis &vis, IndexType &v) {
   REFLECT_MEMBER2("alias_of", v.def.alias_of);
   REFLECT_MEMBER2("kind", v.def.kind);
   REFLECT_MEMBER2("parent_kind", v.def.parent_kind);
+  REFLECT_MEMBER2("parent", v.def.parent);
 
   REFLECT_MEMBER2("declarations", v.declarations);
   REFLECT_MEMBER2("derived", v.derived);
@@ -347,6 +349,7 @@ template <typename TVisitor> void reflect1(TVisitor &vis, IndexVar &v) {
   REFLECT_MEMBER2("type", v.def.type);
   REFLECT_MEMBER2("kind", v.def.kind);
   REFLECT_MEMBER2("parent_kind", v.def.parent_kind);
+  REFLECT_MEMBER2("parent", v.def.parent);
   REFLECT_MEMBER2("storage", v.def.storage);
 
   REFLECT_MEMBER2("declarations", v.declarations);

@@ -258,6 +258,8 @@ void eachOccurrence(DB *db, SymbolIdx sym, bool include_decl, Fn &&fn) {
 
 SymbolKind getSymbolKind(DB *db, SymbolIdx sym);
 
+std::optional<SymbolIdx> getNamespace(DB *db, SymbolIdx sym);
+
 template <typename C, typename Fn>
 void eachDefinedFunc(DB *db, const C &usrs, Fn &&fn) {
   for (Usr usr : usrs) {

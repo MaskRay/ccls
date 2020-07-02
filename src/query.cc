@@ -90,6 +90,7 @@ QueryFunc::Def convert(const IndexFunc::Def &o) {
   r.short_name_size = o.short_name_size;
   r.kind = o.kind;
   r.parent_kind = o.parent_kind;
+  r.parent = o.parent;
   r.storage = o.storage;
   return r;
 }
@@ -111,6 +112,7 @@ QueryType::Def convert(const IndexType::Def &o) {
   r.short_name_size = o.short_name_size;
   r.kind = o.kind;
   r.parent_kind = o.parent_kind;
+  r.parent = o.parent;
   return r;
 }
 
@@ -839,4 +841,20 @@ std::vector<SymbolRef> findSymbolsAtLocation(WorkingFile *wfile,
 
   return symbols;
 }
+
+std::optional<SymbolIdx> getNamespace(DB *db, SymbolIdx sym) {
+  SymbolKind kind;
+  do {
+    withEntity(db, sym,
+               [&sym](auto const &entity) { sym = entity.anyDef()->parent; });
+    kind = getSymbolKind(db, sym);
+  } while (kind != SymbolKind::Namespace && kind != SymbolKind::File &&
+           kind != SymbolKind::Unknown);
+
+  if (kind == SymbolKind::Namespace)
+    return sym;
+  else
+    return std::nullopt;
+}
+
 } // namespace ccls
