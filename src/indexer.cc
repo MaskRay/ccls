@@ -670,14 +670,17 @@ public:
       if (!rd->isCompleteDefinition() || rd->isDependentType() ||
           rd->isInvalidDecl() || !validateRecord(rd))
         offset = -1;
-      for (FieldDecl *fd : rd->fields()) {
-        int offset1 = offset < 0 ? -1 : int(offset + ctx->getFieldOffset(fd));
-        if (fd->getIdentifier())
-          type.def.vars.emplace_back(getUsr(fd), offset1);
-        else if (const auto *rt1 = fd->getType()->getAs<RecordType>()) {
-          if (const RecordDecl *rd1 = rt1->getDecl())
-            if (seen.insert(rd1).second)
-              stack.push_back({rd1, offset1});
+      for (Decl const *decl : rd->decls()) {
+        if (auto const *static_var = dyn_cast<VarDecl>(decl)) {
+          type.def.vars.emplace_back(getUsr(static_var), -1);
+        } else if (auto const *fd = dyn_cast<FieldDecl>(decl)) {
+          int offset1 = offset < 0 ? -1 : int(offset + ctx->getFieldOffset(fd));
+          if (fd->getIdentifier())
+            type.def.vars.emplace_back(getUsr(fd), offset1);
+          else if (const auto *rt1 = fd->getType()->getAs<RecordType>())
+            if (const RecordDecl *rd1 = rt1->getDecl())
+              if (seen.insert(rd1).second)
+                stack.push_back({rd1, offset1});
         }
       }
     }
@@ -866,10 +869,13 @@ public:
         t = vd->getType();
       if (is_def || is_decl) {
         const Decl *dc = cast<Decl>(sem_dc);
-        Kind kind = getKind(dc, var->def.parent_kind);
-        if (kind == Kind::Func)
+        Kind parent_kind = getKind(dc, var->def.parent_kind);
+        if (parent_kind != Kind::Invalid)
+          var->def.parent = {getUsr(dc), parent_kind};
+
+        if (parent_kind == Kind::Func)
           db->toFunc(getUsr(dc)).def.vars.push_back(usr);
-        else if (kind == Kind::Type && !isa<RecordDecl>(sem_dc))
+        else if (parent_kind == Kind::Type && !isa<RecordDecl>(sem_dc))
           db->toType(getUsr(dc)).def.vars.emplace_back(usr, -1);
         if (!t.isNull()) {
           if (auto *bt = t->getAs<BuiltinType>()) {
