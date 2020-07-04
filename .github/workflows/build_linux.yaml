@@ -1,0 +1,17 @@
+name: try build in ubuntu
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: install depend
+      run: sudo apt install clang libclang-8-dev
+    - name: clone submodule
+      run: git submodule update --init --recursive
+    - name: cmake generate
+      run: cmake -H. -Bbuild/Debug -DCMAKE_BUILD_TYPE=Debug
+    - name: compile
+      run: cmake --build build/Debug
