@@ -191,6 +191,8 @@ REFLECT_UNDERLYING_B(SymbolKind);
 REFLECT_STRUCT(TextDocumentIdentifier, uri);
 REFLECT_STRUCT(TextDocumentItem, uri, languageId, version, text);
 REFLECT_STRUCT(TextEdit, range, newText);
+REFLECT_STRUCT(WorkDoneProgress, kind, title, message, percentage);
+REFLECT_STRUCT(WorkDoneProgressParam, token, value);
 REFLECT_STRUCT(DiagnosticRelatedInformation, location, message);
 REFLECT_STRUCT(Diagnostic, range, severity, code, source, message,
                relatedInformation);

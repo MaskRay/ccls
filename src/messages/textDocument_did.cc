@@ -44,7 +44,7 @@ void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
   // pending index request.
   auto [lang, header] = lookupExtension(path);
   if ((lang != LanguageId::Unknown && !header) ||
-      !pipeline::pending_index_requests)
+      pipeline::stats.completed == pipeline::stats.enqueued)
     pipeline::index(path, {}, IndexMode::Normal, false);
   if (header)
     project->indexRelated(path);

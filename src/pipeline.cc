@@ -22,6 +22,7 @@
 #include <llvm/Support/Threading.h>
 
 #include <chrono>
+#include <inttypes.h>
 #include <mutex>
 #include <shared_mutex>
 #include <thread>
@@ -38,6 +39,12 @@ struct PublishDiagnosticParam {
   std::vector<Diagnostic> diagnostics;
 };
 REFLECT_STRUCT(PublishDiagnosticParam, uri, diagnostics);
+
+constexpr char index_progress_token[] = "index";
+struct WorkDoneProgressCreateParam {
+  const char *token = index_progress_token;
+};
+REFLECT_STRUCT(WorkDoneProgressCreateParam, token);
 } // namespace
 
 void VFS::clear() {
@@ -67,7 +74,8 @@ void standaloneInitialize(MessageHandler &, const std::string &root);
 namespace pipeline {
 
 std::atomic<bool> g_quit;
-std::atomic<int64_t> loaded_ts{0}, pending_index_requests{0}, request_id{0};
+std::atomic<int64_t> loaded_ts{0}, request_id{0};
+IndexStats stats;
 int64_t tick = 0;
 
 namespace {
@@ -195,9 +203,6 @@ bool indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
     return false;
   auto &request = *opt_request;
   bool loud = request.mode != IndexMode::OnChange;
-  struct RAII {
-    ~RAII() { pending_index_requests--; }
-  } raii;
 
   // Dummy one to trigger refresh semantic highlight.
   if (request.path.empty()) {
@@ -207,6 +212,9 @@ bool indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
     return false;
   }
 
+  struct RAII {
+    ~RAII() { stats.completed++; }
+  } raii;
   if (!matcher.matches(request.path)) {
     LOG_IF_S(INFO, loud) << "skip " << request.path;
     return false;
@@ -643,7 +651,9 @@ void mainLoop() {
   handler.manager = &manager;
   handler.include_complete = &include_complete;
 
+  bool work_done_created = false, in_progress = false;
   bool has_indexed = false;
+  int64_t last_completed = 0;
   std::deque<InMessage> backlog;
   StringMap<std::deque<InMessage *>> path2backlog;
   while (true) {
@@ -693,6 +703,44 @@ void mainLoop() {
       }
     }
 
+    int64_t completed = stats.completed.load(std::memory_order_relaxed);
+    if (completed != last_completed) {
+      if (!work_done_created) {
+        WorkDoneProgressCreateParam param;
+        request("window/workDoneProgress/create", param);
+        work_done_created = true;
+      }
+
+      int64_t enqueued = stats.enqueued.load(std::memory_order_relaxed);
+      if (completed != enqueued) {
+        if (!in_progress) {
+          WorkDoneProgressParam param;
+          param.token = index_progress_token;
+          param.value.kind = "begin";
+          param.value.title = "indexing";
+          notify("$/progress", param);
+          in_progress = true;
+        }
+        int64_t last_idle = stats.last_idle.load(std::memory_order_relaxed);
+        WorkDoneProgressParam param;
+        param.token = index_progress_token;
+        param.value.kind = "report";
+        param.value.message =
+            (Twine(completed - last_idle) + "/" + Twine(enqueued - last_idle))
+                .str();
+        param.value.percentage =
+            100.0 * (completed - last_idle) / (enqueued - last_idle);
+        notify("$/progress", param);
+      } else if (in_progress) {
+        stats.last_idle.store(enqueued, std::memory_order_relaxed);
+        WorkDoneProgressParam param;
+        param.token = index_progress_token;
+        param.value.kind = "end";
+        notify("$/progress", param);
+        in_progress = false;
+      }
+    }
+
     if (did_work) {
       has_indexed |= indexed;
       if (g_quit.load(std::memory_order_relaxed))
@@ -736,16 +784,16 @@ void standalone(const std::string &root) {
     int entries = 0;
     for (auto &[_, folder] : project.root2folder)
       entries += folder.entries.size();
-    printf("entries: %5d\n", entries);
+    printf("entries:   %4d\n", entries);
   }
   while (1) {
     (void)on_indexed->dequeueAll();
-    int pending = pending_index_requests;
+    int64_t enqueued = stats.enqueued, completed = stats.completed;
     if (tty) {
-      printf("\rpending: %5d", pending);
+      printf("\rcompleted: %4" PRId64 "/%" PRId64, completed, enqueued);
       fflush(stdout);
     }
-    if (!pending)
+    if (completed == enqueued)
       break;
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
@@ -756,7 +804,8 @@ void standalone(const std::string &root) {
 
 void index(const std::string &path, const std::vector<const char *> &args,
            IndexMode mode, bool must_exist, RequestId id) {
-  pending_index_requests++;
+  if (!path.empty())
+    stats.enqueued++;
   index_request->pushBack({path, args, mode, must_exist, std::move(id)},
                           mode != IndexMode::Background);
 }

@@ -39,9 +39,14 @@ enum class IndexMode {
   Normal,
 };
 
+struct IndexStats {
+  std::atomic<int64_t> last_idle, completed, enqueued;
+};
+
 namespace pipeline {
 extern std::atomic<bool> g_quit;
-extern std::atomic<int64_t> loaded_ts, pending_index_requests;
+extern std::atomic<int64_t> loaded_ts;
+extern IndexStats stats;
 extern int64_t tick;
 
 void threadEnter();
