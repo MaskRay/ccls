@@ -17,13 +17,13 @@
 #include <llvm/Support/Path.h>
 
 using namespace clang;
+using namespace llvm;
 
 namespace ccls {
 std::string pathFromFileEntry(const FileEntry &file) {
-  StringRef name = file.tryGetRealPathName();
-  if (name.empty())
-    name = file.getName();
-  std::string ret = normalizePath(name);
+  SmallString<128> path(file.getName());
+  sys::path::remove_dots(path, /*remove_dot_dot=*/true);
+  std::string ret(path.str());
   // Resolve symlinks outside of workspace folders, e.g. /usr/include/c++/7.3.0
   return normalizeFolder(ret) ? ret : realPath(ret);
 }
