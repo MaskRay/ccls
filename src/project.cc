@@ -462,6 +462,12 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
 
       if (seen.insert(entry.filename).second)
         folder.entries.push_back(entry);
+
+      if (cmd.Filename != entry.filename && seen.insert(cmd.Filename).second) {
+        Project::Entry entry_origin = entry;
+        entry_origin.filename = cmd.Filename;
+        folder.entries.push_back(entry_origin);
+      }
     }
   }
 
