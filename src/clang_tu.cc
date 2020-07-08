@@ -20,10 +20,19 @@ using namespace clang;
 using namespace llvm;
 
 namespace ccls {
+bool checkFolder(std::string &path) {
+  for (auto &[root, real] : g_config->workspaceFolders)
+    if (StringRef(path).startswith(root))
+      return true;
+  return false;
+}
+
 std::string pathFromFileEntry(const FileEntry &file) {
   SmallString<128> path(file.getName());
   sys::path::remove_dots(path, /*remove_dot_dot=*/true);
   std::string ret(path.str());
+  if (checkFolder(ret))
+    return ret;
   // Resolve symlinks outside of workspace folders, e.g. /usr/include/c++/7.3.0
   return normalizeFolder(ret) ? ret : realPath(ret);
 }
@@ -113,7 +122,7 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   const driver::JobList &jobs = comp->getJobs();
   bool offload_compilation = false;
   if (jobs.size() > 1) {
-    for (auto &a : comp->getActions()){
+    for (auto &a : comp->getActions()) {
       // On MacOSX real actions may end up being wrapped in BindArchAction
       if (isa<driver::BindArchAction>(a))
         a = *a->input_begin();
