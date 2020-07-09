@@ -435,8 +435,9 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
       entry.directory = realPath(cmd.Directory);
       normalizeFolder(entry.directory);
       doPathMapping(entry.directory);
-      entry.filename =
-          realPath(resolveIfRelative(entry.directory, cmd.Filename));
+      std::string resolvedPath =
+          resolveIfRelative(entry.directory, cmd.Filename);
+      entry.filename = realPath(resolvedPath);
       normalizeFolder(entry.filename);
       doPathMapping(entry.filename);
 
@@ -463,10 +464,17 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
       if (seen.insert(entry.filename).second)
         folder.entries.push_back(entry);
 
-      if (cmd.Filename != entry.filename && seen.insert(cmd.Filename).second) {
-        Project::Entry entry_origin = entry;
-        entry_origin.filename = cmd.Filename;
-        folder.entries.push_back(entry_origin);
+      if (resolvedPath != entry.filename && seen.insert(resolvedPath).second) {
+        Project::Entry newEntry = entry;
+        newEntry.filename = resolvedPath;
+        folder.entries.push_back(newEntry);
+      }
+
+      normalizeFolder(resolvedPath);
+      if (resolvedPath != entry.filename && seen.insert(resolvedPath).second) {
+        Project::Entry newEntry = entry;
+        newEntry.filename = resolvedPath;
+        folder.entries.push_back(newEntry);
       }
     }
   }
