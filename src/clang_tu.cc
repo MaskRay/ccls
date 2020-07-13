@@ -6,6 +6,7 @@
 #include "config.hh"
 #include "platform.hh"
 
+#include <filesystem>
 #include <clang/AST/Type.h>
 #include <clang/Driver/Action.h>
 #include <clang/Driver/Compilation.h>
@@ -33,6 +34,7 @@ std::string pathFromFileEntry(const FileEntry &file) {
   std::string ret(path.str());
   if (checkFolder(ret))
     return ret;
+  ret = std::filesystem::exists(ret)? ret: file.tryGetRealPathName().str(); 
   // Resolve symlinks outside of workspace folders, e.g. /usr/include/c++/7.3.0
   return normalizeFolder(ret) ? ret : realPath(ret);
 }
