@@ -138,11 +138,15 @@ std::string realPath(const std::string &path) {
 }
 
 bool normalizeFolder(std::string &path) {
-  for (auto &[root, real] : g_config->workspaceFolders)
-    if (real.size() && llvm::StringRef(path).startswith(real)) {
+  for (auto &[root, real] : g_config->workspaceFolders) {
+    StringRef p(path);
+    if (p.startswith(root))
+      return true;
+    if (p.startswith(real)) {
       path = root + path.substr(real.size());
       return true;
     }
+  }
   return false;
 }
 

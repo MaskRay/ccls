@@ -17,15 +17,21 @@
 #include <llvm/Support/Path.h>
 
 using namespace clang;
+using namespace llvm;
 
 namespace ccls {
 std::string pathFromFileEntry(const FileEntry &file) {
-  StringRef name = file.tryGetRealPathName();
-  if (name.empty())
-    name = file.getName();
-  std::string ret = normalizePath(name);
-  // Resolve symlinks outside of workspace folders, e.g. /usr/include/c++/7.3.0
-  return normalizeFolder(ret) ? ret : realPath(ret);
+  // If getName() refers to a file within a workspace folder, we prefer it
+  // (which may be a symlink).
+  std::string ret = normalizePath(file.getName());
+  if (normalizeFolder(ret))
+    return ret;
+  // Resolve symlinks outside of working folders. This handles leading path
+  // components, e.g. (/lib -> /usr/lib) in
+  // /../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/utility
+  ret = realPath(ret);
+  normalizeFolder(ret);
+  return ret;
 }
 
 bool isInsideMainFile(const SourceManager &sm, SourceLocation sl) {
