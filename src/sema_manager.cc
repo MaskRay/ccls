@@ -47,12 +47,12 @@ struct ProxyFileSystem : FileSystem {
   std::error_code setCurrentWorkingDirectory(const Twine &Path) override {
     return FS->setCurrentWorkingDirectory(Path);
   }
-#if LLVM_VERSION_MAJOR == 7
+#  if LLVM_VERSION_MAJOR == 7
   std::error_code getRealPath(const Twine &Path,
                               SmallVectorImpl<char> &Output) const override {
     return FS->getRealPath(Path, Output);
   }
-#endif
+#  endif
   FileSystem &getUnderlyingFS() { return *FS; }
   IntrusiveRefCntPtr<FileSystem> FS;
 };

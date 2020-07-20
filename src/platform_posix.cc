@@ -2,38 +2,38 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #if defined(__unix__) || defined(__APPLE__)
-#include "platform.hh"
+#  include "platform.hh"
 
-#include "utils.hh"
+#  include "utils.hh"
 
-#include <assert.h>
-#include <limits.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#  include <assert.h>
+#  include <limits.h>
+#  include <stdio.h>
+#  include <stdlib.h>
+#  include <string.h>
+#  include <time.h>
 
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <pthread.h>
-#include <signal.h>
-#include <sys/resource.h>
-#include <sys/stat.h>
-#include <sys/types.h> // required for stat.h
-#include <sys/wait.h>
-#include <unistd.h>
-#ifdef __GLIBC__
-#include <malloc.h>
-#endif
+#  include <dirent.h>
+#  include <errno.h>
+#  include <fcntl.h>
+#  include <pthread.h>
+#  include <signal.h>
+#  include <sys/resource.h>
+#  include <sys/stat.h>
+#  include <sys/types.h> // required for stat.h
+#  include <sys/wait.h>
+#  include <unistd.h>
+#  ifdef __GLIBC__
+#    include <malloc.h>
+#  endif
 
-#include <llvm/ADT/SmallString.h>
-#include <llvm/Support/Path.h>
+#  include <llvm/ADT/SmallString.h>
+#  include <llvm/Support/Path.h>
 
-#include <atomic>
-#include <condition_variable>
-#include <mutex>
-#include <string>
+#  include <atomic>
+#  include <condition_variable>
+#  include <mutex>
+#  include <string>
 
 namespace ccls {
 namespace pipeline {
@@ -47,9 +47,9 @@ std::string normalizePath(llvm::StringRef path) {
 }
 
 void freeUnusedMemory() {
-#ifdef __GLIBC__
+#  ifdef __GLIBC__
   malloc_trim(4 * 1024 * 1024);
-#endif
+#  endif
 }
 
 void traceMe() {

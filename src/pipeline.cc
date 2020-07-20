@@ -27,7 +27,7 @@
 #include <shared_mutex>
 #include <thread>
 #ifndef _WIN32
-#include <unistd.h>
+#  include <unistd.h>
 #endif
 using namespace llvm;
 namespace chrono = std::chrono;

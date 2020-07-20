@@ -2,21 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #if defined(_WIN32)
-#include "platform.hh"
+#  include "platform.hh"
 
-#include "utils.hh"
+#  include "utils.hh"
 
-#include <Windows.h>
-#include <direct.h>
-#include <fcntl.h>
-#include <io.h>
+#  include <Windows.h>
+#  include <direct.h>
+#  include <fcntl.h>
+#  include <io.h>
 
-#include <sys/stat.h>
-#include <sys/types.h>
+#  include <sys/stat.h>
+#  include <sys/types.h>
 
-#include <algorithm>
-#include <string>
-#include <thread>
+#  include <algorithm>
+#  include <string>
+#  include <thread>
 
 namespace ccls {
 std::string normalizePath(llvm::StringRef path) {

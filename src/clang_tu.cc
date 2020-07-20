@@ -119,7 +119,7 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   const driver::JobList &jobs = comp->getJobs();
   bool offload_compilation = false;
   if (jobs.size() > 1) {
-    for (auto &a : comp->getActions()){
+    for (auto &a : comp->getActions()) {
       // On MacOSX real actions may end up being wrapped in BindArchAction
       if (isa<driver::BindArchAction>(a))
         a = *a->input_begin();

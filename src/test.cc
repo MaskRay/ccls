@@ -25,8 +25,8 @@
 
 // The 'diff' utility is available and we can use dprintf(3).
 #if _POSIX_C_SOURCE >= 200809L
-#include <sys/wait.h>
-#include <unistd.h>
+#  include <sys/wait.h>
+#  include <unistd.h>
 #endif
 
 using namespace llvm;
