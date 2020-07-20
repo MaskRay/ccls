@@ -156,32 +156,25 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
     syms.reserve(file->symbol2refcnt.size());
 
     /**
-     * std::heap is a max heap (we swap lhs/rhs to make a min heap)
-     *
      * with 2 ranges that start at the same Position, we want the wider one
-     * first
-     *
+     * first (swap lhs/rhs)
      */
     auto sym_cmp = [](ExtentRef const &lhs, ExtentRef const &rhs) {
-      return rhs.extent.start < lhs.extent.start ||
-             (rhs.extent.start == lhs.extent.start &&
-              lhs.extent.end < rhs.extent.end);
+      return lhs.extent.start < rhs.extent.start ||
+             (lhs.extent.start == rhs.extent.start &&
+              rhs.extent.end < lhs.extent.end);
     };
 
     for (auto [sym, refcnt] : file->symbol2refcnt) {
       if (refcnt <= 0 || !sym.extent.valid())
         continue;
       syms.push_back(sym);
-      std::push_heap(std::begin(syms), std::end(syms), sym_cmp);
     }
+    std::sort(std::begin(syms), std::end(syms), sym_cmp);
 
     std::vector<DocumentSymbol> result;
     std::stack<DocumentSymbol *> indent;
-    while (!syms.empty()) {
-      std::pop_heap(std::begin(syms), std::end(syms), sym_cmp);
-      auto sym = syms.back();
-      syms.pop_back();
-
+    for (auto sym : syms) {
       DocumentSymbol ds;
       if (auto range = getLsRange(wf, sym.range)) {
         ds.selectionRange = *range;
@@ -194,7 +187,7 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
               range1 && range1->includes(*range))
             ds.range = *range1;
       }
-      withEntity(db, sym, [&, sym = sym](const auto &entity) {
+      withEntity(db, sym, [&](const auto &entity) {
         auto const *def = entity.anyDef();
         if (!def)
           return;
