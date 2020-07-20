@@ -113,14 +113,10 @@ struct DocumentSymbol {
   SymbolKind kind;
   lsRange range;
   lsRange selectionRange;
-  std::vector<std::unique_ptr<DocumentSymbol>> children;
+  std::vector<DocumentSymbol> children;
 };
-void reflect(JsonWriter &vis, std::unique_ptr<DocumentSymbol> &v);
 REFLECT_STRUCT(DocumentSymbol, name, detail, kind, range, selectionRange,
                children);
-void reflect(JsonWriter &vis, std::unique_ptr<DocumentSymbol> &v) {
-  reflect(vis, *v);
-}
 
 template <typename Def> bool ignore(const Def *def) { return false; }
 template <> bool ignore(const QueryType::Def *def) {
@@ -128,16 +124,6 @@ template <> bool ignore(const QueryType::Def *def) {
 }
 template <> bool ignore(const QueryVar::Def *def) {
   return !def || def->is_local();
-}
-
-void uniquify(std::vector<std::unique_ptr<DocumentSymbol>> &cs) {
-  std::sort(cs.begin(), cs.end(),
-            [](auto &l, auto &r) { return l->range < r->range; });
-  cs.erase(std::unique(cs.begin(), cs.end(),
-                       [](auto &l, auto &r) { return l->range == r->range; }),
-           cs.end());
-  for (auto &c : cs)
-    uniquify(c->children);
 }
 } // namespace
 
@@ -189,46 +175,45 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
       std::push_heap(std::begin(syms), std::end(syms), sym_cmp);
     }
 
-    std::vector<std::unique_ptr<DocumentSymbol>> result;
+    std::vector<DocumentSymbol> result;
     std::stack<DocumentSymbol *> indent;
     while (!syms.empty()) {
       std::pop_heap(std::begin(syms), std::end(syms), sym_cmp);
       auto sym = syms.back();
       syms.pop_back();
 
-      std::unique_ptr<DocumentSymbol> ds = std::make_unique<DocumentSymbol>();
+      DocumentSymbol ds;
       if (auto range = getLsRange(wf, sym.range)) {
-        ds->selectionRange = *range;
-        ds->range = ds->selectionRange;
+        ds.selectionRange = *range;
+        ds.range = ds.selectionRange;
         // For a macro expansion, M(name), we may use `M` for extent and
         // `name` for spell, do the check as selectionRange must be a subrange
         // of range.
         if (sym.extent.valid())
           if (auto range1 = getLsRange(wf, sym.extent);
               range1 && range1->includes(*range))
-            ds->range = *range1;
+            ds.range = *range1;
       }
       withEntity(db, sym, [&, sym = sym](const auto &entity) {
         auto const *def = entity.anyDef();
         if (!def)
           return;
-        ds->name = def->name(false);
-        ds->detail = def->detailed_name;
-        ds->kind = def->kind;
+        ds.name = def->name(false);
+        ds.detail = def->detailed_name;
+        ds.kind = def->kind;
 
-        if (!ignore(def) &&
-            (ds->kind == SymbolKind::Namespace || allows(sym))) {
+        if (!ignore(def) && (ds.kind == SymbolKind::Namespace || allows(sym))) {
           // drop symbols that are behind the current one
-          while (!indent.empty() && indent.top()->range.end < ds->range.start) {
+          while (!indent.empty() && indent.top()->range.end < ds.range.start) {
             indent.pop();
           }
-          auto *cur_ds = ds.get();
           if (indent.empty()) {
             result.push_back(std::move(ds));
+            indent.push(&result.back());
           } else {
             indent.top()->children.push_back(std::move(ds));
+            indent.push(&indent.top()->children.back());
           }
-          indent.push(cur_ds);
         }
       });
     }
