@@ -20,12 +20,22 @@ using namespace clang;
 
 namespace ccls {
 std::string pathFromFileEntry(const FileEntry &file) {
-  StringRef name = file.tryGetRealPathName();
-  if (name.empty())
-    name = file.getName();
-  std::string ret = normalizePath(name);
-  // Resolve symlinks outside of workspace folders, e.g. /usr/include/c++/7.3.0
-  return normalizeFolder(ret) ? ret : realPath(ret);
+  std::string ret;
+  if (file.getName().startswith("/../")) {
+    // Resolve symlinks outside of working folders. This handles leading path
+    // components, e.g. (/lib -> /usr/lib) in
+    // /../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/utility
+    ret = file.tryGetRealPathName();
+  } else {
+    // If getName() refers to a file within a workspace folder, we prefer it
+    // (which may be a symlink).
+    ret = normalizePath(file.getName());
+  }
+  if (normalizeFolder(ret))
+    return ret;
+  ret = realPath(ret);
+  normalizeFolder(ret);
+  return ret;
 }
 
 bool isInsideMainFile(const SourceManager &sm, SourceLocation sl) {
