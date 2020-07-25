@@ -120,6 +120,10 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL FreeBSD)
   target_link_libraries(ccls PRIVATE thr)
 endif()
 
+if(LLVM_ENABLE_ZLIB)
+  find_package(ZLIB)
+endif()
+
 ### Definitions
 
 # Find Clang resource directory with Clang executable.
