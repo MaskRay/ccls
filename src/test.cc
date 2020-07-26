@@ -260,15 +260,16 @@ findDbForPathEnding(const std::string &path,
 bool runIndexTests(const std::string &filter_path, bool enable_update) {
   gTestOutputMode = true;
   std::string version = LLVM_VERSION_STRING;
+  const int majorVersion = LLVM_VERSION_MAJOR;
 
   // Index tests change based on the version of clang used.
-  static const char kRequiredClangVersion[] = "6.0.0";
-  if (version != kRequiredClangVersion &&
+  const int kMinRequiredClangVersion = 6;
+  if (majorVersion < kMinRequiredClangVersion &&
       version.find("svn") == std::string::npos) {
     fprintf(stderr,
-            "Index tests must be run using clang version %s, ccls is running "
+            "Index tests must be run using clang major version >= %d, ccls is running "
             "with %s\n",
-            kRequiredClangVersion, version.c_str());
+            kMinRequiredClangVersion, version.c_str());
     return false;
   }
 
