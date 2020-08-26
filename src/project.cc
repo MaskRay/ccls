@@ -523,7 +523,7 @@ Project::Entry Project::findEntry(const std::string &path, bool can_redirect,
         if (it != folder.path2entry_index.end()) {
           Project::Entry &entry = folder.entries[it->second];
           exact_match = entry.filename == path;
-          if ((match = exact_match || can_redirect) || entry.compdb_size) {
+          if ((match = exact_match || can_redirect) && entry.compdb_size) {
             // best->compdb_size is >0 for a compdb entry, 0 for a .ccls entry.
             best_compdb_folder = &folder;
             best = &entry;
@@ -533,8 +533,9 @@ Project::Entry Project::findEntry(const std::string &path, bool can_redirect,
     }
 
   bool append = false;
-  if (best_dot_ccls_args && !(append = appendToCDB(*best_dot_ccls_args)) &&
-      !exact_match) {
+  if (best_dot_ccls_args &&
+      (!best_compdb_folder ||
+       (!(append = appendToCDB(*best_dot_ccls_args)) && !exact_match))) {
     // If the first line is not %compile_commands.json, override the compdb
     // match if it is not an exact match.
     ret.root = ret.directory = best_dot_ccls_root;
