@@ -522,9 +522,10 @@ Project::Entry Project::findEntry(const std::string &path, bool can_redirect,
         auto it = folder.path2entry_index.find(path);
         if (it != folder.path2entry_index.end()) {
           Project::Entry &entry = folder.entries[it->second];
-          exact_match = entry.filename == path;
-          if ((match = exact_match || can_redirect) || entry.compdb_size) {
-            // best->compdb_size is >0 for a compdb entry, 0 for a .ccls entry.
+          // best->compdb_size is >0 for an explicit compile_commands.json
+          // entry, 0 for an implicit entry.
+          exact_match = entry.compdb_size > 0 && entry.filename == path;
+          if ((match = exact_match || can_redirect) && entry.compdb_size) {
             best_compdb_folder = &folder;
             best = &entry;
           }
