@@ -156,6 +156,10 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   // Enable IndexFrontendAction::shouldSkipFunctionBody.
   ci->getFrontendOpts().SkipFunctionBodies = true;
   ci->getLangOpts()->SpellChecking = false;
+#if LLVM_VERSION_MAJOR >= 11
+  ci->getLangOpts()->RecoveryAST = true;
+  ci->getLangOpts()->RecoveryASTType = true;
+#endif
   auto &isec = ci->getFrontendOpts().Inputs;
   if (isec.size())
     isec[0] = FrontendInputFile(main, isec[0].getKind(), isec[0].isSystem());
