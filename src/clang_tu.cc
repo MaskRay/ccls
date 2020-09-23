@@ -111,7 +111,8 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   IntrusiveRefCntPtr<DiagnosticsEngine> diags(
       CompilerInstance::createDiagnostics(new DiagnosticOptions,
                                           new IgnoringDiagConsumer, true));
-  driver::Driver d(args[0], llvm::sys::getDefaultTargetTriple(), *diags, vfs);
+  driver::Driver d(args[0], llvm::sys::getDefaultTargetTriple(), *diags, "ccls",
+                   vfs);
   d.setCheckInputsExist(false);
   std::unique_ptr<driver::Compilation> comp(d.BuildCompilation(args));
   if (!comp)
