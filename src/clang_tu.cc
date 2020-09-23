@@ -115,7 +115,11 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   IntrusiveRefCntPtr<DiagnosticsEngine> diags(
       CompilerInstance::createDiagnostics(new DiagnosticOptions,
                                           new IgnoringDiagConsumer, true));
+#if LLVM_VERSION_MAJOR < 12 // llvmorg-12-init-5498-g257b29715bb
   driver::Driver d(args[0], llvm::sys::getDefaultTargetTriple(), *diags, vfs);
+#else
+  driver::Driver d(args[0], llvm::sys::getDefaultTargetTriple(), *diags, "ccls", vfs);
+#endif
   d.setCheckInputsExist(false);
   std::unique_ptr<driver::Compilation> comp(d.BuildCompilation(args));
   if (!comp)
