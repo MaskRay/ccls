@@ -432,7 +432,8 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
 
       // If workspace folder is real/ but entries use symlink/, convert to
       // real/.
-      entry.directory = realPath(cmd.Directory);
+      entry.directory =
+          realPath(resolveIfRelative(cdbDir.c_str(), cmd.Directory));
       entry.directory.push_back('/');
       normalizeFolder(entry.directory);
       entry.directory.pop_back();
