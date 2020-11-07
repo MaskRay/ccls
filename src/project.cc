@@ -252,7 +252,7 @@ void loadDirectoryListing(ProjectProcessor &proc, const std::string &root,
 
   auto getDotCcls = [&root, &folder](std::string cur) {
     while (!(cur = sys::path::parent_path(cur)).empty()) {
-      auto it = folder.dot_ccls.find(cur);
+      auto it = folder.dot_ccls.find(cur + '/');
       if (it != folder.dot_ccls.end())
         return it->second;
       std::string normalized = normalizePath(cur);
