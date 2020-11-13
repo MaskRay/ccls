@@ -120,6 +120,23 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL FreeBSD)
   target_link_libraries(ccls PRIVATE thr)
 endif()
 
+if (${CMAKE_SYSTEM_NAME} STREQUAL SunOS)
+  # Check if we are on illumos
+  execute_process(COMMAND /usr/bin/uname -o OUTPUT_VARIABLE UNAME_O
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if ((UNAME_O STREQUAL illumos) AND (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU))
+    # As a workaround for legacy packages, illumos' GCC generates 32-bit object files
+    # despite 32-bit platform support has already been dropped. This will probably cause a linker error
+    # since most distros seem to supply 64-bit LLVM in their repositories
+    # (verified on OpenIndiana and OmniOS).
+    # Add -m64 on illumos with GCC by default to generate 64-bit object files.
+    option(ILLUMOS_USE_M64 "Use -m64 on illumos to generate 64-bit object files" ON)
+    if (ILLUMOS_USE_M64)
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+    endif()
+  endif()
+endif()
+
 if(LLVM_ENABLE_ZLIB)
   find_package(ZLIB)
 endif()
