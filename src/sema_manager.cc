@@ -350,7 +350,11 @@ void buildPreamble(Session &session, CompilerInvocation &ci,
   std::string content = session.wfiles->getContent(task.path);
   std::unique_ptr<llvm::MemoryBuffer> buf =
       llvm::MemoryBuffer::getMemBuffer(content);
+#if LLVM_VERSION_MAJOR >= 12 // llvmorg-12-init-11522-g4c55c3b66de
+  auto bounds = ComputePreambleBounds(*ci.getLangOpts(), *buf, 0);
+#else
   auto bounds = ComputePreambleBounds(*ci.getLangOpts(), buf.get(), 0);
+#endif
   if (!task.from_diag && oldP &&
       oldP->preamble.CanReuse(ci, buf.get(), bounds, fs.get()))
     return;
@@ -472,8 +476,13 @@ void *completionMain(void *manager_) {
     DiagnosticConsumer dc;
     std::string content = manager->wfiles->getContent(task->path);
     auto buf = llvm::MemoryBuffer::getMemBuffer(content);
+#if LLVM_VERSION_MAJOR >= 12 // llvmorg-12-init-11522-g4c55c3b66de
+    PreambleBounds bounds =
+        ComputePreambleBounds(*ci->getLangOpts(), *buf, 0);
+#else
     PreambleBounds bounds =
         ComputePreambleBounds(*ci->getLangOpts(), buf.get(), 0);
+#endif
     bool in_preamble =
         getOffsetForPosition({task->position.line, task->position.character},
                              content) < (int)bounds.Size;
