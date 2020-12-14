@@ -46,6 +46,9 @@ private:
 
 struct MultiQueueWaiter {
   std::condition_variable_any cv;
+  ~MultiQueueWaiter() {
+	  cv.notify_all();
+  }
 
   static bool hasState(std::initializer_list<BaseThreadQueue *> queues) {
     for (BaseThreadQueue *queue : queues) {
