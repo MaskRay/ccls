@@ -425,14 +425,13 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
   } else {
     LOG_S(INFO) << "loaded " << path.c_str();
     for (tooling::CompileCommand &cmd : cdb->getAllCompileCommands()) {
-      static bool once;
       Project::Entry entry;
       entry.root = root;
       doPathMapping(entry.root);
 
       // If workspace folder is real/ but entries use symlink/, convert to
       // real/.
-      entry.directory = realPath(cmd.Directory);
+      entry.directory = realPath(resolveIfRelative(root, cmd.Directory));
       entry.directory.push_back('/');
       normalizeFolder(entry.directory);
       entry.directory.pop_back();
@@ -450,18 +449,7 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
           entry.args.push_back(intern(args[i]));
       }
       entry.compdb_size = entry.args.size();
-
-      // Work around relative --sysroot= as it isn't affected by
-      // -working-directory=. chdir is thread hostile but this function runs
-      // before indexers do actual work and it works when there is only one
-      // workspace folder.
-      if (!once) {
-        once = true;
-        llvm::vfs::getRealFileSystem()->setCurrentWorkingDirectory(
-            entry.directory);
-      }
       proc.getSearchDirs(entry);
-
       if (seen.insert(entry.filename).second)
         folder.entries.push_back(entry);
     }
