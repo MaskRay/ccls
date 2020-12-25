@@ -223,7 +223,7 @@ struct WorkDoneProgress {
   const char *kind;
   std::optional<std::string> title;
   std::optional<std::string> message;
-  std::optional<double> percentage;
+  std::optional<int> percentage;
 };
 struct WorkDoneProgressParam {
   const char *token;
