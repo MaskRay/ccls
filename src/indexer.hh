@@ -132,6 +132,12 @@ void reflect(BinaryWriter &visitor, SymbolRef &value);
 void reflect(BinaryWriter &visitor, Use &value);
 void reflect(BinaryWriter &visitor, DeclRef &value);
 
+enum class TokenModifier {
+#define TOKEN_MODIFIER(name, str) name,
+#include "enum.inc"
+#undef TOKEN_MODIFIER
+};
+
 template <typename T> using VectorAdapter = std::vector<T, std::allocator<T>>;
 
 template <typename D> struct NameMixin {

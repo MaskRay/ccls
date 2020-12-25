@@ -11,6 +11,8 @@
 #include <rapidjson/document.h>
 #include <rapidjson/reader.h>
 
+#include <llvm/ADT/STLExtras.h>
+
 #include <algorithm>
 #include <stdexcept>
 
@@ -51,6 +53,10 @@ REFLECT_STRUCT(DidChangeWorkspaceFoldersParam, event);
 REFLECT_STRUCT(WorkspaceSymbolParam, query, folders);
 
 namespace {
+struct Occur {
+  lsRange range;
+  Role role;
+};
 struct CclsSemanticHighlightSymbol {
   int id = 0;
   SymbolKind parentKind;
@@ -58,16 +64,15 @@ struct CclsSemanticHighlightSymbol {
   uint8_t storage;
   std::vector<std::pair<int, int>> ranges;
 
-  // `lsRanges` is used to compute `ranges`.
-  std::vector<lsRange> lsRanges;
+  // `lsOccur` is used to compute `ranges`.
+  std::vector<Occur> lsOccurs;
 };
 
 struct CclsSemanticHighlight {
   DocumentUri uri;
   std::vector<CclsSemanticHighlightSymbol> symbols;
 };
-REFLECT_STRUCT(CclsSemanticHighlightSymbol, id, parentKind, kind, storage,
-               ranges, lsRanges);
+REFLECT_STRUCT(CclsSemanticHighlightSymbol, id, parentKind, kind, storage, ranges);
 REFLECT_STRUCT(CclsSemanticHighlight, uri, symbols);
 
 struct CclsSetSkippedRanges {
@@ -76,10 +81,16 @@ struct CclsSetSkippedRanges {
 };
 REFLECT_STRUCT(CclsSetSkippedRanges, uri, skippedRanges);
 
+struct SemanticTokensPartialResult {
+  std::vector<int> data;
+};
+REFLECT_STRUCT(SemanticTokensPartialResult, data);
+
 struct ScanLineEvent {
   Position pos;
   Position end_pos; // Second key when there is a tie for insertion events.
   int id;
+  Role role;
   CclsSemanticHighlightSymbol *symbol;
   bool operator<(const ScanLineEvent &o) const {
     // See the comments below when insertion/deletion events are inserted.
@@ -190,6 +201,8 @@ MessageHandler::MessageHandler() {
   bind("textDocument/rangeFormatting", &MessageHandler::textDocument_rangeFormatting);
   bind("textDocument/references", &MessageHandler::textDocument_references);
   bind("textDocument/rename", &MessageHandler::textDocument_rename);
+  bind("textDocument/semanticTokens/full", &MessageHandler::textDocument_semanticTokensFull);
+  bind("textDocument/semanticTokens/range", &MessageHandler::textDocument_semanticTokensRange);
   bind("textDocument/signatureHelp", &MessageHandler::textDocument_signatureHelp);
   bind("textDocument/typeDefinition", &MessageHandler::textDocument_typeDefinition);
   bind("workspace/didChangeConfiguration", &MessageHandler::workspace_didChangeConfiguration);
@@ -281,16 +294,16 @@ void emitSkippedRanges(WorkingFile *wfile, QueryFile &file) {
   pipeline::notify("$ccls/publishSkippedRanges", params);
 }
 
-void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
+static std::unordered_map<SymbolIdx, CclsSemanticHighlightSymbol> computeSemanticTokens(DB *db, WorkingFile *wfile,
+                                                                                        QueryFile &file) {
   static GroupMatch match(g_config->highlight.whitelist,
                           g_config->highlight.blacklist);
   assert(file.def);
-  if (wfile->buffer_content.size() > g_config->highlight.largeFileSize ||
-      !match.matches(file.def->path))
-    return;
-
   // Group symbols together.
   std::unordered_map<SymbolIdx, CclsSemanticHighlightSymbol> grouped_symbols;
+  if (!match.matches(file.def->path))
+    return grouped_symbols;
+
   for (auto [sym, refcnt] : file.symbol2refcnt) {
     if (refcnt <= 0)
       continue;
@@ -369,14 +382,14 @@ void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
     if (std::optional<lsRange> loc = getLsRange(wfile, sym.range)) {
       auto it = grouped_symbols.find(sym);
       if (it != grouped_symbols.end()) {
-        it->second.lsRanges.push_back(*loc);
+        it->second.lsOccurs.push_back({*loc, sym.role});
       } else {
         CclsSemanticHighlightSymbol symbol;
         symbol.id = idx;
         symbol.parentKind = parent_kind;
         symbol.kind = kind;
         symbol.storage = storage;
-        symbol.lsRanges.push_back(*loc);
+        symbol.lsOccurs.push_back({*loc, sym.role});
         grouped_symbols[sym] = symbol;
       }
     }
@@ -387,17 +400,17 @@ void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
   int id = 0;
   for (auto &entry : grouped_symbols) {
     CclsSemanticHighlightSymbol &symbol = entry.second;
-    for (auto &loc : symbol.lsRanges) {
+    for (auto &occur : symbol.lsOccurs) {
       // For ranges sharing the same start point, the one with leftmost end
       // point comes first.
-      events.push_back({loc.start, loc.end, id, &symbol});
+      events.push_back({occur.range.start, occur.range.end, id, occur.role, &symbol});
       // For ranges sharing the same end point, their relative order does not
-      // matter, therefore we arbitrarily assign loc.end to them. We use
+      // matter, therefore we arbitrarily assign occur.range.end to them. We use
       // negative id to indicate a deletion event.
-      events.push_back({loc.end, loc.end, ~id, &symbol});
+      events.push_back({occur.range.end, occur.range.end, ~id, occur.role, &symbol});
       id++;
     }
-    symbol.lsRanges.clear();
+    symbol.lsOccurs.clear();
   }
   std::sort(events.begin(), events.end());
 
@@ -413,26 +426,33 @@ void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
     // Attribute range [events[i-1].pos, events[i].pos) to events[top-1].symbol
     // .
     if (top && !(events[i - 1].pos == events[i].pos))
-      events[top - 1].symbol->lsRanges.push_back(
-          {events[i - 1].pos, events[i].pos});
+      events[top - 1].symbol->lsOccurs.push_back({{events[i - 1].pos, events[i].pos}, events[i].role});
     if (events[i].id >= 0)
       events[top++] = events[i];
     else
       deleted[~events[i].id] = 1;
   }
+  return grouped_symbols;
+}
+
+void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
+  // Disable $ccls/publishSemanticHighlight if semantic tokens support is
+  // enabled or the file is too large.
+  if (g_config->client.semanticTokensRefresh || wfile->buffer_content.size() > g_config->highlight.largeFileSize)
+    return;
+  auto grouped_symbols = computeSemanticTokens(db, wfile, file);
 
   CclsSemanticHighlight params;
   params.uri = DocumentUri::fromPath(wfile->filename);
   // Transform lsRange into pair<int, int> (offset pairs)
-  if (!g_config->highlight.lsRanges) {
-    std::vector<std::pair<lsRange, CclsSemanticHighlightSymbol *>> scratch;
+  {
+    std::vector<std::pair<Occur, CclsSemanticHighlightSymbol *>> scratch;
     for (auto &entry : grouped_symbols) {
-      for (auto &range : entry.second.lsRanges)
-        scratch.emplace_back(range, &entry.second);
-      entry.second.lsRanges.clear();
+      for (auto &occur : entry.second.lsOccurs)
+        scratch.push_back({occur, &entry.second});
+      entry.second.lsOccurs.clear();
     }
-    std::sort(scratch.begin(), scratch.end(),
-              [](auto &l, auto &r) { return l.first.start < r.first.start; });
+    std::sort(scratch.begin(), scratch.end(), [](auto &l, auto &r) { return l.first.range < r.first.range; });
     const auto &buf = wfile->buffer_content;
     int l = 0, c = 0, i = 0, p = 0;
     auto mov = [&](int line, int col) {
@@ -455,7 +475,7 @@ void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
       return c < col;
     };
     for (auto &entry : scratch) {
-      lsRange &r = entry.first;
+      lsRange &r = entry.first.range;
       if (mov(r.start.line, r.start.character))
         continue;
       int beg = p;
@@ -466,8 +486,84 @@ void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
   }
 
   for (auto &entry : grouped_symbols)
-    if (entry.second.ranges.size() || entry.second.lsRanges.size())
+    if (entry.second.ranges.size() || entry.second.lsOccurs.size())
       params.symbols.push_back(std::move(entry.second));
   pipeline::notify("$ccls/publishSemanticHighlight", params);
 }
+
+void MessageHandler::textDocument_semanticTokensFull(TextDocumentParam &param, ReplyOnce &reply) {
+  SemanticTokensRangeParams parameters{param.textDocument, lsRange{{0, 0}, {UINT16_MAX, INT16_MAX}}};
+  textDocument_semanticTokensRange(parameters, reply);
+}
+
+void MessageHandler::textDocument_semanticTokensRange(SemanticTokensRangeParams &param, ReplyOnce &reply) {
+  int file_id;
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply, &file_id);
+  if (!wf)
+    return;
+
+  auto grouped_symbols = computeSemanticTokens(db, wf, *file);
+  std::vector<std::pair<Occur, CclsSemanticHighlightSymbol *>> scratch;
+  for (auto &entry : grouped_symbols) {
+    for (auto &occur : entry.second.lsOccurs)
+      scratch.emplace_back(occur, &entry.second);
+    entry.second.lsOccurs.clear();
+  }
+  std::sort(scratch.begin(), scratch.end(), [](auto &l, auto &r) { return l.first.range < r.first.range; });
+
+  SemanticTokensPartialResult result;
+  int line = 0, column = 0;
+  for (auto &entry : scratch) {
+    lsRange &r = entry.first.range;
+    CclsSemanticHighlightSymbol &symbol = *entry.second;
+    if (r.start.line != line)
+      column = 0;
+    result.data.push_back(r.start.line - line);
+    line = r.start.line;
+    result.data.push_back(r.start.character - column);
+    column = r.start.character;
+    result.data.push_back(r.end.character - r.start.character);
+
+    int tokenType = (int)symbol.kind, modifier = 0;
+    if (tokenType == (int)SymbolKind::StaticMethod) {
+      tokenType = (int)SymbolKind::Method;
+      modifier |= 1 << (int)TokenModifier::Static;
+    } else if (tokenType >= (int)SymbolKind::FirstExtension) {
+      tokenType += (int)SymbolKind::FirstNonStandard - (int)SymbolKind::FirstExtension;
+    }
+
+    // Set modifiers.
+    if (entry.first.role & Role::Declaration)
+      modifier |= 1 << (int)TokenModifier::Declaration;
+    if (entry.first.role & Role::Definition)
+      modifier |= 1 << (int)TokenModifier::Definition;
+    if (entry.first.role & Role::Read)
+      modifier |= 1 << (int)TokenModifier::Read;
+    if (entry.first.role & Role::Write)
+      modifier |= 1 << (int)TokenModifier::Write;
+    if (symbol.storage == SC_Static)
+      modifier |= 1 << (int)TokenModifier::Static;
+
+    if (llvm::is_contained({SymbolKind::Constructor, SymbolKind::Field, SymbolKind::Method, SymbolKind::StaticMethod},
+                           symbol.kind))
+      modifier |= 1 << (int)TokenModifier::ClassScope;
+    else if (llvm::is_contained({SymbolKind::File, SymbolKind::Namespace}, symbol.parentKind))
+      modifier |= 1 << (int)TokenModifier::NamespaceScope;
+    else if (llvm::is_contained(
+                 {SymbolKind::Constructor, SymbolKind::Function, SymbolKind::Method, SymbolKind::StaticMethod},
+                 symbol.parentKind))
+      modifier |= 1 << (int)TokenModifier::FunctionScope;
+
+    // Rainbow semantic tokens
+    static_assert((int)TokenModifier::Id0 + 20 < 31);
+    if (int rainbow = g_config->highlight.rainbow)
+      modifier |= 1 << ((int)TokenModifier::Id0 + symbol.id % std::min(rainbow, 20));
+
+    result.data.push_back(tokenType);
+    result.data.push_back(modifier);
+  }
+
+  reply(result);
+}
+
 } // namespace ccls
