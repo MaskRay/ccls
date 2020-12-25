@@ -517,6 +517,10 @@ void main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
       QueryFile &file = db->files[db->name2file_id[path]];
       emitSemanticHighlight(db, wf.get(), file);
     }
+    if (g_config->client.semanticTokensRefresh) {
+      std::optional<bool> param;
+      request("workspace/semanticTokens/refresh", param);
+    }
     return;
   }
 
@@ -533,6 +537,12 @@ void main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
       QueryFile &file = db->files[update->file_id];
       emitSkippedRanges(wfile, file);
       emitSemanticHighlight(db, wfile, file);
+      if (g_config->client.semanticTokensRefresh) {
+        // Return filename, even if the spec indicates params is none.
+        TextDocumentIdentifier param;
+        param.uri = DocumentUri::fromPath(wfile->filename);
+        request("workspace/semanticTokens/refresh", param);
+      }
     }
   }
 }
