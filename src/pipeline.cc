@@ -500,6 +500,10 @@ void main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
       QueryFile &file = db->files[db->name2file_id[path]];
       emitSemanticHighlight(db, wf.get(), file);
     }
+    if (g_config->client.semanticTokensRefresh) {
+      std::optional<bool> param;
+      request("workspace/semanticTokens/refresh", param);
+    }
     return;
   }
 
@@ -516,6 +520,11 @@ void main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
       QueryFile &file = db->files[update->file_id];
       emitSkippedRanges(wfile, file);
       emitSemanticHighlight(db, wfile, file);
+      // Is this slow?
+      if (g_config->client.semanticTokensRefresh) {
+        std::optional<bool> param;
+        request("workspace/semanticTokens/refresh", param);
+      }
     }
   }
 }
