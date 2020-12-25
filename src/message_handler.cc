@@ -192,6 +192,8 @@ MessageHandler::MessageHandler() {
   bind("textDocument/rename", &MessageHandler::textDocument_rename);
   bind("textDocument/signatureHelp", &MessageHandler::textDocument_signatureHelp);
   bind("textDocument/typeDefinition", &MessageHandler::textDocument_typeDefinition);
+  bind("textDocument/semanticTokens/full", &MessageHandler::textDocument_semanticTokensFull);
+  bind("textDocument/semanticTokens/range", &MessageHandler::textDocument_semanticTokensRange);
   bind("workspace/didChangeConfiguration", &MessageHandler::workspace_didChangeConfiguration);
   bind("workspace/didChangeWatchedFiles", &MessageHandler::workspace_didChangeWatchedFiles);
   bind("workspace/didChangeWorkspaceFolders", &MessageHandler::workspace_didChangeWorkspaceFolders);
