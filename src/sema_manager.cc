@@ -556,6 +556,10 @@ void *diagnosticMain(void *manager_) {
     std::shared_ptr<PreambleData> preamble = session->getPreamble();
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> fs =
         preamble ? preamble->stat_cache->consumer(session->fs) : session->fs;
+    std::unique_ptr<CompilerInvocation> ci =
+        buildCompilerInvocation(task.path, session->file.args, fs);
+    if (!ci)
+      continue;
     if (preamble) {
       bool rebuild = false;
       {
@@ -567,16 +571,25 @@ void *diagnosticMain(void *manager_) {
             rebuild = true;
           }
       }
+      if (!rebuild) {
+        std::string content = manager->wfiles->getContent(task.path);
+        auto buf = llvm::MemoryBuffer::getMemBuffer(content);
+#if LLVM_VERSION_MAJOR >= 12 // llvmorg-12-init-11522-g4c55c3b66de
+        PreambleBounds bounds =
+            ComputePreambleBounds(*ci->getLangOpts(), *buf, 0);
+#else
+        PreambleBounds bounds =
+            ComputePreambleBounds(*ci->getLangOpts(), buf.get(), 0);
+#endif
+        if (bounds.Size != preamble->preamble.getBounds().Size)
+          rebuild = true;
+      }
       if (rebuild) {
         manager->preamble_tasks.pushBack({task.path, nullptr, true}, true);
         continue;
       }
     }
 
-    std::unique_ptr<CompilerInvocation> ci =
-        buildCompilerInvocation(task.path, session->file.args, fs);
-    if (!ci)
-      continue;
     // If main file is a header, add -Wno-unused-function
     if (lookupExtension(session->file.filename).second)
       ci->getDiagnosticOpts().Warnings.push_back("no-unused-function");
