@@ -729,7 +729,7 @@ void mainLoop() {
             (Twine(completed - last_idle) + "/" + Twine(enqueued - last_idle))
                 .str();
         param.value.percentage =
-            100.0 * (completed - last_idle) / (enqueued - last_idle);
+            100 * (completed - last_idle) / (enqueued - last_idle);
         notify("$/progress", param);
       } else if (in_progress) {
         stats.last_idle.store(enqueued, std::memory_order_relaxed);
