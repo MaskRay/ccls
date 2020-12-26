@@ -11,8 +11,6 @@
 #include <stdexcept>
 #include <string>
 
-#include <iostream>
-
 MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
 
 namespace ccls {
