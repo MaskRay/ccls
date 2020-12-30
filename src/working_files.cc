@@ -347,9 +347,12 @@ Position WorkingFile::getCompletionPosition(Position pos, std::string *filter,
     --i;
 
   *replace_end_pos = pos;
-  for (int i = start;
-       i < buffer_content.size() && isIdentifierBody(buffer_content[i]); i++)
-    replace_end_pos->character++;
+  if (g_config->completion.overwriteFollowingIdentifier) {
+    // attempt to overwrite the following identifier
+    for (int i = start;
+         i < buffer_content.size() && isIdentifierBody(buffer_content[i]); i++)
+      replace_end_pos->character++;
+  }
 
   *filter = buffer_content.substr(i, start - i);
   return getPositionForOffset(buffer_content, i);

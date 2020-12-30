@@ -166,6 +166,11 @@ struct Config {
     // that implement their own filtering and sorting logic.
     bool filterAndSort = true;
 
+    // Decides whether to overwrite the identifier following cursor.
+    // true -- overwrite the following identifier.
+    // false -- insert completion before the following identifier.
+    bool overwriteFollowingIdentifier = true;
+
     struct Include {
       // Regex patterns to match include completion candidates against. They
       // receive the absolute file path.
@@ -338,8 +343,8 @@ REFLECT_STRUCT(Config::CodeLens, localVariables);
 REFLECT_STRUCT(Config::Completion::Include, blacklist, maxPathSize,
                suffixWhitelist, whitelist);
 REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
-               dropOldRequests, duplicateOptional, filterAndSort, include,
-               maxNum, placeholder);
+               dropOldRequests, duplicateOptional, filterAndSort,
+               overwriteFollowingIdentifier, include, maxNum, placeholder);
 REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
                spellChecking, whitelist)
 REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist, whitelist)
