@@ -38,7 +38,7 @@ void MessageHandler::workspace_didChangeWatchedFiles(
          StringRef(path).startswith(g_config->cache.directory)) ||
         lookupExtension(path).first == LanguageId::Unknown)
       return;
-    for (std::string cur = path; cur.size(); cur = sys::path::parent_path(cur))
+    for (std::string cur = path; cur.size(); cur = std::string(sys::path::parent_path(cur)))
       if (cur[0] == '.')
         return;
 

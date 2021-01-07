@@ -249,9 +249,9 @@ public:
       info.FormatDiagnostic(message);
       d.range =
           fromCharSourceRange(sm, *langOpts, diagnosticRange(info, *langOpts));
-      d.message = message.str();
+      d.message = std::string(message.str());
       d.concerned = concerned;
-      d.file = filename;
+      d.file = std::string(filename);
       d.level = level;
       d.category = DiagnosticIDs::getCategoryNumberForDiag(info.getID());
     };

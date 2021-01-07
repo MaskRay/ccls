@@ -25,7 +25,7 @@ std::string pathFromFileEntry(const FileEntry &file) {
     // Resolve symlinks outside of working folders. This handles leading path
     // components, e.g. (/lib -> /usr/lib) in
     // /../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/utility
-    ret = file.tryGetRealPathName();
+    ret = std::string(file.tryGetRealPathName());
   } else {
     // If getName() refers to a file within a workspace folder, we prefer it
     // (which may be a symlink).

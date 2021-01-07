@@ -251,7 +251,7 @@ void loadDirectoryListing(ProjectProcessor &proc, const std::string &root,
   std::vector<std::string> files;
 
   auto getDotCcls = [&root, &folder](std::string cur) {
-    while (!(cur = sys::path::parent_path(cur)).empty()) {
+    while (!(cur = std::string(sys::path::parent_path(cur))).empty()) {
       auto it = folder.dot_ccls.find(cur + '/');
       if (it != folder.dot_ccls.end())
         return it->second;
