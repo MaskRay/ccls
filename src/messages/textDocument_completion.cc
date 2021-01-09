@@ -537,9 +537,8 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   }
 
   std::string filter;
-  Position end_pos;
-  Position begin_pos =
-      wf->getCompletionPosition(param.position, &filter, &end_pos);
+  Position end_pos = param.position;
+  Position begin_pos = wf->getCompletionPosition(param.position, &filter);
 
 #if LLVM_VERSION_MAJOR < 8
   ParseIncludeLineResult preprocess = ParseIncludeLine(buffer_line);

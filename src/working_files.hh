@@ -52,8 +52,7 @@ struct WorkingFile {
                                               bool is_end);
   // Returns the stable completion position (it jumps back until there is a
   // non-alphanumeric character).
-  Position getCompletionPosition(Position pos, std::string *filter,
-                                 Position *replace_end_pos) const;
+  Position getCompletionPosition(Position pos, std::string *filter) const;
 
 private:
   // Compute index_to_buffer and buffer_to_index.

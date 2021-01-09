@@ -156,8 +156,7 @@ void MessageHandler::textDocument_signatureHelp(
     buffer_line = wf->buffer_lines[param.position.line];
   {
     std::string filter;
-    Position end_pos;
-    begin_pos = wf->getCompletionPosition(param.position, &filter, &end_pos);
+    begin_pos = wf->getCompletionPosition(param.position, &filter);
   }
 
   SemaManager::OnComplete callback =
