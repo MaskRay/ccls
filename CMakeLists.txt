@@ -45,6 +45,7 @@ if(MSVC)
     /wd4800
     /wd4068 # Disable unknown pragma warning
     /std:c++17
+    /Zc:__cplusplus
     $<$<CONFIG:Debug>:/FS>
   )
   # relink system libs
