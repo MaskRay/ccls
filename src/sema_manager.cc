@@ -350,14 +350,19 @@ void buildPreamble(Session &session, CompilerInvocation &ci,
   std::string content = session.wfiles->getContent(task.path);
   std::unique_ptr<llvm::MemoryBuffer> buf =
       llvm::MemoryBuffer::getMemBuffer(content);
-#if LLVM_VERSION_MAJOR >= 12 // llvmorg-12-init-11522-g4c55c3b66de
+#if LLVM_VERSION_MAJOR >= 12
+  // llvmorg-12-init-11522-g4c55c3b66de
   auto bounds = ComputePreambleBounds(*ci.getLangOpts(), *buf, 0);
+  // llvmorg-12-init-17739-gf4d02fbe418d
+  if (!task.from_diag && oldP &&
+      oldP->preamble.CanReuse(ci, *buf, bounds, *fs))
+    return;
 #else
   auto bounds = ComputePreambleBounds(*ci.getLangOpts(), buf.get(), 0);
-#endif
   if (!task.from_diag && oldP &&
       oldP->preamble.CanReuse(ci, buf.get(), bounds, fs.get()))
     return;
+#endif
   // -Werror makes warnings issued as errors, which stops parsing
   // prematurely because of -ferror-limit=. This also works around the issue
   // of -Werror + -Wunused-parameter in interaction with SkipFunctionBodies.
