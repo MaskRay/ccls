@@ -534,15 +534,18 @@ public:
       // e.g. operator type-parameter-1
       i = 0;
       def.short_name_offset = 0;
-    } else if (short_name.empty() || (i >= 2 && name[i - 2] == ':')) {
-      // Don't replace name with qualified name in ns::name Cls::*name
-      def.short_name_offset = i;
+      def.short_name_size = name.size();
     } else {
-      name.replace(i, short_name.size(), qualified);
-      def.short_name_offset = i + qualified.size() - short_name.size();
+      if (short_name.empty() || (i >= 2 && name[i - 2] == ':')) {
+        // Don't replace name with qualified name in ns::name Cls::*name
+        def.short_name_offset = i;
+      } else {
+        name.replace(i, short_name.size(), qualified);
+        def.short_name_offset = i + qualified.size() - short_name.size();
+      }
+      // name may be empty while short_name is not.
+      def.short_name_size = name.empty() ? 0 : short_name.size();
     }
-    // name may be empty while short_name is not.
-    def.short_name_size = name.empty() ? 0 : short_name.size();
     for (int paren = 0; i; i--) {
       // Skip parentheses in "(anon struct)::name"
       if (name[i - 1] == ')')
