@@ -158,10 +158,13 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
     /**
      * with 2 ranges that start at the same Position, we want the wider one
      * first (swap lhs/rhs)
+     *
+     * we use range for start to start at symbol name
+     * issue with: int i, j, k; otherwise
      */
     auto sym_cmp = [](ExtentRef const &lhs, ExtentRef const &rhs) {
-      return lhs.extent.start < rhs.extent.start ||
-             (lhs.extent.start == rhs.extent.start &&
+      return lhs.range.start < rhs.range.start ||
+             (lhs.range.start == rhs.range.start &&
               rhs.extent.end < lhs.extent.end);
     };
 
@@ -197,7 +200,10 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
 
         if (!ignore(def) && (ds.kind == SymbolKind::Namespace || allows(sym))) {
           // drop symbols that are behind the current one
-          while (!indent.empty() && indent.top()->range.end < ds.range.start) {
+          while (!indent.empty() &&
+                 // use selectionRange for start to start at symbol name
+                 // issue with: int i, j, k; otherwise
+                 indent.top()->range.end < ds.selectionRange.start) {
             indent.pop();
           }
           if (indent.empty()) {
