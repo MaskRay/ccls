@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "indexer.hh"
+#include "log.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "sema_manager.hh"
@@ -78,7 +79,7 @@ void MessageHandler::textDocument_semanticTokensFull(
   assert(file->def);
   if (wfile->buffer_content.size() > g_config->highlight.largeFileSize ||
       !match.matches(queryFile->def->path)) {
-    LOG_V(INFO) << "Not SemTokenizing " << path << "because of allowlist/denylist";
+    LOG_S(INFO) << "Not SemTokenizing " << path << "because of allowlist/denylist";
     return;
   }
 
@@ -161,15 +162,16 @@ void MessageHandler::textDocument_semanticTokensFull(
 
     if (auto maybe_loc = getLsRange(wfile, sym.range)) {
       auto it = grouped_symbols.find(sym);
+      const auto &loc = *maybe_loc;
       if (it != grouped_symbols.end()) {
-        it->second.lsRangeAndRoles.push_back({*maybe_loc, sym.role});
+        it->second.lsRangeAndRoles.push_back({loc, sym.role});
       } else {
         CclsSemanticHighlightSymbol symbol;
         symbol.id = idx;
         symbol.parentKind = parent_kind;
         symbol.kind = kind;
         symbol.storage = storage;
-        symbol.lsRangeAndRoles.push_back({*loc, sym.role});
+        symbol.lsRangeAndRoles.push_back({loc, sym.role});
         grouped_symbols[sym] = symbol;
       }
     }
