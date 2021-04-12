@@ -37,7 +37,7 @@ protected:
    * use for lexicographic comparison
    */
   auto asTuple() const -> std::tuple<Line,Column> {
-    return std::make_tuple(line, tuple);
+    return std::make_tuple(line, column);
   }
 
 };
