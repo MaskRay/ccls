@@ -10,8 +10,10 @@
 
 namespace ccls {
 struct Pos {
-  uint16_t line = 0;
-  int16_t column = -1;
+  using Line=uint16_t;
+  Line line = 0;
+  using Column=int16_t;
+  Column column = -1;
 
   static Pos fromString(const std::string &encoded);
 
