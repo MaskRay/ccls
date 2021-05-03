@@ -42,8 +42,9 @@ struct QueryFile {
 
   int id = -1;
   std::optional<Def> def;
-  // `extent` is valid => declaration; invalid => regular reference
-  llvm::DenseMap<ExtentRef, int> symbol2refcnt;
+  //! `extent` is valid => declaration; invalid => regular reference
+  using SymbolToRefCount=llvm::DenseMap<ExtentRef, int>;
+  SymbolToRefCount symbol2refcnt;
 };
 
 template <typename Q, typename QDef> struct QueryEntity {

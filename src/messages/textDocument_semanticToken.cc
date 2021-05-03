@@ -56,9 +56,34 @@ struct ScanLineEvent {
 };
 
 }
+constexpr Position documentBegin{0,0};
+constexpr Position documentEnd{
+    std::numeric_limits<decltype(Position::line)>::max(),
+    std::numeric_limits<decltype(Position::character)>::max()};
 
-void MessageHandler::textDocument_semanticTokensFull(
-        SemanticTokensParams &param, ReplyOnce &reply) {
+inline std::ostream &operator<<(std::ostream &s, const Position pos) {
+  s
+    << "{line: " << pos.line
+    << ", end: " << pos.character;
+  return s;
+}
+inline std::ostream &operator<<(std::ostream &s, const lsRange &range) {
+  s
+    << "lsRange(start:" << range.start
+    << ", end:" << range.end
+    << ")";
+  return s;
+}
+
+void MessageHandler::textDocument_semanticTokensRange(
+        SemanticTokensRangeParams &param, ReplyOnce &reply) {
+  if(param.range.start == documentBegin && param.range.end == documentEnd)
+    LOG_S(INFO)
+      << "SemanticToken for all document";
+  else
+    LOG_S(INFO)
+      << "SemanticToken for range "
+      << param.range.start;
   std::string path = param.textDocument.uri.getPath();
   WorkingFile *wfile = wfiles->getFile(path);
   if (!wfile) {
@@ -87,6 +112,13 @@ void MessageHandler::textDocument_semanticTokensFull(
   std::unordered_map<SymbolIdx, CclsSemanticHighlightSymbol> grouped_symbols;
   for (auto [sym, refcnt] : queryFile->symbol2refcnt) {
     if (refcnt <= 0)
+      continue;
+    // skip symbols that don't start within range
+    if( sym.range.start.line < param.range.start.line
+            || sym.range.end.line > param.range.end.line
+            // range is within lines here below, let's test if within specified characters/columns
+            || sym.range.start.column < param.range.start.character
+            || sym.range.end.column > param.range.end.character)
       continue;
     std::string_view detailed_name;
     SymbolKind parent_kind = SymbolKind::Unknown;
@@ -257,5 +289,11 @@ void MessageHandler::textDocument_semanticTokensFull(
   }
 
   reply(result);
+}
+void MessageHandler::textDocument_semanticTokensFull(
+        SemanticTokensParams &param, ReplyOnce &reply){
+  lsRange fullRange{documentBegin, documentEnd};
+  SemanticTokensRangeParams fullRangeParameters{param.textDocument, fullRange};
+  textDocument_semanticTokensRange(fullRangeParameters, reply);
 }
 } // namespace ccls

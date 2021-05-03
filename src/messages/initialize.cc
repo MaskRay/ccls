@@ -135,6 +135,7 @@ struct ServerCap {
           std::vector<const char *> tokenTypes = SEMANTIC_TOKENS;
           std::vector<const char *> tokenModifiers = SEMANTIC_MODIFIERS;
       } legend;
+      bool range = true;
       bool full = true;
   } semanticTokensProvider;
 };
@@ -158,7 +159,7 @@ REFLECT_STRUCT(ServerCap, textDocumentSync, hoverProvider, completionProvider,
                documentOnTypeFormattingProvider, renameProvider,
                documentLinkProvider, foldingRangeProvider,
                executeCommandProvider, workspace, semanticTokensProvider);
-REFLECT_STRUCT(ServerCap::SemanticTokenProvider, legend, full);
+REFLECT_STRUCT(ServerCap::SemanticTokenProvider, legend, range, full);
 REFLECT_STRUCT(ServerCap::SemanticTokenProvider::SemanticTokensLegend, tokenTypes, tokenModifiers);
 
 struct DynamicReg {
