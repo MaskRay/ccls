@@ -101,7 +101,7 @@ void MessageHandler::textDocument_semanticTokensRange(
 
   static GroupMatch match(g_config->highlight.whitelist,
                           g_config->highlight.blacklist);
-  assert(file->def);
+  assert(queryFile->def);
   if (wfile->buffer_content.size() > g_config->highlight.largeFileSize ||
       !match.matches(queryFile->def->path)) {
     LOG_S(INFO) << "Not SemTokenizing " << path << "because of allowlist/denylist";
