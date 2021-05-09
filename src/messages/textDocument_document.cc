@@ -128,16 +128,6 @@ template <> bool ignore(const QueryType::Def *def) {
 template <> bool ignore(const QueryVar::Def *def) {
   return !def || def->is_local();
 }
-
-void uniquify(std::vector<std::unique_ptr<DocumentSymbol>> &cs) {
-  std::sort(cs.begin(), cs.end(),
-            [](auto &l, auto &r) { return l->range < r->range; });
-  cs.erase(std::unique(cs.begin(), cs.end(),
-                       [](auto &l, auto &r) { return l->range == r->range; }),
-           cs.end());
-  for (auto &c : cs)
-    uniquify(c->children);
-}
 } // namespace
 
 void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
@@ -165,89 +155,58 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
     std::sort(result.begin(), result.end());
     reply(result);
   } else if (g_config->client.hierarchicalDocumentSymbolSupport) {
-    std::unordered_map<SymbolIdx, std::unique_ptr<DocumentSymbol>> sym2ds;
-    std::vector<std::pair<std::vector<const void *>, DocumentSymbol *>> funcs,
-        types;
-    for (auto [sym, refcnt] : file->symbol2refcnt) {
-      if (refcnt <= 0 || !sym.extent.valid())
-        continue;
-      auto r = sym2ds.try_emplace(SymbolIdx{sym.usr, sym.kind});
-      auto &ds = r.first->second;
-      if (!ds || sym.role & Role::Definition) {
-        if (!ds)
-          ds = std::make_unique<DocumentSymbol>();
-        if (auto range = getLsRange(wf, sym.range)) {
-          ds->selectionRange = *range;
-          ds->range = ds->selectionRange;
-          // For a macro expansion, M(name), we may use `M` for extent and
-          // `name` for spell, do the check as selectionRange must be a subrange
-          // of range.
-          if (sym.extent.valid())
-            if (auto range1 = getLsRange(wf, sym.extent);
-                range1 && range1->includes(*range))
-              ds->range = *range1;
-        }
+    std::vector<ExtentRef> syms;
+    syms.reserve(file->symbol2refcnt.size());
+    for (auto [sym, refcnt] : file->symbol2refcnt)
+      if (refcnt > 0 && sym.extent.valid())
+        syms.push_back(sym);
+    // Global variables `int i, j, k;` have the same extent.start. Sort them by
+    // range.start instead. In case of a tie, prioritize the widest ExtentRef.
+    std::sort(syms.begin(), syms.end(),
+              [](const ExtentRef &lhs, const ExtentRef &rhs) {
+                return std::tie(lhs.range.start, rhs.extent.end) <
+                       std::tie(rhs.range.start, lhs.extent.end);
+              });
+
+    std::vector<std::unique_ptr<DocumentSymbol>> res;
+    std::vector<DocumentSymbol *> scopes;
+    for (ExtentRef sym : syms) {
+      auto ds = std::make_unique<DocumentSymbol>();
+      if (auto range = getLsRange(wf, sym.range)) {
+        ds->selectionRange = *range;
+        ds->range = ds->selectionRange;
+        // For a macro expansion, M(name), we may use `M` for extent and
+        // `name` for spell, do the check as selectionRange must be a subrange
+        // of range.
+        if (sym.extent.valid())
+          if (auto range1 = getLsRange(wf, sym.extent);
+              range1 && range1->includes(*range))
+            ds->range = *range1;
       }
-      if (!r.second)
-        continue;
-      std::vector<const void *> def_ptrs;
-      SymbolKind kind = SymbolKind::Unknown;
       withEntity(db, sym, [&](const auto &entity) {
-        auto *def = entity.anyDef();
+        const auto *def = entity.anyDef();
         if (!def)
           return;
         ds->name = def->name(false);
         ds->detail = def->detailed_name;
-        for (auto &def : entity.def)
-          if (def.file_id == file_id && !ignore(&def)) {
-            kind = ds->kind = def.kind;
-            def_ptrs.push_back(&def);
-          }
-      });
-      if (def_ptrs.empty() || !(kind == SymbolKind::Namespace || allows(sym))) {
-        ds.reset();
-        continue;
-      }
-      if (sym.kind == Kind::Func)
-        funcs.emplace_back(std::move(def_ptrs), ds.get());
-      else if (sym.kind == Kind::Type)
-        types.emplace_back(std::move(def_ptrs), ds.get());
-    }
+        ds->kind = def->kind;
 
-    for (auto &[def_ptrs, ds] : funcs)
-      for (const void *def_ptr : def_ptrs)
-        for (Usr usr1 : ((const QueryFunc::Def *)def_ptr)->vars) {
-          auto it = sym2ds.find(SymbolIdx{usr1, Kind::Var});
-          if (it != sym2ds.end() && it->second)
-            ds->children.push_back(std::move(it->second));
+        if (!ignore(def) && (ds->kind == SymbolKind::Namespace || allows(sym))) {
+          // Drop scopes which are before selectionRange.start. In
+          // `int i, j, k;`, the scope of i will be ended by j.
+          while (!scopes.empty() &&
+                 scopes.back()->range.end <= ds->selectionRange.start)
+            scopes.pop_back();
+          auto *ds1 = ds.get();
+          if (scopes.empty())
+            res.push_back(std::move(ds));
+          else
+            scopes.back()->children.push_back(std::move(ds));
+          scopes.push_back(ds1);
         }
-    for (auto &[def_ptrs, ds] : types)
-      for (const void *def_ptr : def_ptrs) {
-        auto *def = (const QueryType::Def *)def_ptr;
-        for (Usr usr1 : def->funcs) {
-          auto it = sym2ds.find(SymbolIdx{usr1, Kind::Func});
-          if (it != sym2ds.end() && it->second)
-            ds->children.push_back(std::move(it->second));
-        }
-        for (Usr usr1 : def->types) {
-          auto it = sym2ds.find(SymbolIdx{usr1, Kind::Type});
-          if (it != sym2ds.end() && it->second)
-            ds->children.push_back(std::move(it->second));
-        }
-        for (auto [usr1, _] : def->vars) {
-          auto it = sym2ds.find(SymbolIdx{usr1, Kind::Var});
-          if (it != sym2ds.end() && it->second)
-            ds->children.push_back(std::move(it->second));
-        }
-      }
-    std::vector<std::unique_ptr<DocumentSymbol>> result;
-    for (auto &[_, ds] : sym2ds)
-      if (ds) {
-        uniquify(ds->children);
-        result.push_back(std::move(ds));
-      }
-    uniquify(result);
-    reply(result);
+      });
+    }
+    reply(res);
   } else {
     std::vector<SymbolInformation> result;
     for (auto [sym, refcnt] : file->symbol2refcnt) {
