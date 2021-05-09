@@ -130,6 +130,20 @@ template <> bool ignore(const QueryVar::Def *def) {
 }
 } // namespace
 
+bool is_macro_expansion(DB *db, WorkingFile *wf, QueryFile *file,
+                        DocumentSymbol const &ds) noexcept {
+  if (ds.kind == SymbolKind::Macro) {
+    return false;
+  }
+  auto start = ds.range.start;
+  auto syms = findSymbolsAtLocation(wf, file, start, true);
+
+  auto end = std::end(syms);
+  return std::find_if(std::begin(syms), end, [db](SymbolRef sym) {
+           return getSymbolKind(db, sym) == SymbolKind::Macro;
+         }) != end;
+}
+
 void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
                                                  ReplyOnce &reply) {
   DocumentSymbolParam param;
@@ -183,7 +197,7 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
               range1 && range1->includes(*range))
             ds->range = *range1;
       }
-      withEntity(db, sym, [&](const auto &entity) {
+      withEntity(db, sym, [&, wf = wf, file = file](const auto &entity) {
         const auto *def = entity.anyDef();
         if (!def)
           return;
@@ -191,7 +205,9 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
         ds->detail = def->detailed_name;
         ds->kind = def->kind;
 
-        if (!ignore(def) && (ds->kind == SymbolKind::Namespace || allows(sym))) {
+        if (!ignore(def) &&
+            (ds->kind == SymbolKind::Namespace || allows(sym)) &&
+            !is_macro_expansion(db, wf, file, *ds)) {
           // Drop scopes which are before selectionRange.start. In
           // `int i, j, k;`, the scope of i will be ended by j.
           while (!scopes.empty() &&
