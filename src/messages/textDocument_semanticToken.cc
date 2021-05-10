@@ -113,12 +113,12 @@ void MessageHandler::textDocument_semanticTokensRange(
   for (auto [sym, refcnt] : queryFile->symbol2refcnt) {
     if (refcnt <= 0)
       continue;
-    // skip symbols that don't start within range
-    if( sym.range.start.line < param.range.start.line
-            || sym.range.end.line > param.range.end.line
+    // skip symbols that don't intersect range
+    if( sym.range.end.line < param.range.start.line
+            || sym.range.start.line > param.range.end.line
             // range is within lines here below, let's test if within specified characters/columns
-            || sym.range.start.column < param.range.start.character
-            || sym.range.end.column > param.range.end.character)
+            || sym.range.end.column < param.range.start.character
+            || sym.range.start.column > param.range.end.character)
       continue;
     std::string_view detailed_name;
     SymbolKind parent_kind = SymbolKind::Unknown;
