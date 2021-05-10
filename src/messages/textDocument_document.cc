@@ -121,28 +121,40 @@ void reflect(JsonWriter &vis, std::unique_ptr<DocumentSymbol> &v) {
   reflect(vis, *v);
 }
 
-template <typename Def> bool ignore(const Def *def) { return false; }
-template <> bool ignore(const QueryType::Def *def) {
-  return !def || def->kind == SymbolKind::TypeParameter;
-}
-template <> bool ignore(const QueryVar::Def *def) {
-  return !def || def->is_local();
-}
-} // namespace
-
-bool is_macro_expansion(DB *db, WorkingFile *wf, QueryFile *file,
-                        DocumentSymbol const &ds) noexcept {
-  if (ds.kind == SymbolKind::Macro) {
+template <typename Def>
+bool isPartOfMacroExpansion(DB *db, WorkingFile *wf, QueryFile *file,
+                            Def const *def) noexcept {
+  if (def->kind == SymbolKind::Macro) {
     return false;
   }
-  auto start = ds.range.start;
-  auto syms = findSymbolsAtLocation(wf, file, start, true);
+  auto range = getLsRange(wf, def->spell->range);
+  if (range) {
+    auto syms = findSymbolsAtLocation(wf, file, range->start, true);
 
-  auto end = std::end(syms);
-  return std::find_if(std::begin(syms), end, [db](SymbolRef sym) {
-           return getSymbolKind(db, sym) == SymbolKind::Macro;
-         }) != end;
+    auto end = std::end(syms);
+    return std::find_if(std::begin(syms), end, [db](SymbolRef sym) {
+             return getSymbolKind(db, sym) == SymbolKind::Macro;
+           }) != end;
+  }
+  return false;
 }
+
+template <typename Def>
+bool ignore(DB *db, WorkingFile *wf, QueryFile *file, const Def *def) {
+  return isPartOfMacroExpansion(db, wf, file, def);
+}
+template <>
+bool ignore(DB *db, WorkingFile *wf, QueryFile *file,
+            const QueryType::Def *def) {
+  return !def || def->kind == SymbolKind::TypeParameter ||
+         isPartOfMacroExpansion(db, wf, file, def);
+}
+template <>
+bool ignore(DB *db, WorkingFile *wf, QueryFile *file,
+            const QueryVar::Def *def) {
+  return !def || def->is_local() || isPartOfMacroExpansion(db, wf, file, def);
+}
+} // namespace
 
 void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
                                                  ReplyOnce &reply) {
@@ -205,9 +217,8 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
         ds->detail = def->detailed_name;
         ds->kind = def->kind;
 
-        if (!ignore(def) &&
-            (ds->kind == SymbolKind::Namespace || allows(sym)) &&
-            !is_macro_expansion(db, wf, file, *ds)) {
+        if (!ignore(db, wf, file, def) &&
+            (ds->kind == SymbolKind::Namespace || allows(sym))) {
           // Drop scopes which are before selectionRange.start. In
           // `int i, j, k;`, the scope of i will be ended by j.
           while (!scopes.empty() &&
@@ -230,8 +241,10 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
         continue;
       if (std::optional<SymbolInformation> info =
               getSymbolInfo(db, sym, false)) {
-        if ((sym.kind == Kind::Type && ignore(db->getType(sym).anyDef())) ||
-            (sym.kind == Kind::Var && ignore(db->getVar(sym).anyDef())))
+        if ((sym.kind == Kind::Type &&
+             ignore(db, wf, file, db->getType(sym).anyDef())) ||
+            (sym.kind == Kind::Var &&
+             ignore(db, wf, file, db->getVar(sym).anyDef())))
           continue;
         if (auto loc = getLsLocation(db, wfiles, sym, file_id)) {
           info->location = *loc;
