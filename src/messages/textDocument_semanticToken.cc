@@ -15,13 +15,13 @@
 MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
 
 namespace ccls {
+REFLECT_STRUCT(QueryFile::SemanticTokens, data);
+REFLECT_STRUCT(QueryFile::SemanticTokensWithId, tokens, id);
+
 using namespace clang;
 
 namespace {
-struct SemanticTokens {
-  std::vector<int> data;
-};
-REFLECT_STRUCT(SemanticTokens, data);
+
 
 struct CclsSemanticHighlightSymbol {
   using Id=int;
@@ -97,7 +97,7 @@ void MessageHandler::textDocument_semanticTokensRange(
     return;
   }
 
-  SemanticTokens result;
+  QueryFile::SemanticTokensWithId result;
 
   static GroupMatch match(g_config->highlight.whitelist,
                           g_config->highlight.blacklist);
@@ -264,9 +264,13 @@ void MessageHandler::textDocument_semanticTokensRange(
     if (r.start.line != line) {
       column = 0;
     }
-    result.data.push_back(r.start.line - line); line = r.start.line;
-    result.data.push_back(r.start.character - column); column = r.start.character;
-    result.data.push_back(r.end.character - r.start.character);
+
+    auto &serialized = result.tokens.data;
+
+    serialized.push_back(r.start.line - line); line = r.start.line;
+    serialized.push_back(r.start.character - column); column = r.start.character;
+    serialized.push_back(r.end.character - r.start.character);
+
     uint8_t kindId;
     int modifiers = entry.second->storage == SC_Static ? 4 : 0;
     if (entry.first.second & Role::Declaration) {
@@ -284,12 +288,17 @@ void MessageHandler::textDocument_semanticTokensRange(
 	kindId--;
       if (kindId >= 252) kindId = 27 + kindId - 252;
     }
-    result.data.push_back(kindId);
-    result.data.push_back(modifiers);
+    serialized.push_back(kindId);
+    serialized.push_back(modifiers);
   }
+  // tokens ready, let's tag them with "the next id"
+  result.id = queryFile->latestSemanticTokens.id +1;
+  // before sending data, we'll cache the token we're sending
+  queryFile->latestSemanticTokens = result;
 
-  reply(result);
+  reply(result.tokens);
 }
+
 void MessageHandler::textDocument_semanticTokensFull(
         SemanticTokensParams &param, ReplyOnce &reply){
   lsRange fullRange{documentBegin, documentEnd};
