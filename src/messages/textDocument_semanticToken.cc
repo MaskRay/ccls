@@ -115,10 +115,10 @@ void MessageHandler::textDocument_semanticTokensRange(
       continue;
     // skip symbols that don't intersect range
     if( sym.range.end.line < param.range.start.line
-            || sym.range.start.line > param.range.end.line
-            // range is within lines here below, let's test if within specified characters/columns
-            || sym.range.end.column < param.range.start.character
-            || sym.range.start.column > param.range.end.character)
+        || sym.range.start.line > param.range.end.line
+        // range is within lines here below, let's test if within specified characters/columns
+        || sym.range.end.column < param.range.start.character
+        || sym.range.start.column > param.range.end.character)
       continue;
     std::string_view detailed_name;
     SymbolKind parent_kind = SymbolKind::Unknown;
@@ -148,7 +148,7 @@ void MessageHandler::textDocument_semanticTokensRange(
       // E.g. copy-initialization of constructors should not be highlighted
       // but we still want to keep the range for jumping to definition.
       const auto concise_name =
-          detailed_name.substr(0, detailed_name.find('<'));
+        detailed_name.substr(0, detailed_name.find('<'));
       const auto start_line_idx = sym.range.start.line;
       const auto start_col = sym.range.start.column;
       if (start_line_idx >= wfile->index_lines.size()) // out-of-range ?
@@ -241,7 +241,7 @@ void MessageHandler::textDocument_semanticTokensRange(
     // .
     if (top && !(events[i - 1].pos == events[i].pos))
       events[top - 1].symbol->lsRangeAndRoles.push_back(
-          {{events[i - 1].pos, events[i].pos}, events[i].role});
+        {{events[i - 1].pos, events[i].pos}, events[i].role});
     if (events[i].id >= 0)
       events[top++] = events[i];
     else
@@ -256,7 +256,7 @@ void MessageHandler::textDocument_semanticTokensRange(
     entry.second.lsRangeAndRoles.clear();
   }
   std::sort(scratch.begin(), scratch.end(),
-      [](auto &l, auto &r) { return l.first.first.start < r.first.first.start; });
+            [](auto &l, auto &r) { return l.first.first.start < r.first.first.start; });
   int line = 0;
   int column = 0;
   for (auto &entry : scratch) {
@@ -285,7 +285,7 @@ void MessageHandler::textDocument_semanticTokensRange(
     } else {
       kindId = (uint8_t) entry.second->kind;
       if (kindId > (uint8_t) SymbolKind::StaticMethod)
-	kindId--;
+        kindId--;
       if (kindId >= 252) kindId = 27 + kindId - 252;
     }
     serialized.push_back(kindId);
@@ -300,9 +300,10 @@ void MessageHandler::textDocument_semanticTokensRange(
 }
 
 void MessageHandler::textDocument_semanticTokensFull(
-        SemanticTokensParams &param, ReplyOnce &reply){
-  lsRange fullRange{documentBegin, documentEnd};
+    SemanticTokensParams &param, ReplyOnce &reply){
+    lsRange fullRange{documentBegin, documentEnd};
   SemanticTokensRangeParams fullRangeParameters{param.textDocument, fullRange};
   textDocument_semanticTokensRange(fullRangeParameters, reply);
 }
+
 } // namespace ccls
