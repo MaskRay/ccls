@@ -35,7 +35,8 @@ struct Config {
     //
     // If empty, retainInMemory will be set to 1 and cache will be stored in
     // memory.
-    std::string directory = ".ccls-cache";
+    std::string cache_dir = getenv("XDG_CACHE_HOME");
+    std::string directory = cache_dir + "/ccls-cache";
 
     // Cache serialization format.
     //
