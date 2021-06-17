@@ -1,4 +1,4 @@
-// Copyright 2017-2020 ccls Authors
+// Copyright ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #include "indexer.hh"
