@@ -307,5 +307,6 @@ private:
 
 void emitSkippedRanges(WorkingFile *wfile, QueryFile &file);
 
-void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file);
+//! Tell client there should be a highlighting refresh
+void emitSemanticHighlightRefresh();
 } // namespace ccls

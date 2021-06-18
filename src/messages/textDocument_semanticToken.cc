@@ -84,6 +84,7 @@ void MessageHandler::textDocument_semanticTokensRange(
     LOG_S(INFO)
       << "SemanticToken for range "
       << param.range.start;
+
   std::string path = param.textDocument.uri.getPath();
   WorkingFile *wfile = wfiles->getFile(path);
   if (!wfile) {
