@@ -125,7 +125,7 @@ void MessageHandler::textDocument_semanticTokensRange(
     SymbolKind parent_kind = SymbolKind::Unknown;
     SymbolKind kind = SymbolKind::Unknown;
     uint8_t storage = SC_None;
-    DB::UsrIndex idx;
+    decltype(db->func_usr)::key_type idx;
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.kind) {
     case Kind::Func: {

@@ -162,10 +162,8 @@ using Lid2file_id = std::unordered_map<int, int>;
 struct DB {
   std::vector<QueryFile> files;
   llvm::StringMap<int> name2file_id;
-  //! Underlying type used for indexes-of-Usr
-  using UsrIndex=int;
   //! Usr → index
-  llvm::DenseMap<Usr, UsrIndex, DenseMapInfoForUsr> func_usr, type_usr, var_usr;
+  llvm::DenseMap<Usr, int, DenseMapInfoForUsr> func_usr, type_usr, var_usr;
   llvm::SmallVector<QueryFunc, 0> funcs;
   llvm::SmallVector<QueryType, 0> types;
   llvm::SmallVector<QueryVar, 0> vars;
