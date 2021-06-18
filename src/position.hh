@@ -10,10 +10,8 @@
 
 namespace ccls {
 struct Pos {
-  using Line=uint16_t;
-  Line line = 0;
-  using Column=int16_t;
-  Column column = -1;
+  uint16_t line = 0;
+  int16_t column = -1;
 
   static Pos fromString(const std::string &encoded);
 
@@ -36,7 +34,7 @@ protected:
    * (line, pos)
    * use for lexicographic comparison
    */
-  auto asTuple() const -> std::tuple<Line,Column> {
+  auto asTuple() const -> std::tuple<decltype(line),decltype(column)> {
     return std::make_tuple(line, column);
   }
 
