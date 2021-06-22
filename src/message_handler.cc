@@ -243,11 +243,7 @@ void emitSkippedRanges(WorkingFile *wfile, QueryFile &file) {
 
 
 void emitSemanticHighlightRefresh() {
-  //// tried using `notify`, but won't compile
-  //EmptyParam empty;
-  //pipeline::notify("workspace/semanticTokens/refresh", empty);
-  
-  pipeline::notifyOrRequest(
-   "workspace/semanticTokens/refresh", false, [](JsonWriter &){});
+  std::vector<int> emptyParameters{}; // notification with no parameters (empty list)
+  pipeline::notify("workspace/semanticTokens/refresh", emptyParameters);
 }
 } // namespace ccls
