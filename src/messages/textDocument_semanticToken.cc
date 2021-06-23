@@ -272,12 +272,13 @@ void MessageHandler::textDocument_semanticTokensRange(
 
     uint8_t kindId;
     int modifiers = entry.second->storage == SC_Static ? 4 : 0;
-    if (entry.first.second & Role::Declaration) {
+
+    if (entry.first.second & Role::Declaration)
       modifiers |= 1;
-    }
-    if (entry.first.second & Role::Definition) {
+
+    if (entry.first.second & Role::Definition)
       modifiers |= 2;
-    }
+
     if (entry.second->kind == SymbolKind::StaticMethod) {
       kindId = (uint8_t)SymbolKind::Method;
       modifiers = 4;
