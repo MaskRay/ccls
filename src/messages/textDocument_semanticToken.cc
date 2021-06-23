@@ -22,10 +22,8 @@ using namespace clang;
 
 namespace {
 
-
 struct CclsSemanticHighlightSymbol {
-  using Id=int;
-  Id id = 0;
+  int id = 0;
   SymbolKind parentKind;
   SymbolKind kind;
   uint8_t storage;
@@ -35,8 +33,7 @@ struct CclsSemanticHighlightSymbol {
 struct ScanLineEvent {
   Position pos;
   Position end_pos; // Second key when there is a tie for insertion events.
-  using Id=int;
-  Id id;
+  int id;
   CclsSemanticHighlightSymbol *symbol;
   Role role;
   bool operator<(const ScanLineEvent &o) const {
