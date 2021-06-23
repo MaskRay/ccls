@@ -7,8 +7,8 @@
 #include "pipeline.hh"
 #include "sema_manager.hh"
 
-#include <clang/Sema/Sema.h>
 #include <algorithm>
+#include <clang/Sema/Sema.h>
 #include <stdexcept>
 #include <string>
 
@@ -52,35 +52,27 @@ struct ScanLineEvent {
   }
 };
 
-}
-constexpr Position documentBegin{0,0};
+} // namespace
+constexpr Position documentBegin{0, 0};
 constexpr Position documentEnd{
     std::numeric_limits<decltype(Position::line)>::max(),
     std::numeric_limits<decltype(Position::character)>::max()};
 
 inline std::ostream &operator<<(std::ostream &s, const Position pos) {
-  s
-    << "{line: " << pos.line
-    << ", end: " << pos.character;
+  s << "{line: " << pos.line << ", end: " << pos.character;
   return s;
 }
 inline std::ostream &operator<<(std::ostream &s, const lsRange &range) {
-  s
-    << "lsRange(start:" << range.start
-    << ", end:" << range.end
-    << ")";
+  s << "lsRange(start:" << range.start << ", end:" << range.end << ")";
   return s;
 }
 
 void MessageHandler::textDocument_semanticTokensRange(
-        SemanticTokensRangeParams &param, ReplyOnce &reply) {
-  if(param.range.start == documentBegin && param.range.end == documentEnd)
-    LOG_S(INFO)
-      << "SemanticToken for all document";
+    SemanticTokensRangeParams &param, ReplyOnce &reply) {
+  if (param.range.start == documentBegin && param.range.end == documentEnd)
+    LOG_S(INFO) << "SemanticToken for all document";
   else
-    LOG_S(INFO)
-      << "SemanticToken for range "
-      << param.range.start;
+    LOG_S(INFO) << "SemanticToken for range " << param.range.start;
 
   std::string path = param.textDocument.uri.getPath();
   WorkingFile *wfile = wfiles->getFile(path);
@@ -89,7 +81,7 @@ void MessageHandler::textDocument_semanticTokensRange(
     return;
   }
 
-  auto [queryFile,wFile] = findOrFail(path, reply);
+  auto [queryFile, wFile] = findOrFail(path, reply);
   if (!queryFile) {
     // `findOrFail` already set the reply message
     return;
@@ -102,7 +94,8 @@ void MessageHandler::textDocument_semanticTokensRange(
   assert(queryFile->def);
   if (wfile->buffer_content.size() > g_config->highlight.largeFileSize ||
       !match.matches(queryFile->def->path)) {
-    LOG_S(INFO) << "Not SemTokenizing " << path << "because of allowlist/denylist";
+    LOG_S(INFO) << "Not SemTokenizing " << path
+                << "because of allowlist/denylist";
     return;
   }
 
@@ -112,11 +105,12 @@ void MessageHandler::textDocument_semanticTokensRange(
     if (refcnt <= 0)
       continue;
     // skip symbols that don't intersect range
-    if( sym.range.end.line < param.range.start.line
-        || sym.range.start.line > param.range.end.line
-        // range is within lines here below, let's test if within specified characters/columns
-        || sym.range.end.column < param.range.start.character
-        || sym.range.start.column > param.range.end.character)
+    if (sym.range.end.line < param.range.start.line ||
+        sym.range.start.line > param.range.end.line
+        // range is within lines here below, let's test if within specified
+        // characters/columns
+        || sym.range.end.column < param.range.start.character ||
+        sym.range.start.column > param.range.end.character)
       continue;
     std::string_view detailed_name;
     SymbolKind parent_kind = SymbolKind::Unknown;
@@ -146,7 +140,7 @@ void MessageHandler::textDocument_semanticTokensRange(
       // E.g. copy-initialization of constructors should not be highlighted
       // but we still want to keep the range for jumping to definition.
       const auto concise_name =
-        detailed_name.substr(0, detailed_name.find('<'));
+          detailed_name.substr(0, detailed_name.find('<'));
       const auto start_line_idx = sym.range.start.line;
       const auto start_col = sym.range.start.column;
       if (start_line_idx >= wfile->index_lines.size()) // out-of-range ?
@@ -215,11 +209,13 @@ void MessageHandler::textDocument_semanticTokensRange(
     for (auto &loc : symbol.lsRangeAndRoles) {
       // For ranges sharing the same start point, the one with leftmost end
       // point comes first.
-      events.push_back({loc.first.start, loc.first.end, id, &symbol, loc.second});
+      events.push_back(
+          {loc.first.start, loc.first.end, id, &symbol, loc.second});
       // For ranges sharing the same end point, their relative order does not
       // matter, therefore we arbitrarily assign loc.end to them. We use
       // negative id to indicate a deletion event.
-      events.push_back({loc.first.end, loc.first.end, ~id, &symbol, loc.second});
+      events.push_back(
+          {loc.first.end, loc.first.end, ~id, &symbol, loc.second});
       id++;
     }
     symbol.lsRangeAndRoles.clear();
@@ -239,7 +235,7 @@ void MessageHandler::textDocument_semanticTokensRange(
     // .
     if (top && !(events[i - 1].pos == events[i].pos))
       events[top - 1].symbol->lsRangeAndRoles.push_back(
-        {{events[i - 1].pos, events[i].pos}, events[i].role});
+          {{events[i - 1].pos, events[i].pos}, events[i].role});
     if (events[i].id >= 0)
       events[top++] = events[i];
     else
@@ -247,14 +243,17 @@ void MessageHandler::textDocument_semanticTokensRange(
   }
 
   // Transform lsRange into pair<int, int> (offset pairs)
-  std::vector<std::pair<std::pair<lsRange, Role>, CclsSemanticHighlightSymbol *>> scratch;
+  std::vector<
+      std::pair<std::pair<lsRange, Role>, CclsSemanticHighlightSymbol *>>
+      scratch;
   for (auto &entry : grouped_symbols) {
     for (auto &range : entry.second.lsRangeAndRoles)
       scratch.emplace_back(range, &entry.second);
     entry.second.lsRangeAndRoles.clear();
   }
-  std::sort(scratch.begin(), scratch.end(),
-            [](auto &l, auto &r) { return l.first.first.start < r.first.first.start; });
+  std::sort(scratch.begin(), scratch.end(), [](auto &l, auto &r) {
+    return l.first.first.start < r.first.first.start;
+  });
   int line = 0;
   int column = 0;
   for (auto &entry : scratch) {
@@ -265,8 +264,10 @@ void MessageHandler::textDocument_semanticTokensRange(
 
     auto &serialized = result.tokens.data;
 
-    serialized.push_back(r.start.line - line); line = r.start.line;
-    serialized.push_back(r.start.character - column); column = r.start.character;
+    serialized.push_back(r.start.line - line);
+    line = r.start.line;
+    serialized.push_back(r.start.character - column);
+    column = r.start.character;
     serialized.push_back(r.end.character - r.start.character);
 
     uint8_t kindId;
@@ -278,19 +279,20 @@ void MessageHandler::textDocument_semanticTokensRange(
       modifiers |= 2;
     }
     if (entry.second->kind == SymbolKind::StaticMethod) {
-      kindId = (uint8_t) SymbolKind::Method;
+      kindId = (uint8_t)SymbolKind::Method;
       modifiers = 4;
     } else {
-      kindId = (uint8_t) entry.second->kind;
-      if (kindId > (uint8_t) SymbolKind::StaticMethod)
+      kindId = (uint8_t)entry.second->kind;
+      if (kindId > (uint8_t)SymbolKind::StaticMethod)
         kindId--;
-      if (kindId >= 252) kindId = 27 + kindId - 252;
+      if (kindId >= 252)
+        kindId = 27 + kindId - 252;
     }
     serialized.push_back(kindId);
     serialized.push_back(modifiers);
   }
   // tokens ready, let's tag them with "the next id"
-  result.id = queryFile->latestSemanticTokens.id +1;
+  result.id = queryFile->latestSemanticTokens.id + 1;
   // before sending data, we'll cache the token we're sending
   queryFile->latestSemanticTokens = result;
 
@@ -298,8 +300,8 @@ void MessageHandler::textDocument_semanticTokensRange(
 }
 
 void MessageHandler::textDocument_semanticTokensFull(
-    SemanticTokensParams &param, ReplyOnce &reply){
-    lsRange fullRange{documentBegin, documentEnd};
+    SemanticTokensParams &param, ReplyOnce &reply) {
+  lsRange fullRange{documentBegin, documentEnd};
   SemanticTokensRangeParams fullRangeParameters{param.textDocument, fullRange};
   textDocument_semanticTokensRange(fullRangeParameters, reply);
 }
