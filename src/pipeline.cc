@@ -497,8 +497,7 @@ void main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
       std::string path = lowerPathIfInsensitive(f);
       if (db->name2file_id.find(path) == db->name2file_id.end())
         continue;
-      QueryFile &file = db->files[db->name2file_id[path]];
-      emitSemanticHighlight(db, wf.get(), file);
+      emitSemanticHighlightRefresh();
     }
     return;
   }
@@ -515,7 +514,7 @@ void main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
                                                       : def_u.second);
       QueryFile &file = db->files[update->file_id];
       emitSkippedRanges(wfile, file);
-      emitSemanticHighlight(db, wfile, file);
+      emitSemanticHighlightRefresh();
     }
   }
 }

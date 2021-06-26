@@ -36,7 +36,7 @@ void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
   QueryFile *file = findFile(path);
   if (file) {
     emitSkippedRanges(wf, *file);
-    emitSemanticHighlight(db, wf, *file);
+    emitSemanticHighlightRefresh();
   }
   include_complete->addFile(wf->filename);
 

@@ -42,8 +42,24 @@ struct QueryFile {
 
   int id = -1;
   std::optional<Def> def;
-  // `extent` is valid => declaration; invalid => regular reference
-  llvm::DenseMap<ExtentRef, int> symbol2refcnt;
+  //! `extent` is valid => declaration; invalid => regular reference
+  using SymbolToRefCount=llvm::DenseMap<ExtentRef, int>;
+  SymbolToRefCount symbol2refcnt;
+
+  //! List of 5-integers that describe (line, column, length, token id, token mod)
+  struct SemanticTokens {
+    std::vector<int> data;
+  };
+  //! Semantic tokens with an id
+  struct SemanticTokensWithId {
+    using Id=int;
+    static constexpr Id invalidId=-1;
+    SemanticTokens tokens;
+    //! Id local to a file
+    Id id = invalidId;
+  };
+  //! Latest tokens sent to the client
+  SemanticTokensWithId latestSemanticTokens;
 };
 
 template <typename Q, typename QDef> struct QueryEntity {
@@ -146,6 +162,7 @@ using Lid2file_id = std::unordered_map<int, int>;
 struct DB {
   std::vector<QueryFile> files;
   llvm::StringMap<int> name2file_id;
+  //! Usr → index
   llvm::DenseMap<Usr, int, DenseMapInfoForUsr> func_usr, type_usr, var_usr;
   llvm::SmallVector<QueryFunc, 0> funcs;
   llvm::SmallVector<QueryType, 0> types;
