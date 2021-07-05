@@ -1,0 +1,13 @@
+name: check code format
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: install depend
+      run: brew install clang-format
+    - name: format check
+      run: ./.github/workflows/clang-format-check.py -r src
