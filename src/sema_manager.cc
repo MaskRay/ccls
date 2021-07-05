@@ -249,7 +249,10 @@ public:
       info.FormatDiagnostic(message);
       d.range =
           fromCharSourceRange(sm, *langOpts, diagnosticRange(info, *langOpts));
-      d.message = message.str();
+      {
+        char upperCh[2] = { (char)std::toupper(message[0]), '\0' };
+        d.message = (StringRef(upperCh) + message.substr(1)).str();
+      }
       d.concerned = concerned;
       d.file = filename;
       d.level = level;
