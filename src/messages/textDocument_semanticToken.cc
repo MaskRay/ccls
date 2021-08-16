@@ -59,7 +59,7 @@ constexpr Position documentEnd{
     std::numeric_limits<decltype(Position::character)>::max()};
 
 inline std::ostream &operator<<(std::ostream &s, const Position pos) {
-  s << "{line: " << pos.line << ", end: " << pos.character;
+  s << "{line: " << pos.line << ", end: " << pos.character << "}";
   return s;
 }
 inline std::ostream &operator<<(std::ostream &s, const lsRange &range) {
@@ -69,12 +69,12 @@ inline std::ostream &operator<<(std::ostream &s, const lsRange &range) {
 
 void MessageHandler::textDocument_semanticTokensRange(
     SemanticTokensRangeParams &param, ReplyOnce &reply) {
+  const std::string path = param.textDocument.uri.getPath();
   if (param.range.start == documentBegin && param.range.end == documentEnd)
-    LOG_S(INFO) << "SemanticToken for all document";
+    LOG_S(INFO) << "SemanticToken for all document of " << path;
   else
-    LOG_S(INFO) << "SemanticToken for range " << param.range.start;
+    LOG_S(INFO) << "SemanticToken for range " << param.range.start << " of " << path;
 
-  std::string path = param.textDocument.uri.getPath();
   WorkingFile *wfile = wfiles->getFile(path);
   if (!wfile) {
     reply.notOpened(path);
