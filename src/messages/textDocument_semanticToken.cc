@@ -203,7 +203,7 @@ void MessageHandler::textDocument_semanticTokensRange(
 
   // Make ranges non-overlapping using a scan line algorithm.
   std::vector<ScanLineEvent> events;
-  ScanLineEvent::Id id = 0;
+  int id = 0;
   for (auto &entry : grouped_symbols) {
     CclsSemanticHighlightSymbol &symbol = entry.second;
     for (auto &loc : symbol.lsRangeAndRoles) {
