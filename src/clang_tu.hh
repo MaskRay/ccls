@@ -17,6 +17,10 @@ namespace vfs = clang::vfs;
 }
 #endif
 
+#if LLVM_VERSION_MAJOR < 14 // llvmorg-14-init-3863-g601102d282d5
+#define isAsciiIdentifierContinue isIdentifierBody
+#endif
+
 namespace ccls {
 std::string pathFromFileEntry(const clang::FileEntry &file);
 
