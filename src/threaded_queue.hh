@@ -126,12 +126,14 @@ public:
   bool isEmpty() { return total_count_ == 0; }
 
   // Get the first element from the queue. Blocks until one is available.
-  T dequeue() {
+  T dequeue(int keep_only_latest = 0) {
     std::unique_lock<std::mutex> lock(mutex_);
     waiter_->cv.wait(lock,
                      [&]() { return !priority_.empty() || !queue_.empty(); });
 
     auto execute = [&](std::deque<T> *q) {
+      if (keep_only_latest > 0 && q->size() > keep_only_latest)
+        q->erase(q->begin(), q->end() - keep_only_latest);
       auto val = std::move(q->front());
       q->pop_front();
       --total_count_;

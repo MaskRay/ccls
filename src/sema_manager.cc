@@ -421,7 +421,8 @@ void *preambleMain(void *manager_) {
   auto *manager = static_cast<SemaManager *>(manager_);
   set_thread_name("preamble");
   while (true) {
-    SemaManager::PreambleTask task = manager->preamble_tasks.dequeue();
+    SemaManager::PreambleTask task = manager->preamble_tasks.dequeue(
+        g_config ? g_config->session.maxNum : 0);
     if (pipeline::g_quit.load(std::memory_order_relaxed))
       break;
 
