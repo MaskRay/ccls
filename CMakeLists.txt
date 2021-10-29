@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.9)
 project(ccls LANGUAGES CXX)
 
 option(USE_SYSTEM_RAPIDJSON "Use system RapidJSON instead of the git submodule if exists" ON)
@@ -29,6 +29,13 @@ endif()
 set_property(TARGET ccls PROPERTY CXX_STANDARD 17)
 set_property(TARGET ccls PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET ccls PROPERTY CXX_EXTENSIONS OFF)
+
+# Build using LTO if the compiler supports it
+include(CheckIPOSupported)
+check_ipo_supported(RESULT ipo OUTPUT error)
+if (ipo)
+  set_property(TARGET ccls PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
 
 # CMake sets MSVC for both MSVC and Clang(Windows)
 if(MSVC)
