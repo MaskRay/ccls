@@ -71,7 +71,8 @@ endif()
 
 find_package(Clang REQUIRED)
 
-if(CLANG_LINK_CLANG_DYLIB)
+option(CLANG_LINK_DYLIB ${CLANG_LINK_CLANG_DYLIB})
+if(CLANG_LINK_DYLIB)
   target_link_libraries(ccls PRIVATE clang-cpp)
 else()
   target_link_libraries(ccls PRIVATE
