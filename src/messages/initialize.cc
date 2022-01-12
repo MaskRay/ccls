@@ -226,9 +226,10 @@ struct InitializeResult {
     const char *name = "ccls";
     const char *version = CCLS_VERSION;
   } serverInfo;
+  const char *offsetEncoding = "utf-32";
 };
 REFLECT_STRUCT(InitializeResult::ServerInfo, name, version);
-REFLECT_STRUCT(InitializeResult, capabilities, serverInfo);
+REFLECT_STRUCT(InitializeResult, capabilities, serverInfo, offsetEncoding);
 
 struct FileSystemWatcher {
   std::string globPattern = "**/*";
