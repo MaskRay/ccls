@@ -9,6 +9,8 @@
 
 #include <rapidjson/document.h>
 
+#include <llvm/ADT/STLExtras.h>
+
 #include <assert.h>
 #include <functional>
 #include <limits.h>
