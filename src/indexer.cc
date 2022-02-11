@@ -1277,7 +1277,7 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> fs =
       llvm::vfs::getRealFileSystem();
   std::shared_ptr<CompilerInvocation> ci =
-      buildCompilerInvocation(main, args, fs);
+      buildCompilerInvocation(main, args, fs, opt_wdir);
   // e.g. .s
   if (!ci)
     return {};

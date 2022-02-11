@@ -96,9 +96,10 @@ Range fromTokenRangeDefaulted(const SourceManager &sm, const LangOptions &lang,
 
 std::unique_ptr<CompilerInvocation>
 buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
-                        IntrusiveRefCntPtr<llvm::vfs::FileSystem> vfs) {
+                        IntrusiveRefCntPtr<llvm::vfs::FileSystem> vfs,
+                        const std::string &working_dir) {
   std::string save = "-resource-dir=" + g_config->clang.resourceDir;
-  args.push_back(save.c_str());
+  args.push_back(intern(save));
   args.push_back("-fsyntax-only");
 
   // Similar to clang/tools/driver/driver.cpp:insertTargetAndModeArgs but don't
@@ -146,12 +147,14 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   if (StringRef(cmd.getCreator().getName()) != "clang")
     return nullptr;
   const llvm::opt::ArgStringList &cc_args = cmd.getArguments();
+  auto c_args = const_cast<llvm::opt::ArgStringList *>(&cc_args);
+  c_args->append({intern("-working-directory=" + working_dir)});
   auto ci = std::make_unique<CompilerInvocation>();
 #if LLVM_VERSION_MAJOR >= 10 // rC370122
-  if (!CompilerInvocation::CreateFromArgs(*ci, cc_args, *diags))
+  if (!CompilerInvocation::CreateFromArgs(*ci, *c_args, *diags))
 #else
   if (!CompilerInvocation::CreateFromArgs(
-          *ci, cc_args.data(), cc_args.data() + cc_args.size(), *diags))
+          *ci, c_args->data(), c_args->data() + c_args->size(), *diags))
 #endif
     return nullptr;
 

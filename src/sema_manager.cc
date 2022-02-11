@@ -433,8 +433,8 @@ void *preambleMain(void *manager_) {
     auto stat_cache = std::make_unique<PreambleStatCache>();
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> fs =
         stat_cache->producer(session->fs);
-    if (std::unique_ptr<CompilerInvocation> ci =
-            buildCompilerInvocation(task.path, session->file.args, fs))
+    if (std::unique_ptr<CompilerInvocation> ci = buildCompilerInvocation(
+            task.path, session->file.args, fs, session->file.directory))
       buildPreamble(*session, *ci, fs, task, std::move(stat_cache));
 
     if (task.comp_task) {
@@ -475,8 +475,8 @@ void *completionMain(void *manager_) {
     std::shared_ptr<PreambleData> preamble = session->getPreamble();
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> fs =
         preamble ? preamble->stat_cache->consumer(session->fs) : session->fs;
-    std::unique_ptr<CompilerInvocation> ci =
-        buildCompilerInvocation(task->path, session->file.args, fs);
+    std::unique_ptr<CompilerInvocation> ci = buildCompilerInvocation(
+        task->path, session->file.args, fs, session->file.directory);
     if (!ci)
       continue;
     auto &fOpts = ci->getFrontendOpts();
@@ -569,8 +569,8 @@ void *diagnosticMain(void *manager_) {
     std::shared_ptr<PreambleData> preamble = session->getPreamble();
     IntrusiveRefCntPtr<llvm::vfs::FileSystem> fs =
         preamble ? preamble->stat_cache->consumer(session->fs) : session->fs;
-    std::unique_ptr<CompilerInvocation> ci =
-        buildCompilerInvocation(task.path, session->file.args, fs);
+    std::unique_ptr<CompilerInvocation> ci = buildCompilerInvocation(
+        task.path, session->file.args, fs, session->file.directory);
     if (!ci)
       continue;
     if (preamble) {
