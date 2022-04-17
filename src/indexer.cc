@@ -1096,10 +1096,18 @@ public:
   }
   void InclusionDirective(SourceLocation hashLoc, const Token &tok,
                           StringRef included, bool isAngled,
-                          CharSourceRange filenameRange, const FileEntry *file,
+                          CharSourceRange filenameRange,
+#if LLVM_VERSION_MAJOR >= 15 // llvmorg-15-init-7692-gd79ad2f1dbc2
+                          llvm::Optional<FileEntryRef> fileRef,
+#else
+                          const FileEntry *file,
+#endif
                           StringRef searchPath, StringRef relativePath,
                           const Module *imported,
                           SrcMgr::CharacteristicKind fileType) override {
+#if LLVM_VERSION_MAJOR >= 15 // llvmorg-15-init-7692-gd79ad2f1dbc2
+    const FileEntry *file = fileRef ? &fileRef->getFileEntry() : nullptr;
+#endif
     if (!file)
       return;
     auto spell = fromCharSourceRange(sm, param.ctx->getLangOpts(),

@@ -178,11 +178,19 @@ public:
       : sm(sm), out(out) {}
   void InclusionDirective(SourceLocation hashLoc, const Token &includeTok,
                           StringRef fileName, bool isAngled,
-                          CharSourceRange filenameRange, const FileEntry *file,
+                          CharSourceRange filenameRange,
+#if LLVM_VERSION_MAJOR >= 15 // llvmorg-15-init-7692-gd79ad2f1dbc2
+                          llvm::Optional<FileEntryRef> fileRef,
+#else
+                          const FileEntry *file,
+#endif
                           StringRef searchPath, StringRef relativePath,
                           const clang::Module *imported,
                           SrcMgr::CharacteristicKind fileKind) override {
     (void)sm;
+#if LLVM_VERSION_MAJOR >= 15 // llvmorg-15-init-7692-gd79ad2f1dbc2
+    const FileEntry *file = fileRef ? &fileRef->getFileEntry() : nullptr;
+#endif
     if (file && seen.insert(file).second)
       out.emplace_back(pathFromFileEntry(*file), file->getModificationTime());
   }
