@@ -10,8 +10,10 @@
 
 namespace ccls {
 struct Pos {
-  uint16_t line = 0;
-  int16_t column = -1;
+  using Line=uint16_t;
+  Line line = 0;
+  using Column=int16_t;
+  Column column = -1;
 
   static Pos fromString(const std::string &encoded);
 
@@ -21,14 +23,23 @@ struct Pos {
   // Compare two Positions and check if they are equal. Ignores the value of
   // |interesting|.
   bool operator==(const Pos &o) const {
-    return line == o.line && column == o.column;
+    return asTuple() == o.asTuple();
   }
   bool operator<(const Pos &o) const {
-    if (line != o.line)
-      return line < o.line;
-    return column < o.column;
+    return asTuple() < o.asTuple();
   }
-  bool operator<=(const Pos &o) const { return !(o < *this); }
+  bool operator<=(const Pos &o) const {
+    return asTuple() <= o.asTuple();
+  }
+protected:
+  /*!
+   * (line, pos)
+   * use for lexicographic comparison
+   */
+  auto asTuple() const -> std::tuple<Line,Column> {
+    return std::make_tuple(line, column);
+  }
+
 };
 
 struct Range {
