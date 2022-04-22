@@ -1,4 +1,4 @@
-// Copyright 2017-2018 ccls Authors
+// Copyright ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
 #include "filesystem.hh"
@@ -24,6 +24,47 @@
 
 namespace ccls {
 using namespace llvm;
+
+const char * SEMANTIC_TOKENS[] = {
+  "unknown",
+
+  "file",
+  "module",
+  "namespace",
+  "package",
+  "class",
+  "method",
+  "property",
+  "field",
+  "constructor",
+  "enum",
+  "interface",
+  "function",
+  "variable",
+  "constant",
+  "string",
+  "number",
+  "boolean",
+  "array",
+  "object",
+  "key",
+  "null",
+  "enumMember",
+  "struct",
+  "event",
+  "operator",
+  "typeParameter",
+  "typeAlias", //252 => 27
+  "parameter",
+  "staticMethod",
+  "macro"
+};
+
+const char * SEMANTIC_MODIFIERS[] = {
+    "declaration", //1
+    "definition",  //2
+    "static"       //4
+};
 
 extern std::vector<std::string> g_init_options;
 
@@ -89,6 +130,14 @@ struct ServerCap {
     std::vector<const char *> commands = {ccls_xref};
   } executeCommandProvider;
   Config::ServerCap::Workspace workspace;
+  struct SemanticTokenProvider {
+      struct SemanticTokensLegend {
+          std::vector<const char *> tokenTypes{std::begin(SEMANTIC_TOKENS), std::end(SEMANTIC_TOKENS)};
+          std::vector<const char *> tokenModifiers{std::begin(SEMANTIC_MODIFIERS), std::end(SEMANTIC_MODIFIERS)};
+      } legend;
+      bool range = true;
+      bool full = true;
+  } semanticTokensProvider;
 };
 REFLECT_STRUCT(ServerCap::CodeActionOptions, codeActionKinds);
 REFLECT_STRUCT(ServerCap::CodeLensOptions, resolveProvider);
@@ -109,7 +158,9 @@ REFLECT_STRUCT(ServerCap, textDocumentSync, hoverProvider, completionProvider,
                documentRangeFormattingProvider,
                documentOnTypeFormattingProvider, renameProvider,
                documentLinkProvider, foldingRangeProvider,
-               executeCommandProvider, workspace);
+               executeCommandProvider, workspace, semanticTokensProvider);
+REFLECT_STRUCT(ServerCap::SemanticTokenProvider, legend, range, full);
+REFLECT_STRUCT(ServerCap::SemanticTokenProvider::SemanticTokensLegend, tokenTypes, tokenModifiers);
 
 struct DynamicReg {
   bool dynamicRegistration = false;

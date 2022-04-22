@@ -50,24 +50,6 @@ REFLECT_STRUCT(DidChangeWorkspaceFoldersParam, event);
 REFLECT_STRUCT(WorkspaceSymbolParam, query, folders);
 
 namespace {
-struct CclsSemanticHighlightSymbol {
-  int id = 0;
-  SymbolKind parentKind;
-  SymbolKind kind;
-  uint8_t storage;
-  std::vector<std::pair<int, int>> ranges;
-
-  // `lsRanges` is used to compute `ranges`.
-  std::vector<lsRange> lsRanges;
-};
-
-struct CclsSemanticHighlight {
-  DocumentUri uri;
-  std::vector<CclsSemanticHighlightSymbol> symbols;
-};
-REFLECT_STRUCT(CclsSemanticHighlightSymbol, id, parentKind, kind, storage,
-               ranges, lsRanges);
-REFLECT_STRUCT(CclsSemanticHighlight, uri, symbols);
 
 struct CclsSetSkippedRanges {
   DocumentUri uri;
@@ -75,26 +57,6 @@ struct CclsSetSkippedRanges {
 };
 REFLECT_STRUCT(CclsSetSkippedRanges, uri, skippedRanges);
 
-struct ScanLineEvent {
-  Position pos;
-  Position end_pos; // Second key when there is a tie for insertion events.
-  int id;
-  CclsSemanticHighlightSymbol *symbol;
-  bool operator<(const ScanLineEvent &o) const {
-    // See the comments below when insertion/deletion events are inserted.
-    if (!(pos == o.pos))
-      return pos < o.pos;
-    if (!(o.end_pos == end_pos))
-      return o.end_pos < end_pos;
-    // This comparison essentially order Macro after non-Macro,
-    // So that macros will not be rendered as Var/Type/...
-    if (symbol->kind != o.symbol->kind)
-      return symbol->kind < o.symbol->kind;
-    // If symbol A and B occupy the same place, we want one to be placed
-    // before the other consistantly.
-    return symbol->id < o.symbol->id;
-  }
-};
 } // namespace
 
 void ReplyOnce::notOpened(std::string_view path) {
@@ -188,6 +150,8 @@ MessageHandler::MessageHandler() {
   bind("textDocument/rename", &MessageHandler::textDocument_rename);
   bind("textDocument/signatureHelp", &MessageHandler::textDocument_signatureHelp);
   bind("textDocument/typeDefinition", &MessageHandler::textDocument_typeDefinition);
+  bind("textDocument/semanticTokens/full", &MessageHandler::textDocument_semanticTokensFull);
+  bind("textDocument/semanticTokens/range", &MessageHandler::textDocument_semanticTokensRange);
   bind("workspace/didChangeConfiguration", &MessageHandler::workspace_didChangeConfiguration);
   bind("workspace/didChangeWatchedFiles", &MessageHandler::workspace_didChangeWatchedFiles);
   bind("workspace/didChangeWorkspaceFolders", &MessageHandler::workspace_didChangeWorkspaceFolders);
@@ -277,193 +241,9 @@ void emitSkippedRanges(WorkingFile *wfile, QueryFile &file) {
   pipeline::notify("$ccls/publishSkippedRanges", params);
 }
 
-void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
-  static GroupMatch match(g_config->highlight.whitelist,
-                          g_config->highlight.blacklist);
-  assert(file.def);
-  if (wfile->buffer_content.size() > g_config->highlight.largeFileSize ||
-      !match.matches(file.def->path))
-    return;
 
-  // Group symbols together.
-  std::unordered_map<SymbolIdx, CclsSemanticHighlightSymbol> grouped_symbols;
-  for (auto [sym, refcnt] : file.symbol2refcnt) {
-    if (refcnt <= 0)
-      continue;
-    std::string_view detailed_name;
-    SymbolKind parent_kind = SymbolKind::Unknown;
-    SymbolKind kind = SymbolKind::Unknown;
-    uint8_t storage = SC_None;
-    int idx;
-    // This switch statement also filters out symbols that are not highlighted.
-    switch (sym.kind) {
-    case Kind::Func: {
-      idx = db->func_usr[sym.usr];
-      const QueryFunc &func = db->funcs[idx];
-      const QueryFunc::Def *def = func.anyDef();
-      if (!def)
-        continue; // applies to for loop
-      // Don't highlight overloadable operators or implicit lambda ->
-      // std::function constructor.
-      std::string_view short_name = def->name(false);
-      if (short_name.compare(0, 8, "operator") == 0)
-        continue; // applies to for loop
-      kind = def->kind;
-      storage = def->storage;
-      detailed_name = short_name;
-      parent_kind = def->parent_kind;
-
-      // Check whether the function name is actually there.
-      // If not, do not publish the semantic highlight.
-      // E.g. copy-initialization of constructors should not be highlighted
-      // but we still want to keep the range for jumping to definition.
-      std::string_view concise_name =
-          detailed_name.substr(0, detailed_name.find('<'));
-      uint16_t start_line = sym.range.start.line;
-      int16_t start_col = sym.range.start.column;
-      if (start_line >= wfile->index_lines.size())
-        continue;
-      std::string_view line = wfile->index_lines[start_line];
-      sym.range.end.line = start_line;
-      if (!(start_col + concise_name.size() <= line.size() &&
-            line.compare(start_col, concise_name.size(), concise_name) == 0))
-        continue;
-      sym.range.end.column = start_col + concise_name.size();
-      break;
-    }
-    case Kind::Type: {
-      idx = db->type_usr[sym.usr];
-      const QueryType &type = db->types[idx];
-      for (auto &def : type.def) {
-        kind = def.kind;
-        detailed_name = def.detailed_name;
-        if (def.spell) {
-          parent_kind = def.parent_kind;
-          break;
-        }
-      }
-      break;
-    }
-    case Kind::Var: {
-      idx = db->var_usr[sym.usr];
-      const QueryVar &var = db->vars[idx];
-      for (auto &def : var.def) {
-        kind = def.kind;
-        storage = def.storage;
-        detailed_name = def.detailed_name;
-        if (def.spell) {
-          parent_kind = def.parent_kind;
-          break;
-        }
-      }
-      break;
-    }
-    default:
-      continue; // applies to for loop
-    }
-
-    if (std::optional<lsRange> loc = getLsRange(wfile, sym.range)) {
-      auto it = grouped_symbols.find(sym);
-      if (it != grouped_symbols.end()) {
-        it->second.lsRanges.push_back(*loc);
-      } else {
-        CclsSemanticHighlightSymbol symbol;
-        symbol.id = idx;
-        symbol.parentKind = parent_kind;
-        symbol.kind = kind;
-        symbol.storage = storage;
-        symbol.lsRanges.push_back(*loc);
-        grouped_symbols[sym] = symbol;
-      }
-    }
-  }
-
-  // Make ranges non-overlapping using a scan line algorithm.
-  std::vector<ScanLineEvent> events;
-  int id = 0;
-  for (auto &entry : grouped_symbols) {
-    CclsSemanticHighlightSymbol &symbol = entry.second;
-    for (auto &loc : symbol.lsRanges) {
-      // For ranges sharing the same start point, the one with leftmost end
-      // point comes first.
-      events.push_back({loc.start, loc.end, id, &symbol});
-      // For ranges sharing the same end point, their relative order does not
-      // matter, therefore we arbitrarily assign loc.end to them. We use
-      // negative id to indicate a deletion event.
-      events.push_back({loc.end, loc.end, ~id, &symbol});
-      id++;
-    }
-    symbol.lsRanges.clear();
-  }
-  std::sort(events.begin(), events.end());
-
-  std::vector<uint8_t> deleted(id, 0);
-  int top = 0;
-  for (size_t i = 0; i < events.size(); i++) {
-    while (top && deleted[events[top - 1].id])
-      top--;
-    // Order [a, b0) after [a, b1) if b0 < b1. The range comes later overrides
-    // the ealier. The order of [a0, b) [a1, b) does not matter.
-    // The order of [a, b) [b, c) does not as long as we do not emit empty
-    // ranges.
-    // Attribute range [events[i-1].pos, events[i].pos) to events[top-1].symbol
-    // .
-    if (top && !(events[i - 1].pos == events[i].pos))
-      events[top - 1].symbol->lsRanges.push_back(
-          {events[i - 1].pos, events[i].pos});
-    if (events[i].id >= 0)
-      events[top++] = events[i];
-    else
-      deleted[~events[i].id] = 1;
-  }
-
-  CclsSemanticHighlight params;
-  params.uri = DocumentUri::fromPath(wfile->filename);
-  // Transform lsRange into pair<int, int> (offset pairs)
-  if (!g_config->highlight.lsRanges) {
-    std::vector<std::pair<lsRange, CclsSemanticHighlightSymbol *>> scratch;
-    for (auto &entry : grouped_symbols) {
-      for (auto &range : entry.second.lsRanges)
-        scratch.emplace_back(range, &entry.second);
-      entry.second.lsRanges.clear();
-    }
-    std::sort(scratch.begin(), scratch.end(),
-              [](auto &l, auto &r) { return l.first.start < r.first.start; });
-    const auto &buf = wfile->buffer_content;
-    int l = 0, c = 0, i = 0, p = 0;
-    auto mov = [&](int line, int col) {
-      if (l < line)
-        c = 0;
-      for (; l < line && i < buf.size(); i++) {
-        if (buf[i] == '\n')
-          l++;
-        if (uint8_t(buf[i]) < 128 || 192 <= uint8_t(buf[i]))
-          p++;
-      }
-      if (l < line)
-        return true;
-      for (; c < col && i < buf.size() && buf[i] != '\n'; c++)
-        if (p++, uint8_t(buf[i++]) >= 128)
-          // Skip 0b10xxxxxx
-          while (i < buf.size() && uint8_t(buf[i]) >= 128 &&
-                 uint8_t(buf[i]) < 192)
-            i++;
-      return c < col;
-    };
-    for (auto &entry : scratch) {
-      lsRange &r = entry.first;
-      if (mov(r.start.line, r.start.character))
-        continue;
-      int beg = p;
-      if (mov(r.end.line, r.end.character))
-        continue;
-      entry.second->ranges.emplace_back(beg, p);
-    }
-  }
-
-  for (auto &entry : grouped_symbols)
-    if (entry.second.ranges.size() || entry.second.lsRanges.size())
-      params.symbols.push_back(std::move(entry.second));
-  pipeline::notify("$ccls/publishSemanticHighlight", params);
+void emitSemanticHighlightRefresh() {
+  std::vector<int> emptyParameters{}; // notification with no parameters (empty list)
+  pipeline::notify("workspace/semanticTokens/refresh", emptyParameters);
 }
 } // namespace ccls
