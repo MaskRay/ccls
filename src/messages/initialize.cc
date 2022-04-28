@@ -25,6 +25,47 @@
 namespace ccls {
 using namespace llvm;
 
+std::vector<const char *> SEMANTIC_TOKENS = {
+  "unknown",
+
+  "file",
+  "module",
+  "namespace",
+  "package",
+  "class",
+  "method",
+  "property",
+  "field",
+  "constructor",
+  "enum",
+  "interface",
+  "function",
+  "variable",
+  "constant",
+  "string",
+  "number",
+  "boolean",
+  "array",
+  "object",
+  "key",
+  "null",
+  "enumMember",
+  "struct",
+  "event",
+  "operator",
+  "typeParameter",
+  "typeAlias", //252 => 27
+  "parameter",
+  "staticMethod",
+  "macro"
+};
+
+std::vector<const char *> SEMANTIC_MODIFIERS = {
+    "declaration", //1
+    "definition",  //2
+    "static"       //4
+};
+
 extern std::vector<std::string> g_init_options;
 
 namespace {
@@ -89,6 +130,13 @@ struct ServerCap {
     std::vector<const char *> commands = {ccls_xref};
   } executeCommandProvider;
   Config::ServerCap::Workspace workspace;
+  struct SemanticTokenProvider {
+      struct SemanticTokensLegend {
+          std::vector<const char *> tokenTypes = SEMANTIC_TOKENS;
+          std::vector<const char *> tokenModifiers = SEMANTIC_MODIFIERS;
+      } legend;
+      bool full = true;
+  } semanticTokensProvider;
 };
 REFLECT_STRUCT(ServerCap::CodeActionOptions, codeActionKinds);
 REFLECT_STRUCT(ServerCap::CodeLensOptions, resolveProvider);
@@ -109,7 +157,9 @@ REFLECT_STRUCT(ServerCap, textDocumentSync, hoverProvider, completionProvider,
                documentRangeFormattingProvider,
                documentOnTypeFormattingProvider, renameProvider,
                documentLinkProvider, foldingRangeProvider,
-               executeCommandProvider, workspace);
+               executeCommandProvider, workspace, semanticTokensProvider);
+REFLECT_STRUCT(ServerCap::SemanticTokenProvider, legend, full);
+REFLECT_STRUCT(ServerCap::SemanticTokenProvider::SemanticTokensLegend, tokenTypes, tokenModifiers);
 
 struct DynamicReg {
   bool dynamicRegistration = false;
