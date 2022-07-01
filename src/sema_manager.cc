@@ -60,14 +60,74 @@ struct ProxyFileSystem : FileSystem {
 #endif
 
 namespace ccls {
+// copy from clangd
+template <typename Callback>
+static bool iterateCodepoints(llvm::StringRef u8, const Callback &cb) {
+  for (size_t i = 0; i < u8.size();) {
+    unsigned char c = static_cast<unsigned char>(u8[i]);
+    if (LLVM_LIKELY(!(c & 0x80))) {
+      if (cb(1, 1)) {
+        return true;
+      }
+      ++i;
+      continue;
+    }
+
+    size_t utf8length = llvm::countLeadingOnes(c);
+    if (LLVM_UNLIKELY(utf8length < 2 || utf8length > 4)) {
+      if (cb(1, 1)) {
+        return true;
+        ++i;
+        continue;
+      }
+    }
+
+    i += utf8length;
+    if (cb(utf8length, utf8length == 4 ? 2 : 1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// maybe use ccls way
+size_t lspLength(llvm::StringRef code) {
+  size_t count = 0;
+  iterateCodepoints(code, [&](int u8Len, int u16Len) {
+    ++count;
+    return false;
+  });
+  return count;
+}
+
+Position sourceLocToPosition(const SourceManager &sm, const SourceLocation sl) {
+  FileID fid;
+  unsigned offset;
+  std::tie(fid, offset) = sm.getDecomposedSpellingLoc(sl);
+  Position p;
+  p.line = static_cast<int>(sm.getLineNumber(fid, offset)) - 1;
+  bool Invalid = false;
+  llvm::StringRef code = sm.getBufferData(fid, &Invalid);
+  if (!Invalid) {
+    auto columnInBytes = sm.getColumnNumber(fid, offset) - 1;
+    auto lineSoFar = code.substr(offset - columnInBytes, columnInBytes);
+    p.character = lspLength(lineSoFar);
+  }
+  return p;
+}
+
+lsRange halfOpenToRange(const SourceManager &sm, const CharSourceRange csr) {
+  Position begin = sourceLocToPosition(sm, csr.getBegin());
+  Position end = sourceLocToPosition(sm, csr.getEnd());
+  return {begin, end};
+}
 
 TextEdit toTextEdit(const clang::SourceManager &sm, const clang::LangOptions &l,
                     const clang::FixItHint &fixIt) {
   TextEdit edit;
   edit.newText = fixIt.CodeToInsert;
-  auto r = fromCharSourceRange(sm, l, fixIt.RemoveRange);
   edit.range =
-      lsRange{{r.start.line, r.start.column}, {r.end.line, r.end.column}};
+      halfOpenToRange(sm, Lexer::makeFileCharRange(fixIt.RemoveRange, sm, l));
   return edit;
 }
 

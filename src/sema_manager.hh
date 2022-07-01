@@ -37,6 +37,11 @@ struct Diag : DiagBase {
   std::vector<TextEdit> edits;
 };
 
+template <typename Callback>
+static bool iterateCodepoints(llvm::StringRef u8, const Callback &cb);
+size_t lspLength(llvm::StringRef code);
+Position sourceLocToPosition(const clang::SourceManager &sm,
+                             const clang::SourceLocation sl);
 TextEdit toTextEdit(const clang::SourceManager &SM, const clang::LangOptions &L,
                     const clang::FixItHint &FixIt);
 
