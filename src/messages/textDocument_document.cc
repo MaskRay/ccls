@@ -191,7 +191,8 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
         ds->detail = def->detailed_name;
         ds->kind = def->kind;
 
-        if (!ignore(def) && (ds->kind == SymbolKind::Namespace || allows(sym))) {
+        if (!ignore(def) &&
+            (ds->kind == SymbolKind::Namespace || allows(sym))) {
           // Drop scopes which are before selectionRange.start. In
           // `int i, j, k;`, the scope of i will be ended by j.
           while (!scopes.empty() &&

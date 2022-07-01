@@ -118,7 +118,8 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
 #if LLVM_VERSION_MAJOR < 12 // llvmorg-12-init-5498-g257b29715bb
   driver::Driver d(args[0], llvm::sys::getDefaultTargetTriple(), *diags, vfs);
 #else
-  driver::Driver d(args[0], llvm::sys::getDefaultTargetTriple(), *diags, "ccls", vfs);
+  driver::Driver d(args[0], llvm::sys::getDefaultTargetTriple(), *diags, "ccls",
+                   vfs);
 #endif
   d.setCheckInputsExist(false);
   std::unique_ptr<driver::Compilation> comp(d.BuildCompilation(args));
@@ -127,7 +128,7 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   const driver::JobList &jobs = comp->getJobs();
   bool offload_compilation = false;
   if (jobs.size() > 1) {
-    for (auto &a : comp->getActions()){
+    for (auto &a : comp->getActions()) {
       // On MacOSX real actions may end up being wrapped in BindArchAction
       if (isa<driver::BindArchAction>(a))
         a = *a->input_begin();

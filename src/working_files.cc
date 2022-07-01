@@ -339,7 +339,8 @@ std::optional<int> WorkingFile::getIndexPosFromBufferPos(int line, int *column,
                           index_lines, is_end);
 }
 
-Position WorkingFile::getCompletionPosition(Position pos, std::string *filter) const {
+Position WorkingFile::getCompletionPosition(Position pos,
+                                            std::string *filter) const {
   int start = getOffsetForPosition(pos, buffer_content);
   int i = start;
 #if LLVM_VERSION_MAJOR < 14 // llvmorg-14-init-3863-g601102d282d5

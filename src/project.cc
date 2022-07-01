@@ -49,7 +49,8 @@ std::pair<LanguageId, bool> lookupExtension(std::string_view filename) {
   LanguageId ret;
   if (types::isCXX(i))
     ret = types::isCuda(i) ? LanguageId::Cuda
-                           : objc ? LanguageId::ObjCpp : LanguageId::Cpp;
+          : objc           ? LanguageId::ObjCpp
+                           : LanguageId::Cpp;
   else if (objc)
     ret = LanguageId::ObjC;
   else if (i == types::TY_C || i == types::TY_CHeader)

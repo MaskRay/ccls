@@ -53,9 +53,9 @@ getHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
       if (d.spell) {
         if (d.comments[0])
           comments = d.comments;
-        if (const char *s =
-                d.hover[0] ? d.hover
-                           : d.detailed_name[0] ? d.detailed_name : nullptr) {
+        if (const char *s = d.hover[0]           ? d.hover
+                            : d.detailed_name[0] ? d.detailed_name
+                                                 : nullptr) {
           if (!hover)
             hover = {languageIdentifier(lang), s};
           else if (strlen(s) > hover->value.size())

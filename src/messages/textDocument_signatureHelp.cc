@@ -98,7 +98,8 @@ public:
 
       const auto *ccs =
 #if LLVM_VERSION_MAJOR >= 14
-          cand.CreateSignatureString(currentArg, s, *alloc, cCTUInfo, true, braced);
+          cand.CreateSignatureString(currentArg, s, *alloc, cCTUInfo, true,
+                                     braced);
 #else
           cand.CreateSignatureString(currentArg, s, *alloc, cCTUInfo, true);
 #endif
