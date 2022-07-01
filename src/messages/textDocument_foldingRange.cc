@@ -27,7 +27,8 @@ void MessageHandler::textDocument_foldingRange(TextDocumentParam &param,
 
   for (auto [sym, refcnt] : file->symbol2refcnt)
     if (refcnt > 0 && sym.extent.valid() &&
-        (sym.kind == Kind::Func || sym.kind == Kind::Type) &&
+        (sym.kind == Kind::Func || sym.kind == Kind::Type ||
+         sym.kind == Kind::Var) &&
         (ls_range = getLsRange(wf, sym.extent))) {
       FoldingRange &fold = result.emplace_back();
       fold.startLine = ls_range->start.line;
