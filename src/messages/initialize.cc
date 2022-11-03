@@ -88,6 +88,7 @@ struct ServerCap {
   struct ExecuteCommandOptions {
     std::vector<const char *> commands = {ccls_xref};
   } executeCommandProvider;
+  bool callHierarchyProvider = true;
   Config::ServerCap::Workspace workspace;
 };
 REFLECT_STRUCT(ServerCap::CodeActionOptions, codeActionKinds);
@@ -109,7 +110,7 @@ REFLECT_STRUCT(ServerCap, textDocumentSync, hoverProvider, completionProvider,
                documentRangeFormattingProvider,
                documentOnTypeFormattingProvider, renameProvider,
                documentLinkProvider, foldingRangeProvider,
-               executeCommandProvider, workspace);
+               executeCommandProvider, callHierarchyProvider, workspace);
 
 struct DynamicReg {
   bool dynamicRegistration = false;

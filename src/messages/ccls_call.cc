@@ -6,6 +6,7 @@
 #include "pipeline.hh"
 #include "query.hh"
 
+#include <map>
 #include <unordered_set>
 
 namespace ccls {
@@ -59,6 +60,18 @@ struct Out_cclsCall {
 };
 REFLECT_STRUCT(Out_cclsCall, id, name, location, callType, numChildren,
                children);
+
+struct Out_incomingCall {
+  CallHierarchyItem from;
+  std::vector<lsRange> fromRanges;
+};
+REFLECT_STRUCT(Out_incomingCall, from, fromRanges);
+
+struct Out_outgoingCall {
+  CallHierarchyItem to;
+  std::vector<lsRange> fromRanges;
+};
+REFLECT_STRUCT(Out_outgoingCall, to, fromRanges);
 
 bool expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
             CallType call_type, bool qualified, int levels) {
@@ -204,5 +217,123 @@ void MessageHandler::ccls_call(JsonReader &reader, ReplyOnce &reply) {
     reply(result);
   else
     reply(flattenHierarchy(result));
+}
+
+void MessageHandler::textDocument_prepareCallHierarchy(
+    TextDocumentPositionParam &param, ReplyOnce &reply) {
+  std::string path = param.textDocument.uri.getPath();
+  auto [file, wf] = findOrFail(path, reply);
+  if (!file)
+    return;
+
+  std::vector<CallHierarchyItem> result;
+  for (SymbolRef sym : findSymbolsAtLocation(wf, file, param.position)) {
+    if (sym.kind != Kind::Func)
+      continue;
+    const auto *def = db->getFunc(sym.usr).anyDef();
+    if (!def)
+      continue;
+    auto r = getLsRange(wf, sym.range);
+    if (!r)
+      continue;
+    CallHierarchyItem &item = result.emplace_back();
+    item.name = def->name(false);
+    item.kind = def->kind;
+    item.detail = def->name(true);
+    item.uri = DocumentUri::fromPath(path);
+    item.range = item.selectionRange = *r;
+    item.data = std::to_string(sym.usr);
+  }
+  reply(result);
+}
+
+static lsRange toLsRange(Range r) {
+  return {{r.start.line, r.start.column}, {r.end.line, r.end.column}};
+}
+
+static void
+add(std::map<SymbolIdx, std::pair<int, std::vector<lsRange>>> &sym2ranges,
+    SymbolRef sym, int file_id) {
+  auto [it, inserted] = sym2ranges.try_emplace(SymbolIdx{sym.usr, sym.kind});
+  if (inserted)
+    it->second.first = file_id;
+  if (it->second.first == file_id)
+    it->second.second.push_back(toLsRange(sym.range));
+}
+
+template <typename Out>
+static std::vector<Out> toCallResult(
+    DB *db,
+    const std::map<SymbolIdx, std::pair<int, std::vector<lsRange>>> &sym2ranges) {
+  std::vector<Out> result;
+  for (auto &[sym, ranges] : sym2ranges) {
+    CallHierarchyItem item;
+    item.uri = getLsDocumentUri(db, ranges.first);
+    auto r = ranges.second[0];
+    item.range = {{uint16_t(r.start.line), int16_t(r.start.character)},
+                  {uint16_t(r.end.line), int16_t(r.end.character)}};
+    item.selectionRange = item.range;
+    switch (sym.kind) {
+    default:
+      continue;
+    case Kind::Func: {
+      auto idx = db->func_usr[sym.usr];
+      const QueryFunc &func = db->funcs[idx];
+      const QueryFunc::Def *def = func.anyDef();
+      if (!def)
+        continue;
+      item.name = def->name(false);
+      item.kind = def->kind;
+      item.detail = def->name(true);
+      item.data = std::to_string(sym.usr);
+    }
+    }
+
+    result.push_back({std::move(item), std::move(ranges.second)});
+  }
+  return result;
+}
+
+void MessageHandler::callHierarchy_incomingCalls(CallsParam &param,
+                                                 ReplyOnce &reply) {
+  Usr usr;
+  try {
+    usr = std::stoull(param.item.data);
+  } catch (...) {
+    return;
+  }
+  const QueryFunc &func = db->getFunc(usr);
+  std::map<SymbolIdx, std::pair<int, std::vector<lsRange>>> sym2ranges;
+  for (Use use : func.uses) {
+    const QueryFile &file = db->files[use.file_id];
+    Maybe<ExtentRef> best;
+    for (auto [sym, refcnt] : file.symbol2refcnt)
+      if (refcnt > 0 && sym.extent.valid() && sym.kind == Kind::Func &&
+          sym.extent.start <= use.range.start &&
+          use.range.end <= sym.extent.end &&
+          (!best || best->extent.start < sym.extent.start))
+        best = sym;
+    if (best)
+      add(sym2ranges, *best, use.file_id);
+  }
+  reply(toCallResult<Out_incomingCall>(db, sym2ranges));
+}
+
+void MessageHandler::callHierarchy_outgoingCalls(CallsParam &param,
+                                                 ReplyOnce &reply) {
+  Usr usr;
+  try {
+    usr = std::stoull(param.item.data);
+  } catch (...) {
+    return;
+  }
+  const QueryFunc &func = db->getFunc(usr);
+  std::map<SymbolIdx, std::pair<int, std::vector<lsRange>>> sym2ranges;
+  if (const auto *def = func.anyDef())
+    for (SymbolRef sym : def->callees)
+      if (sym.kind == Kind::Func) {
+        add(sym2ranges, sym, def->file_id);
+      }
+  reply(toCallResult<Out_outgoingCall>(db, sym2ranges));
 }
 } // namespace ccls

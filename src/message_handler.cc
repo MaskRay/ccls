@@ -28,6 +28,7 @@ REFLECT_STRUCT(TextDocumentContentChangeEvent, range, rangeLength, text);
 REFLECT_STRUCT(TextDocumentDidChangeParam, textDocument, contentChanges);
 REFLECT_STRUCT(TextDocumentPositionParam, textDocument, position);
 REFLECT_STRUCT(RenameParam, textDocument, position, newName);
+REFLECT_STRUCT(CallsParam, item);
 
 // completion
 REFLECT_UNDERLYING(CompletionTriggerKind);
@@ -162,6 +163,8 @@ MessageHandler::MessageHandler() {
   bind("$ccls/navigate", &MessageHandler::ccls_navigate);
   bind("$ccls/reload", &MessageHandler::ccls_reload);
   bind("$ccls/vars", &MessageHandler::ccls_vars);
+  bind("callHierarchy/incomingCalls", &MessageHandler::callHierarchy_incomingCalls);
+  bind("callHierarchy/outgoingCalls", &MessageHandler::callHierarchy_outgoingCalls);
   bind("exit", &MessageHandler::exit);
   bind("initialize", &MessageHandler::initialize);
   bind("initialized", &MessageHandler::initialized);
@@ -183,6 +186,7 @@ MessageHandler::MessageHandler() {
   bind("textDocument/hover", &MessageHandler::textDocument_hover);
   bind("textDocument/implementation", &MessageHandler::textDocument_implementation);
   bind("textDocument/onTypeFormatting", &MessageHandler::textDocument_onTypeFormatting);
+  bind("textDocument/prepareCallHierarchy", &MessageHandler::textDocument_prepareCallHierarchy);
   bind("textDocument/rangeFormatting", &MessageHandler::textDocument_rangeFormatting);
   bind("textDocument/references", &MessageHandler::textDocument_references);
   bind("textDocument/rename", &MessageHandler::textDocument_rename);

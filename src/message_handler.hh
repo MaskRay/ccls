@@ -58,6 +58,22 @@ struct WorkspaceEdit {
 };
 REFLECT_STRUCT(WorkspaceEdit, documentChanges);
 
+struct CallHierarchyItem {
+  std::string name;
+  SymbolKind kind;
+  std::string detail;
+  DocumentUri uri;
+  lsRange range;
+  lsRange selectionRange;
+  std::string data;
+};
+REFLECT_STRUCT(CallHierarchyItem, name, kind, detail, uri, range,
+               selectionRange, data);
+
+struct CallsParam {
+  CallHierarchyItem item;
+};
+
 // completion
 enum class CompletionTriggerKind {
   Invoked = 1,
@@ -259,6 +275,8 @@ private:
   void ccls_navigate(JsonReader &, ReplyOnce &);
   void ccls_reload(JsonReader &);
   void ccls_vars(JsonReader &, ReplyOnce &);
+  void callHierarchy_incomingCalls(CallsParam &param, ReplyOnce &);
+  void callHierarchy_outgoingCalls(CallsParam &param, ReplyOnce &);
   void exit(EmptyParam &);
   void initialize(JsonReader &, ReplyOnce &);
   void initialized(EmptyParam &);
@@ -281,6 +299,8 @@ private:
   void textDocument_implementation(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_onTypeFormatting(DocumentOnTypeFormattingParam &,
                                      ReplyOnce &);
+  void textDocument_prepareCallHierarchy(TextDocumentPositionParam &,
+                                         ReplyOnce &);
   void textDocument_rangeFormatting(DocumentRangeFormattingParam &,
                                     ReplyOnce &);
   void textDocument_references(JsonReader &, ReplyOnce &);
