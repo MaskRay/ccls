@@ -391,11 +391,14 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
       fwrite(input.c_str(), input.size(), 1, fout);
       fclose(fout);
     }
-    std::array<Optional<StringRef>, 3> redir{StringRef(stdinPath),
-                                             StringRef(path), StringRef()};
+#if LLVM_VERSION_MAJOR >= 16 // llvmorg-16-init-12589-ge748db0f7f09
+    std::array<std::optional<StringRef>, 3>
+#else
+    std::array<Optional<StringRef>, 3>
+#endif
+        redir{StringRef(stdinPath), StringRef(path), StringRef()};
     std::vector<StringRef> args{g_config->compilationDatabaseCommand, root};
-    if (sys::ExecuteAndWait(args[0], args, llvm::None, redir, 0, 0, &err_msg) <
-        0) {
+    if (sys::ExecuteAndWait(args[0], args, {}, redir, 0, 0, &err_msg) < 0) {
       LOG_S(ERROR) << "failed to execute " << args[0].str() << " "
                    << args[1].str() << ": " << err_msg;
       return;
