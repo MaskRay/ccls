@@ -392,7 +392,7 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
       fclose(fout);
     }
 #if LLVM_VERSION_MAJOR >= 16 // llvmorg-16-init-12589-ge748db0f7f09
-    std::array<std::optional<StringRef>, 3>
+    std::array<Optional<StringRef>, 3>
 #else
     std::array<Optional<StringRef>, 3>
 #endif
