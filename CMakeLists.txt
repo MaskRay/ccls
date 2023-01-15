@@ -94,8 +94,10 @@ endif()
 if(LLVM_LINK_LLVM_DYLIB)
   target_link_libraries(ccls PRIVATE LLVM)
 else()
-  # In llvm 7, clangDriver headers reference LLVMOption
   target_link_libraries(ccls PRIVATE LLVMOption LLVMSupport)
+  if(LLVM_VERSION_MAJOR GREATER_EQUAL 16) # llvmorg-16-init-15123-gf09cf34d0062
+    target_link_libraries(ccls PRIVATE LLVMTargetParser)
+  endif()
 endif()
 
 if(NOT LLVM_ENABLE_RTTI)
