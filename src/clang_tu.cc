@@ -175,6 +175,8 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   ci->getPreprocessorOpts().ImplicitPCHInclude.clear();
   ci->getPreprocessorOpts().PrecompiledPreambleBytes = {0, false};
   ci->getPreprocessorOpts().PCHThroughHeader.clear();
+
+  ci->getHeaderSearchOpts().ModuleFormat = "raw";
   return ci;
 }
 
