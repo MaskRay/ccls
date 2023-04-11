@@ -404,7 +404,11 @@ void buildPreamble(Session &session, CompilerInvocation &ci,
 
   CclsPreambleCallbacks pc;
   if (auto newPreamble = PrecompiledPreamble::Build(
-          ci, buf.get(), bounds, *de, fs, session.pch, true, pc)) {
+          ci, buf.get(), bounds, *de, fs, session.pch, true,
+#if LLVM_VERSION_MAJOR >= 17 // llvmorg-17-init-4072-gcc929590ad30
+          "",
+#endif
+          pc)) {
     assert(!ci.getPreprocessorOpts().RetainRemappedFileBuffers);
     if (oldP) {
       auto &old_includes = oldP->includes;
