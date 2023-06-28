@@ -17,6 +17,7 @@
 #include <llvm/Config/llvm-config.h>
 #include <llvm/Support/CrashRecoveryContext.h>
 #include <llvm/Support/Threading.h>
+#include <clang-c/Index.h>
 using namespace clang;
 using namespace llvm;
 
@@ -403,8 +404,11 @@ void buildPreamble(Session &session, CompilerInvocation &ci,
   }
 
   CclsPreambleCallbacks pc;
-  if (auto newPreamble = PrecompiledPreamble::Build(
-          ci, buf.get(), bounds, *de, fs, session.pch, true, pc)) {
+  if (auto newPreamble = PrecompiledPreamble::Build(ci, buf.get(), bounds, *de, fs, session.pch, true,
+						    #if CINDEX_VERSION_MAJOR >= 0 && CINDEX_VERSION_MINOR > 63
+						    "",
+						    #endif
+						    pc)) {
     assert(!ci.getPreprocessorOpts().RetainRemappedFileBuffers);
     if (oldP) {
       auto &old_includes = oldP->includes;
