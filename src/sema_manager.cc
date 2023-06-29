@@ -405,7 +405,7 @@ void buildPreamble(Session &session, CompilerInvocation &ci,
 
   CclsPreambleCallbacks pc;
   if (auto newPreamble = PrecompiledPreamble::Build(ci, buf.get(), bounds, *de, fs, session.pch, true,
-						    #if CINDEX_VERSION_MAJOR >= 0 && CINDEX_VERSION_MINOR > 63
+						    #if CINDEX_VERSION_MAJOR > 0 || CINDEX_VERSION_MINOR > 63
 						    "",
 						    #endif
 						    pc)) {
