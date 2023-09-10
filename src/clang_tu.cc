@@ -163,10 +163,16 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   ci->getFrontendOpts().DisableFree = false;
   // Enable IndexFrontendAction::shouldSkipFunctionBody.
   ci->getFrontendOpts().SkipFunctionBodies = true;
+#if LLVM_VERSION_MAJOR >= 18
+  ci->getLangOpts().SpellChecking = false;
+  ci->getLangOpts().RecoveryAST = true;
+  ci->getLangOpts().RecoveryASTType = true;
+#else
   ci->getLangOpts()->SpellChecking = false;
 #if LLVM_VERSION_MAJOR >= 11
   ci->getLangOpts()->RecoveryAST = true;
   ci->getLangOpts()->RecoveryASTType = true;
+#endif
 #endif
   auto &isec = ci->getFrontendOpts().Inputs;
   if (isec.size())
