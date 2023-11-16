@@ -17,6 +17,10 @@
 #include <regex>
 #endif
 
+#if LLVM_VERSION_MAJOR >= 18 // llvmorg-18-init-10631-gedd690b02e16
+#define TTK_Struct TagTypeKind::Struct
+#endif
+
 namespace ccls {
 using namespace clang;
 using namespace llvm;

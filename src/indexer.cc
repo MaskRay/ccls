@@ -28,6 +28,14 @@
 
 using namespace clang;
 
+#if LLVM_VERSION_MAJOR >= 18 // llvmorg-18-init-10631-gedd690b02e16
+#define TTK_Class TagTypeKind::Class
+#define TTK_Enum TagTypeKind::Enum
+#define TTK_Interface TagTypeKind::Interface
+#define TTK_Struct TagTypeKind::Struct
+#define TTK_Union TagTypeKind::Union
+#endif
+
 namespace ccls {
 namespace {
 
