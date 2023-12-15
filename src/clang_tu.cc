@@ -13,7 +13,11 @@
 #include <clang/Driver/Tool.h>
 #include <clang/Lex/Lexer.h>
 #include <clang/Lex/PreprocessorOptions.h>
+#if LLVM_VERSION_MAJOR >= 16 // llvmorg-16-init-15123-gf09cf34d0062
+#include <llvm/TargetParser/Host.h>
+#else
 #include <llvm/Support/Host.h>
+#endif
 #include <llvm/Support/Path.h>
 
 using namespace clang;
