@@ -1,0 +1,20 @@
+name: try build in mac os
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: install depend
+      run: brew install llvm
+    - name: clone submodule
+      run: git submodule update --init --recursive
+    - name: cmake generate
+      run: cmake -H. -Bbuild/Debug
+                 -DClang_DIR=/usr/local/opt/llvm/lib/cmake/clang
+                 -DLLVM_DIR=/usr/local/opt/llvm/lib/cmake
+                 -DCMAKE_BUILD_TYPE=Debug
+    - name: compile
+      run: cmake --build ./build/Debug
