@@ -22,7 +22,11 @@ namespace vfs = clang::vfs;
 #endif
 
 namespace ccls {
+#if LLVM_VERSION_MAJOR < 19
 std::string pathFromFileEntry(const clang::FileEntry &file);
+#else
+std::string pathFromFileEntry(clang::FileEntryRef file);
+#endif
 
 bool isInsideMainFile(const clang::SourceManager &sm, clang::SourceLocation sl);
 

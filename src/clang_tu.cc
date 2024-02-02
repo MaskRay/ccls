@@ -23,13 +23,21 @@
 using namespace clang;
 
 namespace ccls {
+#if LLVM_VERSION_MAJOR < 19
 std::string pathFromFileEntry(const FileEntry &file) {
+#else
+std::string pathFromFileEntry(FileEntryRef file) {
+#endif
   std::string ret;
   if (file.getName().startswith("/../")) {
     // Resolve symlinks outside of working folders. This handles leading path
     // components, e.g. (/lib -> /usr/lib) in
     // /../lib/gcc/x86_64-linux-gnu/10/../../../../include/c++/10/utility
+#if LLVM_VERSION_MAJOR < 19
     ret = file.tryGetRealPathName();
+#else
+    ret = file.getFileEntry().tryGetRealPathName();
+#endif
   } else {
     // If getName() refers to a file within a workspace folder, we prefer it
     // (which may be a symlink).

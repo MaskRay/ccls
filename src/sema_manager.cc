@@ -194,7 +194,11 @@ public:
     const FileEntry *file = fileRef ? &fileRef->getFileEntry() : nullptr;
 #endif
     if (file && seen.insert(file).second)
+#if LLVM_VERSION_MAJOR < 19
       out.emplace_back(pathFromFileEntry(*file), file->getModificationTime());
+#else
+      out.emplace_back(pathFromFileEntry(*fileRef), file->getModificationTime());
+#endif
   }
 };
 
@@ -236,7 +240,11 @@ public:
     FileID fid = sm.getFileID(l);
     auto it = fID2concerned.try_emplace(fid.getHashValue());
     if (it.second) {
+#if LLVM_VERSION_MAJOR < 19
       const FileEntry *fe = sm.getFileEntryForID(fid);
+#else
+      OptionalFileEntryRef fe = sm.getFileEntryRefForID(fid);
+#endif
       it.first->second = fe && pathFromFileEntry(*fe) == path;
     }
     return it.first->second;
