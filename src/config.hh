@@ -121,6 +121,11 @@ struct Config {
     // If false, disable snippets and complete just the identifier part.
     // TextDocumentClientCapabilities.completion.completionItem.snippetSupport
     bool snippetSupport = true;
+
+    // List of supported CodeActionKinds.  If empty, client does not
+    // have CodeActionLiteralSupport.
+    // TextDocumentClientCapabilities.codeAction.codeActionLiteralSupport.codeActionKind.valueSet
+    std::vector<std::string> codeActionKind;
   } client;
 
   struct CodeLens {
