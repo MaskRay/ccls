@@ -21,6 +21,11 @@ namespace vfs = clang::vfs;
 #define isAsciiIdentifierContinue isIdentifierBody
 #endif
 
+#if LLVM_VERSION_MAJOR >= 19
+#define startswith starts_with
+#define endswith ends_with
+#endif
+
 namespace ccls {
 #if LLVM_VERSION_MAJOR < 19
 std::string pathFromFileEntry(const clang::FileEntry &file);

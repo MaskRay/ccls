@@ -18,6 +18,11 @@
 #include <unordered_map>
 #include <vector>
 
+#if LLVM_VERSION_MAJOR >= 19
+#define startswith starts_with
+#define endswith ends_with
+#endif
+
 namespace std {
 template <> struct hash<clang::FileID> {
   std::size_t operator()(clang::FileID fid) const { return fid.getHashValue(); }
