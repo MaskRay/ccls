@@ -337,8 +337,12 @@ const char *clangBuiltinTypeName(int kind) {
     return "queue_t";
   case BuiltinType::OCLReserveID:
     return "reserve_id_t";
+#if LLVM_VERSION_MAJOR >= 19 // llvmorg-19-init-9465-g39adc8f42329
+  case BuiltinType::ArraySection:
+#else
   case BuiltinType::OMPArraySection:
-    return "<OpenMP array section type>";
+#endif
+    return "<array section type>";
   default:
     return "";
   }
