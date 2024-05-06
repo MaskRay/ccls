@@ -1126,7 +1126,10 @@ public:
                           const FileEntry *file,
 #endif
                           StringRef searchPath, StringRef relativePath,
-                          const Module *imported,
+                          const clang::Module *suggestedModule,
+#if LLVM_VERSION_MAJOR >= 19 // llvmorg-19-init-1720-gda95d926f6fc
+                          bool moduleImported,
+#endif
                           SrcMgr::CharacteristicKind fileType) override {
 #if LLVM_VERSION_MAJOR >= 15 // llvmorg-15-init-7692-gd79ad2f1dbc2
     const FileEntry *file = fileRef ? &fileRef->getFileEntry() : nullptr;
