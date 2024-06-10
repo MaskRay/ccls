@@ -19,7 +19,7 @@ using namespace clang;
 MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
 
 namespace ccls {
-REFLECT_STRUCT(CodeActionParam::Context, diagnostics);
+REFLECT_STRUCT(CodeActionParam::Context, diagnostics, only);
 REFLECT_STRUCT(CodeActionParam, textDocument, range, context);
 void reflect(JsonReader &, EmptyParam &) {}
 REFLECT_STRUCT(TextDocumentParam, textDocument);
