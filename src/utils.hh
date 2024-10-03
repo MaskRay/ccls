@@ -6,6 +6,7 @@
 #include <optional>
 #include <string_view>
 
+#include <cstdint>
 #include <iterator>
 #include <memory>
 #include <string>
