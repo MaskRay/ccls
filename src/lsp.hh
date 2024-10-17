@@ -100,7 +100,7 @@ struct lsRange {
     return start <= o.start && o.end <= end;
   }
   bool intersects(const lsRange &o) const {
-    return start < o.end && o.start < end;
+    return start <= o.end && o.start <= end;
   }
 };
 
