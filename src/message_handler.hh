@@ -48,6 +48,15 @@ struct TextDocumentPositionParam {
   TextDocumentIdentifier textDocument;
   Position position;
 };
+struct SemanticTokensParams {
+  TextDocumentIdentifier textDocument;
+};
+REFLECT_STRUCT(SemanticTokensParams, textDocument);
+struct SemanticTokensRangeParams {
+  TextDocumentIdentifier textDocument;
+  lsRange range;
+};
+REFLECT_STRUCT(SemanticTokensRangeParams, textDocument, range);
 struct TextDocumentEdit {
   VersionedTextDocumentIdentifier textDocument;
   std::vector<TextEdit> edits;
@@ -307,6 +316,8 @@ private:
   void textDocument_rename(RenameParam &, ReplyOnce &);
   void textDocument_signatureHelp(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_typeDefinition(TextDocumentPositionParam &, ReplyOnce &);
+  void textDocument_semanticTokensFull(SemanticTokensParams &, ReplyOnce &);
+  void textDocument_semanticTokensRange(SemanticTokensRangeParams &, ReplyOnce &);
   void workspace_didChangeConfiguration(EmptyParam &);
   void workspace_didChangeWatchedFiles(DidChangeWatchedFilesParam &);
   void workspace_didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParam &);
