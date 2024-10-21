@@ -40,7 +40,7 @@ enum class IndexMode {
 };
 
 struct IndexStats {
-  std::atomic<int64_t> last_idle, completed, enqueued;
+  std::atomic<int64_t> last_idle, completed, enqueued, opened;
 };
 
 namespace pipeline {
@@ -56,6 +56,7 @@ void launchStdin();
 void launchStdout();
 void indexer_Main(SemaManager *manager, VFS *vfs, Project *project,
                   WorkingFiles *wfiles);
+void indexerSort(const std::unordered_map<std::string, int> &dir2prio);
 void mainLoop();
 void standalone(const std::string &root);
 

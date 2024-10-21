@@ -161,12 +161,9 @@ public:
     return std::nullopt;
   }
 
-  template <typename Fn> void iterate(Fn fn) {
+  template <typename Fn> void apply(Fn fn) {
     std::lock_guard<std::mutex> lock(mutex_);
-    for (auto &entry : priority_)
-      fn(entry);
-    for (auto &entry : queue_)
-      fn(entry);
+    fn(queue_);
   }
 
   mutable std::mutex mutex_;
