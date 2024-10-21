@@ -117,6 +117,8 @@ struct Config {
     bool hierarchicalDocumentSymbolSupport = true;
     // TextDocumentClientCapabilities.definition.linkSupport
     bool linkSupport = true;
+    // ClientCapabilities.workspace.semanticTokens.refreshSupport
+    bool semanticTokensRefresh = true;
 
     // If false, disable snippets and complete just the identifier part.
     // TextDocumentClientCapabilities.completion.completionItem.snippetSupport
@@ -226,8 +228,9 @@ struct Config {
     // Disable semantic highlighting for files larger than the size.
     int64_t largeFileSize = 2 * 1024 * 1024;
 
-    // true: LSP line/character; false: position
-    bool lsRanges = false;
+    // If non-zero, enable rainbow semantic tokens by assinging an extra modifier
+    // indicating the rainbow ID to each symbol.
+    int rainbow = 0;
 
     // Like index.{whitelist,blacklist}, don't publish semantic highlighting to
     // blacklisted files.
@@ -342,7 +345,7 @@ REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
                maxNum, placeholder);
 REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
                spellChecking, whitelist)
-REFLECT_STRUCT(Config::Highlight, largeFileSize, lsRanges, blacklist, whitelist)
+REFLECT_STRUCT(Config::Highlight, largeFileSize, rainbow, blacklist, whitelist)
 REFLECT_STRUCT(Config::Index::Name, suppressUnwrittenScope);
 REFLECT_STRUCT(Config::Index, blacklist, comments, initialNoLinkage,
                initialBlacklist, initialWhitelist, maxInitializerLines,

@@ -166,6 +166,7 @@ enum class SymbolKind : uint8_t {
   // For C++, this is interpreted as "template parameter" (including
   // non-type template parameters).
   TypeParameter = 26,
+  FirstNonStandard,
 
   // ccls extensions
   // See also https://github.com/Microsoft/language-server-protocol/issues/344
@@ -174,6 +175,8 @@ enum class SymbolKind : uint8_t {
   Parameter = 253,
   StaticMethod = 254,
   Macro = 255,
+  FirstExtension = TypeAlias,
+  LastExtension = Macro,
 };
 
 struct SymbolInformation {

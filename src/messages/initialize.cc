@@ -25,6 +25,53 @@
 namespace ccls {
 using namespace llvm;
 
+const char *const kTokenTypes[] = {
+    // clang-format off
+  "unknown",
+
+  "file",
+  "module",
+  "namespace",
+  "package",
+  "class",
+  "method",
+  "property",
+  "field",
+  "constructor",
+  "enum",
+  "interface",
+  "function",
+  "variable",
+  "constant",
+  "string",
+  "number",
+  "boolean",
+  "array",
+  "object",
+  "key",
+  "null",
+  "enumMember",
+  "struct",
+  "event",
+  "operator",
+  "typeParameter",
+
+  "typeAlias", // 252 => 27
+  "parameter",
+  "staticMethod",
+  "macro",
+};
+// clang-format on
+static_assert(std::size(kTokenTypes) == int(SymbolKind::FirstNonStandard) +
+                                            int(SymbolKind::LastExtension) -
+                                            int(SymbolKind::FirstExtension) + 1);
+
+const char *const kTokenModifiers[] = {
+#define TOKEN_MODIFIER(name, str) str,
+#include "enum.inc"
+#undef TOKEN_MODIFIER
+};
+
 extern std::vector<std::string> g_init_options;
 
 namespace {
@@ -89,6 +136,15 @@ struct ServerCap {
     std::vector<const char *> commands = {ccls_xref};
   } executeCommandProvider;
   bool callHierarchyProvider = true;
+  struct SemanticTokenProvider {
+    struct SemanticTokensLegend {
+      std::vector<const char *> tokenTypes{std::begin(kTokenTypes), std::end(kTokenTypes)};
+      std::vector<const char *> tokenModifiers{std::begin(kTokenModifiers),
+                                               std::end(kTokenModifiers)};
+    } legend;
+    bool range = true;
+    bool full = true;
+  } semanticTokensProvider;
   Config::ServerCap::Workspace workspace;
 };
 REFLECT_STRUCT(ServerCap::CodeActionOptions, codeActionKinds);
@@ -103,14 +159,14 @@ REFLECT_STRUCT(ServerCap::TextDocumentSyncOptions, openClose, change, willSave,
                willSaveWaitUntil, save);
 REFLECT_STRUCT(ServerCap, textDocumentSync, hoverProvider, completionProvider,
                signatureHelpProvider, declarationProvider, definitionProvider,
-               implementationProvider, typeDefinitionProvider,
-               referencesProvider, documentHighlightProvider,
-               documentSymbolProvider, workspaceSymbolProvider,
+               implementationProvider, typeDefinitionProvider, referencesProvider,
+               documentHighlightProvider, documentSymbolProvider, workspaceSymbolProvider,
                codeActionProvider, codeLensProvider, documentFormattingProvider,
-               documentRangeFormattingProvider,
-               documentOnTypeFormattingProvider, renameProvider,
-               documentLinkProvider, foldingRangeProvider,
-               executeCommandProvider, callHierarchyProvider, workspace);
+               documentRangeFormattingProvider, documentOnTypeFormattingProvider, renameProvider,
+               documentLinkProvider, foldingRangeProvider, executeCommandProvider,
+               callHierarchyProvider, semanticTokensProvider, workspace);
+REFLECT_STRUCT(ServerCap::SemanticTokenProvider, legend, range, full);
+REFLECT_STRUCT(ServerCap::SemanticTokenProvider::SemanticTokensLegend, tokenTypes, tokenModifiers);
 
 struct DynamicReg {
   bool dynamicRegistration = false;
@@ -133,12 +189,16 @@ struct WorkspaceClientCap {
   DynamicReg didChangeWatchedFiles;
   DynamicReg symbol;
   DynamicReg executeCommand;
+
+  struct SemanticTokensWorkspace {
+    bool refreshSupport = false;
+  } semanticTokens;
 };
 
 REFLECT_STRUCT(WorkspaceClientCap::WorkspaceEdit, documentChanges);
-REFLECT_STRUCT(WorkspaceClientCap, applyEdit, workspaceEdit,
-               didChangeConfiguration, didChangeWatchedFiles, symbol,
-               executeCommand);
+REFLECT_STRUCT(WorkspaceClientCap::SemanticTokensWorkspace, refreshSupport);
+REFLECT_STRUCT(WorkspaceClientCap, applyEdit, workspaceEdit, didChangeConfiguration,
+               didChangeWatchedFiles, symbol, executeCommand, semanticTokens);
 
 // Text document specific client capabilities.
 struct TextDocumentClientCap {
@@ -320,6 +380,7 @@ void do_initialize(MessageHandler *m, InitializeParam &param,
       capabilities.textDocument.publishDiagnostics.relatedInformation;
   didChangeWatchedFiles =
       capabilities.workspace.didChangeWatchedFiles.dynamicRegistration;
+  g_config->client.semanticTokensRefresh &= capabilities.workspace.semanticTokens.refreshSupport;
 
   if (!g_config->client.snippetSupport)
     g_config->completion.duplicateOptional = false;
