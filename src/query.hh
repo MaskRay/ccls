@@ -10,6 +10,7 @@
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringMap.h>
+#include <llvm/ADT/STLExtras.h>
 
 namespace llvm {
 template <> struct DenseMapInfo<ccls::ExtentRef> {
