@@ -17,14 +17,14 @@ struct Out_cclsInfo {
     int files, funcs, types, vars;
   } db;
   struct Pipeline {
-    int64_t lastIdle, completed, enqueued;
+    int64_t lastIdle, completed, enqueued, opened;
   } pipeline;
   struct Project {
     int entries;
   } project;
 };
 REFLECT_STRUCT(Out_cclsInfo::DB, files, funcs, types, vars);
-REFLECT_STRUCT(Out_cclsInfo::Pipeline, lastIdle, completed, enqueued);
+REFLECT_STRUCT(Out_cclsInfo::Pipeline, lastIdle, completed, enqueued, opened);
 REFLECT_STRUCT(Out_cclsInfo::Project, entries);
 REFLECT_STRUCT(Out_cclsInfo, db, pipeline, project);
 } // namespace
@@ -38,6 +38,7 @@ void MessageHandler::ccls_info(EmptyParam &, ReplyOnce &reply) {
   result.pipeline.lastIdle = pipeline::stats.last_idle;
   result.pipeline.completed = pipeline::stats.completed;
   result.pipeline.enqueued = pipeline::stats.enqueued;
+  result.pipeline.opened = pipeline::stats.opened;
   result.project.entries = 0;
   for (auto &[_, folder] : project->root2folder)
     result.project.entries += folder.entries.size();

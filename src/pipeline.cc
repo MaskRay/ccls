@@ -87,6 +87,7 @@ struct IndexRequest {
   bool must_exist = false;
   RequestId id;
   int64_t ts = tick++;
+  int prio = 0; // For didOpen sorting
 };
 
 std::mutex thread_mtx;
@@ -486,6 +487,23 @@ void indexer_Main(SemaManager *manager, VFS *vfs, Project *project,
     if (!indexer_Parse(manager, wfiles, project, vfs, matcher))
       if (indexer_waiter->wait(g_quit, index_request))
         break;
+}
+
+void indexerSort(const std::unordered_map<std::string, int> &dir2prio) {
+  index_request->apply([&](std::deque<IndexRequest> &q) {
+    for (IndexRequest &request : q) {
+      std::string cur = lowerPathIfInsensitive(request.path);
+      while (!(cur = llvm::sys::path::parent_path(cur)).empty()) {
+        auto it = dir2prio.find(cur);
+        if (it != dir2prio.end()) {
+          request.prio = it->second;
+          LOG_V(3) << "set priority " << request.prio << " to " << request.path;
+          break;
+        }
+      }
+    }
+    std::stable_sort(q.begin(), q.end(), [](auto &l, auto &r) { return l.prio > r.prio; });
+  });
 }
 
 void main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
