@@ -313,7 +313,7 @@ private:
   void textDocument_signatureHelp(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_switchSourceHeader(TextDocumentIdentifier &, ReplyOnce &);
   void textDocument_typeDefinition(TextDocumentPositionParam &, ReplyOnce &);
-  void workspace_didChangeConfiguration(EmptyParam &);
+  void workspace_didChangeConfiguration(JsonReader &);
   void workspace_didChangeWatchedFiles(DidChangeWatchedFilesParam &);
   void workspace_didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParam &);
   void workspace_executeCommand(JsonReader &, ReplyOnce &);

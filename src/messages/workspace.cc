@@ -13,6 +13,9 @@
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/Path.h>
 
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+
 #include <algorithm>
 #include <ctype.h>
 #include <functional>
@@ -22,13 +25,29 @@ using namespace llvm;
 namespace ccls {
 REFLECT_STRUCT(SymbolInformation, name, kind, location, containerName);
 
-void MessageHandler::workspace_didChangeConfiguration(EmptyParam &) {
-  for (auto &[folder, _] : g_config->workspaceFolders)
-    project->load(folder);
-  project->index(wfiles, RequestId());
+void MessageHandler::workspace_didChangeConfiguration(JsonReader &reader) {
+  auto it = reader.m->FindMember("settings");
+  if (it != reader.m->MemberEnd() && it->value.IsObject()) {
+    rapidjson::StringBuffer output;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(output);
+    JsonReader m1(&it->value);
+    it->value.Accept(writer);
+    LOG_S(INFO) << "didChangeConfiguration: " << output.GetString();
+    try {
+      reflect(m1, *g_config);
+    } catch (std::invalid_argument &) {
+      reader.path_.push_back("settings");
+      reader.path_.insert(reader.path_.end(), m1.path_.begin(), m1.path_.end());
+      throw;
+    }
 
-  manager->clear();
-};
+    for (auto &[folder, _] : g_config->workspaceFolders)
+      project->load(folder);
+    project->index(wfiles, RequestId());
+
+    manager->clear();
+  }
+}
 
 void MessageHandler::workspace_didChangeWatchedFiles(
     DidChangeWatchedFilesParam &param) {
