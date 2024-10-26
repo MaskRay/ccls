@@ -364,8 +364,14 @@ bool indexer_Parse(SemaManager *completion, WorkingFiles *wfiles, Project *proje
       msg += " error:" + std::to_string(n_errs) + ' ' + first_error;
     if (LOG_V_ENABLED(1)) {
       msg += "\n ";
-      for (const char *arg : entry.args)
-        (msg += ' ') += arg;
+      for (const char *arg_c : entry.args) {
+        msg += ' ';
+        std::string_view arg(arg_c);
+        if (arg.find_first_of("\"()<>") != std::string::npos)
+          ((msg += "'") += arg) += "'";
+        else
+          msg += arg;
+      }
     }
     LOG_S(INFO) << std::string_view(msg.data(), msg.size());
   }
