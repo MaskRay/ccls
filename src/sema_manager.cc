@@ -768,11 +768,8 @@ SemaManager::ensureSession(const std::string &path, bool *created) {
     session = std::make_shared<ccls::Session>(
         project_->findEntry(path, false, false), wfiles, pch);
     std::string line;
-    if (LOG_V_ENABLED(1)) {
-      line = "\n ";
-      for (auto &arg : session->file.args)
-        (line += ' ') += arg;
-    }
+    if (LOG_V_ENABLED(1))
+      line = "\n  " + escapeArgs(session->file.args);
     LOG_S(INFO) << "create session for " << path << line;
     sessions.insert(path, session);
     if (created)

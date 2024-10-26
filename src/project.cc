@@ -59,6 +59,20 @@ std::pair<LanguageId, bool> lookupExtension(std::string_view filename) {
   return {ret, header};
 }
 
+std::string escapeArgs(const std::vector<const char *> &args) {
+  std::string ret;
+  for (const char *arg_c : args) {
+    if (ret.size())
+      ret += ' ';
+    std::string_view arg(arg_c);
+    if (arg.find_first_of("\"()<>") != std::string::npos)
+      ((ret += "'") += arg) += "'";
+    else
+      ret += arg;
+  }
+  return ret;
+}
+
 namespace {
 
 enum OptionClass {

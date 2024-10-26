@@ -378,11 +378,8 @@ bool indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
     (Twine(deleted ? "delete " : "parse ") + path_to_index).toVector(msg);
     if (n_errs)
       msg += " error:" + std::to_string(n_errs) + ' ' + first_error;
-    if (LOG_V_ENABLED(1)) {
-      msg += "\n ";
-      for (const char *arg : entry.args)
-        (msg += ' ') += arg;
-    }
+    if (LOG_V_ENABLED(1))
+      msg += "\n  " + escapeArgs(entry.args);
     LOG_S(INFO) << std::string_view(msg.data(), msg.size());
   }
 

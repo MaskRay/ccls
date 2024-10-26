@@ -16,6 +16,7 @@ namespace ccls {
 struct WorkingFiles;
 
 std::pair<LanguageId, bool> lookupExtension(std::string_view filename);
+std::string escapeArgs(const std::vector<const char *> &args);
 
 struct Project {
   struct Entry {
