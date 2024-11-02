@@ -65,22 +65,10 @@ public:
   bool from_cache;
   SignatureHelp ls_sighelp;
   SignatureHelpConsumer(const clang::CodeCompleteOptions &opts, bool from_cache)
-      :
-#if LLVM_VERSION_MAJOR >= 9 // rC358696
-        CodeCompleteConsumer(opts),
-#else
-        CodeCompleteConsumer(opts, false),
-#endif
-        alloc(std::make_shared<GlobalCodeCompletionAllocator>()),
-        cCTUInfo(alloc), from_cache(from_cache) {
-  }
-  void ProcessOverloadCandidates(Sema &s, unsigned currentArg,
-                                 OverloadCandidate *candidates,
-                                 unsigned numCandidates
-#if LLVM_VERSION_MAJOR >= 8
-                                 ,
+      : CodeCompleteConsumer(opts), alloc(std::make_shared<GlobalCodeCompletionAllocator>()), cCTUInfo(alloc),
+        from_cache(from_cache) {}
+  void ProcessOverloadCandidates(Sema &s, unsigned currentArg, OverloadCandidate *candidates, unsigned numCandidates,
                                  SourceLocation openParLoc
-#endif
 #if LLVM_VERSION_MAJOR >= 14
                                  ,
                                  bool braced

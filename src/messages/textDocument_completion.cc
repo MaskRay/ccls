@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "fuzzy_match.hh"
-#include "include_complete.hh"
 #include "log.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
@@ -12,10 +11,6 @@
 #include <clang/Sema/CodeCompleteConsumer.h>
 #include <clang/Sema/Sema.h>
 #include <llvm/ADT/Twine.h>
-
-#if LLVM_VERSION_MAJOR < 8
-#include <regex>
-#endif
 
 #if LLVM_VERSION_MAJOR >= 18 // llvmorg-18-init-10631-gedd690b02e16
 #define TTK_Struct TagTypeKind::Struct
@@ -51,54 +46,6 @@ struct CompletionList {
   std::vector<CompletionItem> items;
 };
 REFLECT_STRUCT(CompletionList, isIncomplete, items);
-
-#if LLVM_VERSION_MAJOR < 8
-void decorateIncludePaths(const std::smatch &match,
-                          std::vector<CompletionItem> *items, char quote) {
-  std::string spaces_after_include = " ";
-  if (match[3].compare("include") == 0 && quote != '\0')
-    spaces_after_include = match[4].str();
-
-  std::string prefix =
-      match[1].str() + '#' + match[2].str() + "include" + spaces_after_include;
-  std::string suffix = match[7].str();
-
-  for (CompletionItem &item : *items) {
-    char quote0, quote1;
-    if (quote != '"')
-      quote0 = '<', quote1 = '>';
-    else
-      quote0 = quote1 = '"';
-
-    item.textEdit.newText =
-        prefix + quote0 + item.textEdit.newText + quote1 + suffix;
-    item.label = prefix + quote0 + item.label + quote1 + suffix;
-  }
-}
-
-struct ParseIncludeLineResult {
-  bool ok;
-  std::string keyword;
-  std::string quote;
-  std::string pattern;
-  std::smatch match;
-};
-
-ParseIncludeLineResult ParseIncludeLine(const std::string &line) {
-  static const std::regex pattern("(\\s*)"       // [1]: spaces before '#'
-                                  "#"            //
-                                  "(\\s*)"       // [2]: spaces after '#'
-                                  "([^\\s\"<]*)" // [3]: "include"
-                                  "(\\s*)"       // [4]: spaces before quote
-                                  "([\"<])?"     // [5]: the first quote char
-                                  "([^\\s\">]*)" // [6]: path of file
-                                  "[\">]?"       //
-                                  "(.*)");       // [7]: suffix after quote char
-  std::smatch match;
-  bool ok = std::regex_match(line, match, pattern);
-  return {ok, match[3], match[5], match[6], match};
-}
-#endif
 
 // Pre-filters completion responses before sending to vscode. This results in a
 // significantly snappier completion experience as vscode is easily overloaded
@@ -309,10 +256,8 @@ CompletionItemKind getCompletionKind(CodeCompletionContext::Kind k,
   case CodeCompletionResult::RK_Macro:
     return CompletionItemKind::Reference;
   case CodeCompletionResult::RK_Pattern:
-#if LLVM_VERSION_MAJOR >= 8
     if (k == CodeCompletionContext::CCC_IncludedFile)
       return CompletionItemKind::File;
-#endif
     return CompletionItemKind::Snippet;
   }
 }
@@ -402,11 +347,7 @@ public:
 
   CompletionConsumer(const CodeCompleteOptions &opts, bool from_cache)
       :
-#if LLVM_VERSION_MAJOR >= 9 // rC358696
         CodeCompleteConsumer(opts),
-#else
-        CodeCompleteConsumer(opts, false),
-#endif
         alloc(std::make_shared<clang::GlobalCodeCompletionAllocator>()),
         cctu_info(alloc), from_cache(from_cache) {
   }
@@ -543,31 +484,6 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   std::string filter;
   Position end_pos = param.position;
   Position begin_pos = wf->getCompletionPosition(param.position, &filter);
-
-#if LLVM_VERSION_MAJOR < 8
-  ParseIncludeLineResult preprocess = ParseIncludeLine(buffer_line);
-  if (preprocess.ok && preprocess.keyword.compare("include") == 0) {
-    CompletionList result;
-    char quote = std::string(preprocess.match[5])[0];
-    {
-      std::unique_lock<std::mutex> lock(
-          include_complete->completion_items_mutex, std::defer_lock);
-      if (include_complete->is_scanning)
-        lock.lock();
-      for (auto &item : include_complete->completion_items)
-        if (quote == '\0' || (item.quote_kind_ & 1 && quote == '"') ||
-            (item.quote_kind_ & 2 && quote == '<'))
-          result.items.push_back(item);
-    }
-    begin_pos.character = 0;
-    end_pos.character = (int)buffer_line.size();
-    filterCandidates(result, preprocess.pattern, begin_pos, end_pos,
-                     buffer_line);
-    decorateIncludePaths(preprocess.match, &result.items, quote);
-    reply(result);
-    return;
-  }
-#endif
 
   SemaManager::OnComplete callback =
       [filter, path, begin_pos, end_pos, reply,

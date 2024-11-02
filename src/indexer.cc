@@ -710,9 +710,6 @@ public:
 public:
   IndexDataConsumer(IndexParam &param) : param(param) {}
   void initialize(ASTContext &ctx) override { this->ctx = param.ctx = &ctx; }
-#if LLVM_VERSION_MAJOR < 10 // llvmorg-10-init-12036-g3b9715cb219
-# define handleDeclOccurrence handleDeclOccurence
-#endif
   bool handleDeclOccurrence(const Decl *d, index::SymbolRoleSet roles,
                             ArrayRef<index::SymbolRelation> relations,
                             SourceLocation src_loc,
@@ -899,31 +896,6 @@ public:
             if (!isa<EnumConstantDecl>(d))
               db->toType(usr1).instances.push_back(usr);
           } else if (const Decl *d1 = getAdjustedDecl(getTypeDecl(t))) {
-#if LLVM_VERSION_MAJOR < 9
-            if (isa<TemplateTypeParmDecl>(d1)) {
-              // e.g. TemplateTypeParmDecl is not handled by
-              // handleDeclOccurence.
-              SourceRange sr1 = d1->getSourceRange();
-              if (sm.getFileID(sr1.getBegin()) == fid) {
-                IndexParam::DeclInfo *info1;
-                Usr usr1 = getUsr(d1, &info1);
-                IndexType &type1 = db->toType(usr1);
-                SourceLocation sl1 = d1->getLocation();
-                type1.def.spell = {
-                    Use{{fromTokenRange(sm, lang, {sl1, sl1}), Role::Definition},
-                        lid},
-                    fromTokenRange(sm, lang, sr1)};
-                type1.def.detailed_name = intern(info1->short_name);
-                type1.def.short_name_size = int16_t(info1->short_name.size());
-                type1.def.kind = SymbolKind::TypeParameter;
-                type1.def.parent_kind = SymbolKind::Class;
-                var->def.type = usr1;
-                type1.instances.push_back(usr);
-                break;
-              }
-            }
-#endif
-
             IndexParam::DeclInfo *info1;
             Usr usr1 = getUsr(d1, &info1);
             var->def.type = usr1;
@@ -1237,10 +1209,8 @@ public:
         std::make_unique<IndexPPCallbacks>(pp->getSourceManager(), param));
     std::vector<std::unique_ptr<ASTConsumer>> consumers;
     consumers.push_back(std::make_unique<SkipProcessed>(param));
-#if LLVM_VERSION_MAJOR >= 10 // rC370337
     consumers.push_back(index::createIndexingASTConsumer(
         dataConsumer, indexOpts, std::move(pp)));
-#endif
     return std::make_unique<MultiplexConsumer>(std::move(consumers));
   }
 };
@@ -1349,12 +1319,7 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   if (!clang->hasTarget())
     return {};
   clang->getPreprocessorOpts().RetainRemappedFileBuffers = true;
-#if LLVM_VERSION_MAJOR >= 9 // rC357037
   clang->createFileManager(fs);
-#else
-  clang->setVirtualFileSystem(fs);
-  clang->createFileManager();
-#endif
   clang->setSourceManager(new SourceManager(clang->getDiagnostics(),
                                             clang->getFileManager(), true));
 
@@ -1366,39 +1331,23 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   if (no_linkage) {
     indexOpts.IndexFunctionLocals = true;
     indexOpts.IndexImplicitInstantiation = true;
-#if LLVM_VERSION_MAJOR >= 9
-
     indexOpts.IndexParametersInDeclarations =
         g_config->index.parametersInDeclarations;
     indexOpts.IndexTemplateParameters = true;
-#endif
   }
 
-#if LLVM_VERSION_MAJOR >= 10 // rC370337
   auto action = std::make_unique<IndexFrontendAction>(
       std::make_shared<IndexDataConsumer>(param), indexOpts, param);
-#else
-  auto dataConsumer = std::make_shared<IndexDataConsumer>(param);
-  auto action = createIndexingAction(
-      dataConsumer, indexOpts,
-      std::make_unique<IndexFrontendAction>(dataConsumer, indexOpts, param));
-#endif
-
   std::string reason;
   {
     llvm::CrashRecoveryContext crc;
     auto parse = [&]() {
       if (!action->BeginSourceFile(*clang, clang->getFrontendOpts().Inputs[0]))
         return;
-#if LLVM_VERSION_MAJOR >= 9 // rL364464
       if (llvm::Error e = action->Execute()) {
         reason = llvm::toString(std::move(e));
         return;
       }
-#else
-      if (!action->Execute())
-        return;
-#endif
       action->EndSourceFile();
       ok = true;
     };

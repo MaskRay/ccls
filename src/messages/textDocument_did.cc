@@ -1,7 +1,6 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "include_complete.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
 #include "project.hh"
@@ -38,7 +37,6 @@ void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
     emitSkippedRanges(wf, *file);
     emitSemanticHighlight(db, wf, *file);
   }
-  include_complete->addFile(wf->filename);
 
   // Submit new index request if it is not a header file or there is no
   // pending index request.

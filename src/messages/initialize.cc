@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "filesystem.hh"
-#include "include_complete.hh"
 #include "log.hh"
 #include "message_handler.hh"
 #include "pipeline.hh"
@@ -261,7 +260,7 @@ void *indexer(void *arg_) {
   // Don't lower priority on __APPLE__. getpriority(2) says "When setting a
   // thread into background state the scheduling priority is set to lowest
   // value, disk and network IO are throttled."
-#if LLVM_ENABLE_THREADS && LLVM_VERSION_MAJOR >= 9 && !defined(__APPLE__)
+#if LLVM_ENABLE_THREADS && !defined(__APPLE__)
   set_thread_priority(ThreadPriority::Background);
 #endif
   pipeline::indexer_Main(h->manager, h->vfs, h->project, h->wfiles);
@@ -388,10 +387,6 @@ void do_initialize(MessageHandler *m, InitializeParam &param,
   LOG_S(INFO) << "start " << g_config->index.threads << " indexers";
   for (int i = 0; i < g_config->index.threads; i++)
     spawnThread(indexer, new std::pair<MessageHandler *, int>{m, i});
-
-  // Start scanning include directories before dispatching project
-  // files, because that takes a long time.
-  m->include_complete->rescan();
 
   LOG_S(INFO) << "dispatch initial index requests";
   m->project->index(m->wfiles, reply.id);

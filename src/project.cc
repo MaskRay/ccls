@@ -134,88 +134,6 @@ struct ProjectProcessor {
       }
     }
     entry.args = args;
-    getSearchDirs(entry);
-  }
-
-  void getSearchDirs(Project::Entry &entry) {
-#if LLVM_VERSION_MAJOR < 8
-    const std::string base_name = sys::path::filename(entry.filename);
-    size_t hash = std::hash<std::string>{}(entry.directory);
-    bool OPT_o = false;
-    for (auto &arg : entry.args) {
-      bool last_o = OPT_o;
-      OPT_o = false;
-      if (arg[0] == '-') {
-        OPT_o = arg[1] == 'o' && arg[2] == '\0';
-        if (OPT_o || arg[1] == 'D' || arg[1] == 'W')
-          continue;
-      } else if (last_o) {
-        continue;
-      } else if (sys::path::filename(arg) == base_name) {
-        LanguageId lang = lookupExtension(arg).first;
-        if (lang != LanguageId::Unknown) {
-          hash_combine(hash, (size_t)lang);
-          continue;
-        }
-      }
-      hash_combine(hash, std::hash<std::string_view>{}(arg));
-    }
-    if (!command_set.insert(hash).second)
-      return;
-    auto args = entry.args;
-    args.push_back("-fsyntax-only");
-    for (const std::string &arg : g_config->clang.extraArgs)
-      args.push_back(intern(arg));
-    args.push_back(intern("-working-directory=" + entry.directory));
-    args.push_back(intern("-resource-dir=" + g_config->clang.resourceDir));
-
-    // a weird C++ deduction guide heap-use-after-free causes libclang to crash.
-    IgnoringDiagConsumer DiagC;
-    IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts(new DiagnosticOptions());
-    DiagnosticsEngine Diags(
-        IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs()), &*DiagOpts,
-        &DiagC, false);
-
-    driver::Driver Driver(args[0], llvm::sys::getDefaultTargetTriple(), Diags);
-    auto TargetAndMode =
-        driver::ToolChain::getTargetAndModeFromProgramName(args[0]);
-    if (!TargetAndMode.TargetPrefix.empty()) {
-      const char *arr[] = {"-target", TargetAndMode.TargetPrefix.c_str()};
-      args.insert(args.begin() + 1, std::begin(arr), std::end(arr));
-      Driver.setTargetAndMode(TargetAndMode);
-    }
-    Driver.setCheckInputsExist(false);
-
-    std::unique_ptr<driver::Compilation> C(Driver.BuildCompilation(args));
-    const driver::JobList &Jobs = C->getJobs();
-    if (Jobs.size() != 1)
-      return;
-    const auto &CCArgs = Jobs.begin()->getArguments();
-
-    auto CI = std::make_unique<CompilerInvocation>();
-    CompilerInvocation::CreateFromArgs(*CI, CCArgs.data(),
-                                       CCArgs.data() + CCArgs.size(), Diags);
-    CI->getFrontendOpts().DisableFree = false;
-    CI->getCodeGenOpts().DisableFree = false;
-
-    HeaderSearchOptions &HeaderOpts = CI->getHeaderSearchOpts();
-    for (auto &E : HeaderOpts.UserEntries) {
-      std::string path =
-          normalizePath(resolveIfRelative(entry.directory, E.Path));
-      ensureEndsInSlash(path);
-      switch (E.Group) {
-      default:
-        folder.search_dir2kind[path] |= 2;
-        break;
-      case frontend::Quoted:
-        folder.search_dir2kind[path] |= 1;
-        break;
-      case frontend::Angled:
-        folder.search_dir2kind[path] |= 3;
-        break;
-      }
-    }
-#endif
   }
 };
 
@@ -452,7 +370,6 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
           entry.args.push_back(intern(args[i]));
       }
       entry.compdb_size = entry.args.size();
-      proc.getSearchDirs(entry);
       if (seen.insert(entry.filename).second)
         folder.entries.push_back(entry);
     }

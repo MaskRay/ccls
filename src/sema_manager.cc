@@ -26,39 +26,6 @@ using namespace llvm;
 #include <thread>
 namespace chrono = std::chrono;
 
-#if LLVM_VERSION_MAJOR < 8
-namespace clang::vfs {
-struct ProxyFileSystem : FileSystem {
-  explicit ProxyFileSystem(IntrusiveRefCntPtr<FileSystem> FS)
-      : FS(std::move(FS)) {}
-  llvm::ErrorOr<Status> status(const Twine &Path) override {
-    return FS->status(Path);
-  }
-  llvm::ErrorOr<std::unique_ptr<File>>
-  openFileForRead(const Twine &Path) override {
-    return FS->openFileForRead(Path);
-  }
-  directory_iterator dir_begin(const Twine &Dir, std::error_code &EC) override {
-    return FS->dir_begin(Dir, EC);
-  }
-  llvm::ErrorOr<std::string> getCurrentWorkingDirectory() const override {
-    return FS->getCurrentWorkingDirectory();
-  }
-  std::error_code setCurrentWorkingDirectory(const Twine &Path) override {
-    return FS->setCurrentWorkingDirectory(Path);
-  }
-#if LLVM_VERSION_MAJOR == 7
-  std::error_code getRealPath(const Twine &Path,
-                              SmallVectorImpl<char> &Output) const override {
-    return FS->getRealPath(Path, Output);
-  }
-#endif
-  FileSystem &getUnderlyingFS() { return *FS; }
-  IntrusiveRefCntPtr<FileSystem> FS;
-};
-} // namespace clang::vfs
-#endif
-
 namespace ccls {
 
 TextEdit toTextEdit(const clang::SourceManager &sm, const clang::LangOptions &l,
@@ -330,12 +297,7 @@ buildCompilerInstance(Session &session, std::unique_ptr<CompilerInvocation> ci,
   // Construct SourceManager with UserFilesAreVolatile: true because otherwise
   // RequiresNullTerminator: true may cause out-of-bounds read when a file is
   // mmap'ed but is saved concurrently.
-#if LLVM_VERSION_MAJOR >= 9 // rC357037
   clang->createFileManager(fs);
-#else
-  clang->setVirtualFileSystem(fs);
-  clang->createFileManager();
-#endif
   clang->setSourceManager(new SourceManager(clang->getDiagnostics(),
                                             clang->getFileManager(), true));
   auto &isec = clang->getFrontendOpts().Inputs;
@@ -353,15 +315,10 @@ bool parse(CompilerInstance &clang) {
   auto run = [&]() {
     if (!action.BeginSourceFile(clang, clang.getFrontendOpts().Inputs[0]))
       return;
-#if LLVM_VERSION_MAJOR >= 9 // rL364464
     if (llvm::Error e = action.Execute()) {
       llvm::consumeError(std::move(e));
       return;
     }
-#else
-    if (!action.Execute())
-      return;
-#endif
     action.EndSourceFile();
     ok = true;
   };

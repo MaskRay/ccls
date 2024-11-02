@@ -4,7 +4,6 @@
 #include "pipeline.hh"
 
 #include "config.hh"
-#include "include_complete.hh"
 #include "log.hh"
 #include "lsp.hh"
 #include "message_handler.hh"
@@ -657,7 +656,6 @@ void mainLoop() {
         }
       });
 
-  IncludeComplete include_complete(&project);
   DB db;
 
   // Setup shared references.
@@ -667,7 +665,6 @@ void mainLoop() {
   handler.vfs = &vfs;
   handler.wfiles = &wfiles;
   handler.manager = &manager;
-  handler.include_complete = &include_complete;
 
   bool work_done_created = false, in_progress = false;
   bool has_indexed = false;
@@ -787,14 +784,12 @@ void standalone(const std::string &root) {
       nullptr, nullptr,
       [](const std::string &, const std::vector<Diagnostic> &) {},
       [](const RequestId &id) {});
-  IncludeComplete complete(&project);
 
   MessageHandler handler;
   handler.project = &project;
   handler.wfiles = &wfiles;
   handler.vfs = &vfs;
   handler.manager = &manager;
-  handler.include_complete = &complete;
 
   standaloneInitialize(handler, root);
   bool tty = sys::Process::StandardOutIsDisplayed();

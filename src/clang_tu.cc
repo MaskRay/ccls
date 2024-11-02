@@ -163,12 +163,7 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
     return nullptr;
   const llvm::opt::ArgStringList &cc_args = cmd.getArguments();
   auto ci = std::make_unique<CompilerInvocation>();
-#if LLVM_VERSION_MAJOR >= 10 // rC370122
   if (!CompilerInvocation::CreateFromArgs(*ci, cc_args, *diags))
-#else
-  if (!CompilerInvocation::CreateFromArgs(
-          *ci, cc_args.data(), cc_args.data() + cc_args.size(), *diags))
-#endif
     return nullptr;
 
   ci->getDiagnosticOpts().IgnoreWarnings = true;
@@ -189,9 +184,7 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   auto &isec = ci->getFrontendOpts().Inputs;
   if (isec.size())
     isec[0] = FrontendInputFile(main, isec[0].getKind(), isec[0].isSystem());
-#if LLVM_VERSION_MAJOR >= 10 // llvmorg-11-init-2414-g75f09b54429
   ci->getPreprocessorOpts().DisablePragmaDebugCrash = true;
-#endif
   // clangSerialization has an unstable format. Disable PCH reading/writing
   // to work around PCH mismatch problems.
   ci->getPreprocessorOpts().ImplicitPCHInclude.clear();

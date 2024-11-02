@@ -14,7 +14,6 @@
 namespace ccls {
 struct SemaManager;
 struct VFS;
-struct IncludeComplete;
 struct Project;
 struct WorkingFile;
 struct WorkingFiles;
@@ -239,7 +238,6 @@ struct ReplyOnce {
 struct MessageHandler {
   SemaManager *manager = nullptr;
   DB *db = nullptr;
-  IncludeComplete *include_complete = nullptr;
   Project *project = nullptr;
   VFS *vfs = nullptr;
   WorkingFiles *wfiles = nullptr;
