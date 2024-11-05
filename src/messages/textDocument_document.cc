@@ -3,9 +3,16 @@
 
 #include "message_handler.hh"
 #include "pipeline.hh"
+#include "project.hh"
 #include "query.hh"
 
+#include <llvm/ADT/STLExtras.h>
+#include <llvm/ADT/StringRef.h>
+#include <llvm/Support/Path.h>
+
 #include <algorithm>
+
+using namespace llvm;
 
 MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
 
@@ -225,5 +232,67 @@ void MessageHandler::textDocument_documentSymbol(JsonReader &reader,
     }
     reply(result);
   }
+}
+
+void MessageHandler::textDocument_switchSourceHeader(TextDocumentIdentifier &param, ReplyOnce &reply) {
+  QueryFile *file;
+  WorkingFile *wf;
+  std::tie(file, wf) = findOrFail(param.uri.getPath(), reply);
+  if (!wf)
+    return reply(JsonNull{});
+  int file_id = file->id;
+
+  DocumentUri result;
+  const std::string &path = wf->filename;
+  bool is_hdr = lookupExtension(path).second;
+
+  // Vote for each interesting symbol's definitions (for header) or declarations (for non-header).
+  // Select the file with the most votes.
+  // Ignore Type symbols to skip class forward declarations and namespaces.
+  std::unordered_map<int, int> file_id2cnt;
+  for (auto [sym, refcnt] : file->symbol2refcnt) {
+    if (refcnt <= 0 || !sym.extent.valid() || sym.kind == Kind::Type)
+      continue;
+
+    if (is_hdr) {
+      withEntity(db, sym, [&](const auto &entity) {
+        for (auto &def : entity.def)
+          if (def.spell && def.file_id != file_id)
+            ++file_id2cnt[def.file_id];
+      });
+    } else {
+      for (DeclRef dr : getNonDefDeclarations(db, sym))
+        if (dr.file_id != file_id)
+          ++file_id2cnt[dr.file_id];
+    }
+  }
+  if (file_id2cnt.size()) {
+    auto best = file_id2cnt.begin();
+    for (auto it = file_id2cnt.begin(); it != file_id2cnt.end(); ++it)
+      if (it->second > best->second || (it->second == best->second && it->first < best->first))
+        best = it;
+    if (auto &def = db->files[best->first].def)
+      return reply(DocumentUri::fromPath(def->path));
+  }
+
+  if (is_hdr) {
+    // Check if `path` is in a #include entry.
+    for (QueryFile &file1 : db->files) {
+      auto &def = file1.def;
+      if (!def || lookupExtension(def->path).second)
+        continue;
+      for (IndexInclude &include : def->includes)
+        if (path == include.resolved_path)
+          return reply(DocumentUri::fromPath(def->path));
+    }
+    return reply(JsonNull{});
+  }
+
+  // Otherwise, find the #include with the same stem.
+  StringRef stem = sys::path::stem(path);
+  for (IndexInclude &include : file->def->includes)
+    if (sys::path::stem(include.resolved_path) == stem)
+      return reply(DocumentUri::fromPath(std::string(include.resolved_path)));
+  reply(JsonNull{});
 }
 } // namespace ccls

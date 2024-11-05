@@ -311,6 +311,7 @@ private:
   void textDocument_semanticTokensFull(TextDocumentParam &, ReplyOnce &);
   void textDocument_semanticTokensRange(SemanticTokensRangeParams &, ReplyOnce &);
   void textDocument_signatureHelp(TextDocumentPositionParam &, ReplyOnce &);
+  void textDocument_switchSourceHeader(TextDocumentIdentifier &, ReplyOnce &);
   void textDocument_typeDefinition(TextDocumentPositionParam &, ReplyOnce &);
   void workspace_didChangeConfiguration(EmptyParam &);
   void workspace_didChangeWatchedFiles(DidChangeWatchedFilesParam &);

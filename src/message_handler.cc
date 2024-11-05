@@ -216,6 +216,7 @@ MessageHandler::MessageHandler() {
   bind("textDocument/semanticTokens/full", &MessageHandler::textDocument_semanticTokensFull);
   bind("textDocument/semanticTokens/range", &MessageHandler::textDocument_semanticTokensRange);
   bind("textDocument/signatureHelp", &MessageHandler::textDocument_signatureHelp);
+  bind("textDocument/switchSourceHeader", &MessageHandler::textDocument_switchSourceHeader);
   bind("textDocument/typeDefinition", &MessageHandler::textDocument_typeDefinition);
   bind("workspace/didChangeConfiguration", &MessageHandler::workspace_didChangeConfiguration);
   bind("workspace/didChangeWatchedFiles", &MessageHandler::workspace_didChangeWatchedFiles);

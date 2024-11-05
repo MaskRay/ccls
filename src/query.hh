@@ -144,7 +144,7 @@ using Lid2file_id = std::unordered_map<int, int>;
 // The query database is heavily optimized for fast queries. It is stored
 // in-memory.
 struct DB {
-  std::vector<QueryFile> files;
+  llvm::SmallVector<QueryFile, 0> files;
   llvm::StringMap<int> name2file_id;
   llvm::DenseMap<Usr, int, DenseMapInfoForUsr> func_usr, type_usr, var_usr;
   llvm::SmallVector<QueryFunc, 0> funcs;
