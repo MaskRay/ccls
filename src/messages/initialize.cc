@@ -103,7 +103,7 @@ struct ServerCap {
                                                    "<", "\"", "/"};
   } completionProvider;
   struct SignatureHelpOptions {
-    std::vector<const char *> triggerCharacters = {"(", ","};
+    std::vector<const char *> triggerCharacters = {"(", "{", ","};
   } signatureHelpProvider;
   bool declarationProvider = true;
   bool definitionProvider = true;
