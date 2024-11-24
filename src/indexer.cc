@@ -1312,7 +1312,11 @@ index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs,
   IndexDiags dc;
   auto clang = std::make_unique<CompilerInstance>(pch);
   clang->setInvocation(std::move(ci));
-  clang->createDiagnostics(&dc, false);
+  clang->createDiagnostics(
+#if LLVM_VERSION_MAJOR >= 20
+      *fs,
+#endif
+      &dc, false);
   clang->getDiagnostics().setIgnoreAllWarnings(true);
   clang->setTarget(TargetInfo::CreateTargetInfo(
       clang->getDiagnostics(), clang->getInvocation().TargetOpts));

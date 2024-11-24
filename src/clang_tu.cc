@@ -124,9 +124,11 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
     args.insert(args.begin() + 1, std::begin(arr), std::end(arr));
   }
 
-  IntrusiveRefCntPtr<DiagnosticsEngine> diags(
-      CompilerInstance::createDiagnostics(new DiagnosticOptions,
-                                          new IgnoringDiagConsumer, true));
+  IntrusiveRefCntPtr<DiagnosticsEngine> diags(CompilerInstance::createDiagnostics(
+#if LLVM_VERSION_MAJOR >= 20
+      *vfs,
+#endif
+      new DiagnosticOptions, new IgnoringDiagConsumer, true));
 #if LLVM_VERSION_MAJOR < 12 // llvmorg-12-init-5498-g257b29715bb
   driver::Driver d(args[0], llvm::sys::getDefaultTargetTriple(), *diags, vfs);
 #else

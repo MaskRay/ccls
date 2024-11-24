@@ -288,7 +288,11 @@ buildCompilerInstance(Session &session, std::unique_ptr<CompilerInvocation> ci,
 
   auto clang = std::make_unique<CompilerInstance>(session.pch);
   clang->setInvocation(std::move(ci));
-  clang->createDiagnostics(&dc, false);
+  clang->createDiagnostics(
+#if LLVM_VERSION_MAJOR >= 20
+      *fs,
+#endif
+      &dc, false);
   clang->setTarget(TargetInfo::CreateTargetInfo(
       clang->getDiagnostics(), clang->getInvocation().TargetOpts));
   if (!clang->hasTarget())
@@ -368,8 +372,11 @@ void buildPreamble(Session &session, CompilerInvocation &ci,
 #endif
 
   StoreDiags dc(task.path);
-  IntrusiveRefCntPtr<DiagnosticsEngine> de =
-      CompilerInstance::createDiagnostics(&ci.getDiagnosticOpts(), &dc, false);
+  IntrusiveRefCntPtr<DiagnosticsEngine> de = CompilerInstance::createDiagnostics(
+#if LLVM_VERSION_MAJOR >= 20
+      *fs,
+#endif
+      &ci.getDiagnosticOpts(), &dc, false);
   if (oldP) {
     std::lock_guard lock(session.wfiles->mutex);
     for (auto &include : oldP->includes)
