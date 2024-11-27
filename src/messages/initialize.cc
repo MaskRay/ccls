@@ -114,7 +114,7 @@ struct ServerCap {
   bool documentSymbolProvider = true;
   bool workspaceSymbolProvider = true;
   struct CodeActionOptions {
-    std::vector<const char *> codeActionKinds = {"quickfix"};
+    std::vector<const char *> codeActionKinds = {"quickfix", "reference"};
   } codeActionProvider;
   struct CodeLensOptions {
     bool resolveProvider = false;
@@ -217,6 +217,15 @@ struct TextDocumentClientCap {
     bool hierarchicalDocumentSymbolSupport = false;
   } documentSymbol;
 
+  struct CodeAction {
+    bool dynamicRegistration = false;
+    struct CodeActionLiteralSupport {
+      struct CodeActionKind {
+        std::vector<std::string> valueSet;
+      } codeActionKind;
+    } codeActionLiteralSupport;
+  } codeAction;
+
   struct PublishDiagnostics {
     bool relatedInformation = false;
   } publishDiagnostics;
@@ -228,9 +237,14 @@ REFLECT_STRUCT(TextDocumentClientCap::Completion, completionItem);
 REFLECT_STRUCT(TextDocumentClientCap::DocumentSymbol,
                hierarchicalDocumentSymbolSupport);
 REFLECT_STRUCT(TextDocumentClientCap::LinkSupport, linkSupport);
+REFLECT_STRUCT(TextDocumentClientCap::CodeAction::CodeActionLiteralSupport::CodeActionKind,
+               valueSet);
+REFLECT_STRUCT(TextDocumentClientCap::CodeAction::CodeActionLiteralSupport, codeActionKind);
+REFLECT_STRUCT(TextDocumentClientCap::CodeAction,
+               dynamicRegistration, codeActionLiteralSupport);
 REFLECT_STRUCT(TextDocumentClientCap::PublishDiagnostics, relatedInformation);
 REFLECT_STRUCT(TextDocumentClientCap, completion, definition, documentSymbol,
-               publishDiagnostics);
+               codeAction, publishDiagnostics);
 
 struct ClientCap {
   WorkspaceClientCap workspace;
@@ -378,6 +392,10 @@ void do_initialize(MessageHandler *m, InitializeParam &param,
 
   if (!g_config->client.snippetSupport)
     g_config->completion.duplicateOptional = false;
+
+  g_config->client.codeActionKind =
+      capabilities.textDocument
+           .codeAction.codeActionLiteralSupport.codeActionKind.valueSet;
 
   // Ensure there is a resource directory.
   if (g_config->clang.resourceDir.empty())

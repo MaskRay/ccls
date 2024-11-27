@@ -14,34 +14,117 @@
 
 namespace ccls {
 namespace {
+struct Command {
+  std::string title;
+  std::string command;
+  std::vector<std::string> arguments;
+};
 struct CodeAction {
   std::string title;
-  const char *kind = "quickfix";
+  std::string kind;
   WorkspaceEdit edit;
+  Command command;
 };
-REFLECT_STRUCT(CodeAction, title, kind, edit);
+struct ReferenceCommand {
+  TextDocumentIdentifier textDocument;
+  Position position;
+  bool callee;
+  std::string direction;
+  bool derived;
+  int kind;
+};
+REFLECT_STRUCT(Command, title, command, arguments);
+REFLECT_STRUCT(CodeAction, title, kind, edit, command);
+REFLECT_STRUCT(ReferenceCommand, textDocument, position,
+               callee, direction, derived, kind);
+
+template <typename T> std::string toString(T &v) {
+  rapidjson::StringBuffer output;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(output);
+  JsonWriter json_writer(&writer);
+  reflect(json_writer, v);
+  return output.GetString();
+}
 } // namespace
+
+template <typename T> bool vec_has(const std::vector<T> &vec, const T &key) {
+  return std::find(std::begin(vec), std::end(vec), key) != std::end(vec);
+}
+
+bool should_send_action(std::vector<std::string> available_kinds,
+                        std::vector<std::string> requested_kinds,
+                        std::string kind) {
+  if (!requested_kinds.empty() && !vec_has(requested_kinds, kind)) {
+    return false;
+  }
+  if (!available_kinds.empty() && !vec_has(available_kinds, kind)) {
+    return false;
+  }
+  return true;
+}
+
 void MessageHandler::textDocument_codeAction(CodeActionParam &param,
                                              ReplyOnce &reply) {
   WorkingFile *wf = findOrFail(param.textDocument.uri.getPath(), reply).second;
   if (!wf)
     return;
+  auto available_kinds = g_config->client.codeActionKind;
+  std::vector<std::string> requested_kinds = param.context.only;
   std::vector<CodeAction> result;
-  std::vector<Diagnostic> diagnostics;
-  wfiles->withLock([&]() { diagnostics = wf->diagnostics; });
-  for (Diagnostic &diag : diagnostics)
-    if (diag.fixits_.size() &&
-        (param.range.intersects(diag.range) ||
-         llvm::any_of(diag.fixits_, [&](const TextEdit &edit) {
-           return param.range.intersects(edit.range);
-         }))) {
+
+  if (should_send_action(available_kinds, requested_kinds, "quickfix")) {
+    std::vector<Diagnostic> diagnostics;
+    wfiles->withLock([&]() { diagnostics = wf->diagnostics; });
+    for (Diagnostic &diag : diagnostics)
+      if (diag.fixits_.size() &&
+          (param.range.intersects(diag.range) ||
+           llvm::any_of(diag.fixits_, [&](const TextEdit &edit) {
+             return param.range.intersects(edit.range);
+           }))) {
+        CodeAction &cmd = result.emplace_back();
+        cmd.title = "FixIt: " + diag.message;
+        cmd.kind = "quickfix";
+        auto &edit = cmd.edit.documentChanges.emplace_back();
+        edit.textDocument.uri = param.textDocument.uri;
+        edit.textDocument.version = wf->version;
+        edit.edits = diag.fixits_;
+      }
+  }
+
+  if (should_send_action(available_kinds, requested_kinds, "reference")) {
+    auto add = [&, param = param] (
+          const char *title, const char *command_name,
+          const bool callee=false, const char *dir="",
+          const bool derived=false, int kind=0) {
       CodeAction &cmd = result.emplace_back();
-      cmd.title = "FixIt: " + diag.message;
-      auto &edit = cmd.edit.documentChanges.emplace_back();
-      edit.textDocument.uri = param.textDocument.uri;
-      edit.textDocument.version = wf->version;
-      edit.edits = diag.fixits_;
-    }
+      ReferenceCommand rcmd;
+      rcmd.textDocument = param.textDocument;
+      rcmd.position = param.range.start;
+      rcmd.callee = callee;
+      rcmd.direction = dir;
+      rcmd.derived = derived;
+      rcmd.kind = kind;
+      cmd.title = title;
+      cmd.kind = "reference";
+      cmd.command.title = title;
+      cmd.command.command = command_name;
+      cmd.command.arguments.push_back(toString(rcmd));
+    };
+
+    add("call",   "$ccls/call");
+    add("callee", "$ccls/call", true);
+    add("navigate-up",    "$ccls/navigate", false, "U");
+    add("navigate-down",  "$ccls/navigate", false, "D");
+    add("navigate-right", "$ccls/navigate", false, "R");
+    add("navigate-left",  "$ccls/navigate", false, "L");
+    add("inheritance",         "$ccls/inheritance");
+    add("inheritance-derived", "$ccls/inheritance", false, "", true);
+    add("member-var",  "$ccls/member", false, "", false, 4);
+    add("member-fun",  "$ccls/member", false, "", false, 3);
+    add("member-type", "$ccls/member", false, "", false, 2);
+    add("vars", "$ccls/vars");
+  }
+
   reply(result);
 }
 
@@ -51,26 +134,12 @@ struct Cmd_xref {
   Kind kind;
   std::string field;
 };
-struct Command {
-  std::string title;
-  std::string command;
-  std::vector<std::string> arguments;
-};
 struct CodeLens {
   lsRange range;
   std::optional<Command> command;
 };
 REFLECT_STRUCT(Cmd_xref, usr, kind, field);
-REFLECT_STRUCT(Command, title, command, arguments);
 REFLECT_STRUCT(CodeLens, range, command);
-
-template <typename T> std::string toString(T &v) {
-  rapidjson::StringBuffer output;
-  rapidjson::Writer<rapidjson::StringBuffer> writer(output);
-  JsonWriter json_writer(&writer);
-  reflect(json_writer, v);
-  return output.GetString();
-}
 
 struct CommonCodeLensParams {
   std::vector<CodeLens> *result;
@@ -215,6 +284,16 @@ void MessageHandler::workspace_executeCommand(JsonReader &reader,
       break;
     }
     reply(result);
+  } else if (param.command == "$ccls/call") {
+    ccls_call(json_reader, reply);
+  } else if (param.command == "$ccls/navigate") {
+    ccls_navigate(json_reader, reply);
+  } else if (param.command == "$ccls/inheritance") {
+    ccls_inheritance(json_reader, reply);
+  } else if (param.command == "$ccls/member") {
+    ccls_member(json_reader, reply);
+  } else if (param.command == "$ccls/vars") {
+    ccls_vars(json_reader, reply);
   }
 }
 } // namespace ccls
