@@ -132,9 +132,28 @@ endif()
 # Find Clang resource directory with Clang executable.
 
 if(NOT CLANG_RESOURCE_DIR)
-  find_program(CLANG_EXECUTABLE clang)
+  find_program(CLANG_EXECUTABLE clang-${Clang_VERSION_MAJOR} NAMES clang)
   if(NOT CLANG_EXECUTABLE)
     message(FATAL_ERROR "clang executable not found.")
+  endif()
+
+  execute_process(
+    COMMAND ${CLANG_EXECUTABLE} -dumpversion
+    RESULT_VARIABLE CLANG_DUMP_VERSION_RESULT
+    OUTPUT_VARIABLE CLANG_DUMP_VERSION
+    ERROR_VARIABLE CLANG_DUMP_VERSION_ERROR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+
+  if(CLANG_DUMP_VERSION_RESULT)
+    message(FATAL_ERROR "Error retrieving Clang executable version. \
+Output:\n${CLANG_DUMP_VERSION_ERROR}")
+  endif()
+
+  if (NOT ${CLANG_DUMP_VERSION} STREQUAL ${Clang_VERSION})
+    message(FATAL_ERROR "Clang libraries and executable versions differs:\n\
+librairies have version ${Clang_VERSION} and executable has version \
+${CLANG_DUMP_VERSION}.")
   endif()
 
   execute_process(
@@ -147,7 +166,7 @@ if(NOT CLANG_RESOURCE_DIR)
 
   if(CLANG_FIND_RESOURCE_DIR_RESULT)
     message(FATAL_ERROR "Error retrieving Clang resource directory with Clang \
-            executable. Output:\n ${CLANG_FIND_RESOURCE_DIR_ERROR}")
+            executable. Output:\n${CLANG_FIND_RESOURCE_DIR_ERROR}")
   endif()
 endif()
 
