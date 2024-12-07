@@ -21,8 +21,7 @@ struct CodeAction {
 };
 REFLECT_STRUCT(CodeAction, title, kind, edit);
 } // namespace
-void MessageHandler::textDocument_codeAction(CodeActionParam &param,
-                                             ReplyOnce &reply) {
+void MessageHandler::textDocument_codeAction(CodeActionParam &param, ReplyOnce &reply) {
   WorkingFile *wf = findOrFail(param.textDocument.uri.getPath(), reply).second;
   if (!wf)
     return;
@@ -32,9 +31,7 @@ void MessageHandler::textDocument_codeAction(CodeActionParam &param,
   for (Diagnostic &diag : diagnostics)
     if (diag.fixits_.size() &&
         (param.range.intersects(diag.range) ||
-         llvm::any_of(diag.fixits_, [&](const TextEdit &edit) {
-           return param.range.intersects(edit.range);
-         }))) {
+         llvm::any_of(diag.fixits_, [&](const TextEdit &edit) { return param.range.intersects(edit.range); }))) {
       CodeAction &cmd = result.emplace_back();
       cmd.title = "FixIt: " + diag.message;
       auto &edit = cmd.edit.documentChanges.emplace_back();
@@ -79,15 +76,13 @@ struct CommonCodeLensParams {
 };
 } // namespace
 
-void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
-                                           ReplyOnce &reply) {
+void MessageHandler::textDocument_codeLens(TextDocumentParam &param, ReplyOnce &reply) {
   auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!wf)
     return;
 
   std::vector<CodeLens> result;
-  auto add = [&, wf = wf](const char *singular, Cmd_xref show, Range range,
-                          int num, bool force_display = false) {
+  auto add = [&, wf = wf](const char *singular, Cmd_xref show, Range range, int num, bool force_display = false) {
     if (!num && !force_display)
       return;
     std::optional<lsRange> ls_range = getLsRange(wf, range);
@@ -98,8 +93,7 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
     code_lens.command = Command();
     code_lens.command->command = std::string(ccls_xref);
     bool plural = num > 1 && singular[strlen(singular) - 1] != 'd';
-    code_lens.command->title =
-        llvm::formatv("{0} {1}{2}", num, singular, plural ? "s" : "").str();
+    code_lens.command->title = llvm::formatv("{0} {1}{2}", num, singular, plural ? "s" : "").str();
     code_lens.command->arguments.push_back(toString(show));
   };
 
@@ -115,29 +109,21 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
         continue;
       std::vector<Use> base_uses = getUsesForAllBases(db, func);
       std::vector<Use> derived_uses = getUsesForAllDerived(db, func);
-      add("ref", {sym.usr, Kind::Func, "uses"}, sym.range, func.uses.size(),
-          base_uses.empty());
+      add("ref", {sym.usr, Kind::Func, "uses"}, sym.range, func.uses.size(), base_uses.empty());
       if (base_uses.size())
-        add("b.ref", {sym.usr, Kind::Func, "bases uses"}, sym.range,
-            base_uses.size());
+        add("b.ref", {sym.usr, Kind::Func, "bases uses"}, sym.range, base_uses.size());
       if (derived_uses.size())
-        add("d.ref", {sym.usr, Kind::Func, "derived uses"}, sym.range,
-            derived_uses.size());
+        add("d.ref", {sym.usr, Kind::Func, "derived uses"}, sym.range, derived_uses.size());
       if (base_uses.empty())
-        add("base", {sym.usr, Kind::Func, "bases"}, sym.range,
-            def->bases.size());
-      add("derived", {sym.usr, Kind::Func, "derived"}, sym.range,
-          func.derived.size());
+        add("base", {sym.usr, Kind::Func, "bases"}, sym.range, def->bases.size());
+      add("derived", {sym.usr, Kind::Func, "derived"}, sym.range, func.derived.size());
       break;
     }
     case Kind::Type: {
       QueryType &type = db->getType(sym);
-      add("ref", {sym.usr, Kind::Type, "uses"}, sym.range, type.uses.size(),
-          true);
-      add("derived", {sym.usr, Kind::Type, "derived"}, sym.range,
-          type.derived.size());
-      add("var", {sym.usr, Kind::Type, "instances"}, sym.range,
-          type.instances.size());
+      add("ref", {sym.usr, Kind::Type, "uses"}, sym.range, type.uses.size(), true);
+      add("derived", {sym.usr, Kind::Type, "derived"}, sym.range, type.derived.size());
+      add("var", {sym.usr, Kind::Type, "instances"}, sym.range, type.instances.size());
       break;
     }
     case Kind::Var: {
@@ -145,8 +131,7 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
       const QueryVar::Def *def = var.anyDef();
       if (!def || (def->is_local() && !g_config->codeLens.localVariables))
         continue;
-      add("ref", {sym.usr, Kind::Var, "uses"}, sym.range, var.uses.size(),
-          def->kind != SymbolKind::Macro);
+      add("ref", {sym.usr, Kind::Var, "uses"}, sym.range, var.uses.size(), def->kind != SymbolKind::Macro);
       break;
     }
     case Kind::File:
@@ -158,8 +143,7 @@ void MessageHandler::textDocument_codeLens(TextDocumentParam &param,
   reply(result);
 }
 
-void MessageHandler::workspace_executeCommand(JsonReader &reader,
-                                              ReplyOnce &reply) {
+void MessageHandler::workspace_executeCommand(JsonReader &reader, ReplyOnce &reply) {
   Command param;
   reflect(reader, param);
   if (param.arguments.empty()) {

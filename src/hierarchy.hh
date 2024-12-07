@@ -9,8 +9,7 @@
 #include <queue>
 
 namespace ccls {
-template <typename Node>
-std::vector<Location> flattenHierarchy(const std::optional<Node> &root) {
+template <typename Node> std::vector<Location> flattenHierarchy(const std::optional<Node> &root) {
   if (!root)
     return {};
   std::vector<Location> ret;

@@ -31,7 +31,7 @@ REFLECT_STRUCT(Hover, contents, range);
 
 const char *languageIdentifier(LanguageId lang) {
   switch (lang) {
-  // clang-format off
+    // clang-format off
   case LanguageId::C: return "c";
   case LanguageId::Cpp: return "cpp";
   case LanguageId::ObjC: return "objective-c";
@@ -42,8 +42,8 @@ const char *languageIdentifier(LanguageId lang) {
 }
 
 // Returns the hover or detailed name for `sym`, if any.
-std::pair<std::optional<MarkedString>, std::optional<MarkedString>>
-getHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
+std::pair<std::optional<MarkedString>, std::optional<MarkedString>> getHover(DB *db, LanguageId lang, SymbolRef sym,
+                                                                             int file_id) {
   const char *comments = nullptr;
   std::optional<MarkedString> ls_comments, hover;
   withEntity(db, sym, [&](const auto &entity) {
@@ -53,9 +53,7 @@ getHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
       if (d.spell) {
         if (d.comments[0])
           comments = d.comments;
-        if (const char *s =
-                d.hover[0] ? d.hover
-                           : d.detailed_name[0] ? d.detailed_name : nullptr) {
+        if (const char *s = d.hover[0] ? d.hover : d.detailed_name[0] ? d.detailed_name : nullptr) {
           if (!hover)
             hover = {languageIdentifier(lang), s};
           else if (strlen(s) > hover->value.size())
@@ -80,16 +78,14 @@ getHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
 }
 } // namespace
 
-void MessageHandler::textDocument_hover(TextDocumentPositionParam &param,
-                                        ReplyOnce &reply) {
+void MessageHandler::textDocument_hover(TextDocumentPositionParam &param, ReplyOnce &reply) {
   auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!wf)
     return;
 
   Hover result;
   for (SymbolRef sym : findSymbolsAtLocation(wf, file, param.position)) {
-    std::optional<lsRange> ls_range =
-        getLsRange(wfiles->getFile(file->def->path), sym.range);
+    std::optional<lsRange> ls_range = getLsRange(wfiles->getFile(file->def->path), sym.range);
     if (!ls_range)
       continue;
 

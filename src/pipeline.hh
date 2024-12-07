@@ -54,19 +54,17 @@ void threadLeave();
 void init();
 void launchStdin();
 void launchStdout();
-void indexer_Main(SemaManager *manager, VFS *vfs, Project *project,
-                  WorkingFiles *wfiles);
+void indexer_Main(SemaManager *manager, VFS *vfs, Project *project, WorkingFiles *wfiles);
 void indexerSort(const std::unordered_map<std::string, int> &dir2prio);
 void mainLoop();
 void standalone(const std::string &root);
 
-void index(const std::string &path, const std::vector<const char *> &args,
-           IndexMode mode, bool must_exist, RequestId id = {});
+void index(const std::string &path, const std::vector<const char *> &args, IndexMode mode, bool must_exist,
+           RequestId id = {});
 void removeCache(const std::string &path);
 std::optional<std::string> loadIndexedContent(const std::string &path);
 
-void notifyOrRequest(const char *method, bool request,
-                     const std::function<void(JsonWriter &)> &fn);
+void notifyOrRequest(const char *method, bool request, const std::function<void(JsonWriter &)> &fn);
 template <typename T> void notify(const char *method, T &result) {
   notifyOrRequest(method, false, [&](JsonWriter &w) { reflect(w, result); });
 }
@@ -76,8 +74,7 @@ template <typename T> void request(const char *method, T &result) {
 
 void reply(const RequestId &id, const std::function<void(JsonWriter &)> &fn);
 
-void replyError(const RequestId &id,
-                const std::function<void(JsonWriter &)> &fn);
+void replyError(const RequestId &id, const std::function<void(JsonWriter &)> &fn);
 template <typename T> void replyError(const RequestId &id, T &result) {
   replyError(id, [&](JsonWriter &w) { reflect(w, result); });
 }

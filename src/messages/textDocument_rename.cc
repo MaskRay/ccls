@@ -12,8 +12,7 @@ using namespace clang;
 
 namespace ccls {
 namespace {
-WorkspaceEdit buildWorkspaceEdit(DB *db, WorkingFiles *wfiles, SymbolRef sym,
-                                 std::string_view old_text,
+WorkspaceEdit buildWorkspaceEdit(DB *db, WorkingFiles *wfiles, SymbolRef sym, std::string_view old_text,
                                  const std::string &new_text) {
   std::unordered_map<int, std::pair<WorkingFile *, TextDocumentEdit>> path2edit;
   std::unordered_map<int, std::unordered_set<Range>> edited;
@@ -59,10 +58,8 @@ void MessageHandler::textDocument_rename(RenameParam &param, ReplyOnce &reply) {
   WorkspaceEdit result;
 
   for (SymbolRef sym : findSymbolsAtLocation(wf, file, param.position)) {
-    result = buildWorkspaceEdit(
-        db, wfiles, sym,
-        lexIdentifierAroundPos(param.position, wf->buffer_content),
-        param.newName);
+    result =
+        buildWorkspaceEdit(db, wfiles, sym, lexIdentifierAroundPos(param.position, wf->buffer_content), param.newName);
     break;
   }
 

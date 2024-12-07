@@ -143,35 +143,30 @@ void reflect(JsonWriter &vis, std::string_view &data) {
 void reflect(JsonReader &vis, JsonNull &v) {}
 void reflect(JsonWriter &vis, JsonNull &v) { vis.m->Null(); }
 
-template <typename V>
-void reflect(JsonReader &vis, std::unordered_map<Usr, V> &v) {
+template <typename V> void reflect(JsonReader &vis, std::unordered_map<Usr, V> &v) {
   vis.iterArray([&]() {
     V val;
     reflect(vis, val);
     v[val.usr] = std::move(val);
   });
 }
-template <typename V>
-void reflect(JsonWriter &vis, std::unordered_map<Usr, V> &v) {
+template <typename V> void reflect(JsonWriter &vis, std::unordered_map<Usr, V> &v) {
   // Determinism
   std::vector<std::pair<uint64_t, V>> xs(v.begin(), v.end());
-  std::sort(xs.begin(), xs.end(),
-            [](const auto &a, const auto &b) { return a.first < b.first; });
+  std::sort(xs.begin(), xs.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
   vis.startArray();
   for (auto &it : xs)
     reflect(vis, it.second);
   vis.endArray();
 }
-template <typename V>
-void reflect(BinaryReader &vis, std::unordered_map<Usr, V> &v) {
+template <typename V> void reflect(BinaryReader &vis, std::unordered_map<Usr, V> &v) {
   for (auto n = vis.varUInt(); n; n--) {
     V val;
     reflect(vis, val);
     v[val.usr] = std::move(val);
   }
 }
-template <typename V>
-void reflect(BinaryWriter &vis, std::unordered_map<Usr, V> &v) {
+template <typename V> void reflect(BinaryWriter &vis, std::unordered_map<Usr, V> &v) {
   vis.varUInt(v.size());
   for (auto &it : v)
     reflect(vis, it.second);
@@ -228,26 +223,22 @@ void reflect(JsonWriter &vis, IndexInclude &v) {
   reflectMemberEnd(vis);
 }
 
-template <typename Def>
-void reflectHoverAndComments(JsonReader &vis, Def &def) {
+template <typename Def> void reflectHoverAndComments(JsonReader &vis, Def &def) {
   reflectMember(vis, "hover", def.hover);
   reflectMember(vis, "comments", def.comments);
 }
-template <typename Def>
-void reflectHoverAndComments(JsonWriter &vis, Def &def) {
+template <typename Def> void reflectHoverAndComments(JsonWriter &vis, Def &def) {
   // Don't emit empty hover and comments in JSON test mode.
   if (!gTestOutputMode || def.hover[0])
     reflectMember(vis, "hover", def.hover);
   if (!gTestOutputMode || def.comments[0])
     reflectMember(vis, "comments", def.comments);
 }
-template <typename Def>
-void reflectHoverAndComments(BinaryReader &vis, Def &def) {
+template <typename Def> void reflectHoverAndComments(BinaryReader &vis, Def &def) {
   reflect(vis, def.hover);
   reflect(vis, def.comments);
 }
-template <typename Def>
-void reflectHoverAndComments(BinaryWriter &vis, Def &def) {
+template <typename Def> void reflectHoverAndComments(BinaryWriter &vis, Def &def) {
   reflect(vis, def.hover);
   reflect(vis, def.comments);
 }
@@ -256,8 +247,7 @@ template <typename Def> void reflectShortName(JsonReader &vis, Def &def) {
   if (gTestOutputMode) {
     std::string short_name;
     reflectMember(vis, "short_name", short_name);
-    def.short_name_offset =
-        std::string_view(def.detailed_name).find(short_name);
+    def.short_name_offset = std::string_view(def.detailed_name).find(short_name);
     assert(def.short_name_offset != std::string::npos);
     def.short_name_size = short_name.size();
   } else {
@@ -267,8 +257,7 @@ template <typename Def> void reflectShortName(JsonReader &vis, Def &def) {
 }
 template <typename Def> void reflectShortName(JsonWriter &vis, Def &def) {
   if (gTestOutputMode) {
-    std::string_view short_name(def.detailed_name + def.short_name_offset,
-                                def.short_name_size);
+    std::string_view short_name(def.detailed_name + def.short_name_offset, def.short_name_size);
     reflectMember(vis, "short_name", short_name);
   } else {
     reflectMember(vis, "short_name_offset", def.short_name_offset);
@@ -383,8 +372,7 @@ void reflectFile(BinaryReader &vis, IndexFile &v) { reflect1(vis, v); }
 void reflectFile(BinaryWriter &vis, IndexFile &v) { reflect1(vis, v); }
 
 void reflect(JsonReader &vis, SerializeFormat &v) {
-  v = vis.getString()[0] == 'j' ? SerializeFormat::Json
-                                : SerializeFormat::Binary;
+  v = vis.getString()[0] == 'j' ? SerializeFormat::Json : SerializeFormat::Binary;
 }
 
 void reflect(JsonWriter &vis, SerializeFormat &v) {
@@ -438,8 +426,7 @@ std::string serialize(SerializeFormat format, IndexFile &file) {
   case SerializeFormat::Json: {
     rapidjson::StringBuffer output;
     rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
-    writer.SetFormatOptions(
-        rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
+    writer.SetFormatOptions(rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
     writer.SetIndent(' ', 2);
     JsonWriter json_writer(&writer);
     if (!gTestOutputMode) {
@@ -455,11 +442,9 @@ std::string serialize(SerializeFormat format, IndexFile &file) {
   return "";
 }
 
-std::unique_ptr<IndexFile>
-deserialize(SerializeFormat format, const std::string &path,
-            const std::string &serialized_index_content,
-            const std::string &file_content,
-            std::optional<int> expected_version) {
+std::unique_ptr<IndexFile> deserialize(SerializeFormat format, const std::string &path,
+                                       const std::string &serialized_index_content, const std::string &file_content,
+                                       std::optional<int> expected_version) {
   if (serialized_index_content.empty())
     return nullptr;
 
@@ -473,8 +458,7 @@ deserialize(SerializeFormat format, const std::string &path,
       BinaryReader reader(serialized_index_content);
       reflect(reader, major);
       reflect(reader, minor);
-      if (major != IndexFile::kMajorVersion ||
-          minor != IndexFile::kMinorVersion)
+      if (major != IndexFile::kMajorVersion || minor != IndexFile::kMinorVersion)
         throw std::invalid_argument("Invalid version");
       file = std::make_unique<IndexFile>(path, file_content, false);
       reflectFile(reader, *file);
@@ -504,8 +488,7 @@ deserialize(SerializeFormat format, const std::string &path,
     try {
       reflectFile(json_reader, *file);
     } catch (std::invalid_argument &e) {
-      LOG_S(INFO) << "'" << path << "': failed to deserialize "
-                  << json_reader.getPath() << "." << e.what();
+      LOG_S(INFO) << "'" << path << "': failed to deserialize " << json_reader.getPath() << "." << e.what();
       return nullptr;
     }
     break;

@@ -29,8 +29,7 @@ std::string normalizePath(llvm::StringRef path) {
 
   std::replace(result.begin(), result.end(), '\\', '/');
   // Normalize drive letter.
-  if (result.size() > 1 && result[0] >= 'a' && result[0] <= 'z' &&
-      result[1] == ':')
+  if (result.size() > 1 && result[0] >= 'a' && result[0] <= 'z' && result[1] == ':')
     result[0] = toupper(result[0]);
   return result;
 }
@@ -40,9 +39,7 @@ void freeUnusedMemory() {}
 // TODO Wait for debugger to attach
 void traceMe() {}
 
-void spawnThread(void *(*fn)(void *), void *arg) {
-  std::thread(fn, arg).detach();
-}
+void spawnThread(void *(*fn)(void *), void *arg) { std::thread(fn, arg).detach(); }
 } // namespace ccls
 
 #endif

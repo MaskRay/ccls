@@ -16,11 +16,9 @@ REFLECT_STRUCT(Param, textDocument, position, direction);
 Maybe<Range> findParent(QueryFile *file, Pos pos) {
   Maybe<Range> parent;
   for (auto [sym, refcnt] : file->symbol2refcnt)
-    if (refcnt > 0 && sym.extent.valid() && sym.extent.start <= pos &&
-        pos < sym.extent.end &&
-        (!parent || (parent->start == sym.extent.start
-                         ? parent->end < sym.extent.end
-                         : parent->start < sym.extent.start)))
+    if (refcnt > 0 && sym.extent.valid() && sym.extent.start <= pos && pos < sym.extent.end &&
+        (!parent ||
+         (parent->start == sym.extent.start ? parent->end < sym.extent.end : parent->start < sym.extent.start)))
       parent = sym.extent;
   return parent;
 }
@@ -35,8 +33,7 @@ void MessageHandler::ccls_navigate(JsonReader &reader, ReplyOnce &reply) {
   }
   Position ls_pos = param.position;
   if (wf->index_lines.size())
-    if (auto line =
-            wf->getIndexPosFromBufferPos(ls_pos.line, &ls_pos.character, false))
+    if (auto line = wf->getIndexPosFromBufferPos(ls_pos.line, &ls_pos.character, false))
       ls_pos.line = *line;
   Pos pos{(uint16_t)ls_pos.line, (int16_t)ls_pos.character};
 
@@ -45,8 +42,7 @@ void MessageHandler::ccls_navigate(JsonReader &reader, ReplyOnce &reply) {
   case 'D': {
     Maybe<Range> parent = findParent(file, pos);
     for (auto [sym, refcnt] : file->symbol2refcnt)
-      if (refcnt > 0 && pos < sym.extent.start &&
-          (!parent || sym.extent.end <= parent->end) &&
+      if (refcnt > 0 && pos < sym.extent.start && (!parent || sym.extent.end <= parent->end) &&
           (!res || sym.extent.start < res->start))
         res = sym.extent;
     break;
@@ -54,8 +50,7 @@ void MessageHandler::ccls_navigate(JsonReader &reader, ReplyOnce &reply) {
   case 'L':
     for (auto [sym, refcnt] : file->symbol2refcnt)
       if (refcnt > 0 && sym.extent.valid() && sym.extent.end <= pos &&
-          (!res || (res->end == sym.extent.end ? sym.extent.start < res->start
-                                               : res->end < sym.extent.end)))
+          (!res || (res->end == sym.extent.end ? sym.extent.start < res->start : res->end < sym.extent.end)))
         res = sym.extent;
     break;
   case 'R': {
@@ -67,17 +62,15 @@ void MessageHandler::ccls_navigate(JsonReader &reader, ReplyOnce &reply) {
     }
     for (auto [sym, refcnt] : file->symbol2refcnt)
       if (refcnt > 0 && sym.extent.valid() && pos < sym.extent.start &&
-          (!res ||
-           (sym.extent.start == res->start ? res->end < sym.extent.end
-                                           : sym.extent.start < res->start)))
+          (!res || (sym.extent.start == res->start ? res->end < sym.extent.end : sym.extent.start < res->start)))
         res = sym.extent;
     break;
   }
   case 'U':
   default:
     for (auto [sym, refcnt] : file->symbol2refcnt)
-      if (refcnt > 0 && sym.extent.valid() && sym.extent.start < pos &&
-          pos < sym.extent.end && (!res || res->start < sym.extent.start))
+      if (refcnt > 0 && sym.extent.valid() && sym.extent.start < pos && pos < sym.extent.end &&
+          (!res || res->start < sym.extent.start))
         res = sym.extent;
     break;
   }

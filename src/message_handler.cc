@@ -20,14 +20,13 @@ using namespace clang;
 
 #if LLVM_VERSION_MAJOR < 15 // llvmorg-15-init-6118-gb39f43775796
 namespace llvm {
-template <typename T, typename E>
-constexpr bool is_contained(std::initializer_list<T> set, const E &e) {
+template <typename T, typename E> constexpr bool is_contained(std::initializer_list<T> set, const E &e) {
   for (const T &v : set)
     if (v == e)
       return true;
   return false;
 }
-}
+} // namespace llvm
 #endif
 
 MAKE_HASHABLE(ccls::SymbolIdx, t.usr, t.kind);
@@ -52,8 +51,7 @@ REFLECT_STRUCT(CompletionParam, textDocument, position, context);
 // formatting
 REFLECT_STRUCT(FormattingOptions, tabSize, insertSpaces);
 REFLECT_STRUCT(DocumentFormattingParam, textDocument, options);
-REFLECT_STRUCT(DocumentOnTypeFormattingParam, textDocument, position, ch,
-               options);
+REFLECT_STRUCT(DocumentOnTypeFormattingParam, textDocument, position, ch, options);
 REFLECT_STRUCT(DocumentRangeFormattingParam, textDocument, range, options);
 
 // workspace
@@ -133,21 +131,15 @@ void ReplyOnce::replyLocationLink(std::vector<LocationLink> &result) {
   if (g_config->client.linkSupport) {
     (*this)(result);
   } else {
-    (*this)(std::vector<Location>(std::make_move_iterator(result.begin()),
-                                  std::make_move_iterator(result.end())));
+    (*this)(std::vector<Location>(std::make_move_iterator(result.begin()), std::make_move_iterator(result.end())));
   }
 }
 
-void MessageHandler::bind(const char *method,
-                          void (MessageHandler::*handler)(JsonReader &)) {
-  method2notification[method] = [this, handler](JsonReader &reader) {
-    (this->*handler)(reader);
-  };
+void MessageHandler::bind(const char *method, void (MessageHandler::*handler)(JsonReader &)) {
+  method2notification[method] = [this, handler](JsonReader &reader) { (this->*handler)(reader); };
 }
 
-template <typename Param>
-void MessageHandler::bind(const char *method,
-                          void (MessageHandler::*handler)(Param &)) {
+template <typename Param> void MessageHandler::bind(const char *method, void (MessageHandler::*handler)(Param &)) {
   method2notification[method] = [this, handler](JsonReader &reader) {
     Param param{};
     reflect(reader, param);
@@ -155,21 +147,13 @@ void MessageHandler::bind(const char *method,
   };
 }
 
-void MessageHandler::bind(const char *method,
-                          void (MessageHandler::*handler)(JsonReader &,
-                                                          ReplyOnce &)) {
-  method2request[method] = [this, handler](JsonReader &reader,
-                                           ReplyOnce &reply) {
-    (this->*handler)(reader, reply);
-  };
+void MessageHandler::bind(const char *method, void (MessageHandler::*handler)(JsonReader &, ReplyOnce &)) {
+  method2request[method] = [this, handler](JsonReader &reader, ReplyOnce &reply) { (this->*handler)(reader, reply); };
 }
 
 template <typename Param>
-void MessageHandler::bind(const char *method,
-                          void (MessageHandler::*handler)(Param &,
-                                                          ReplyOnce &)) {
-  method2request[method] = [this, handler](JsonReader &reader,
-                                           ReplyOnce &reply) {
+void MessageHandler::bind(const char *method, void (MessageHandler::*handler)(Param &, ReplyOnce &)) {
+  method2request[method] = [this, handler](JsonReader &reader, ReplyOnce &reply) {
     Param param{};
     reflect(reader, param);
     (this->*handler)(param, reply);
@@ -239,13 +223,11 @@ void MessageHandler::run(InMessage &msg) {
         it->second(reader, reply);
       } catch (std::invalid_argument &ex) {
         reply.error(ErrorCode::InvalidParams,
-                    "invalid params of " + msg.method + ": expected " +
-                        ex.what() + " for " + reader.getPath());
+                    "invalid params of " + msg.method + ": expected " + ex.what() + " for " + reader.getPath());
       } catch (NotIndexed &) {
         throw;
       } catch (...) {
-        reply.error(ErrorCode::InternalError,
-                    "failed to process " + msg.method);
+        reply.error(ErrorCode::InternalError, "failed to process " + msg.method);
       }
     } else {
       reply.error(ErrorCode::MethodNotFound, "unknown request " + msg.method);
@@ -256,8 +238,7 @@ void MessageHandler::run(InMessage &msg) {
       try {
         it->second(reader);
       } catch (...) {
-        ShowMessageParam param{MessageType::Error,
-                               std::string("failed to process ") + msg.method};
+        ShowMessageParam param{MessageType::Error, std::string("failed to process ") + msg.method};
         pipeline::notify(window_showMessage, param);
       }
   }
@@ -280,9 +261,8 @@ QueryFile *MessageHandler::findFile(const std::string &path, int *out_file_id) {
   return ret;
 }
 
-std::pair<QueryFile *, WorkingFile *>
-MessageHandler::findOrFail(const std::string &path, ReplyOnce &reply,
-                           int *out_file_id, bool allow_unopened) {
+std::pair<QueryFile *, WorkingFile *> MessageHandler::findOrFail(const std::string &path, ReplyOnce &reply,
+                                                                 int *out_file_id, bool allow_unopened) {
   WorkingFile *wf = wfiles->getFile(path);
   if (!wf && !allow_unopened) {
     reply.notOpened(path);
@@ -309,8 +289,7 @@ void emitSkippedRanges(WorkingFile *wfile, QueryFile &file) {
 
 static std::unordered_map<SymbolIdx, CclsSemanticHighlightSymbol> computeSemanticTokens(DB *db, WorkingFile *wfile,
                                                                                         QueryFile &file) {
-  static GroupMatch match(g_config->highlight.whitelist,
-                          g_config->highlight.blacklist);
+  static GroupMatch match(g_config->highlight.whitelist, g_config->highlight.blacklist);
   assert(file.def);
   // Group symbols together.
   std::unordered_map<SymbolIdx, CclsSemanticHighlightSymbol> grouped_symbols;
@@ -347,8 +326,7 @@ static std::unordered_map<SymbolIdx, CclsSemanticHighlightSymbol> computeSemanti
       // If not, do not publish the semantic highlight.
       // E.g. copy-initialization of constructors should not be highlighted
       // but we still want to keep the range for jumping to definition.
-      std::string_view concise_name =
-          detailed_name.substr(0, detailed_name.find('<'));
+      std::string_view concise_name = detailed_name.substr(0, detailed_name.find('<'));
       uint16_t start_line = sym.range.start.line;
       int16_t start_col = sym.range.start.column;
       if (start_line >= wfile->index_lines.size())
@@ -482,8 +460,7 @@ void emitSemanticHighlight(DB *db, WorkingFile *wfile, QueryFile &file) {
       for (; c < col && i < buf.size() && buf[i] != '\n'; c++)
         if (p++, uint8_t(buf[i++]) >= 128)
           // Skip 0b10xxxxxx
-          while (i < buf.size() && uint8_t(buf[i]) >= 128 &&
-                 uint8_t(buf[i]) < 192)
+          while (i < buf.size() && uint8_t(buf[i]) >= 128 && uint8_t(buf[i]) < 192)
             i++;
       return c < col;
     };

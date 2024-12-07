@@ -20,9 +20,7 @@ struct Pos {
 
   // Compare two Positions and check if they are equal. Ignores the value of
   // |interesting|.
-  bool operator==(const Pos &o) const {
-    return line == o.line && column == o.column;
-  }
+  bool operator==(const Pos &o) const { return line == o.line && column == o.column; }
   bool operator<(const Pos &o) const {
     if (line != o.line)
       return line < o.line;
@@ -42,12 +40,8 @@ struct Range {
 
   std::string toString();
 
-  bool operator==(const Range &o) const {
-    return start == o.start && end == o.end;
-  }
-  bool operator<(const Range &o) const {
-    return !(start == o.start) ? start < o.start : end < o.end;
-  }
+  bool operator==(const Range &o) const { return start == o.start && end == o.end; }
+  bool operator<(const Range &o) const { return !(start == o.start) ? start < o.start : end < o.end; }
 };
 
 // reflection

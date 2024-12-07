@@ -9,11 +9,9 @@
 #include <stdlib.h>
 
 namespace ccls {
-void MessageHandler::textDocument_declaration(TextDocumentPositionParam &param,
-                                              ReplyOnce &reply) {
+void MessageHandler::textDocument_declaration(TextDocumentPositionParam &param, ReplyOnce &reply) {
   int file_id;
-  auto [file, wf] =
-      findOrFail(param.textDocument.uri.getPath(), reply, &file_id);
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply, &file_id);
   if (!wf)
     return;
 
@@ -21,18 +19,15 @@ void MessageHandler::textDocument_declaration(TextDocumentPositionParam &param,
   Position &ls_pos = param.position;
   for (SymbolRef sym : findSymbolsAtLocation(wf, file, param.position))
     for (DeclRef dr : getNonDefDeclarations(db, sym))
-      if (!(dr.file_id == file_id &&
-            dr.range.contains(ls_pos.line, ls_pos.character)))
+      if (!(dr.file_id == file_id && dr.range.contains(ls_pos.line, ls_pos.character)))
         if (auto loc = getLocationLink(db, wfiles, dr))
           result.push_back(loc);
   reply.replyLocationLink(result);
 }
 
-void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
-                                             ReplyOnce &reply) {
+void MessageHandler::textDocument_definition(TextDocumentPositionParam &param, ReplyOnce &reply) {
   int file_id;
-  auto [file, wf] =
-      findOrFail(param.textDocument.uri.getPath(), reply, &file_id);
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply, &file_id);
   if (!wf)
     return;
 
@@ -48,8 +43,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
     eachEntityDef(db, sym, [&](const auto &def) {
       if (def.spell) {
         DeclRef spell = *def.spell;
-        if (spell.file_id == file_id &&
-            spell.range.contains(ls_pos.line, ls_pos.character)) {
+        if (spell.file_id == file_id && spell.range.contains(ls_pos.line, ls_pos.character)) {
           on_def = spell;
           drs.clear();
           return false;
@@ -63,8 +57,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
     // all declarations/definitions.
     if (drs.empty()) {
       for (DeclRef dr : getNonDefDeclarations(db, sym))
-        if (!(dr.file_id == file_id &&
-              dr.range.contains(ls_pos.line, ls_pos.character)))
+        if (!(dr.file_id == file_id && dr.range.contains(ls_pos.line, ls_pos.character)))
           drs.push_back(dr);
       // There is no declaration but the cursor is on a definition.
       if (drs.empty() && on_def)
@@ -80,8 +73,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
     // Check #include
     for (const IndexInclude &include : file->def->includes) {
       if (include.line == ls_pos.line) {
-        result.push_back(
-            {DocumentUri::fromPath(include.resolved_path).raw_uri});
+        result.push_back({DocumentUri::fromPath(include.resolved_path).raw_uri});
         range = {{0, 0}, {0, 0}};
         break;
       }
@@ -106,15 +98,12 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
       best_sym.kind = Kind::Invalid;
       auto fn = [&](SymbolIdx sym) {
         std::string_view short_name = db->getSymbolName(sym, false),
-                         name = short_query.size() < query.size()
-                                    ? db->getSymbolName(sym, true)
-                                    : short_name;
+                         name = short_query.size() < query.size() ? db->getSymbolName(sym, true) : short_name;
         if (short_name != short_query)
           return;
         if (Maybe<DeclRef> dr = getDefinitionSpell(db, sym)) {
-          std::tuple<int, int, bool, int> score{
-              int(name.size() - short_query.size()), 0, dr->file_id != file_id,
-              std::abs(dr->range.start.line - position.line)};
+          std::tuple<int, int, bool, int> score{int(name.size() - short_query.size()), 0, dr->file_id != file_id,
+                                                std::abs(dr->range.start.line - position.line)};
           // Update the score with qualified name if the qualified name
           // occurs in |name|.
           auto pos = name.rfind(query);
@@ -148,8 +137,7 @@ void MessageHandler::textDocument_definition(TextDocumentPositionParam &param,
   reply.replyLocationLink(result);
 }
 
-void MessageHandler::textDocument_typeDefinition(
-    TextDocumentPositionParam &param, ReplyOnce &reply) {
+void MessageHandler::textDocument_typeDefinition(TextDocumentPositionParam &param, ReplyOnce &reply) {
   auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!file)
     return;

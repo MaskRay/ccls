@@ -8,8 +8,7 @@
 
 namespace ccls {
 REFLECT_STRUCT(IndexInclude, line, resolved_path);
-REFLECT_STRUCT(QueryFile::Def, path, args, language, dependencies, includes,
-               skipped_ranges);
+REFLECT_STRUCT(QueryFile::Def, path, args, language, dependencies, includes, skipped_ranges);
 
 namespace {
 struct Out_cclsInfo {
@@ -50,8 +49,7 @@ struct FileInfoParam : TextDocumentParam {
   bool includes = false;
   bool skipped_ranges = false;
 };
-REFLECT_STRUCT(FileInfoParam, textDocument, dependencies, includes,
-               skipped_ranges);
+REFLECT_STRUCT(FileInfoParam, textDocument, dependencies, includes, skipped_ranges);
 
 void MessageHandler::ccls_fileInfo(JsonReader &reader, ReplyOnce &reply) {
   FileInfoParam param;

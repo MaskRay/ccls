@@ -29,12 +29,10 @@ void getFilesInFolder(std::string folder, bool recursive, bool dir_prefix,
       std::error_code ec;
       std::string folder1 = curr.back();
       curr.pop_back();
-      for (sys::fs::directory_iterator i(folder1, ec, false), e; i != e && !ec;
-           i.increment(ec)) {
+      for (sys::fs::directory_iterator i(folder1, ec, false), e; i != e && !ec; i.increment(ec)) {
         std::string path = i->path();
         std::string filename(sys::path::filename(path));
-        if ((filename[0] == '.' && filename != ".ccls") ||
-            sys::fs::status(path, status, false))
+        if ((filename[0] == '.' && filename != ".ccls") || sys::fs::status(path, status, false))
           continue;
         if (sys::fs::is_symlink_file(status)) {
           if (sys::fs::status(path, status, true))
@@ -49,8 +47,7 @@ void getFilesInFolder(std::string folder, bool recursive, bool dir_prefix,
           if (!dir_prefix)
             path = path.substr(folder.size());
           handler(sys::path::convert_to_slash(path));
-        } else if (recursive && sys::fs::is_directory(status) &&
-                   !seen.count(id = status.getUniqueID())) {
+        } else if (recursive && sys::fs::is_directory(status) && !seen.count(id = status.getUniqueID())) {
           curr.push_back(path);
           seen.insert(id);
         }

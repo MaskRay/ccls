@@ -32,10 +32,8 @@ struct Matcher {
 struct GroupMatch {
   std::vector<Matcher> whitelist, blacklist;
 
-  GroupMatch(const std::vector<std::string> &whitelist,
-             const std::vector<std::string> &blacklist);
-  bool matches(const std::string &text,
-               std::string *blacklist_pattern = nullptr) const;
+  GroupMatch(const std::vector<std::string> &whitelist, const std::vector<std::string> &blacklist);
+  bool matches(const std::string &text, std::string *blacklist_pattern = nullptr) const;
 };
 
 uint64_t hashUsr(llvm::StringRef s);
@@ -49,8 +47,7 @@ void ensureEndsInSlash(std::string &path);
 // e.g. foo/bar.c => foo_bar.c
 std::string escapeFileName(std::string path);
 
-std::string resolveIfRelative(const std::string &directory,
-                              const std::string &path);
+std::string resolveIfRelative(const std::string &directory, const std::string &path);
 std::string realPath(const std::string &path);
 bool normalizeFolder(std::string &path);
 
@@ -58,8 +55,7 @@ std::optional<int64_t> lastWriteTime(const std::string &path);
 std::optional<std::string> readContent(const std::string &filename);
 void writeToFile(const std::string &filename, const std::string &content);
 
-int reverseSubseqMatch(std::string_view pat, std::string_view text,
-                       int case_sensitivity);
+int reverseSubseqMatch(std::string_view pat, std::string_view text, int case_sensitivity);
 
 // http://stackoverflow.com/a/38140932
 //
@@ -72,22 +68,21 @@ int reverseSubseqMatch(std::string_view pat, std::string_view text,
 
 inline void hash_combine(std::size_t &seed) {}
 
-template <typename T, typename... Rest>
-inline void hash_combine(std::size_t &seed, const T &v, Rest... rest) {
+template <typename T, typename... Rest> inline void hash_combine(std::size_t &seed, const T &v, Rest... rest) {
   std::hash<T> hasher;
   seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
   hash_combine(seed, rest...);
 }
 
-#define MAKE_HASHABLE(type, ...)                                               \
-  namespace std {                                                              \
-  template <> struct hash<type> {                                              \
-    std::size_t operator()(const type &t) const {                              \
-      std::size_t ret = 0;                                                     \
-      ccls::hash_combine(ret, __VA_ARGS__);                                    \
-      return ret;                                                              \
-    }                                                                          \
-  };                                                                           \
+#define MAKE_HASHABLE(type, ...)                                                                                       \
+  namespace std {                                                                                                      \
+  template <> struct hash<type> {                                                                                      \
+    std::size_t operator()(const type &t) const {                                                                      \
+      std::size_t ret = 0;                                                                                             \
+      ccls::hash_combine(ret, __VA_ARGS__);                                                                            \
+      return ret;                                                                                                      \
+    }                                                                                                                  \
+  };                                                                                                                   \
   }
 
 std::string getDefaultResourceDirectory();
@@ -133,14 +128,11 @@ public:
 template <typename T> struct Vec {
   std::unique_ptr<T[]> a;
   int s = 0;
-#if !(__clang__ || __GNUC__ > 7 || __GNUC__ == 7 && __GNUC_MINOR__ >= 4) ||    \
-    defined(_WIN32)
+#if !(__clang__ || __GNUC__ > 7 || __GNUC__ == 7 && __GNUC_MINOR__ >= 4) || defined(_WIN32)
   // Work around a bug in GCC<7.4 that optional<IndexUpdate> would not be
   // construtible.
   Vec() = default;
-  Vec(const Vec &o) : a(std::make_unique<T[]>(o.s)), s(o.s) {
-    std::copy(o.a.get(), o.a.get() + o.s, a.get());
-  }
+  Vec(const Vec &o) : a(std::make_unique<T[]>(o.s)), s(o.s) { std::copy(o.a.get(), o.a.get() + o.s, a.get()); }
   Vec(Vec &&) = default;
   Vec &operator=(Vec &&) = default;
   Vec(std::unique_ptr<T[]> a, int s) : a(std::move(a)), s(s) {}

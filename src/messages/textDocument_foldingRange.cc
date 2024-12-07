@@ -13,12 +13,10 @@ struct FoldingRange {
   int startLine, startCharacter, endLine, endCharacter;
   std::string kind = "region";
 };
-REFLECT_STRUCT(FoldingRange, startLine, startCharacter, endLine, endCharacter,
-               kind);
+REFLECT_STRUCT(FoldingRange, startLine, startCharacter, endLine, endCharacter, kind);
 } // namespace
 
-void MessageHandler::textDocument_foldingRange(TextDocumentParam &param,
-                                               ReplyOnce &reply) {
+void MessageHandler::textDocument_foldingRange(TextDocumentParam &param, ReplyOnce &reply) {
   auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
   if (!wf)
     return;
@@ -26,8 +24,7 @@ void MessageHandler::textDocument_foldingRange(TextDocumentParam &param,
   std::optional<lsRange> ls_range;
 
   for (auto [sym, refcnt] : file->symbol2refcnt)
-    if (refcnt > 0 && sym.extent.valid() &&
-        (sym.kind == Kind::Func || sym.kind == Kind::Type) &&
+    if (refcnt > 0 && sym.extent.valid() && (sym.kind == Kind::Func || sym.kind == Kind::Type) &&
         (ls_range = getLsRange(wf, sym.extent))) {
       FoldingRange &fold = result.emplace_back();
       fold.startLine = ls_range->start.line;

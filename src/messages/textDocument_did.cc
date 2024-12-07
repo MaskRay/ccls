@@ -28,8 +28,7 @@ void MessageHandler::textDocument_didClose(TextDocumentParam &param) {
 void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
   std::string path = param.textDocument.uri.getPath();
   WorkingFile *wf = wfiles->onOpen(param.textDocument);
-  if (std::optional<std::string> cached_file_contents =
-          pipeline::loadIndexedContent(path))
+  if (std::optional<std::string> cached_file_contents = pipeline::loadIndexedContent(path))
     wf->setIndexContent(*cached_file_contents);
 
   QueryFile *file = findFile(path);
@@ -41,8 +40,7 @@ void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
   // Submit new index request if it is not a header file or there is no
   // pending index request.
   auto [lang, header] = lookupExtension(path);
-  if ((lang != LanguageId::Unknown && !header) ||
-      pipeline::stats.completed == pipeline::stats.enqueued)
+  if ((lang != LanguageId::Unknown && !header) || pipeline::stats.completed == pipeline::stats.enqueued)
     pipeline::index(path, {}, IndexMode::Normal, false);
   if (header)
     project->indexRelated(path);

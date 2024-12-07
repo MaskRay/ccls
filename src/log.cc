@@ -17,8 +17,7 @@ static std::mutex mtx;
 FILE *file;
 Verbosity verbosity;
 
-Message::Message(Verbosity verbosity, const char *file, int line)
-    : verbosity_(verbosity) {
+Message::Message(Verbosity verbosity, const char *file, int line) : verbosity_(verbosity) {
   using namespace llvm;
   time_t tim = time(NULL);
   struct tm t;
@@ -38,8 +37,7 @@ Message::Message(Verbosity verbosity, const char *file, int line)
     const char *p = strrchr(file, '/');
     if (p)
       file = p + 1;
-    stream_ << std::right << std::setw(15) << file << ':' << std::left
-            << std::setw(3) << line;
+    stream_ << std::right << std::setw(15) << file << ':' << std::left << std::setw(3) << line;
   }
   stream_ << ' ';
   // clang-format off
