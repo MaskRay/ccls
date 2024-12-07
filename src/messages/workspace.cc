@@ -30,12 +30,10 @@ void MessageHandler::workspace_didChangeConfiguration(EmptyParam &) {
   manager->clear();
 };
 
-void MessageHandler::workspace_didChangeWatchedFiles(
-    DidChangeWatchedFilesParam &param) {
+void MessageHandler::workspace_didChangeWatchedFiles(DidChangeWatchedFilesParam &param) {
   for (auto &event : param.changes) {
     std::string path = event.uri.getPath();
-    if ((g_config->cache.directory.size() &&
-         StringRef(path).startswith(g_config->cache.directory)) ||
+    if ((g_config->cache.directory.size() && StringRef(path).startswith(g_config->cache.directory)) ||
         lookupExtension(path).first == LanguageId::Unknown)
       return;
     for (std::string cur = path; cur.size(); cur = sys::path::parent_path(cur))
@@ -45,8 +43,7 @@ void MessageHandler::workspace_didChangeWatchedFiles(
     switch (event.type) {
     case FileChangeType::Created:
     case FileChangeType::Changed: {
-      IndexMode mode =
-          wfiles->getFile(path) ? IndexMode::Normal : IndexMode::Background;
+      IndexMode mode = wfiles->getFile(path) ? IndexMode::Normal : IndexMode::Background;
       pipeline::index(path, {}, mode, true);
       if (event.type == FileChangeType::Changed) {
         if (mode == IndexMode::Normal)
@@ -64,14 +61,12 @@ void MessageHandler::workspace_didChangeWatchedFiles(
   }
 }
 
-void MessageHandler::workspace_didChangeWorkspaceFolders(
-    DidChangeWorkspaceFoldersParam &param) {
+void MessageHandler::workspace_didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParam &param) {
   for (const WorkspaceFolder &wf : param.event.removed) {
     std::string root = wf.uri.getPath();
     ensureEndsInSlash(root);
     LOG_S(INFO) << "delete workspace folder " << wf.name << ": " << root;
-    auto it = llvm::find_if(g_config->workspaceFolders,
-                            [&](auto &folder) { return folder.first == root; });
+    auto it = llvm::find_if(g_config->workspaceFolders, [&](auto &folder) { return folder.first == root; });
     if (it != g_config->workspaceFolders.end()) {
       g_config->workspaceFolders.erase(it);
       {
@@ -105,10 +100,8 @@ void MessageHandler::workspace_didChangeWorkspaceFolders(
 
 namespace {
 // Lookup |symbol| in |db| and insert the value into |result|.
-bool addSymbol(
-    DB *db, WorkingFiles *wfiles, const std::vector<uint8_t> &file_set,
-    SymbolIdx sym, bool use_detailed,
-    std::vector<std::tuple<SymbolInformation, int, SymbolIdx>> *result) {
+bool addSymbol(DB *db, WorkingFiles *wfiles, const std::vector<uint8_t> &file_set, SymbolIdx sym, bool use_detailed,
+               std::vector<std::tuple<SymbolInformation, int, SymbolIdx>> *result) {
   std::optional<SymbolInformation> info = getSymbolInfo(db, sym, true);
   if (!info)
     return false;
@@ -143,8 +136,7 @@ bool addSymbol(
 }
 } // namespace
 
-void MessageHandler::workspace_symbol(WorkspaceSymbolParam &param,
-                                      ReplyOnce &reply) {
+void MessageHandler::workspace_symbol(WorkspaceSymbolParam &param, ReplyOnce &reply) {
   std::vector<SymbolInformation> result;
   const std::string &query = param.query;
   for (auto &folder : param.folders)
@@ -166,9 +158,7 @@ void MessageHandler::workspace_symbol(WorkspaceSymbolParam &param,
     std::string_view detailed_name = db->getSymbolName(sym, true);
     int pos = reverseSubseqMatch(query_without_space, detailed_name, sensitive);
     return pos >= 0 &&
-           addSymbol(db, wfiles, file_set, sym,
-                     detailed_name.find(':', pos) != std::string::npos,
-                     &cands) &&
+           addSymbol(db, wfiles, file_set, sym, detailed_name.find(':', pos) != std::string::npos, &cands) &&
            cands.size() >= g_config->workspaceSymbol.maxNum;
   };
   for (auto &func : db->funcs)
@@ -186,15 +176,11 @@ done_add:
     // Sort results with a fuzzy matching algorithm.
     int longest = 0;
     for (auto &cand : cands)
-      longest = std::max(
-          longest, int(db->getSymbolName(std::get<2>(cand), true).size()));
+      longest = std::max(longest, int(db->getSymbolName(std::get<2>(cand), true).size()));
     FuzzyMatcher fuzzy(query, g_config->workspaceSymbol.caseSensitivity);
     for (auto &cand : cands)
-      std::get<1>(cand) = fuzzy.match(
-          db->getSymbolName(std::get<2>(cand), std::get<1>(cand)), false);
-    std::sort(cands.begin(), cands.end(), [](const auto &l, const auto &r) {
-      return std::get<1>(l) > std::get<1>(r);
-    });
+      std::get<1>(cand) = fuzzy.match(db->getSymbolName(std::get<2>(cand), std::get<1>(cand)), false);
+    std::sort(cands.begin(), cands.end(), [](const auto &l, const auto &r) { return std::get<1>(l) > std::get<1>(r); });
     result.reserve(cands.size());
     for (auto &cand : cands) {
       // Discard awful candidates.

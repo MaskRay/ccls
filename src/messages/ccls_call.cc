@@ -13,17 +13,10 @@ namespace ccls {
 
 namespace {
 
-enum class CallType : uint8_t {
-  Direct = 0,
-  Base = 1,
-  Derived = 2,
-  All = 1 | 2
-};
+enum class CallType : uint8_t { Direct = 0, Base = 1, Derived = 2, All = 1 | 2 };
 REFLECT_UNDERLYING(CallType);
 
-bool operator&(CallType lhs, CallType rhs) {
-  return uint8_t(lhs) & uint8_t(rhs);
-}
+bool operator&(CallType lhs, CallType rhs) { return uint8_t(lhs) & uint8_t(rhs); }
 
 struct Param : TextDocumentPositionParam {
   // If id is specified, expand a node; otherwise textDocument+position should
@@ -41,8 +34,7 @@ struct Param : TextDocumentPositionParam {
   int levels = 1;
   bool hierarchy = false;
 };
-REFLECT_STRUCT(Param, textDocument, position, id, callee, callType, qualified,
-               levels, hierarchy);
+REFLECT_STRUCT(Param, textDocument, position, id, callee, callType, qualified, levels, hierarchy);
 
 struct Out_cclsCall {
   Usr usr;
@@ -53,13 +45,10 @@ struct Out_cclsCall {
   int numChildren;
   // Empty if the |levels| limit is reached.
   std::vector<Out_cclsCall> children;
-  bool operator==(const Out_cclsCall &o) const {
-    return location == o.location;
-  }
+  bool operator==(const Out_cclsCall &o) const { return location == o.location; }
   bool operator<(const Out_cclsCall &o) const { return location < o.location; }
 };
-REFLECT_STRUCT(Out_cclsCall, id, name, location, callType, numChildren,
-               children);
+REFLECT_STRUCT(Out_cclsCall, id, name, location, callType, numChildren, children);
 
 struct Out_incomingCall {
   CallHierarchyItem from;
@@ -73,8 +62,7 @@ struct Out_outgoingCall {
 };
 REFLECT_STRUCT(Out_outgoingCall, to, fromRanges);
 
-bool expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
-            CallType call_type, bool qualified, int levels) {
+bool expand(MessageHandler *m, Out_cclsCall *entry, bool callee, CallType call_type, bool qualified, int levels) {
   const QueryFunc &func = m->db->getFunc(entry->usr);
   const QueryFunc::Def *def = func.anyDef();
   entry->numChildren = 0;
@@ -86,8 +74,7 @@ bool expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
       Out_cclsCall entry1;
       entry1.id = std::to_string(sym.usr);
       entry1.usr = sym.usr;
-      if (auto loc = getLsLocation(m->db, m->wfiles,
-                                   Use{{sym.range, sym.role}, file_id}))
+      if (auto loc = getLsLocation(m->db, m->wfiles, Use{{sym.range, sym.role}, file_id}))
         entry1.location = *loc;
       entry1.callType = call_type1;
       if (expand(m, &entry1, callee, call_type, qualified, levels - 1))
@@ -105,10 +92,8 @@ bool expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
         const QueryFile &file1 = m->db->files[use.file_id];
         Maybe<ExtentRef> best;
         for (auto [sym, refcnt] : file1.symbol2refcnt)
-          if (refcnt > 0 && sym.extent.valid() && sym.kind == Kind::Func &&
-              sym.extent.start <= use.range.start &&
-              use.range.end <= sym.extent.end &&
-              (!best || best->extent.start < sym.extent.start))
+          if (refcnt > 0 && sym.extent.valid() && sym.kind == Kind::Func && sym.extent.start <= use.range.start &&
+              use.range.end <= sym.extent.end && (!best || best->extent.start < sym.extent.start))
             best = sym;
         if (best)
           handle(*best, use.file_id, call_type);
@@ -157,14 +142,11 @@ bool expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
   }
 
   std::sort(entry->children.begin(), entry->children.end());
-  entry->children.erase(
-      std::unique(entry->children.begin(), entry->children.end()),
-      entry->children.end());
+  entry->children.erase(std::unique(entry->children.begin(), entry->children.end()), entry->children.end());
   return true;
 }
 
-std::optional<Out_cclsCall> buildInitial(MessageHandler *m, Usr root_usr,
-                                         bool callee, CallType call_type,
+std::optional<Out_cclsCall> buildInitial(MessageHandler *m, Usr root_usr, bool callee, CallType call_type,
                                          bool qualified, int levels) {
   const auto *def = m->db->getFunc(root_usr).anyDef();
   if (!def)
@@ -198,16 +180,14 @@ void MessageHandler::ccls_call(JsonReader &reader, ReplyOnce &reply) {
     result->usr = param.usr;
     result->callType = CallType::Direct;
     if (db->hasFunc(param.usr))
-      expand(this, &*result, param.callee, param.callType, param.qualified,
-             param.levels);
+      expand(this, &*result, param.callee, param.callType, param.qualified, param.levels);
   } else {
     auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
     if (!wf)
       return;
     for (SymbolRef sym : findSymbolsAtLocation(wf, file, param.position)) {
       if (sym.kind == Kind::Func) {
-        result = buildInitial(this, sym.usr, param.callee, param.callType,
-                              param.qualified, param.levels);
+        result = buildInitial(this, sym.usr, param.callee, param.callType, param.qualified, param.levels);
         break;
       }
     }
@@ -219,8 +199,7 @@ void MessageHandler::ccls_call(JsonReader &reader, ReplyOnce &reply) {
     reply(flattenHierarchy(result));
 }
 
-void MessageHandler::textDocument_prepareCallHierarchy(
-    TextDocumentPositionParam &param, ReplyOnce &reply) {
+void MessageHandler::textDocument_prepareCallHierarchy(TextDocumentPositionParam &param, ReplyOnce &reply) {
   std::string path = param.textDocument.uri.getPath();
   auto [file, wf] = findOrFail(path, reply);
   if (!file)
@@ -247,13 +226,9 @@ void MessageHandler::textDocument_prepareCallHierarchy(
   reply(result);
 }
 
-static lsRange toLsRange(Range r) {
-  return {{r.start.line, r.start.column}, {r.end.line, r.end.column}};
-}
+static lsRange toLsRange(Range r) { return {{r.start.line, r.start.column}, {r.end.line, r.end.column}}; }
 
-static void
-add(std::map<SymbolIdx, std::pair<int, std::vector<lsRange>>> &sym2ranges,
-    SymbolRef sym, int file_id) {
+static void add(std::map<SymbolIdx, std::pair<int, std::vector<lsRange>>> &sym2ranges, SymbolRef sym, int file_id) {
   auto [it, inserted] = sym2ranges.try_emplace(SymbolIdx{sym.usr, sym.kind});
   if (inserted)
     it->second.first = file_id;
@@ -262,9 +237,8 @@ add(std::map<SymbolIdx, std::pair<int, std::vector<lsRange>>> &sym2ranges,
 }
 
 template <typename Out>
-static std::vector<Out> toCallResult(
-    DB *db,
-    const std::map<SymbolIdx, std::pair<int, std::vector<lsRange>>> &sym2ranges) {
+static std::vector<Out> toCallResult(DB *db,
+                                     const std::map<SymbolIdx, std::pair<int, std::vector<lsRange>>> &sym2ranges) {
   std::vector<Out> result;
   for (auto &[sym, ranges] : sym2ranges) {
     CallHierarchyItem item;
@@ -294,8 +268,7 @@ static std::vector<Out> toCallResult(
   return result;
 }
 
-void MessageHandler::callHierarchy_incomingCalls(CallsParam &param,
-                                                 ReplyOnce &reply) {
+void MessageHandler::callHierarchy_incomingCalls(CallsParam &param, ReplyOnce &reply) {
   Usr usr;
   try {
     usr = std::stoull(param.item.data);
@@ -308,10 +281,8 @@ void MessageHandler::callHierarchy_incomingCalls(CallsParam &param,
     const QueryFile &file = db->files[use.file_id];
     Maybe<ExtentRef> best;
     for (auto [sym, refcnt] : file.symbol2refcnt)
-      if (refcnt > 0 && sym.extent.valid() && sym.kind == Kind::Func &&
-          sym.extent.start <= use.range.start &&
-          use.range.end <= sym.extent.end &&
-          (!best || best->extent.start < sym.extent.start))
+      if (refcnt > 0 && sym.extent.valid() && sym.kind == Kind::Func && sym.extent.start <= use.range.start &&
+          use.range.end <= sym.extent.end && (!best || best->extent.start < sym.extent.start))
         best = sym;
     if (best)
       add(sym2ranges, *best, use.file_id);
@@ -319,8 +290,7 @@ void MessageHandler::callHierarchy_incomingCalls(CallsParam &param,
   reply(toCallResult<Out_incomingCall>(db, sym2ranges));
 }
 
-void MessageHandler::callHierarchy_outgoingCalls(CallsParam &param,
-                                                 ReplyOnce &reply) {
+void MessageHandler::callHierarchy_outgoingCalls(CallsParam &param, ReplyOnce &reply) {
   Usr usr;
   try {
     usr = std::stoull(param.item.data);

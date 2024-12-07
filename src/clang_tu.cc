@@ -57,10 +57,8 @@ bool isInsideMainFile(const SourceManager &sm, SourceLocation sl) {
   return fid == sm.getMainFileID() || fid == sm.getPreambleFileID();
 }
 
-static Pos decomposed2LineAndCol(const SourceManager &sm,
-                                 std::pair<FileID, unsigned> i) {
-  int l = (int)sm.getLineNumber(i.first, i.second) - 1,
-      c = (int)sm.getColumnNumber(i.first, i.second) - 1;
+static Pos decomposed2LineAndCol(const SourceManager &sm, std::pair<FileID, unsigned> i) {
+  int l = (int)sm.getLineNumber(i.first, i.second) - 1, c = (int)sm.getColumnNumber(i.first, i.second) - 1;
   bool invalid = false;
   StringRef buf = sm.getBufferData(i.first, &invalid);
   if (!invalid) {
@@ -71,15 +69,12 @@ static Pos decomposed2LineAndCol(const SourceManager &sm,
         while (i < p.size() && (uint8_t)p[i] >= 128 && (uint8_t)p[i] < 192)
           i++;
   }
-  return {(uint16_t)std::min<int>(l, UINT16_MAX),
-          (int16_t)std::min<int>(c, INT16_MAX)};
+  return {(uint16_t)std::min<int>(l, UINT16_MAX), (int16_t)std::min<int>(c, INT16_MAX)};
 }
 
-Range fromCharSourceRange(const SourceManager &sm, const LangOptions &lang,
-                          CharSourceRange csr, FileID *fid) {
+Range fromCharSourceRange(const SourceManager &sm, const LangOptions &lang, CharSourceRange csr, FileID *fid) {
   SourceLocation bloc = csr.getBegin(), eloc = csr.getEnd();
-  std::pair<FileID, unsigned> binfo = sm.getDecomposedLoc(bloc),
-                              einfo = sm.getDecomposedLoc(eloc);
+  std::pair<FileID, unsigned> binfo = sm.getDecomposedLoc(bloc), einfo = sm.getDecomposedLoc(eloc);
   if (csr.isTokenRange())
     einfo.second += Lexer::MeasureTokenLength(eloc, sm, lang);
   if (fid)
@@ -87,13 +82,12 @@ Range fromCharSourceRange(const SourceManager &sm, const LangOptions &lang,
   return {decomposed2LineAndCol(sm, binfo), decomposed2LineAndCol(sm, einfo)};
 }
 
-Range fromTokenRange(const SourceManager &sm, const LangOptions &lang,
-                     SourceRange sr, FileID *fid) {
+Range fromTokenRange(const SourceManager &sm, const LangOptions &lang, SourceRange sr, FileID *fid) {
   return fromCharSourceRange(sm, lang, CharSourceRange::getTokenRange(sr), fid);
 }
 
-Range fromTokenRangeDefaulted(const SourceManager &sm, const LangOptions &lang,
-                              SourceRange sr, FileID fid, Range range) {
+Range fromTokenRangeDefaulted(const SourceManager &sm, const LangOptions &lang, SourceRange sr, FileID fid,
+                              Range range) {
   auto decomposed = sm.getDecomposedLoc(sm.getExpansionLoc(sr.getBegin()));
   if (decomposed.first == fid)
     range.start = decomposed2LineAndCol(sm, decomposed);
@@ -106,17 +100,15 @@ Range fromTokenRangeDefaulted(const SourceManager &sm, const LangOptions &lang,
   return range;
 }
 
-std::unique_ptr<CompilerInvocation>
-buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
-                        IntrusiveRefCntPtr<llvm::vfs::FileSystem> vfs) {
+std::unique_ptr<CompilerInvocation> buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
+                                                            IntrusiveRefCntPtr<llvm::vfs::FileSystem> vfs) {
   std::string save = "-resource-dir=" + g_config->clang.resourceDir;
   args.push_back(save.c_str());
   args.push_back("-fsyntax-only");
 
   // Similar to clang/tools/driver/driver.cpp:insertTargetAndModeArgs but don't
   // require llvm::InitializeAllTargetInfos().
-  auto target_and_mode =
-      driver::ToolChain::getTargetAndModeFromProgramName(args[0]);
+  auto target_and_mode = driver::ToolChain::getTargetAndModeFromProgramName(args[0]);
   if (target_and_mode.DriverMode)
     args.insert(args.begin() + 1, target_and_mode.DriverMode);
   if (!target_and_mode.TargetPrefix.empty()) {
@@ -145,7 +137,7 @@ buildCompilerInvocation(const std::string &main, std::vector<const char *> args,
   const driver::JobList &jobs = comp->getJobs();
   bool offload_compilation = false;
   if (jobs.size() > 1) {
-    for (auto &a : comp->getActions()){
+    for (auto &a : comp->getActions()) {
       // On MacOSX real actions may end up being wrapped in BindArchAction
       if (isa<driver::BindArchAction>(a))
         a = *a->input_begin();

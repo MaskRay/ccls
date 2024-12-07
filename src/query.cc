@@ -29,19 +29,15 @@ void assignFileId(const Lid2file_id &lid2file_id, int file_id, Use &use) {
     use.file_id = lid2file_id.find(use.file_id)->second;
 }
 
-template <typename T>
-void addRange(std::vector<T> &into, const std::vector<T> &from) {
+template <typename T> void addRange(std::vector<T> &into, const std::vector<T> &from) {
   into.insert(into.end(), from.begin(), from.end());
 }
 
-template <typename T>
-void removeRange(std::vector<T> &from, const std::vector<T> &to_remove) {
+template <typename T> void removeRange(std::vector<T> &from, const std::vector<T> &to_remove) {
   if (to_remove.size()) {
     std::unordered_set<T> to_remove_set(to_remove.begin(), to_remove.end());
-    from.erase(
-        std::remove_if(from.begin(), from.end(),
-                       [&](const T &t) { return to_remove_set.count(t) > 0; }),
-        from.end());
+    from.erase(std::remove_if(from.begin(), from.end(), [&](const T &t) { return to_remove_set.count(t) > 0; }),
+               from.end());
   }
 }
 
@@ -59,8 +55,7 @@ QueryFile::DefUpdate buildFileDefUpdate(IndexFile &&indexed) {
 }
 
 // Returns true if an element with the same file is found.
-template <typename Q>
-bool tryReplaceDef(llvm::SmallVectorImpl<Q> &def_list, Q &&def) {
+template <typename Q> bool tryReplaceDef(llvm::SmallVectorImpl<Q> &def_list, Q &&def) {
   for (auto &def1 : def_list)
     if (def1.file_id == def.file_id) {
       def1 = std::move(def);
@@ -194,9 +189,7 @@ void DB::clear() {
   vars.clear();
 }
 
-template <typename Def>
-void DB::removeUsrs(Kind kind, int file_id,
-                    const std::vector<std::pair<Usr, Def>> &to_remove) {
+template <typename Def> void DB::removeUsrs(Kind kind, int file_id, const std::vector<std::pair<Usr, Def>> &to_remove) {
   switch (kind) {
   case Kind::Func: {
     for (auto &[usr, _] : to_remove) {
@@ -204,9 +197,7 @@ void DB::removeUsrs(Kind kind, int file_id,
       if (!hasFunc(usr))
         continue;
       QueryFunc &func = getFunc(usr);
-      auto it = llvm::find_if(func.def, [=](const QueryFunc::Def &def) {
-        return def.file_id == file_id;
-      });
+      auto it = llvm::find_if(func.def, [=](const QueryFunc::Def &def) { return def.file_id == file_id; });
       if (it != func.def.end())
         func.def.erase(it);
     }
@@ -218,9 +209,7 @@ void DB::removeUsrs(Kind kind, int file_id,
       if (!hasType(usr))
         continue;
       QueryType &type = getType(usr);
-      auto it = llvm::find_if(type.def, [=](const QueryType::Def &def) {
-        return def.file_id == file_id;
-      });
+      auto it = llvm::find_if(type.def, [=](const QueryType::Def &def) { return def.file_id == file_id; });
       if (it != type.def.end())
         type.def.erase(it);
     }
@@ -232,9 +221,7 @@ void DB::removeUsrs(Kind kind, int file_id,
       if (!hasVar(usr))
         continue;
       QueryVar &var = getVar(usr);
-      auto it = llvm::find_if(var.def, [=](const QueryVar::Def &def) {
-        return def.file_id == file_id;
-      });
+      auto it = llvm::find_if(var.def, [=](const QueryVar::Def &def) { return def.file_id == file_id; });
       if (it != var.def.end())
         var.def.erase(it);
     }
@@ -246,16 +233,16 @@ void DB::removeUsrs(Kind kind, int file_id,
 }
 
 void DB::applyIndexUpdate(IndexUpdate *u) {
-#define REMOVE_ADD(C, F)                                                       \
-  for (auto &it : u->C##s_##F) {                                               \
-    auto r = C##_usr.try_emplace({it.first}, C##_usr.size());                  \
-    if (r.second) {                                                            \
-      C##s.emplace_back();                                                     \
-      C##s.back().usr = it.first;                                              \
-    }                                                                          \
-    auto &entity = C##s[r.first->second];                                      \
-    removeRange(entity.F, it.second.first);                                    \
-    addRange(entity.F, it.second.second);                                      \
+#define REMOVE_ADD(C, F)                                                                                               \
+  for (auto &it : u->C##s_##F) {                                                                                       \
+    auto r = C##_usr.try_emplace({it.first}, C##_usr.size());                                                          \
+    if (r.second) {                                                                                                    \
+      C##s.emplace_back();                                                                                             \
+      C##s.back().usr = it.first;                                                                                      \
+    }                                                                                                                  \
+    auto &entity = C##s[r.first->second];                                                                              \
+    removeRange(entity.F, it.second.first);                                                                            \
+    addRange(entity.F, it.second.second);                                                                              \
   }
 
   std::unordered_map<int, int> prev_lid2file_id, lid2file_id;
@@ -271,10 +258,8 @@ void DB::applyIndexUpdate(IndexUpdate *u) {
   }
 
   // References (Use &use) in this function are important to update file_id.
-  auto ref = [&](std::unordered_map<int, int> &lid2fid, Usr usr, Kind kind,
-                 Use &use, int delta) {
-    use.file_id =
-        use.file_id == -1 ? u->file_id : lid2fid.find(use.file_id)->second;
+  auto ref = [&](std::unordered_map<int, int> &lid2fid, Usr usr, Kind kind, Use &use, int delta) {
+    use.file_id = use.file_id == -1 ? u->file_id : lid2fid.find(use.file_id)->second;
     ExtentRef sym{{use.range, usr, kind, use.role}};
     int &v = files[use.file_id].symbol2refcnt[sym];
     v += delta;
@@ -282,10 +267,8 @@ void DB::applyIndexUpdate(IndexUpdate *u) {
     if (!v)
       files[use.file_id].symbol2refcnt.erase(sym);
   };
-  auto refDecl = [&](std::unordered_map<int, int> &lid2fid, Usr usr, Kind kind,
-                     DeclRef &dr, int delta) {
-    dr.file_id =
-        dr.file_id == -1 ? u->file_id : lid2fid.find(dr.file_id)->second;
+  auto refDecl = [&](std::unordered_map<int, int> &lid2fid, Usr usr, Kind kind, DeclRef &dr, int delta) {
+    dr.file_id = dr.file_id == -1 ? u->file_id : lid2fid.find(dr.file_id)->second;
     ExtentRef sym{{dr.range, usr, kind, dr.role}, dr.extent};
     int &v = files[dr.file_id].symbol2refcnt[sym];
     v += delta;
@@ -294,45 +277,41 @@ void DB::applyIndexUpdate(IndexUpdate *u) {
       files[dr.file_id].symbol2refcnt.erase(sym);
   };
 
-  auto updateUses =
-      [&](Usr usr, Kind kind,
-          llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
-          auto &entities, auto &p, bool hint_implicit) {
-        auto r = entity_usr.try_emplace(usr, entity_usr.size());
-        if (r.second) {
-          entities.emplace_back();
-          entities.back().usr = usr;
-        }
-        auto &entity = entities[r.first->second];
-        for (Use &use : p.first) {
-          if (hint_implicit && use.role & Role::Implicit) {
-            // Make ranges of implicit function calls larger (spanning one more
-            // column to the left/right). This is hacky but useful. e.g.
-            // textDocument/definition on the space/semicolon in `A a;` or `
-            // 42;` will take you to the constructor.
-            if (use.range.start.column > 0)
-              use.range.start.column--;
-            use.range.end.column++;
-          }
-          ref(prev_lid2file_id, usr, kind, use, -1);
-        }
-        removeRange(entity.uses, p.first);
-        for (Use &use : p.second) {
-          if (hint_implicit && use.role & Role::Implicit) {
-            if (use.range.start.column > 0)
-              use.range.start.column--;
-            use.range.end.column++;
-          }
-          ref(lid2file_id, usr, kind, use, 1);
-        }
-        addRange(entity.uses, p.second);
-      };
+  auto updateUses = [&](Usr usr, Kind kind, llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr, auto &entities,
+                        auto &p, bool hint_implicit) {
+    auto r = entity_usr.try_emplace(usr, entity_usr.size());
+    if (r.second) {
+      entities.emplace_back();
+      entities.back().usr = usr;
+    }
+    auto &entity = entities[r.first->second];
+    for (Use &use : p.first) {
+      if (hint_implicit && use.role & Role::Implicit) {
+        // Make ranges of implicit function calls larger (spanning one more
+        // column to the left/right). This is hacky but useful. e.g.
+        // textDocument/definition on the space/semicolon in `A a;` or `
+        // 42;` will take you to the constructor.
+        if (use.range.start.column > 0)
+          use.range.start.column--;
+        use.range.end.column++;
+      }
+      ref(prev_lid2file_id, usr, kind, use, -1);
+    }
+    removeRange(entity.uses, p.first);
+    for (Use &use : p.second) {
+      if (hint_implicit && use.role & Role::Implicit) {
+        if (use.range.start.column > 0)
+          use.range.start.column--;
+        use.range.end.column++;
+      }
+      ref(lid2file_id, usr, kind, use, 1);
+    }
+    addRange(entity.uses, p.second);
+  };
 
   if (u->files_removed)
-    files[name2file_id[lowerPathIfInsensitive(*u->files_removed)]].def =
-        std::nullopt;
-  u->file_id =
-      u->files_def_update ? update(std::move(*u->files_def_update)) : -1;
+    files[name2file_id[lowerPathIfInsensitive(*u->files_removed)]].def = std::nullopt;
+  u->file_id = u->files_def_update ? update(std::move(*u->files_def_update)) : -1;
 
   const double grow = 1.3;
   size_t t;
@@ -418,17 +397,15 @@ int DB::update(QueryFile::DefUpdate &&u) {
   return file_id;
 }
 
-void DB::update(const Lid2file_id &lid2file_id, int file_id,
-                std::vector<std::pair<Usr, QueryFunc::Def>> &&us) {
+void DB::update(const Lid2file_id &lid2file_id, int file_id, std::vector<std::pair<Usr, QueryFunc::Def>> &&us) {
   for (auto &u : us) {
     auto &def = u.second;
     assert(def.detailed_name[0]);
     u.second.file_id = file_id;
     if (def.spell) {
       assignFileId(lid2file_id, file_id, *def.spell);
-      files[def.spell->file_id].symbol2refcnt[{
-          {def.spell->range, u.first, Kind::Func, def.spell->role},
-          def.spell->extent}]++;
+      files[def.spell->file_id]
+          .symbol2refcnt[{{def.spell->range, u.first, Kind::Func, def.spell->role}, def.spell->extent}]++;
     }
 
     auto r = func_usr.try_emplace({u.first}, func_usr.size());
@@ -441,17 +418,15 @@ void DB::update(const Lid2file_id &lid2file_id, int file_id,
   }
 }
 
-void DB::update(const Lid2file_id &lid2file_id, int file_id,
-                std::vector<std::pair<Usr, QueryType::Def>> &&us) {
+void DB::update(const Lid2file_id &lid2file_id, int file_id, std::vector<std::pair<Usr, QueryType::Def>> &&us) {
   for (auto &u : us) {
     auto &def = u.second;
     assert(def.detailed_name[0]);
     u.second.file_id = file_id;
     if (def.spell) {
       assignFileId(lid2file_id, file_id, *def.spell);
-      files[def.spell->file_id].symbol2refcnt[{
-          {def.spell->range, u.first, Kind::Type, def.spell->role},
-          def.spell->extent}]++;
+      files[def.spell->file_id]
+          .symbol2refcnt[{{def.spell->range, u.first, Kind::Type, def.spell->role}, def.spell->extent}]++;
     }
     auto r = type_usr.try_emplace({u.first}, type_usr.size());
     if (r.second)
@@ -463,17 +438,15 @@ void DB::update(const Lid2file_id &lid2file_id, int file_id,
   }
 }
 
-void DB::update(const Lid2file_id &lid2file_id, int file_id,
-                std::vector<std::pair<Usr, QueryVar::Def>> &&us) {
+void DB::update(const Lid2file_id &lid2file_id, int file_id, std::vector<std::pair<Usr, QueryVar::Def>> &&us) {
   for (auto &u : us) {
     auto &def = u.second;
     assert(def.detailed_name[0]);
     u.second.file_id = file_id;
     if (def.spell) {
       assignFileId(lid2file_id, file_id, *def.spell);
-      files[def.spell->file_id].symbol2refcnt[{
-          {def.spell->range, u.first, Kind::Var, def.spell->role},
-          def.spell->extent}]++;
+      files[def.spell->file_id]
+          .symbol2refcnt[{{def.spell->range, u.first, Kind::Var, def.spell->role}, def.spell->extent}]++;
     }
     auto r = var_usr.try_emplace({u.first}, var_usr.size());
     if (r.second)
@@ -537,9 +510,8 @@ int computeRangeSize(const Range &range) {
 }
 
 template <typename Q, typename C>
-std::vector<Use>
-getDeclarations(llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
-                llvm::SmallVectorImpl<Q> &entities, const C &usrs) {
+std::vector<Use> getDeclarations(llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
+                                 llvm::SmallVectorImpl<Q> &entities, const C &usrs) {
   std::vector<Use> ret;
   ret.reserve(usrs.size());
   for (Usr usr : usrs) {
@@ -573,8 +545,7 @@ std::vector<Use> getFuncDeclarations(DB *db, const Vec<Usr> &usrs) {
 std::vector<Use> getTypeDeclarations(DB *db, const std::vector<Usr> &usrs) {
   return getDeclarations(db->type_usr, db->types, usrs);
 }
-std::vector<DeclRef> getVarDeclarations(DB *db, const std::vector<Usr> &usrs,
-                                        unsigned kind) {
+std::vector<DeclRef> getVarDeclarations(DB *db, const std::vector<Usr> &usrs, unsigned kind) {
   std::vector<DeclRef> ret;
   ret.reserve(usrs.size());
   for (Usr usr : usrs) {
@@ -666,10 +637,8 @@ std::optional<lsRange> getLsRange(WorkingFile *wfile, const Range &location) {
                    Position{location.end.line, location.end.column}};
 
   int start_column = location.start.column, end_column = location.end.column;
-  std::optional<int> start = wfile->getBufferPosFromIndexPos(
-      location.start.line, &start_column, false);
-  std::optional<int> end =
-      wfile->getBufferPosFromIndexPos(location.end.line, &end_column, true);
+  std::optional<int> start = wfile->getBufferPosFromIndexPos(location.start.line, &start_column, false);
+  std::optional<int> end = wfile->getBufferPosFromIndexPos(location.end.line, &end_column, true);
   if (!start || !end)
     return std::nullopt;
 
@@ -716,8 +685,7 @@ std::optional<Location> getLsLocation(DB *db, WorkingFiles *wfiles, Use use) {
   return Location{uri, *range};
 }
 
-std::optional<Location> getLsLocation(DB *db, WorkingFiles *wfiles,
-                                      SymbolRef sym, int file_id) {
+std::optional<Location> getLsLocation(DB *db, WorkingFiles *wfiles, SymbolRef sym, int file_id) {
   return getLsLocation(db, wfiles, Use{{sym.range, sym.role}, file_id});
 }
 
@@ -751,8 +719,7 @@ SymbolKind getSymbolKind(DB *db, SymbolIdx sym) {
   return ret;
 }
 
-std::optional<SymbolInformation> getSymbolInfo(DB *db, SymbolIdx sym,
-                                               bool detailed) {
+std::optional<SymbolInformation> getSymbolInfo(DB *db, SymbolIdx sym, bool detailed) {
   switch (sym.kind) {
   case Kind::Invalid:
     break;
@@ -783,14 +750,11 @@ std::optional<SymbolInformation> getSymbolInfo(DB *db, SymbolIdx sym,
   return std::nullopt;
 }
 
-std::vector<SymbolRef> findSymbolsAtLocation(WorkingFile *wfile,
-                                             QueryFile *file, Position &ls_pos,
-                                             bool smallest) {
+std::vector<SymbolRef> findSymbolsAtLocation(WorkingFile *wfile, QueryFile *file, Position &ls_pos, bool smallest) {
   std::vector<SymbolRef> symbols;
   // If multiVersion > 0, index may not exist and thus index_lines is empty.
   if (wfile && wfile->index_lines.size()) {
-    if (auto line = wfile->getIndexPosFromBufferPos(ls_pos.line,
-                                                    &ls_pos.character, false)) {
+    if (auto line = wfile->getIndexPosFromBufferPos(ls_pos.line, &ls_pos.character, false)) {
       ls_pos.line = *line;
     } else {
       ls_pos.line = -1;
@@ -813,23 +777,21 @@ std::vector<SymbolRef> findSymbolsAtLocation(WorkingFile *wfile,
   //
   // Then order functions before other types, which makes goto definition work
   // better on constructors.
-  std::sort(
-      symbols.begin(), symbols.end(),
-      [](const SymbolRef &a, const SymbolRef &b) {
-        int t = computeRangeSize(a.range) - computeRangeSize(b.range);
-        if (t)
-          return t < 0;
-        // MacroExpansion
-        if ((t = (a.role & Role::Dynamic) - (b.role & Role::Dynamic)))
-          return t > 0;
-        if ((t = (a.role & Role::Definition) - (b.role & Role::Definition)))
-          return t > 0;
-        // operator> orders Var/Func before Type.
-        t = static_cast<int>(a.kind) - static_cast<int>(b.kind);
-        if (t)
-          return t > 0;
-        return a.usr < b.usr;
-      });
+  std::sort(symbols.begin(), symbols.end(), [](const SymbolRef &a, const SymbolRef &b) {
+    int t = computeRangeSize(a.range) - computeRangeSize(b.range);
+    if (t)
+      return t < 0;
+    // MacroExpansion
+    if ((t = (a.role & Role::Dynamic) - (b.role & Role::Dynamic)))
+      return t > 0;
+    if ((t = (a.role & Role::Definition) - (b.role & Role::Definition)))
+      return t > 0;
+    // operator> orders Var/Func before Type.
+    t = static_cast<int>(a.kind) - static_cast<int>(b.kind);
+    if (t)
+      return t > 0;
+    return a.usr < b.usr;
+  });
   if (symbols.size() && smallest) {
     SymbolRef sym = symbols[0];
     for (size_t i = 1; i < symbols.size(); i++)

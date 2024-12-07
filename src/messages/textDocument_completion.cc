@@ -50,8 +50,7 @@ REFLECT_STRUCT(CompletionList, isIncomplete, items);
 // Pre-filters completion responses before sending to vscode. This results in a
 // significantly snappier completion experience as vscode is easily overloaded
 // when given 1000+ completion items.
-void filterCandidates(CompletionList &result, const std::string &complete_text,
-                      Position begin_pos, Position end_pos,
+void filterCandidates(CompletionList &result, const std::string &complete_text, Position begin_pos, Position end_pos,
                       const std::string &buffer_line) {
   assert(begin_pos.line == end_pos.line);
   auto &items = result.items;
@@ -79,8 +78,7 @@ void filterCandidates(CompletionList &result, const std::string &complete_text,
       if (edits.size() && edits[0].range.end == begin_pos) {
         Position start = edits[0].range.start, end = edits[0].range.end;
         if (start.line == begin_pos.line) {
-          overwrite_len =
-              std::max(overwrite_len, end.character - start.character);
+          overwrite_len = std::max(overwrite_len, end.character - start.character);
         } else {
           overwrite_len = -1;
           break;
@@ -88,8 +86,7 @@ void filterCandidates(CompletionList &result, const std::string &complete_text,
       }
     }
 
-    Position overwrite_begin = {begin_pos.line,
-                                begin_pos.character - overwrite_len};
+    Position overwrite_begin = {begin_pos.line, begin_pos.character - overwrite_len};
     std::string sort(4, ' ');
     for (auto &item : items) {
       item.textEdit.range = lsRange{begin_pos, end_pos};
@@ -100,16 +97,11 @@ void filterCandidates(CompletionList &result, const std::string &complete_text,
       auto &edits = item.additionalTextEdits;
       if (overwrite_len > 0) {
         item.textEdit.range.start = overwrite_begin;
-        std::string orig =
-            buffer_line.substr(overwrite_begin.character, overwrite_len);
-        if (edits.size() && edits[0].range.end == begin_pos &&
-            edits[0].range.start.line == begin_pos.line) {
-          int cur_edit_len =
-              edits[0].range.end.character - edits[0].range.start.character;
-          item.textEdit.newText =
-              buffer_line.substr(overwrite_begin.character,
-                                 overwrite_len - cur_edit_len) +
-              edits[0].newText + item.textEdit.newText;
+        std::string orig = buffer_line.substr(overwrite_begin.character, overwrite_len);
+        if (edits.size() && edits[0].range.end == begin_pos && edits[0].range.start.line == begin_pos.line) {
+          int cur_edit_len = edits[0].range.end.character - edits[0].range.start.character;
+          item.textEdit.newText = buffer_line.substr(overwrite_begin.character, overwrite_len - cur_edit_len) +
+                                  edits[0].newText + item.textEdit.newText;
           edits.erase(edits.begin());
         } else {
           item.textEdit.newText = orig + item.textEdit.newText;
@@ -134,43 +126,36 @@ void filterCandidates(CompletionList &result, const std::string &complete_text,
     bool sensitive = g_config->completion.caseSensitivity;
     FuzzyMatcher fuzzy(complete_text, sensitive);
     for (CompletionItem &item : items) {
-      const std::string &filter =
-          item.filterText.size() ? item.filterText : item.label;
-      item.score_ = reverseSubseqMatch(complete_text, filter, sensitive) >= 0
-                        ? fuzzy.match(filter, true)
-                        : FuzzyMatcher::kMinScore;
+      const std::string &filter = item.filterText.size() ? item.filterText : item.label;
+      item.score_ = reverseSubseqMatch(complete_text, filter, sensitive) >= 0 ? fuzzy.match(filter, true)
+                                                                              : FuzzyMatcher::kMinScore;
     }
     items.erase(std::remove_if(items.begin(), items.end(),
-                               [](const CompletionItem &item) {
-                                 return item.score_ <= FuzzyMatcher::kMinScore;
-                               }),
+                               [](const CompletionItem &item) { return item.score_ <= FuzzyMatcher::kMinScore; }),
                 items.end());
   }
-  std::sort(items.begin(), items.end(),
-            [](const CompletionItem &lhs, const CompletionItem &rhs) {
-              int t = int(lhs.additionalTextEdits.size() -
-                          rhs.additionalTextEdits.size());
-              if (t)
-                return t < 0;
-              if (lhs.score_ != rhs.score_)
-                return lhs.score_ > rhs.score_;
-              if (lhs.priority_ != rhs.priority_)
-                return lhs.priority_ < rhs.priority_;
-              t = lhs.textEdit.newText.compare(rhs.textEdit.newText);
-              if (t)
-                return t < 0;
-              t = lhs.label.compare(rhs.label);
-              if (t)
-                return t < 0;
-              return lhs.filterText < rhs.filterText;
-            });
+  std::sort(items.begin(), items.end(), [](const CompletionItem &lhs, const CompletionItem &rhs) {
+    int t = int(lhs.additionalTextEdits.size() - rhs.additionalTextEdits.size());
+    if (t)
+      return t < 0;
+    if (lhs.score_ != rhs.score_)
+      return lhs.score_ > rhs.score_;
+    if (lhs.priority_ != rhs.priority_)
+      return lhs.priority_ < rhs.priority_;
+    t = lhs.textEdit.newText.compare(rhs.textEdit.newText);
+    if (t)
+      return t < 0;
+    t = lhs.label.compare(rhs.label);
+    if (t)
+      return t < 0;
+    return lhs.filterText < rhs.filterText;
+  });
 
   // Trim result.
   finalize();
 }
 
-CompletionItemKind getCompletionKind(CodeCompletionContext::Kind k,
-                                     const CodeCompletionResult &r) {
+CompletionItemKind getCompletionKind(CodeCompletionContext::Kind k, const CodeCompletionResult &r) {
   switch (r.Kind) {
   case CodeCompletionResult::RK_Declaration: {
     const Decl *d = r.Declaration;
@@ -262,8 +247,7 @@ CompletionItemKind getCompletionKind(CodeCompletionContext::Kind k,
   }
 }
 
-void buildItem(const CodeCompletionResult &r, const CodeCompletionString &ccs,
-               std::vector<CompletionItem> &out) {
+void buildItem(const CodeCompletionResult &r, const CodeCompletionString &ccs, std::vector<CompletionItem> &out) {
   assert(!out.empty());
   auto first = out.size() - 1;
   bool ignore = false;
@@ -310,8 +294,7 @@ void buildItem(const CodeCompletionResult &r, const CodeCompletionString &ccs,
 
     for (auto i = first; i < out.size(); ++i) {
       out[i].label += text;
-      if (ignore ||
-          (!g_config->client.snippetSupport && out[i].parameters_.size()))
+      if (ignore || (!g_config->client.snippetSupport && out[i].parameters_.size()))
         continue;
 
       if (kind == CodeCompletionString::CK_Placeholder) {
@@ -319,8 +302,7 @@ void buildItem(const CodeCompletionResult &r, const CodeCompletionString &ccs,
           ignore = true;
           continue;
         }
-        out[i].textEdit.newText +=
-            ("${" + Twine(out[i].parameters_.size()) + ":" + text + "}").str();
+        out[i].textEdit.newText += ("${" + Twine(out[i].parameters_.size()) + ":" + text + "}").str();
         out[i].insertTextFormat = InsertTextFormat::Snippet;
       } else if (kind != CodeCompletionString::CK_Informative) {
         out[i].textEdit.newText += text;
@@ -346,22 +328,17 @@ public:
   std::vector<CompletionItem> ls_items;
 
   CompletionConsumer(const CodeCompleteOptions &opts, bool from_cache)
-      :
-        CodeCompleteConsumer(opts),
-        alloc(std::make_shared<clang::GlobalCodeCompletionAllocator>()),
-        cctu_info(alloc), from_cache(from_cache) {
-  }
+      : CodeCompleteConsumer(opts), alloc(std::make_shared<clang::GlobalCodeCompletionAllocator>()), cctu_info(alloc),
+        from_cache(from_cache) {}
 
-  void ProcessCodeCompleteResults(Sema &s, CodeCompletionContext context,
-                                  CodeCompletionResult *results,
+  void ProcessCodeCompleteResults(Sema &s, CodeCompletionContext context, CodeCompletionResult *results,
                                   unsigned numResults) override {
     if (context.getKind() == CodeCompletionContext::CCC_Recovery)
       return;
     ls_items.reserve(numResults);
     for (unsigned i = 0; i != numResults; i++) {
       auto &r = results[i];
-      if (r.Availability == CXAvailability_NotAccessible ||
-          r.Availability == CXAvailability_NotAvailable)
+      if (r.Availability == CXAvailability_NotAccessible || r.Availability == CXAvailability_NotAvailable)
         continue;
       if (r.Declaration) {
         Decl::Kind k = r.Declaration->getKind();
@@ -377,14 +354,12 @@ public:
           if (rd->isInjectedClassName())
             continue;
         auto nk = r.Declaration->getDeclName().getNameKind();
-        if (nk == DeclarationName::CXXOperatorName ||
-            nk == DeclarationName::CXXLiteralOperatorName)
+        if (nk == DeclarationName::CXXOperatorName || nk == DeclarationName::CXXLiteralOperatorName)
           continue;
       }
 
-      CodeCompletionString *ccs = r.CreateCodeCompletionString(
-          s, context, getAllocator(), getCodeCompletionTUInfo(),
-          includeBriefComments());
+      CodeCompletionString *ccs =
+          r.CreateCodeCompletionString(s, context, getAllocator(), getCodeCompletionTUInfo(), includeBriefComments());
       CompletionItem ls_item;
       ls_item.kind = getCompletionKind(context.getKind(), r);
       if (const char *brief = ccs->getBriefComment())
@@ -421,8 +396,7 @@ public:
       }
       for (const FixItHint &fixIt : r.FixIts) {
         auto &ast = s.getASTContext();
-        TextEdit ls_edit =
-            ccls::toTextEdit(ast.getSourceManager(), ast.getLangOpts(), fixIt);
+        TextEdit ls_edit = ccls::toTextEdit(ast.getSourceManager(), ast.getLangOpts(), fixIt);
         for (size_t j = first_idx; j < ls_items.size(); j++)
           ls_items[j].additionalTextEdits.push_back(ls_edit);
       }
@@ -434,8 +408,7 @@ public:
 };
 } // namespace
 
-void MessageHandler::textDocument_completion(CompletionParam &param,
-                                             ReplyOnce &reply) {
+void MessageHandler::textDocument_completion(CompletionParam &param, ReplyOnce &reply) {
   static CompleteConsumerCache<std::vector<CompletionItem>> cache;
   std::string path = param.textDocument.uri.getPath();
   WorkingFile *wf = wfiles->getFile(path);
@@ -458,8 +431,7 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   ccOpts.IncludeFixIts = true;
   ccOpts.IncludeMacros = true;
 
-  if (param.context.triggerKind == CompletionTriggerKind::TriggerCharacter &&
-      param.context.triggerCharacter) {
+  if (param.context.triggerKind == CompletionTriggerKind::TriggerCharacter && param.context.triggerCharacter) {
     bool ok = true;
     int col = param.position.character - 2;
     switch ((*param.context.triggerCharacter)[0]) {
@@ -485,35 +457,34 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   Position end_pos = param.position;
   Position begin_pos = wf->getCompletionPosition(param.position, &filter);
 
-  SemaManager::OnComplete callback =
-      [filter, path, begin_pos, end_pos, reply,
-       buffer_line](CodeCompleteConsumer *optConsumer) {
-        if (!optConsumer)
-          return;
-        auto *consumer = static_cast<CompletionConsumer *>(optConsumer);
-        CompletionList result;
-        result.items = consumer->ls_items;
+  SemaManager::OnComplete callback = [filter, path, begin_pos, end_pos, reply,
+                                      buffer_line](CodeCompleteConsumer *optConsumer) {
+    if (!optConsumer)
+      return;
+    auto *consumer = static_cast<CompletionConsumer *>(optConsumer);
+    CompletionList result;
+    result.items = consumer->ls_items;
 
-        filterCandidates(result, filter, begin_pos, end_pos, buffer_line);
-        reply(result);
-        if (!consumer->from_cache) {
-          cache.withLock([&]() {
-            cache.path = path;
-            cache.line = buffer_line;
-            cache.position = begin_pos;
-            cache.result = consumer->ls_items;
-          });
-        }
-      };
+    filterCandidates(result, filter, begin_pos, end_pos, buffer_line);
+    reply(result);
+    if (!consumer->from_cache) {
+      cache.withLock([&]() {
+        cache.path = path;
+        cache.line = buffer_line;
+        cache.position = begin_pos;
+        cache.result = consumer->ls_items;
+      });
+    }
+  };
 
   if (cache.isCacheValid(path, buffer_line, begin_pos)) {
     CompletionConsumer consumer(ccOpts, true);
     cache.withLock([&]() { consumer.ls_items = cache.result; });
     callback(&consumer);
   } else {
-    manager->comp_tasks.pushBack(std::make_unique<SemaManager::CompTask>(
-        reply.id, param.textDocument.uri.getPath(), begin_pos,
-        std::make_unique<CompletionConsumer>(ccOpts, false), ccOpts, callback));
+    manager->comp_tasks.pushBack(
+        std::make_unique<SemaManager::CompTask>(reply.id, param.textDocument.uri.getPath(), begin_pos,
+                                                std::make_unique<CompletionConsumer>(ccOpts, false), ccOpts, callback));
   }
 }
 } // namespace ccls

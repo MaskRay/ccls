@@ -24,8 +24,7 @@ struct Param : TextDocumentPositionParam {
   bool hierarchy = false;
 };
 
-REFLECT_STRUCT(Param, textDocument, position, id, kind, derived, qualified,
-               levels, hierarchy);
+REFLECT_STRUCT(Param, textDocument, position, id, kind, derived, qualified, levels, hierarchy);
 
 struct Out_cclsInheritance {
   Usr usr;
@@ -39,15 +38,12 @@ struct Out_cclsInheritance {
   // Empty if the |levels| limit is reached.
   std::vector<Out_cclsInheritance> children;
 };
-REFLECT_STRUCT(Out_cclsInheritance, id, kind, name, location, numChildren,
-               children);
+REFLECT_STRUCT(Out_cclsInheritance, id, kind, name, location, numChildren, children);
 
-bool expand(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
-            bool qualified, int levels);
+bool expand(MessageHandler *m, Out_cclsInheritance *entry, bool derived, bool qualified, int levels);
 
 template <typename Q>
-bool expandHelper(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
-                  bool qualified, int levels, Q &entity) {
+bool expandHelper(MessageHandler *m, Out_cclsInheritance *entry, bool derived, bool qualified, int levels, Q &entity) {
   const auto *def = entity.anyDef();
   if (def) {
     entry->name = def->name(qualified);
@@ -97,19 +93,15 @@ bool expandHelper(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
   return true;
 }
 
-bool expand(MessageHandler *m, Out_cclsInheritance *entry, bool derived,
-            bool qualified, int levels) {
+bool expand(MessageHandler *m, Out_cclsInheritance *entry, bool derived, bool qualified, int levels) {
   if (entry->kind == Kind::Func)
-    return expandHelper(m, entry, derived, qualified, levels,
-                        m->db->getFunc(entry->usr));
+    return expandHelper(m, entry, derived, qualified, levels, m->db->getFunc(entry->usr));
   else
-    return expandHelper(m, entry, derived, qualified, levels,
-                        m->db->getType(entry->usr));
+    return expandHelper(m, entry, derived, qualified, levels, m->db->getType(entry->usr));
 }
 
-std::optional<Out_cclsInheritance> buildInitial(MessageHandler *m,
-                                                SymbolRef sym, bool derived,
-                                                bool qualified, int levels) {
+std::optional<Out_cclsInheritance> buildInitial(MessageHandler *m, SymbolRef sym, bool derived, bool qualified,
+                                                int levels) {
   Out_cclsInheritance entry;
   entry.id = std::to_string(sym.usr);
   entry.usr = sym.usr;
@@ -141,8 +133,7 @@ void inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
     }
     for (SymbolRef sym : findSymbolsAtLocation(wf, file, param.position))
       if (sym.kind == Kind::Func || sym.kind == Kind::Type) {
-        result =
-            buildInitial(m, sym, param.derived, param.qualified, param.levels);
+        result = buildInitial(m, sym, param.derived, param.qualified, param.levels);
         break;
       }
   }
@@ -160,8 +151,7 @@ void MessageHandler::ccls_inheritance(JsonReader &reader, ReplyOnce &reply) {
   inheritance(this, param, reply);
 }
 
-void MessageHandler::textDocument_implementation(
-    TextDocumentPositionParam &param, ReplyOnce &reply) {
+void MessageHandler::textDocument_implementation(TextDocumentPositionParam &param, ReplyOnce &reply) {
   Param param1;
   param1.textDocument = param.textDocument;
   param1.position = param.position;

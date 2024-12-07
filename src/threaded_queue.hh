@@ -33,13 +33,9 @@ template <typename... Queue> struct MultiQueueLock {
   void unlock() { unlock_impl(typename std::index_sequence_for<Queue...>{}); }
 
 private:
-  template <size_t... Is> void lock_impl(std::index_sequence<Is...>) {
-    std::lock(std::get<Is>(tuple_)->mutex_...);
-  }
+  template <size_t... Is> void lock_impl(std::index_sequence<Is...>) { std::lock(std::get<Is>(tuple_)->mutex_...); }
 
-  template <size_t... Is> void unlock_impl(std::index_sequence<Is...>) {
-    (std::get<Is>(tuple_)->mutex_.unlock(), ...);
-  }
+  template <size_t... Is> void unlock_impl(std::index_sequence<Is...>) { (std::get<Is>(tuple_)->mutex_.unlock(), ...); }
 
   std::tuple<Queue...> tuple_;
 };
@@ -55,8 +51,7 @@ struct MultiQueueWaiter {
     return false;
   }
 
-  template <typename... BaseThreadQueue>
-  bool wait(std::atomic<bool> &quit, BaseThreadQueue... queues) {
+  template <typename... BaseThreadQueue> bool wait(std::atomic<bool> &quit, BaseThreadQueue... queues) {
     MultiQueueLock<BaseThreadQueue...> l(queues...);
     while (!quit.load(std::memory_order_relaxed)) {
       if (hasState({queues...}))
@@ -67,8 +62,7 @@ struct MultiQueueWaiter {
   }
 
   template <typename... BaseThreadQueue>
-  void waitUntil(std::chrono::steady_clock::time_point t,
-                 BaseThreadQueue... queues) {
+  void waitUntil(std::chrono::steady_clock::time_point t, BaseThreadQueue... queues) {
     MultiQueueLock<BaseThreadQueue...> l(queues...);
     if (!hasState({queues...}))
       cv.wait_until(l, t);
@@ -98,9 +92,7 @@ public:
     waiter_->cv.notify_one();
   }
 
-  void pushBack(T &&t, bool priority = false) {
-    push<&std::deque<T>::push_back>(std::move(t), priority);
-  }
+  void pushBack(T &&t, bool priority = false) { push<&std::deque<T>::push_back>(std::move(t), priority); }
 
   // Return all elements in the queue.
   std::vector<T> dequeueAll() {
@@ -128,8 +120,7 @@ public:
   // Get the first element from the queue. Blocks until one is available.
   T dequeue(int keep_only_latest = 0) {
     std::unique_lock<std::mutex> lock(mutex_);
-    waiter_->cv.wait(lock,
-                     [&]() { return !priority_.empty() || !queue_.empty(); });
+    waiter_->cv.wait(lock, [&]() { return !priority_.empty() || !queue_.empty(); });
 
     auto execute = [&](std::deque<T> *q) {
       if (keep_only_latest > 0 && q->size() > keep_only_latest)

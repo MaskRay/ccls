@@ -55,15 +55,12 @@ bool Range::contains(int line, int column) const {
 
 std::string Range::toString() {
   char buf[99];
-  snprintf(buf, sizeof buf, "%d:%d-%d:%d", start.line + 1, start.column + 1,
-           end.line + 1, end.column + 1);
+  snprintf(buf, sizeof buf, "%d:%d-%d:%d", start.line + 1, start.column + 1, end.line + 1, end.column + 1);
   return buf;
 }
 
 void reflect(JsonReader &vis, Pos &v) { v = Pos::fromString(vis.getString()); }
-void reflect(JsonReader &vis, Range &v) {
-  v = Range::fromString(vis.getString());
-}
+void reflect(JsonReader &vis, Range &v) { v = Range::fromString(vis.getString()); }
 
 void reflect(JsonWriter &vis, Pos &v) {
   std::string output = v.toString();

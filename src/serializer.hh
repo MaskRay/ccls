@@ -45,9 +45,8 @@ struct JsonReader {
 };
 
 struct JsonWriter {
-  using W =
-      rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<char>,
-                        rapidjson::UTF8<char>, rapidjson::CrtAllocator, 0>;
+  using W = rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<char>, rapidjson::UTF8<char>,
+                              rapidjson::CrtAllocator, 0>;
 
   W *m;
 
@@ -135,36 +134,36 @@ struct IndexFile;
 #define REFLECT_MEMBER(name) reflectMember(vis, #name, v.name)
 #define REFLECT_MEMBER2(name, v) reflectMember(vis, name, v)
 
-#define REFLECT_UNDERLYING(T)                                                  \
-  LLVM_ATTRIBUTE_UNUSED inline void reflect(JsonReader &vis, T &v) {           \
-    std::underlying_type_t<T> v0;                                              \
-    ::ccls::reflect(vis, v0);                                                  \
-    v = static_cast<T>(v0);                                                    \
-  }                                                                            \
-  LLVM_ATTRIBUTE_UNUSED inline void reflect(JsonWriter &vis, T &v) {           \
-    auto v0 = static_cast<std::underlying_type_t<T>>(v);                       \
-    ::ccls::reflect(vis, v0);                                                  \
+#define REFLECT_UNDERLYING(T)                                                                                          \
+  LLVM_ATTRIBUTE_UNUSED inline void reflect(JsonReader &vis, T &v) {                                                   \
+    std::underlying_type_t<T> v0;                                                                                      \
+    ::ccls::reflect(vis, v0);                                                                                          \
+    v = static_cast<T>(v0);                                                                                            \
+  }                                                                                                                    \
+  LLVM_ATTRIBUTE_UNUSED inline void reflect(JsonWriter &vis, T &v) {                                                   \
+    auto v0 = static_cast<std::underlying_type_t<T>>(v);                                                               \
+    ::ccls::reflect(vis, v0);                                                                                          \
   }
 
-#define REFLECT_UNDERLYING_B(T)                                                \
-  REFLECT_UNDERLYING(T)                                                        \
-  LLVM_ATTRIBUTE_UNUSED inline void reflect(BinaryReader &vis, T &v) {         \
-    std::underlying_type_t<T> v0;                                              \
-    ::ccls::reflect(vis, v0);                                                  \
-    v = static_cast<T>(v0);                                                    \
-  }                                                                            \
-  LLVM_ATTRIBUTE_UNUSED inline void reflect(BinaryWriter &vis, T &v) {         \
-    auto v0 = static_cast<std::underlying_type_t<T>>(v);                       \
-    ::ccls::reflect(vis, v0);                                                  \
+#define REFLECT_UNDERLYING_B(T)                                                                                        \
+  REFLECT_UNDERLYING(T)                                                                                                \
+  LLVM_ATTRIBUTE_UNUSED inline void reflect(BinaryReader &vis, T &v) {                                                 \
+    std::underlying_type_t<T> v0;                                                                                      \
+    ::ccls::reflect(vis, v0);                                                                                          \
+    v = static_cast<T>(v0);                                                                                            \
+  }                                                                                                                    \
+  LLVM_ATTRIBUTE_UNUSED inline void reflect(BinaryWriter &vis, T &v) {                                                 \
+    auto v0 = static_cast<std::underlying_type_t<T>>(v);                                                               \
+    ::ccls::reflect(vis, v0);                                                                                          \
   }
 
 #define _MAPPABLE_REFLECT_MEMBER(name) REFLECT_MEMBER(name);
 
-#define REFLECT_STRUCT(type, ...)                                              \
-  template <typename Vis> void reflect(Vis &vis, type &v) {                    \
-    reflectMemberStart(vis);                                                   \
-    MACRO_MAP(_MAPPABLE_REFLECT_MEMBER, __VA_ARGS__)                           \
-    reflectMemberEnd(vis);                                                     \
+#define REFLECT_STRUCT(type, ...)                                                                                      \
+  template <typename Vis> void reflect(Vis &vis, type &v) {                                                            \
+    reflectMemberStart(vis);                                                                                           \
+    MACRO_MAP(_MAPPABLE_REFLECT_MEMBER, __VA_ARGS__)                                                                   \
+    reflectMemberEnd(vis);                                                                                             \
   }
 
 #define _MAPPABLE_REFLECT_ARRAY(name) reflect(vis, v.name);
@@ -290,8 +289,7 @@ template <typename T> void reflect(BinaryWriter &vis, Maybe<T> &v) {
   }
 }
 
-template <typename T>
-void reflectMember(JsonWriter &vis, const char *name, std::optional<T> &v) {
+template <typename T> void reflectMember(JsonWriter &vis, const char *name, std::optional<T> &v) {
   // For TypeScript std::optional property key?: value in the spec,
   // We omit both key and value if value is std::nullopt (null) for JsonWriter
   // to reduce output. But keep it for other serialization formats.
@@ -300,43 +298,32 @@ void reflectMember(JsonWriter &vis, const char *name, std::optional<T> &v) {
     reflect(vis, *v);
   }
 }
-template <typename T>
-void reflectMember(BinaryWriter &vis, const char *, std::optional<T> &v) {
-  reflect(vis, v);
-}
+template <typename T> void reflectMember(BinaryWriter &vis, const char *, std::optional<T> &v) { reflect(vis, v); }
 
 // The same as std::optional
-template <typename T>
-void reflectMember(JsonWriter &vis, const char *name, Maybe<T> &v) {
+template <typename T> void reflectMember(JsonWriter &vis, const char *name, Maybe<T> &v) {
   if (v.valid()) {
     vis.key(name);
     reflect(vis, v);
   }
 }
-template <typename T>
-void reflectMember(BinaryWriter &vis, const char *, Maybe<T> &v) {
-  reflect(vis, v);
-}
+template <typename T> void reflectMember(BinaryWriter &vis, const char *, Maybe<T> &v) { reflect(vis, v); }
 
-template <typename L, typename R>
-void reflect(JsonReader &vis, std::pair<L, R> &v) {
+template <typename L, typename R> void reflect(JsonReader &vis, std::pair<L, R> &v) {
   vis.member("L", [&]() { reflect(vis, v.first); });
   vis.member("R", [&]() { reflect(vis, v.second); });
 }
-template <typename L, typename R>
-void reflect(JsonWriter &vis, std::pair<L, R> &v) {
+template <typename L, typename R> void reflect(JsonWriter &vis, std::pair<L, R> &v) {
   vis.startObject();
   reflectMember(vis, "L", v.first);
   reflectMember(vis, "R", v.second);
   vis.endObject();
 }
-template <typename L, typename R>
-void reflect(BinaryReader &vis, std::pair<L, R> &v) {
+template <typename L, typename R> void reflect(BinaryReader &vis, std::pair<L, R> &v) {
   reflect(vis, v.first);
   reflect(vis, v.second);
 }
-template <typename L, typename R>
-void reflect(BinaryWriter &vis, std::pair<L, R> &v) {
+template <typename L, typename R> void reflect(BinaryWriter &vis, std::pair<L, R> &v) {
   reflect(vis, v.first);
   reflect(vis, v.second);
 }
@@ -375,32 +362,22 @@ inline void reflectMemberStart(JsonWriter &vis) { vis.startObject(); }
 template <typename T> void reflectMemberEnd(T &) {}
 inline void reflectMemberEnd(JsonWriter &vis) { vis.endObject(); }
 
-template <typename T>
-void reflectMember(JsonReader &vis, const char *name, T &v) {
+template <typename T> void reflectMember(JsonReader &vis, const char *name, T &v) {
   vis.member(name, [&]() { reflect(vis, v); });
 }
-template <typename T>
-void reflectMember(JsonWriter &vis, const char *name, T &v) {
+template <typename T> void reflectMember(JsonWriter &vis, const char *name, T &v) {
   vis.key(name);
   reflect(vis, v);
 }
-template <typename T>
-void reflectMember(BinaryReader &vis, const char *, T &v) {
-  reflect(vis, v);
-}
-template <typename T>
-void reflectMember(BinaryWriter &vis, const char *, T &v) {
-  reflect(vis, v);
-}
+template <typename T> void reflectMember(BinaryReader &vis, const char *, T &v) { reflect(vis, v); }
+template <typename T> void reflectMember(BinaryWriter &vis, const char *, T &v) { reflect(vis, v); }
 
 // API
 
 const char *intern(llvm::StringRef str);
 llvm::CachedHashStringRef internH(llvm::StringRef str);
 std::string serialize(SerializeFormat format, IndexFile &file);
-std::unique_ptr<IndexFile>
-deserialize(SerializeFormat format, const std::string &path,
-            const std::string &serialized_index_content,
-            const std::string &file_content,
-            std::optional<int> expected_version);
+std::unique_ptr<IndexFile> deserialize(SerializeFormat format, const std::string &path,
+                                       const std::string &serialized_index_content, const std::string &file_content,
+                                       std::optional<int> expected_version);
 } // namespace ccls

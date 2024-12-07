@@ -37,8 +37,7 @@ struct Diag : DiagBase {
   std::vector<TextEdit> edits;
 };
 
-TextEdit toTextEdit(const clang::SourceManager &SM, const clang::LangOptions &L,
-                    const clang::FixItHint &FixIt);
+TextEdit toTextEdit(const clang::SourceManager &SM, const clang::LangOptions &L, const clang::FixItHint &FixIt);
 
 template <typename K, typename V> struct LruCache {
   std::shared_ptr<V> get(const K &key) {
@@ -82,32 +81,27 @@ struct Session {
   bool inferred = false;
 
   // TODO share
-  llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> fs =
-      llvm::vfs::getRealFileSystem();
+  llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> fs = llvm::vfs::getRealFileSystem();
   std::shared_ptr<clang::PCHContainerOperations> pch;
 
-  Session(const Project::Entry &file, WorkingFiles *wfiles,
-          std::shared_ptr<clang::PCHContainerOperations> pch)
+  Session(const Project::Entry &file, WorkingFiles *wfiles, std::shared_ptr<clang::PCHContainerOperations> pch)
       : file(file), wfiles(wfiles), pch(pch) {}
 
   std::shared_ptr<PreambleData> getPreamble();
 };
 
 struct SemaManager {
-  using OnDiagnostic = std::function<void(std::string path,
-                                          std::vector<Diagnostic> diagnostics)>;
+  using OnDiagnostic = std::function<void(std::string path, std::vector<Diagnostic> diagnostics)>;
   // If OptConsumer is nullptr, the request has been cancelled.
-  using OnComplete =
-      std::function<void(clang::CodeCompleteConsumer *OptConsumer)>;
+  using OnComplete = std::function<void(clang::CodeCompleteConsumer *OptConsumer)>;
   using OnDropped = std::function<void(RequestId request_id)>;
 
   struct CompTask {
-    CompTask(const RequestId &id, const std::string &path,
-             const Position &position,
-             std::unique_ptr<clang::CodeCompleteConsumer> Consumer,
-             clang::CodeCompleteOptions CCOpts, const OnComplete &on_complete)
-        : id(id), path(path), position(position), consumer(std::move(Consumer)),
-          cc_opts(CCOpts), on_complete(on_complete) {}
+    CompTask(const RequestId &id, const std::string &path, const Position &position,
+             std::unique_ptr<clang::CodeCompleteConsumer> Consumer, clang::CodeCompleteOptions CCOpts,
+             const OnComplete &on_complete)
+        : id(id), path(path), position(position), consumer(std::move(Consumer)), cc_opts(CCOpts),
+          on_complete(on_complete) {}
 
     RequestId id;
     std::string path;
@@ -127,15 +121,13 @@ struct SemaManager {
     bool from_diag = false;
   };
 
-  SemaManager(Project *project, WorkingFiles *wfiles,
-              OnDiagnostic on_diagnostic, OnDropped on_dropped);
+  SemaManager(Project *project, WorkingFiles *wfiles, OnDiagnostic on_diagnostic, OnDropped on_dropped);
 
   void scheduleDiag(const std::string &path, int debounce);
   void onView(const std::string &path);
   void onSave(const std::string &path);
   void onClose(const std::string &path);
-  std::shared_ptr<ccls::Session> ensureSession(const std::string &path,
-                                               bool *created = nullptr);
+  std::shared_ptr<ccls::Session> ensureSession(const std::string &path, bool *created = nullptr);
   void clear();
   void quit();
 
@@ -172,12 +164,10 @@ template <typename T> struct CompleteConsumerCache {
     std::lock_guard lock(mutex);
     fn();
   }
-  bool isCacheValid(const std::string &path, const std::string &line,
-                    Position position) {
+  bool isCacheValid(const std::string &path, const std::string &line, Position position) {
     std::lock_guard lock(mutex);
     return this->position == position && this->path == path &&
-           this->line.compare(0, position.character, line, 0,
-                              position.character) == 0;
+           this->line.compare(0, position.character, line, 0, position.character) == 0;
   }
 };
 } // namespace ccls

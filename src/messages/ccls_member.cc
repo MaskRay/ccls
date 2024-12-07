@@ -30,8 +30,7 @@ struct Param : TextDocumentPositionParam {
   bool hierarchy = false;
 };
 
-REFLECT_STRUCT(Param, textDocument, position, id, qualified, levels, kind,
-               hierarchy);
+REFLECT_STRUCT(Param, textDocument, position, id, qualified, levels, kind, hierarchy);
 
 struct Out_cclsMember {
   Usr usr;
@@ -45,15 +44,13 @@ struct Out_cclsMember {
   // Empty if the |levels| limit is reached.
   std::vector<Out_cclsMember> children;
 };
-REFLECT_STRUCT(Out_cclsMember, id, name, fieldName, location, numChildren,
-               children);
+REFLECT_STRUCT(Out_cclsMember, id, name, fieldName, location, numChildren, children);
 
-bool expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
-            int levels, Kind memberKind);
+bool expand(MessageHandler *m, Out_cclsMember *entry, bool qualified, int levels, Kind memberKind);
 
 // Add a field to |entry| which is a Func/Type.
-void doField(MessageHandler *m, Out_cclsMember *entry, const QueryVar &var,
-             int64_t offset, bool qualified, int levels) {
+void doField(MessageHandler *m, Out_cclsMember *entry, const QueryVar &var, int64_t offset, bool qualified,
+             int levels) {
   const QueryVar::Def *def1 = var.anyDef();
   if (!def1)
     return;
@@ -72,13 +69,11 @@ void doField(MessageHandler *m, Out_cclsMember *entry, const QueryVar &var,
   if (qualified)
     entry1.fieldName += def1->detailed_name;
   else {
-    entry1.fieldName +=
-        std::string_view(def1->detailed_name).substr(0, def1->qual_name_offset);
+    entry1.fieldName += std::string_view(def1->detailed_name).substr(0, def1->qual_name_offset);
     entry1.fieldName += def1->name(false);
   }
   if (def1->spell) {
-    if (std::optional<Location> loc =
-            getLsLocation(m->db, m->wfiles, *def1->spell))
+    if (std::optional<Location> loc = getLsLocation(m->db, m->wfiles, *def1->spell))
       entry1.location = *loc;
   }
   if (def1->type) {
@@ -94,8 +89,7 @@ void doField(MessageHandler *m, Out_cclsMember *entry, const QueryVar &var,
 }
 
 // Expand a type node by adding members recursively to it.
-bool expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
-            int levels, Kind memberKind) {
+bool expand(MessageHandler *m, Out_cclsMember *entry, bool qualified, int levels, Kind memberKind) {
   if (0 < entry->usr && entry->usr <= BuiltinType::LastKind) {
     entry->name = clangBuiltinTypeName(int(entry->usr));
     return true;
@@ -132,14 +126,12 @@ bool expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
         entry1.usr = def->alias_of;
         if (def1 && def1->spell) {
           // The declaration of target type.
-          if (std::optional<Location> loc =
-                  getLsLocation(m->db, m->wfiles, *def1->spell))
+          if (std::optional<Location> loc = getLsLocation(m->db, m->wfiles, *def1->spell))
             entry1.location = *loc;
         } else if (def->spell) {
           // Builtin types have no declaration but the typedef declaration
           // itself is useful.
-          if (std::optional<Location> loc =
-                  getLsLocation(m->db, m->wfiles, *def->spell))
+          if (std::optional<Location> loc = getLsLocation(m->db, m->wfiles, *def->spell))
             entry1.location = *loc;
         }
         if (def1 && qualified)
@@ -163,8 +155,7 @@ bool expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
                   if (auto loc = getLsLocation(m->db, m->wfiles, *def1->spell))
                     entry1.location = *loc;
                 } else if (func1.declarations.size()) {
-                  if (auto loc = getLsLocation(m->db, m->wfiles,
-                                               func1.declarations[0]))
+                  if (auto loc = getLsLocation(m->db, m->wfiles, func1.declarations[0]))
                     entry1.location = *loc;
                 }
                 entry->children.push_back(std::move(entry1));
@@ -183,8 +174,7 @@ bool expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
                   if (auto loc = getLsLocation(m->db, m->wfiles, *def1->spell))
                     entry1.location = *loc;
                 } else if (type1.declarations.size()) {
-                  if (auto loc = getLsLocation(m->db, m->wfiles,
-                                               type1.declarations[0]))
+                  if (auto loc = getLsLocation(m->db, m->wfiles, type1.declarations[0]))
                     entry1.location = *loc;
                 }
                 entry->children.push_back(std::move(entry1));
@@ -207,9 +197,8 @@ bool expand(MessageHandler *m, Out_cclsMember *entry, bool qualified,
   return true;
 }
 
-std::optional<Out_cclsMember> buildInitial(MessageHandler *m, Kind kind,
-                                           Usr root_usr, bool qualified,
-                                           int levels, Kind memberKind) {
+std::optional<Out_cclsMember> buildInitial(MessageHandler *m, Kind kind, Usr root_usr, bool qualified, int levels,
+                                           Kind memberKind) {
   switch (kind) {
   default:
     return {};
@@ -265,8 +254,7 @@ void MessageHandler::ccls_member(JsonReader &reader, ReplyOnce &reply) {
     result->id = std::to_string(param.usr);
     result->usr = param.usr;
     // entry.name is empty as it is known by the client.
-    if (!(db->hasType(param.usr) &&
-          expand(this, &*result, param.qualified, param.levels, param.kind)))
+    if (!(db->hasType(param.usr) && expand(this, &*result, param.qualified, param.levels, param.kind)))
       result.reset();
   } else {
     auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
@@ -276,14 +264,12 @@ void MessageHandler::ccls_member(JsonReader &reader, ReplyOnce &reply) {
       switch (sym.kind) {
       case Kind::Func:
       case Kind::Type:
-        result = buildInitial(this, sym.kind, sym.usr, param.qualified,
-                              param.levels, param.kind);
+        result = buildInitial(this, sym.kind, sym.usr, param.qualified, param.levels, param.kind);
         break;
       case Kind::Var: {
         const QueryVar::Def *def = db->getVar(sym).anyDef();
         if (def && def->type)
-          result = buildInitial(this, Kind::Type, def->type, param.qualified,
-                                param.levels, param.kind);
+          result = buildInitial(this, Kind::Type, def->type, param.qualified, param.levels, param.kind);
         break;
       }
       default:

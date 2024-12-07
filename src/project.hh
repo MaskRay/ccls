@@ -62,8 +62,7 @@ struct Project {
   // If the client has overridden the flags, or specified them for a file
   // that is not in the compilation_database.json make sure those changes
   // are permanent.
-  void setArgsForFile(const std::vector<const char *> &args,
-                      const std::string &path);
+  void setArgsForFile(const std::vector<const char *> &args, const std::string &path);
 
   void index(WorkingFiles *wfiles, const RequestId &id);
   void indexRelated(const std::string &path);

@@ -14,12 +14,8 @@
 namespace llvm {
 template <> struct DenseMapInfo<ccls::ExtentRef> {
   static inline ccls::ExtentRef getEmptyKey() { return {}; }
-  static inline ccls::ExtentRef getTombstoneKey() {
-    return {{ccls::Range(), ccls::Usr(-1)}};
-  }
-  static unsigned getHashValue(ccls::ExtentRef sym) {
-    return std::hash<ccls::ExtentRef>()(sym);
-  }
+  static inline ccls::ExtentRef getTombstoneKey() { return {{ccls::Range(), ccls::Usr(-1)}}; }
+  static unsigned getHashValue(ccls::ExtentRef sym) { return std::hash<ccls::ExtentRef>()(sym); }
   static bool isEqual(ccls::ExtentRef l, ccls::ExtentRef r) { return l == r; }
 };
 } // namespace llvm
@@ -57,14 +53,10 @@ template <typename Q, typename QDef> struct QueryEntity {
     }
     return ret;
   }
-  const Def *anyDef() const {
-    return const_cast<QueryEntity *>(this)->anyDef();
-  }
+  const Def *anyDef() const { return const_cast<QueryEntity *>(this)->anyDef(); }
 };
 
-template <typename T>
-using Update =
-    std::unordered_map<Usr, std::pair<std::vector<T>, std::vector<T>>>;
+template <typename T> using Update = std::unordered_map<Usr, std::pair<std::vector<T>, std::vector<T>>>;
 
 struct QueryFunc : QueryEntity<QueryFunc, FuncDef<Vec>> {
   Usr usr;
@@ -153,19 +145,14 @@ struct DB {
 
   void clear();
 
-  template <typename Def>
-  void removeUsrs(Kind kind, int file_id,
-                  const std::vector<std::pair<Usr, Def>> &to_remove);
+  template <typename Def> void removeUsrs(Kind kind, int file_id, const std::vector<std::pair<Usr, Def>> &to_remove);
   // Insert the contents of |update| into |db|.
   void applyIndexUpdate(IndexUpdate *update);
   int getFileId(const std::string &path);
   int update(QueryFile::DefUpdate &&u);
-  void update(const Lid2file_id &, int file_id,
-              std::vector<std::pair<Usr, QueryType::Def>> &&us);
-  void update(const Lid2file_id &, int file_id,
-              std::vector<std::pair<Usr, QueryFunc::Def>> &&us);
-  void update(const Lid2file_id &, int file_id,
-              std::vector<std::pair<Usr, QueryVar::Def>> &&us);
+  void update(const Lid2file_id &, int file_id, std::vector<std::pair<Usr, QueryType::Def>> &&us);
+  void update(const Lid2file_id &, int file_id, std::vector<std::pair<Usr, QueryFunc::Def>> &&us);
+  void update(const Lid2file_id &, int file_id, std::vector<std::pair<Usr, QueryVar::Def>> &&us);
   std::string_view getSymbolName(SymbolIdx sym, bool qualified);
   std::vector<uint8_t> getFileSet(const std::vector<std::string> &folders);
 
@@ -190,30 +177,25 @@ Maybe<DeclRef> getDefinitionSpell(DB *db, SymbolIdx sym);
 std::vector<Use> getFuncDeclarations(DB *, const std::vector<Usr> &);
 std::vector<Use> getFuncDeclarations(DB *, const Vec<Usr> &);
 std::vector<Use> getTypeDeclarations(DB *, const std::vector<Usr> &);
-std::vector<DeclRef> getVarDeclarations(DB *, const std::vector<Usr> &,
-                                        unsigned);
+std::vector<DeclRef> getVarDeclarations(DB *, const std::vector<Usr> &, unsigned);
 
 // Get non-defining declarations.
 std::vector<DeclRef> &getNonDefDeclarations(DB *db, SymbolIdx sym);
 
 std::vector<Use> getUsesForAllBases(DB *db, QueryFunc &root);
 std::vector<Use> getUsesForAllDerived(DB *db, QueryFunc &root);
-std::optional<lsRange> getLsRange(WorkingFile *working_file,
-                                  const Range &location);
+std::optional<lsRange> getLsRange(WorkingFile *working_file, const Range &location);
 DocumentUri getLsDocumentUri(DB *db, int file_id, std::string *path);
 DocumentUri getLsDocumentUri(DB *db, int file_id);
 
 std::optional<Location> getLsLocation(DB *db, WorkingFiles *wfiles, Use use);
-std::optional<Location> getLsLocation(DB *db, WorkingFiles *wfiles,
-                                      SymbolRef sym, int file_id);
+std::optional<Location> getLsLocation(DB *db, WorkingFiles *wfiles, SymbolRef sym, int file_id);
 LocationLink getLocationLink(DB *db, WorkingFiles *wfiles, DeclRef dr);
 
 // Returns a symbol. The symbol will *NOT* have a location assigned.
-std::optional<SymbolInformation> getSymbolInfo(DB *db, SymbolIdx sym,
-                                               bool detailed);
+std::optional<SymbolInformation> getSymbolInfo(DB *db, SymbolIdx sym, bool detailed);
 
-std::vector<SymbolRef> findSymbolsAtLocation(WorkingFile *working_file,
-                                             QueryFile *file, Position &ls_pos,
+std::vector<SymbolRef> findSymbolsAtLocation(WorkingFile *working_file, QueryFile *file, Position &ls_pos,
                                              bool smallest = false);
 
 template <typename Fn> void withEntity(DB *db, SymbolIdx sym, Fn &&fn) {
@@ -241,8 +223,7 @@ template <typename Fn> void eachEntityDef(DB *db, SymbolIdx sym, Fn &&fn) {
   });
 }
 
-template <typename Fn>
-void eachOccurrence(DB *db, SymbolIdx sym, bool include_decl, Fn &&fn) {
+template <typename Fn> void eachOccurrence(DB *db, SymbolIdx sym, bool include_decl, Fn &&fn) {
   withEntity(db, sym, [&](const auto &entity) {
     for (Use use : entity.uses)
       fn(use);
@@ -258,8 +239,7 @@ void eachOccurrence(DB *db, SymbolIdx sym, bool include_decl, Fn &&fn) {
 
 SymbolKind getSymbolKind(DB *db, SymbolIdx sym);
 
-template <typename C, typename Fn>
-void eachDefinedFunc(DB *db, const C &usrs, Fn &&fn) {
+template <typename C, typename Fn> void eachDefinedFunc(DB *db, const C &usrs, Fn &&fn) {
   for (Usr usr : usrs) {
     auto &obj = db->getFunc(usr);
     if (!obj.def.empty())

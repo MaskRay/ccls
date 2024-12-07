@@ -37,8 +37,7 @@ namespace ccls {
 std::string toString(const rapidjson::Document &document) {
   rapidjson::StringBuffer buffer;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-  writer.SetFormatOptions(
-      rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
+  writer.SetFormatOptions(rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
   writer.SetIndent(' ', 2);
 
   buffer.Clear();
@@ -63,9 +62,7 @@ struct TextReplacer {
         if (idx == std::string::npos)
           break;
 
-        result.replace(result.begin() + idx,
-                       result.begin() + idx + replacement.from.size(),
-                       replacement.to);
+        result.replace(result.begin() + idx, result.begin() + idx + replacement.from.size(), replacement.to);
       }
     }
 
@@ -79,8 +76,7 @@ void trimInPlace(std::string &s) {
   s.erase(std::find_if(s.rbegin(), s.rend(), f).base(), s.end());
 }
 
-std::vector<std::string> splitString(const std::string &str,
-                                     const std::string &delimiter) {
+std::vector<std::string> splitString(const std::string &str, const std::string &delimiter) {
   // http://stackoverflow.com/a/13172514
   std::vector<std::string> strings;
 
@@ -97,11 +93,9 @@ std::vector<std::string> splitString(const std::string &str,
   return strings;
 }
 
-void parseTestExpectation(
-    const std::string &filename,
-    const std::vector<std::string> &lines_with_endings, TextReplacer *replacer,
-    std::vector<std::string> *flags,
-    std::unordered_map<std::string, std::string> *output_sections) {
+void parseTestExpectation(const std::string &filename, const std::vector<std::string> &lines_with_endings,
+                          TextReplacer *replacer, std::vector<std::string> *flags,
+                          std::unordered_map<std::string, std::string> *output_sections) {
   // Scan for EXTRA_FLAGS:
   {
     bool in_output = false;
@@ -161,14 +155,11 @@ void parseTestExpectation(
   }
 }
 
-void updateTestExpectation(const std::string &filename,
-                           const std::string &expectation,
-                           const std::string &actual) {
+void updateTestExpectation(const std::string &filename, const std::string &expectation, const std::string &actual) {
   // Read the entire file into a string.
   std::ifstream in(filename);
   std::string str;
-  str.assign(std::istreambuf_iterator<char>(in),
-             std::istreambuf_iterator<char>());
+  str.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
   in.close();
 
   // Replace expectation
@@ -180,8 +171,8 @@ void updateTestExpectation(const std::string &filename,
   writeToFile(filename, str);
 }
 
-void diffDocuments(std::string path, std::string path_section,
-                   rapidjson::Document &expected, rapidjson::Document &actual) {
+void diffDocuments(std::string path, std::string path_section, rapidjson::Document &expected,
+                   rapidjson::Document &actual) {
   std::string joined_actual_output = toString(actual);
   std::string joined_expected_output = toString(expected);
   printf("[FAILED] %s (section %s)\n", path.c_str(), path_section.c_str());
@@ -209,23 +200,19 @@ void diffDocuments(std::string path, std::string path_section,
       return;
   }
 #endif
-  std::vector<std::string> actual_output =
-      splitString(joined_actual_output, "\n");
-  std::vector<std::string> expected_output =
-      splitString(joined_expected_output, "\n");
+  std::vector<std::string> actual_output = splitString(joined_actual_output, "\n");
+  std::vector<std::string> expected_output = splitString(joined_expected_output, "\n");
 
-  printf("Expected output for %s (section %s)\n:%s\n", path.c_str(),
-         path_section.c_str(), joined_expected_output.c_str());
-  printf("Actual output for %s (section %s)\n:%s\n", path.c_str(),
-         path_section.c_str(), joined_actual_output.c_str());
+  printf("Expected output for %s (section %s)\n:%s\n", path.c_str(), path_section.c_str(),
+         joined_expected_output.c_str());
+  printf("Actual output for %s (section %s)\n:%s\n", path.c_str(), path_section.c_str(), joined_actual_output.c_str());
 }
 
 void verifySerializeToFrom(IndexFile *file) {
   std::string expected = file->toString();
   std::string serialized = ccls::serialize(SerializeFormat::Json, *file);
   std::unique_ptr<IndexFile> result =
-      ccls::deserialize(SerializeFormat::Json, "--.cc", serialized, "<empty>",
-                        std::nullopt /*expected_version*/);
+      ccls::deserialize(SerializeFormat::Json, "--.cc", serialized, "<empty>", std::nullopt /*expected_version*/);
   std::string actual = result->toString();
   if (expected != actual) {
     fprintf(stderr, "Serialization failure\n");
@@ -233,9 +220,8 @@ void verifySerializeToFrom(IndexFile *file) {
   }
 }
 
-std::string findExpectedOutputForFilename(
-    std::string filename,
-    const std::unordered_map<std::string, std::string> &expected) {
+std::string findExpectedOutputForFilename(std::string filename,
+                                          const std::unordered_map<std::string, std::string> &expected) {
   for (const auto &entry : expected) {
     if (StringRef(entry.first).endswith(filename))
       return entry.second;
@@ -247,9 +233,7 @@ std::string findExpectedOutputForFilename(
   return "{}";
 }
 
-IndexFile *
-findDbForPathEnding(const std::string &path,
-                    const std::vector<std::unique_ptr<IndexFile>> &dbs) {
+IndexFile *findDbForPathEnding(const std::string &path, const std::vector<std::unique_ptr<IndexFile>> &dbs) {
   for (auto &db : dbs) {
     if (StringRef(db->path).endswith(path))
       return db.get();
@@ -263,8 +247,7 @@ bool runIndexTests(const std::string &filter_path, bool enable_update) {
 
   // Index tests change based on the version of clang used.
   static const char kRequiredClangVersion[] = "6.0.0";
-  if (version != kRequiredClangVersion &&
-      version.find("svn") == std::string::npos) {
+  if (version != kRequiredClangVersion && version.find("svn") == std::string::npos) {
     fprintf(stderr,
             "Index tests must be run using clang version %s, ccls is running "
             "with %s\n",
@@ -276,98 +259,91 @@ bool runIndexTests(const std::string &filter_path, bool enable_update) {
   bool update_all = false;
   // FIXME: show diagnostics in STL/headers when running tests. At the moment
   // this can be done by conRequestIdex index(1, 1);
-  SemaManager completion(
-      nullptr, nullptr, [&](std::string, std::vector<Diagnostic>) {},
-      [](RequestId id) {});
-  getFilesInFolder(
-      "index_tests", true /*recursive*/, true /*add_folder_to_path*/,
-      [&](const std::string &path) {
-        bool is_fail_allowed = false;
+  SemaManager completion(nullptr, nullptr, [&](std::string, std::vector<Diagnostic>) {}, [](RequestId id) {});
+  getFilesInFolder("index_tests", true /*recursive*/, true /*add_folder_to_path*/, [&](const std::string &path) {
+    bool is_fail_allowed = false;
 
-        if (path.find(filter_path) == std::string::npos)
-          return;
+    if (path.find(filter_path) == std::string::npos)
+      return;
 
-        if (!filter_path.empty())
-          printf("Running %s\n", path.c_str());
+    if (!filter_path.empty())
+      printf("Running %s\n", path.c_str());
 
-        // Parse expected output from the test, parse it into JSON document.
-        std::vector<std::string> lines_with_endings;
-        {
-          std::ifstream fin(path);
-          for (std::string line; std::getline(fin, line);)
-            lines_with_endings.push_back(line);
-        }
-        TextReplacer text_replacer;
-        std::vector<std::string> flags;
-        std::unordered_map<std::string, std::string> all_expected_output;
-        parseTestExpectation(path, lines_with_endings, &text_replacer, &flags,
-                             &all_expected_output);
+    // Parse expected output from the test, parse it into JSON document.
+    std::vector<std::string> lines_with_endings;
+    {
+      std::ifstream fin(path);
+      for (std::string line; std::getline(fin, line);)
+        lines_with_endings.push_back(line);
+    }
+    TextReplacer text_replacer;
+    std::vector<std::string> flags;
+    std::unordered_map<std::string, std::string> all_expected_output;
+    parseTestExpectation(path, lines_with_endings, &text_replacer, &flags, &all_expected_output);
 
-        // Build flags.
-        flags.push_back("-resource-dir=" + getDefaultResourceDirectory());
-        flags.push_back(path);
+    // Build flags.
+    flags.push_back("-resource-dir=" + getDefaultResourceDirectory());
+    flags.push_back(path);
 
-        // Run test.
-        g_config = new Config;
-        VFS vfs;
-        WorkingFiles wfiles;
-        std::vector<const char *> cargs;
-        for (auto &arg : flags)
-          cargs.push_back(arg.c_str());
-        bool ok;
-        auto result = ccls::idx::index(&completion, &wfiles, &vfs, "", path,
-                                       cargs, {}, true, ok);
+    // Run test.
+    g_config = new Config;
+    VFS vfs;
+    WorkingFiles wfiles;
+    std::vector<const char *> cargs;
+    for (auto &arg : flags)
+      cargs.push_back(arg.c_str());
+    bool ok;
+    auto result = ccls::idx::index(&completion, &wfiles, &vfs, "", path, cargs, {}, true, ok);
 
-        for (const auto &entry : all_expected_output) {
-          const std::string &expected_path = entry.first;
-          std::string expected_output = text_replacer.apply(entry.second);
+    for (const auto &entry : all_expected_output) {
+      const std::string &expected_path = entry.first;
+      std::string expected_output = text_replacer.apply(entry.second);
 
-          // Get output from index operation.
-          IndexFile *db = findDbForPathEnding(expected_path, result.indexes);
-          std::string actual_output = "{}";
-          if (db) {
-            verifySerializeToFrom(db);
-            actual_output = db->toString();
+      // Get output from index operation.
+      IndexFile *db = findDbForPathEnding(expected_path, result.indexes);
+      std::string actual_output = "{}";
+      if (db) {
+        verifySerializeToFrom(db);
+        actual_output = db->toString();
+      }
+      actual_output = text_replacer.apply(actual_output);
+
+      // Compare output via rapidjson::Document to ignore any formatting
+      // differences.
+      rapidjson::Document actual;
+      actual.Parse(actual_output.c_str());
+      rapidjson::Document expected;
+      expected.Parse(expected_output.c_str());
+
+      if (actual == expected) {
+        // std::cout << "[PASSED] " << path << std::endl;
+      } else {
+        if (!is_fail_allowed)
+          success = false;
+        diffDocuments(path, expected_path, expected, actual);
+        puts("\n");
+        if (enable_update) {
+          printf("[Enter to continue - type u to update test, a to update "
+                 "all]");
+          char c = 'u';
+          if (!update_all) {
+            c = getchar();
+            getchar();
           }
-          actual_output = text_replacer.apply(actual_output);
 
-          // Compare output via rapidjson::Document to ignore any formatting
-          // differences.
-          rapidjson::Document actual;
-          actual.Parse(actual_output.c_str());
-          rapidjson::Document expected;
-          expected.Parse(expected_output.c_str());
+          if (c == 'a')
+            update_all = true;
 
-          if (actual == expected) {
-            // std::cout << "[PASSED] " << path << std::endl;
-          } else {
-            if (!is_fail_allowed)
-              success = false;
-            diffDocuments(path, expected_path, expected, actual);
-            puts("\n");
-            if (enable_update) {
-              printf("[Enter to continue - type u to update test, a to update "
-                     "all]");
-              char c = 'u';
-              if (!update_all) {
-                c = getchar();
-                getchar();
-              }
-
-              if (c == 'a')
-                update_all = true;
-
-              if (update_all || c == 'u') {
-                // Note: we use |entry.second| instead of |expected_output|
-                // because
-                // |expected_output| has had text replacements applied.
-                updateTestExpectation(path, entry.second,
-                                      toString(actual) + "\n");
-              }
-            }
+          if (update_all || c == 'u') {
+            // Note: we use |entry.second| instead of |expected_output|
+            // because
+            // |expected_output| has had text replacements applied.
+            updateTestExpectation(path, entry.second, toString(actual) + "\n");
           }
         }
-      });
+      }
+    }
+  });
 
   return success;
 }

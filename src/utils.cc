@@ -30,10 +30,8 @@ struct Matcher::Impl {
   std::regex regex;
 };
 
-Matcher::Matcher(const std::string &pattern)
-    : impl(std::make_unique<Impl>()), pattern(pattern) {
-  impl->regex = std::regex(pattern, std::regex_constants::ECMAScript |
-                                        std::regex_constants::icase |
+Matcher::Matcher(const std::string &pattern) : impl(std::make_unique<Impl>()), pattern(pattern) {
+  impl->regex = std::regex(pattern, std::regex_constants::ECMAScript | std::regex_constants::icase |
                                         std::regex_constants::optimize);
 }
 
@@ -43,13 +41,11 @@ bool Matcher::matches(const std::string &text) const {
   return std::regex_search(text, impl->regex, std::regex_constants::match_any);
 }
 
-GroupMatch::GroupMatch(const std::vector<std::string> &whitelist,
-                       const std::vector<std::string> &blacklist) {
+GroupMatch::GroupMatch(const std::vector<std::string> &whitelist, const std::vector<std::string> &blacklist) {
   auto err = [](const std::string &pattern, const char *what) {
     ShowMessageParam params;
     params.type = MessageType::Error;
-    params.message =
-        "failed to parse EMCAScript regex " + pattern + " : " + what;
+    params.message = "failed to parse EMCAScript regex " + pattern + " : " + what;
     pipeline::notify(window_showMessage, params);
   };
   for (const std::string &pattern : whitelist) {
@@ -68,8 +64,7 @@ GroupMatch::GroupMatch(const std::vector<std::string> &whitelist,
   }
 }
 
-bool GroupMatch::matches(const std::string &text,
-                         std::string *blacklist_pattern) const {
+bool GroupMatch::matches(const std::string &text, std::string *blacklist_pattern) const {
   for (const Matcher &m : whitelist)
     if (m.matches(text))
       return true;
@@ -90,8 +85,7 @@ uint64_t hashUsr(llvm::StringRef s) {
   // k is an arbitrary key. Don't change it.
   const uint8_t k[16] = {0xd0, 0xe5, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x52,
                          0x61, 0x79, 0xea, 0x70, 0xca, 0x70, 0xf0, 0x0d};
-  (void)siphash(reinterpret_cast<const uint8_t *>(s.data()), s.size(), k, out,
-                8);
+  (void)siphash(reinterpret_cast<const uint8_t *>(s.data()), s.size(), k, out, 8);
   return ret;
 }
 
@@ -122,8 +116,7 @@ std::string escapeFileName(std::string path) {
   return path;
 }
 
-std::string resolveIfRelative(const std::string &directory,
-                              const std::string &path) {
+std::string resolveIfRelative(const std::string &directory, const std::string &path) {
   if (sys::path::is_absolute(path))
     return path;
   SmallString<256> ret;
@@ -172,8 +165,7 @@ std::optional<std::string> readContent(const std::string &filename) {
 
 void writeToFile(const std::string &filename, const std::string &content) {
   FILE *f = fopen(filename.c_str(), "wb");
-  if (!f ||
-      (content.size() && fwrite(content.c_str(), content.size(), 1, f) != 1)) {
+  if (!f || (content.size() && fwrite(content.c_str(), content.size(), 1, f) != 1)) {
     LOG_S(ERROR) << "failed to write to " << filename << ' ' << strerror(errno);
     return;
   }
@@ -182,17 +174,14 @@ void writeToFile(const std::string &filename, const std::string &content) {
 
 // Find discontinous |search| in |content|.
 // Return |found| and the count of skipped chars before found.
-int reverseSubseqMatch(std::string_view pat, std::string_view text,
-                       int case_sensitivity) {
+int reverseSubseqMatch(std::string_view pat, std::string_view text, int case_sensitivity) {
   if (case_sensitivity == 1)
     case_sensitivity = std::any_of(pat.begin(), pat.end(), isupper) ? 2 : 0;
   int j = pat.size();
   if (!j)
     return text.size();
   for (int i = text.size(); i--;)
-    if ((case_sensitivity ? text[i] == pat[j - 1]
-                          : tolower(text[i]) == tolower(pat[j - 1])) &&
-        !--j)
+    if ((case_sensitivity ? text[i] == pat[j - 1] : tolower(text[i]) == tolower(pat[j - 1])) && !--j)
       return i;
   return -1;
 }

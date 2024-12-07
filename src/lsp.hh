@@ -75,44 +75,26 @@ struct DocumentUri {
 struct Position {
   int line = 0;
   int character = 0;
-  bool operator==(const Position &o) const {
-    return line == o.line && character == o.character;
-  }
-  bool operator<(const Position &o) const {
-    return line != o.line ? line < o.line : character < o.character;
-  }
-  bool operator<=(const Position &o) const {
-    return line != o.line ? line < o.line : character <= o.character;
-  }
+  bool operator==(const Position &o) const { return line == o.line && character == o.character; }
+  bool operator<(const Position &o) const { return line != o.line ? line < o.line : character < o.character; }
+  bool operator<=(const Position &o) const { return line != o.line ? line < o.line : character <= o.character; }
   std::string toString() const;
 };
 
 struct lsRange {
   Position start;
   Position end;
-  bool operator==(const lsRange &o) const {
-    return start == o.start && end == o.end;
-  }
-  bool operator<(const lsRange &o) const {
-    return !(start == o.start) ? start < o.start : end < o.end;
-  }
-  bool includes(const lsRange &o) const {
-    return start <= o.start && o.end <= end;
-  }
-  bool intersects(const lsRange &o) const {
-    return start < o.end && o.start < end;
-  }
+  bool operator==(const lsRange &o) const { return start == o.start && end == o.end; }
+  bool operator<(const lsRange &o) const { return !(start == o.start) ? start < o.start : end < o.end; }
+  bool includes(const lsRange &o) const { return start <= o.start && o.end <= end; }
+  bool intersects(const lsRange &o) const { return start < o.end && o.start < end; }
 };
 
 struct Location {
   DocumentUri uri;
   lsRange range;
-  bool operator==(const Location &o) const {
-    return uri == o.uri && range == o.range;
-  }
-  bool operator<(const Location &o) const {
-    return !(uri == o.uri) ? uri < o.uri : range < o.range;
-  }
+  bool operator==(const Location &o) const { return uri == o.uri && range == o.range; }
+  bool operator<(const Location &o) const { return !(uri == o.uri) ? uri < o.uri : range < o.range; }
 };
 
 struct LocationLink {
@@ -120,17 +102,12 @@ struct LocationLink {
   lsRange targetRange;
   lsRange targetSelectionRange;
   explicit operator bool() const { return targetUri.size(); }
-  explicit operator Location() && {
-    return {DocumentUri{std::move(targetUri)}, targetSelectionRange};
-  }
+  explicit operator Location() && { return {DocumentUri{std::move(targetUri)}, targetSelectionRange}; }
   bool operator==(const LocationLink &o) const {
-    return targetUri == o.targetUri &&
-           targetSelectionRange == o.targetSelectionRange;
+    return targetUri == o.targetUri && targetSelectionRange == o.targetSelectionRange;
   }
   bool operator<(const LocationLink &o) const {
-    return !(targetUri == o.targetUri)
-               ? targetUri < o.targetUri
-               : targetSelectionRange < o.targetSelectionRange;
+    return !(targetUri == o.targetUri) ? targetUri < o.targetUri : targetSelectionRange < o.targetSelectionRange;
   }
 };
 

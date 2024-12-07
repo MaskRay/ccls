@@ -51,23 +51,15 @@ enum class Role : uint16_t {
   All = (1 << 9) - 1,
 };
 REFLECT_UNDERLYING_B(Role);
-inline uint16_t operator&(Role lhs, Role rhs) {
-  return uint16_t(lhs) & uint16_t(rhs);
-}
-inline Role operator|(Role lhs, Role rhs) {
-  return Role(uint16_t(lhs) | uint16_t(rhs));
-}
+inline uint16_t operator&(Role lhs, Role rhs) { return uint16_t(lhs) & uint16_t(rhs); }
+inline Role operator|(Role lhs, Role rhs) { return Role(uint16_t(lhs) | uint16_t(rhs)); }
 
 struct SymbolIdx {
   Usr usr;
   Kind kind;
 
-  bool operator==(const SymbolIdx &o) const {
-    return usr == o.usr && kind == o.kind;
-  }
-  bool operator<(const SymbolIdx &o) const {
-    return usr != o.usr ? usr < o.usr : kind < o.kind;
-  }
+  bool operator==(const SymbolIdx &o) const { return usr == o.usr && kind == o.kind; }
+  bool operator<(const SymbolIdx &o) const { return usr != o.usr ? usr < o.usr : kind < o.kind; }
 };
 
 // |id,kind| refer to the referenced entity.
@@ -77,18 +69,14 @@ struct SymbolRef {
   Kind kind;
   Role role;
   operator SymbolIdx() const { return {usr, kind}; }
-  std::tuple<Range, Usr, Kind, Role> toTuple() const {
-    return std::make_tuple(range, usr, kind, role);
-  }
+  std::tuple<Range, Usr, Kind, Role> toTuple() const { return std::make_tuple(range, usr, kind, role); }
   bool operator==(const SymbolRef &o) const { return toTuple() == o.toTuple(); }
   bool valid() const { return range.valid(); }
 };
 
 struct ExtentRef : SymbolRef {
   Range extent;
-  std::tuple<Range, Usr, Kind, Role, Range> toTuple() const {
-    return std::make_tuple(range, usr, kind, role, extent);
-  }
+  std::tuple<Range, Usr, Kind, Role, Range> toTuple() const { return std::make_tuple(range, usr, kind, role, extent); }
   bool operator==(const ExtentRef &o) const { return toTuple() == o.toTuple(); }
 };
 
@@ -97,9 +85,7 @@ struct Ref {
   Role role;
 
   bool valid() const { return range.valid(); }
-  std::tuple<Range, Role> toTuple() const {
-    return std::make_tuple(range, role);
-  }
+  std::tuple<Range, Role> toTuple() const { return std::make_tuple(range, role); }
   bool operator==(const Ref &o) const { return toTuple() == o.toTuple(); }
   bool operator<(const Ref &o) const { return toTuple() < o.toTuple(); }
 };
@@ -143,18 +129,13 @@ template <typename T> using VectorAdapter = std::vector<T, std::allocator<T>>;
 template <typename D> struct NameMixin {
   std::string_view name(bool qualified) const {
     auto self = static_cast<const D *>(this);
-    return qualified
-               ? std::string_view(self->detailed_name + self->qual_name_offset,
-                                  self->short_name_offset -
-                                      self->qual_name_offset +
-                                      self->short_name_size)
-               : std::string_view(self->detailed_name + self->short_name_offset,
-                                  self->short_name_size);
+    return qualified ? std::string_view(self->detailed_name + self->qual_name_offset,
+                                        self->short_name_offset - self->qual_name_offset + self->short_name_size)
+                     : std::string_view(self->detailed_name + self->short_name_offset, self->short_name_size);
   }
 };
 
-template <template <typename T> class V>
-struct FuncDef : NameMixin<FuncDef<V>> {
+template <template <typename T> class V> struct FuncDef : NameMixin<FuncDef<V>> {
   // General metadata.
   const char *detailed_name = "";
   const char *hover = "";
@@ -179,9 +160,8 @@ struct FuncDef : NameMixin<FuncDef<V>> {
   const Usr *bases_begin() const { return bases.begin(); }
   const Usr *bases_end() const { return bases.end(); }
 };
-REFLECT_STRUCT(FuncDef<VectorAdapter>, detailed_name, hover, comments, spell,
-               bases, vars, callees, qual_name_offset, short_name_offset,
-               short_name_size, kind, parent_kind, storage);
+REFLECT_STRUCT(FuncDef<VectorAdapter>, detailed_name, hover, comments, spell, bases, vars, callees, qual_name_offset,
+               short_name_offset, short_name_size, kind, parent_kind, storage);
 
 struct IndexFunc : NameMixin<IndexFunc> {
   using Def = FuncDef<VectorAdapter>;
@@ -192,8 +172,7 @@ struct IndexFunc : NameMixin<IndexFunc> {
   std::vector<Use> uses;
 };
 
-template <template <typename T> class V>
-struct TypeDef : NameMixin<TypeDef<V>> {
+template <template <typename T> class V> struct TypeDef : NameMixin<TypeDef<V>> {
   const char *detailed_name = "";
   const char *hover = "";
   const char *comments = "";
@@ -218,9 +197,8 @@ struct TypeDef : NameMixin<TypeDef<V>> {
   const Usr *bases_begin() const { return bases.begin(); }
   const Usr *bases_end() const { return bases.end(); }
 };
-REFLECT_STRUCT(TypeDef<VectorAdapter>, detailed_name, hover, comments, spell,
-               bases, funcs, types, vars, alias_of, qual_name_offset,
-               short_name_offset, short_name_size, kind, parent_kind);
+REFLECT_STRUCT(TypeDef<VectorAdapter>, detailed_name, hover, comments, spell, bases, funcs, types, vars, alias_of,
+               qual_name_offset, short_name_offset, short_name_size, kind, parent_kind);
 
 struct IndexType {
   using Def = TypeDef<VectorAdapter>;
@@ -253,20 +231,16 @@ struct VarDef : NameMixin<VarDef> {
 
   bool is_local() const {
     return spell &&
-           (parent_kind == SymbolKind::Function ||
-            parent_kind == SymbolKind::Method ||
-            parent_kind == SymbolKind::StaticMethod ||
-            parent_kind == SymbolKind::Constructor) &&
-           (storage == clang::SC_None || storage == clang::SC_Auto ||
-            storage == clang::SC_Register);
+           (parent_kind == SymbolKind::Function || parent_kind == SymbolKind::Method ||
+            parent_kind == SymbolKind::StaticMethod || parent_kind == SymbolKind::Constructor) &&
+           (storage == clang::SC_None || storage == clang::SC_Auto || storage == clang::SC_Register);
   }
 
   const Usr *bases_begin() const { return nullptr; }
   const Usr *bases_end() const { return nullptr; }
 };
-REFLECT_STRUCT(VarDef, detailed_name, hover, comments, spell, type,
-               qual_name_offset, short_name_offset, short_name_size, kind,
-               parent_kind, storage);
+REFLECT_STRUCT(VarDef, detailed_name, hover, comments, spell, type, qual_name_offset, short_name_offset,
+               short_name_size, kind, parent_kind, storage);
 
 struct IndexVar {
   using Def = VarDef;
@@ -301,8 +275,7 @@ struct IndexFile {
   bool no_linkage;
 
   // uid2lid_and_path is used to generate lid2path, but not serialized.
-  std::unordered_map<clang::FileID, std::pair<int, std::string>>
-      uid2lid_and_path;
+  std::unordered_map<clang::FileID, std::pair<int, std::string>> uid2lid_and_path;
   std::vector<std::pair<int, std::string>> lid2path;
 
   // The path to the translation unit cc file which caused the creation of this
@@ -323,8 +296,7 @@ struct IndexFile {
   // File contents at the time of index. Not serialized.
   std::string file_contents;
 
-  IndexFile(const std::string &path, const std::string &contents,
-            bool no_linkage);
+  IndexFile(const std::string &path, const std::string &contents, bool no_linkage);
 
   IndexFunc &toFunc(Usr usr);
   IndexType &toType(Usr usr);
@@ -345,12 +317,9 @@ struct VFS;
 
 namespace idx {
 void init();
-IndexResult
-index(SemaManager *complete, WorkingFiles *wfiles, VFS *vfs,
-      const std::string &opt_wdir, const std::string &file,
-      const std::vector<const char *> &args,
-      const std::vector<std::pair<std::string, std::string>> &remapped,
-      bool all_linkages, bool &ok);
+IndexResult index(SemaManager *complete, WorkingFiles *wfiles, VFS *vfs, const std::string &opt_wdir,
+                  const std::string &file, const std::vector<const char *> &args,
+                  const std::vector<std::pair<std::string, std::string>> &remapped, bool all_linkages, bool &ok);
 } // namespace idx
 } // namespace ccls
 

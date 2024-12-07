@@ -29,12 +29,10 @@ struct ReferenceParam : public TextDocumentPositionParam {
   Role role = Role::None;
 };
 REFLECT_STRUCT(ReferenceParam::Context, includeDeclaration);
-REFLECT_STRUCT(ReferenceParam, textDocument, position, context, folders, base,
-               excludeRole, role);
+REFLECT_STRUCT(ReferenceParam, textDocument, position, context, folders, base, excludeRole, role);
 } // namespace
 
-void MessageHandler::textDocument_references(JsonReader &reader,
-                                             ReplyOnce &reply) {
+void MessageHandler::textDocument_references(JsonReader &reader, ReplyOnce &reply) {
   ReferenceParam param;
   reflect(reader, param);
   auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
@@ -60,9 +58,8 @@ void MessageHandler::textDocument_references(JsonReader &reader,
       sym.usr = stack.back();
       stack.pop_back();
       auto fn = [&](Use use, SymbolKind parent_kind) {
-        if (file_set[use.file_id] &&
-            Role(use.role & param.role) == param.role &&
-            !(use.role & param.excludeRole) && seen_uses.insert(use).second)
+        if (file_set[use.file_id] && Role(use.role & param.role) == param.role && !(use.role & param.excludeRole) &&
+            seen_uses.insert(use).second)
           if (auto loc = getLsLocation(db, wfiles, use))
             result.push_back(*loc);
       };

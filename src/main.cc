@@ -37,20 +37,13 @@ namespace {
 OptionCategory C("ccls options");
 
 opt<bool> opt_help("h", desc("Alias for -help"), cat(C));
-opt<int> opt_verbose("v", desc("verbosity, from -3 (fatal) to 2 (verbose)"),
-                     init(0), cat(C));
-opt<std::string> opt_test_index("test-index", ValueOptional, init("!"),
-                                desc("run index tests"), cat(C));
+opt<int> opt_verbose("v", desc("verbosity, from -3 (fatal) to 2 (verbose)"), init(0), cat(C));
+opt<std::string> opt_test_index("test-index", ValueOptional, init("!"), desc("run index tests"), cat(C));
 
-opt<std::string> opt_index("index",
-                           desc("standalone mode: index a project and exit"),
-                           value_desc("root"), cat(C));
-list<std::string> opt_init("init", desc("extra initialization options in JSON"),
-                           cat(C));
-opt<std::string> opt_log_file("log-file", desc("stderr or log file"),
-                              value_desc("file"), init("stderr"), cat(C));
-opt<bool> opt_log_file_append("log-file-append", desc("append to log file"),
-                              cat(C));
+opt<std::string> opt_index("index", desc("standalone mode: index a project and exit"), value_desc("root"), cat(C));
+list<std::string> opt_init("init", desc("extra initialization options in JSON"), cat(C));
+opt<std::string> opt_log_file("log-file", desc("stderr or log file"), value_desc("file"), init("stderr"), cat(C));
+opt<bool> opt_log_file_append("log-file-append", desc("append to log file"), cat(C));
 
 void closeLog() { fclose(ccls::log::file); }
 
@@ -59,10 +52,8 @@ void closeLog() { fclose(ccls::log::file); }
 int main(int argc, char **argv) {
   traceMe();
   sys::PrintStackTraceOnErrorSignal(argv[0]);
-  cl::SetVersionPrinter([](raw_ostream &os) {
-    os << clang::getClangToolFullVersion("ccls version " CCLS_VERSION "\nclang")
-       << "\n";
-  });
+  cl::SetVersionPrinter(
+      [](raw_ostream &os) { os << clang::getClangToolFullVersion("ccls version " CCLS_VERSION "\nclang") << "\n"; });
 
   cl::HideUnrelatedOptions(C);
 
@@ -85,9 +76,7 @@ int main(int argc, char **argv) {
 
   if (opt_log_file.size()) {
     ccls::log::file =
-        opt_log_file == "stderr"
-            ? stderr
-            : fopen(opt_log_file.c_str(), opt_log_file_append ? "ab" : "wb");
+        opt_log_file == "stderr" ? stderr : fopen(opt_log_file.c_str(), opt_log_file_append ? "ab" : "wb");
     if (!ccls::log::file) {
       fprintf(stderr, "failed to open %s\n", opt_log_file.c_str());
       return 2;
@@ -98,8 +87,7 @@ int main(int argc, char **argv) {
 
   if (opt_test_index != "!") {
     language_server = false;
-    if (!ccls::runIndexTests(opt_test_index,
-                             sys::Process::StandardInIsUserInput()))
+    if (!ccls::runIndexTests(opt_test_index, sys::Process::StandardInIsUserInput()))
       return 1;
   }
 
@@ -112,8 +100,8 @@ int main(int argc, char **argv) {
       for (const std::string &str : g_init_options) {
         rapidjson::ParseResult ok = reader.Parse(str.c_str());
         if (!ok) {
-          fprintf(stderr, "Failed to parse --init as JSON: %s (%zd)\n",
-                  rapidjson::GetParseError_En(ok.Code()), ok.Offset());
+          fprintf(stderr, "Failed to parse --init as JSON: %s (%zd)\n", rapidjson::GetParseError_En(ok.Code()),
+                  ok.Offset());
           return 1;
         }
         JsonReader json_reader{&reader};
@@ -122,8 +110,7 @@ int main(int argc, char **argv) {
           reflect(json_reader, config);
         } catch (std::invalid_argument &e) {
           fprintf(stderr, "Failed to parse --init %s, expected %s\n",
-                  static_cast<JsonReader &>(json_reader).getPath().c_str(),
-                  e.what());
+                  static_cast<JsonReader &>(json_reader).getPath().c_str(), e.what());
           return 1;
         }
       }

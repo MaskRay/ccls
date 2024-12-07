@@ -20,8 +20,7 @@ struct WorkingFiles;
 
 namespace pipeline {
 void reply(const RequestId &id, const std::function<void(JsonWriter &)> &fn);
-void replyError(const RequestId &id,
-                const std::function<void(JsonWriter &)> &fn);
+void replyError(const RequestId &id, const std::function<void(JsonWriter &)> &fn);
 } // namespace pipeline
 
 struct CodeActionParam {
@@ -71,8 +70,7 @@ struct CallHierarchyItem {
   lsRange selectionRange;
   std::string data;
 };
-REFLECT_STRUCT(CallHierarchyItem, name, kind, detail, uri, range,
-               selectionRange, data);
+REFLECT_STRUCT(CallHierarchyItem, name, kind, detail, uri, range, selectionRange, data);
 
 struct CallsParam {
   CallHierarchyItem item;
@@ -183,12 +181,8 @@ struct WorkspaceSymbolParam {
 };
 REFLECT_STRUCT(WorkspaceFolder, uri, name);
 
-inline void reflect(JsonReader &vis, DocumentUri &v) {
-  reflect(vis, v.raw_uri);
-}
-inline void reflect(JsonWriter &vis, DocumentUri &v) {
-  reflect(vis, v.raw_uri);
-}
+inline void reflect(JsonReader &vis, DocumentUri &v) { reflect(vis, v.raw_uri); }
+inline void reflect(JsonWriter &vis, DocumentUri &v) { reflect(vis, v.raw_uri); }
 inline void reflect(JsonReader &vis, VersionedTextDocumentIdentifier &v) {
   REFLECT_MEMBER(uri);
   REFLECT_MEMBER(version);
@@ -214,8 +208,7 @@ REFLECT_STRUCT(TextEdit, range, newText);
 REFLECT_STRUCT(WorkDoneProgress, kind, title, message, percentage);
 REFLECT_STRUCT(WorkDoneProgressParam, token, value);
 REFLECT_STRUCT(DiagnosticRelatedInformation, location, message);
-REFLECT_STRUCT(Diagnostic, range, severity, code, source, message,
-               relatedInformation);
+REFLECT_STRUCT(Diagnostic, range, severity, code, source, message, relatedInformation);
 REFLECT_STRUCT(ShowMessageParam, type, message);
 REFLECT_UNDERLYING_B(LanguageId);
 
@@ -248,27 +241,20 @@ struct MessageHandler {
   WorkingFiles *wfiles = nullptr;
 
   llvm::StringMap<std::function<void(JsonReader &)>> method2notification;
-  llvm::StringMap<std::function<void(JsonReader &, ReplyOnce &)>>
-      method2request;
+  llvm::StringMap<std::function<void(JsonReader &, ReplyOnce &)>> method2request;
   bool overdue = false;
 
   MessageHandler();
   void run(InMessage &msg);
   QueryFile *findFile(const std::string &path, int *out_file_id = nullptr);
-  std::pair<QueryFile *, WorkingFile *> findOrFail(const std::string &path,
-                                                   ReplyOnce &reply,
-                                                   int *out_file_id = nullptr,
-                                                   bool allow_unopened = false);
+  std::pair<QueryFile *, WorkingFile *> findOrFail(const std::string &path, ReplyOnce &reply,
+                                                   int *out_file_id = nullptr, bool allow_unopened = false);
 
 private:
   void bind(const char *method, void (MessageHandler::*handler)(JsonReader &));
-  template <typename Param>
-  void bind(const char *method, void (MessageHandler::*handler)(Param &));
-  void bind(const char *method,
-            void (MessageHandler::*handler)(JsonReader &, ReplyOnce &));
-  template <typename Param>
-  void bind(const char *method,
-            void (MessageHandler::*handler)(Param &, ReplyOnce &));
+  template <typename Param> void bind(const char *method, void (MessageHandler::*handler)(Param &));
+  void bind(const char *method, void (MessageHandler::*handler)(JsonReader &, ReplyOnce &));
+  template <typename Param> void bind(const char *method, void (MessageHandler::*handler)(Param &, ReplyOnce &));
 
   void ccls_call(JsonReader &, ReplyOnce &);
   void ccls_fileInfo(JsonReader &, ReplyOnce &);
@@ -300,12 +286,9 @@ private:
   void textDocument_formatting(DocumentFormattingParam &, ReplyOnce &);
   void textDocument_hover(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_implementation(TextDocumentPositionParam &, ReplyOnce &);
-  void textDocument_onTypeFormatting(DocumentOnTypeFormattingParam &,
-                                     ReplyOnce &);
-  void textDocument_prepareCallHierarchy(TextDocumentPositionParam &,
-                                         ReplyOnce &);
-  void textDocument_rangeFormatting(DocumentRangeFormattingParam &,
-                                    ReplyOnce &);
+  void textDocument_onTypeFormatting(DocumentOnTypeFormattingParam &, ReplyOnce &);
+  void textDocument_prepareCallHierarchy(TextDocumentPositionParam &, ReplyOnce &);
+  void textDocument_rangeFormatting(DocumentRangeFormattingParam &, ReplyOnce &);
   void textDocument_references(JsonReader &, ReplyOnce &);
   void textDocument_rename(RenameParam &, ReplyOnce &);
   void textDocument_semanticTokensFull(TextDocumentParam &, ReplyOnce &);

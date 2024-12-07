@@ -53,8 +53,7 @@ void DocumentUri::setPath(const std::string &path) {
 
   size_t index = raw_uri.find(':');
   if (index == 1) { // widows drive letters must always be 1 char
-    raw_uri.replace(raw_uri.begin() + index, raw_uri.begin() + index + 1,
-                    "%3A");
+    raw_uri.replace(raw_uri.begin() + index, raw_uri.begin() + index + 1, "%3A");
   }
 
   // subset of reserved characters from the URI standard
@@ -90,9 +89,7 @@ void DocumentUri::setPath(const std::string &path) {
 
 std::string DocumentUri::getPath() const {
   if (raw_uri.compare(0, 7, "file://")) {
-    LOG_S(WARNING)
-        << "Received potentially bad URI (not starting with file://): "
-        << raw_uri;
+    LOG_S(WARNING) << "Received potentially bad URI (not starting with file://): " << raw_uri;
     return raw_uri;
   }
   std::string ret;
@@ -102,9 +99,7 @@ std::string DocumentUri::getPath() const {
 #else
   size_t i = 7;
 #endif
-  auto from_hex = [](unsigned char c) {
-    return c - '0' < 10 ? c - '0' : (c | 32) - 'a' + 10;
-  };
+  auto from_hex = [](unsigned char c) { return c - '0' < 10 ? c - '0' : (c | 32) - 'a' + 10; };
   for (; i < raw_uri.size(); i++) {
     if (i + 3 <= raw_uri.size() && raw_uri[i] == '%') {
       ret.push_back(from_hex(raw_uri[i + 1]) * 16 + from_hex(raw_uri[i + 2]));
@@ -123,7 +118,5 @@ std::string DocumentUri::getPath() const {
   return ret;
 }
 
-std::string Position::toString() const {
-  return std::to_string(line) + ":" + std::to_string(character);
-}
+std::string Position::toString() const { return std::to_string(line) + ":" + std::to_string(character); }
 } // namespace ccls
