@@ -684,6 +684,14 @@ void mainLoop() {
         path2backlog[ex.path].push_back(&backlog.back());
       }
 
+    // If the "exit" notification has been received, clear all index requests
+    // to make indexers stop in time.
+    if (g_quit.load(std::memory_order_relaxed)) {
+      index_request->apply([&](std::deque<IndexRequest> &q) {
+        q.clear();
+      });
+    }
+
     bool indexed = false;
     for (int i = 20; i--;) {
       std::optional<IndexUpdate> update = on_indexed->tryPopFront();
