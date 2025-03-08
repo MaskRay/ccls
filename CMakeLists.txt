@@ -75,6 +75,7 @@ if(CLANG_LINK_CLANG_DYLIB)
   target_link_libraries(ccls PRIVATE clang-cpp)
 else()
   target_link_libraries(ccls PRIVATE
+    clangCodeGen
     clangIndex
     clangFormat
     clangTooling
@@ -94,7 +95,7 @@ endif()
 if(LLVM_LINK_LLVM_DYLIB)
   target_link_libraries(ccls PRIVATE LLVM)
 else()
-  target_link_libraries(ccls PRIVATE LLVMOption LLVMSupport)
+  target_link_libraries(ccls PRIVATE LLVMOption LLVMSupport LLVMTarget LLVMX86CodeGen LLVMX86Desc LLVMX86Info)
   if(LLVM_VERSION_MAJOR GREATER_EQUAL 16) # llvmorg-16-init-15123-gf09cf34d0062
     target_link_libraries(ccls PRIVATE LLVMTargetParser)
   endif()
@@ -201,6 +202,7 @@ target_sources(ccls PRIVATE
   src/filesystem.cc
   src/fuzzy_match.cc
   src/main.cc
+  src/compile.cc
   src/indexer.cc
   src/log.cc
   src/lsp.cc
