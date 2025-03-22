@@ -88,7 +88,11 @@ struct Config {
     // ["-fopenmp", "-m*", "-Wall"].
     std::vector<std::string> excludeArgs;
 
-    // Additional arguments to pass to clang.
+    // Arguments to be inserted after the compiler driver name. These serve as default arguments that can be overridden
+    // by user-provided arguments.
+    std::vector<std::string> prependArgs;
+
+    // Additional arguments to be appended at the end of the argument list.
     std::vector<std::string> extraArgs;
 
     // Translate absolute paths in compile_commands.json entries, .ccls options
@@ -329,7 +333,7 @@ REFLECT_STRUCT(Config::ServerCap::DocumentOnTypeFormattingOptions, firstTriggerC
 REFLECT_STRUCT(Config::ServerCap::Workspace::WorkspaceFolders, supported, changeNotifications);
 REFLECT_STRUCT(Config::ServerCap::Workspace, workspaceFolders);
 REFLECT_STRUCT(Config::ServerCap, documentOnTypeFormattingProvider, foldingRangeProvider, workspace);
-REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, pathMappings, resourceDir);
+REFLECT_STRUCT(Config::Clang, excludeArgs, prependArgs, extraArgs, pathMappings, resourceDir);
 REFLECT_STRUCT(Config::ClientCapability, diagnosticsRelatedInformation, hierarchicalDocumentSymbolSupport, linkSupport,
                snippetSupport);
 REFLECT_STRUCT(Config::CodeLens, localVariables);
