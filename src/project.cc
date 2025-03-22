@@ -489,6 +489,12 @@ Project::Entry Project::findEntry(const std::string &path, bool can_redirect, bo
     ProjectProcessor(*best_dot_ccls_folder).process(ret);
   for (const std::string &arg : g_config->clang.extraArgs)
     ret.args.push_back(intern(arg));
+  if (g_config->clang.prependArgs.size() && ret.args.size()) {
+    std::vector<const char *> args;
+    for (StringRef arg : g_config->clang.prependArgs)
+      args.push_back(intern(arg));
+    ret.args.insert(ret.args.begin() + 1, args.begin(), args.end());
+  }
   ret.args.push_back(intern("-working-directory=" + ret.directory));
   return ret;
 }
@@ -529,7 +535,9 @@ void Project::indexRelated(const std::string &path) {
   auto &gi = g_config->index;
   GroupMatch match(gi.whitelist, gi.blacklist);
   StringRef stem = sys::path::stem(path);
-  std::vector<const char *> args, extra_args;
+  std::vector<const char *> args, prepend_args, extra_args;
+  for (const std::string &arg : g_config->clang.prependArgs)
+    prepend_args.push_back(intern(arg));
   for (const std::string &arg : g_config->clang.extraArgs)
     extra_args.push_back(intern(arg));
   std::lock_guard lock(mtx);
@@ -538,6 +546,8 @@ void Project::indexRelated(const std::string &path) {
       for (const Project::Entry &entry : folder.entries) {
         std::string reason;
         args = entry.args;
+        if (args.size())
+          args.insert(args.begin() + 1, prepend_args.begin(), prepend_args.end());
         args.insert(args.end(), extra_args.begin(), extra_args.end());
         args.push_back(intern("-working-directory=" + entry.directory));
         if (sys::path::stem(entry.filename) == stem && entry.filename != path && match.matches(entry.filename, &reason))
