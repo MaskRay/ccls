@@ -261,14 +261,22 @@ std::unique_ptr<CompilerInstance> buildCompilerInstance(Session &session, std::u
   else
     ci->getPreprocessorOpts().addRemappedFile(main, buf.get());
 
+#if LLVM_VERSION_MAJOR >= 21
+  auto clang = std::make_unique<CompilerInstance>(std::move(ci), session.pch);
+#else
   auto clang = std::make_unique<CompilerInstance>(session.pch);
   clang->setInvocation(std::move(ci));
+#endif
   clang->createDiagnostics(
 #if LLVM_VERSION_MAJOR >= 20
       *fs,
 #endif
       &dc, false);
+#if LLVM_VERSION_MAJOR >= 21
+  clang->setTarget(TargetInfo::CreateTargetInfo(clang->getDiagnostics(), clang->getTargetOpts()));
+#else
   clang->setTarget(TargetInfo::CreateTargetInfo(clang->getDiagnostics(), clang->getInvocation().TargetOpts));
+#endif
   if (!clang->hasTarget())
     return nullptr;
   clang->getPreprocessorOpts().RetainRemappedFileBuffers = true;

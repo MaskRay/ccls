@@ -377,10 +377,17 @@ const Decl *getAdjustedDecl(const Decl *d) {
         if (!s->isExplicitSpecialization()) {
           llvm::PointerUnion<ClassTemplateDecl *, ClassTemplatePartialSpecializationDecl *> result =
               s->getSpecializedTemplateOrPartial();
-          if (result.is<ClassTemplateDecl *>())
+#if LLVM_VERSION_MAJOR >= 21
+          if (auto *ctd = dyn_cast<ClassTemplateDecl *>(result))
+            d = ctd;
+          else
+            d = cast<ClassTemplatePartialSpecializationDecl *>(result);
+#else
+          if (isa<ClassTemplateDecl *>(result))
             d = result.get<ClassTemplateDecl *>();
           else
             d = result.get<ClassTemplatePartialSpecializationDecl *>();
+#endif
           continue;
         }
       } else if (auto *d1 = r->getInstantiatedFromMemberClass()) {
@@ -964,10 +971,17 @@ public:
           else if (auto *sd = dyn_cast<ClassTemplateSpecializationDecl>(rd)) {
             llvm::PointerUnion<ClassTemplateDecl *, ClassTemplatePartialSpecializationDecl *> result =
                 sd->getSpecializedTemplateOrPartial();
+#if LLVM_VERSION_MAJOR >= 21
+            if (auto *ctd = dyn_cast<ClassTemplateDecl *>(result))
+              d1 = ctd;
+            else
+              d1 = cast<ClassTemplatePartialSpecializationDecl *>(result);
+#else
             if (result.is<ClassTemplateDecl *>())
               d1 = result.get<ClassTemplateDecl *>();
             else
               d1 = result.get<ClassTemplatePartialSpecializationDecl *>();
+#endif
 
           } else
             d1 = rd->getInstantiatedFromMemberClass();
@@ -1241,15 +1255,23 @@ IndexResult index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs, const st
     }
 
   IndexDiags dc;
+#if LLVM_VERSION_MAJOR >= 21
+  auto clang = std::make_unique<CompilerInstance>(std::move(ci), pch);
+#else
   auto clang = std::make_unique<CompilerInstance>(pch);
   clang->setInvocation(std::move(ci));
+#endif
   clang->createDiagnostics(
 #if LLVM_VERSION_MAJOR >= 20
       *fs,
 #endif
       &dc, false);
   clang->getDiagnostics().setIgnoreAllWarnings(true);
+#if LLVM_VERSION_MAJOR >= 21
+  clang->setTarget(TargetInfo::CreateTargetInfo(clang->getDiagnostics(), clang->getTargetOpts()));
+#else
   clang->setTarget(TargetInfo::CreateTargetInfo(clang->getDiagnostics(), clang->getInvocation().TargetOpts));
+#endif
   if (!clang->hasTarget())
     return {};
   clang->getPreprocessorOpts().RetainRemappedFileBuffers = true;
