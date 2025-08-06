@@ -116,11 +116,18 @@ std::unique_ptr<CompilerInvocation> buildCompilerInvocation(const std::string &m
     args.insert(args.begin() + 1, std::begin(arr), std::end(arr));
   }
 
+#if (LLVM_VERSION_MAJOR == 21 && LLVM_VERSION_MINOR >= 1) ||                                                           \
+    (LLVM_VERSION_MAJOR >= 22) // 13e1a2cb
+  DiagnosticOptions DiagOpt;
+#else
+  DiagnosticOptions *DiagOpt = new DiagnosticOptions;
+#endif
+
   IntrusiveRefCntPtr<DiagnosticsEngine> diags(CompilerInstance::createDiagnostics(
 #if LLVM_VERSION_MAJOR >= 20
       *vfs,
 #endif
-      new DiagnosticOptions, new IgnoringDiagConsumer, true));
+      DiagOpt, new IgnoringDiagConsumer, true));
 #if LLVM_VERSION_MAJOR < 12 // llvmorg-12-init-5498-g257b29715bb
   driver::Driver d(args[0], llvm::sys::getDefaultTargetTriple(), *diags, vfs);
 #else
