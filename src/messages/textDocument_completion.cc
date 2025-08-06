@@ -350,7 +350,7 @@ public:
           if (fd->getTemplatedDecl()->getKind() == Decl::CXXDeductionGuide)
             continue;
         }
-        if (auto *rd = dyn_cast<RecordDecl>(r.Declaration))
+        if (auto *rd = dyn_cast<CXXRecordDecl>(r.Declaration))
           if (rd->isInjectedClassName())
             continue;
         auto nk = r.Declaration->getDeclName().getNameKind();

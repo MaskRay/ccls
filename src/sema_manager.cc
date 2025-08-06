@@ -352,7 +352,13 @@ void buildPreamble(Session &session, CompilerInvocation &ci, IntrusiveRefCntPtr<
 #if LLVM_VERSION_MAJOR >= 20
       *fs,
 #endif
-      &ci.getDiagnosticOpts(), &dc, false);
+#if (LLVM_VERSION_MAJOR == 21 && LLVM_VERSION_MINOR >= 1) ||                                                           \
+    (LLVM_VERSION_MAJOR >= 22) // llvmorg-21-init-12923-g13e1a2cb2246
+      ci.getDiagnosticOpts(),
+#else
+      &ci.getDiagnosticOpts(),
+#endif
+      &dc, false);
   if (oldP) {
     std::lock_guard lock(session.wfiles->mutex);
     for (auto &include : oldP->includes)
@@ -362,7 +368,13 @@ void buildPreamble(Session &session, CompilerInvocation &ci, IntrusiveRefCntPtr<
   }
 
   CclsPreambleCallbacks pc;
-  if (auto newPreamble = PrecompiledPreamble::Build(ci, buf.get(), bounds, *de, fs, session.pch, true,
+  if (auto newPreamble = PrecompiledPreamble::Build(ci, buf.get(), bounds,
+#if LLVM_VERSION_MAJOR >= 22 // llvmorg-22-init-2136-gc7f343750744
+                                                    de,
+#else
+                                                    *de,
+#endif
+                                                    fs, session.pch, true,
 #if LLVM_VERSION_MAJOR >= 17 // llvmorg-17-init-4072-gcc929590ad30
                                                     "",
 #endif
