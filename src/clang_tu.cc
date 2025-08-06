@@ -117,7 +117,7 @@ std::unique_ptr<CompilerInvocation> buildCompilerInvocation(const std::string &m
   }
 
 #if (LLVM_VERSION_MAJOR == 21 && LLVM_VERSION_MINOR >= 1) ||                                                           \
-    (LLVM_VERSION_MAJOR >= 22) // 13e1a2cb
+    (LLVM_VERSION_MAJOR >= 22) // llvmorg-21-init-12923-g13e1a2cb2246
   DiagnosticOptions DiagOpt;
 #else
   DiagnosticOptions *DiagOpt = new DiagnosticOptions;

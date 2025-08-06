@@ -353,7 +353,7 @@ void buildPreamble(Session &session, CompilerInvocation &ci, IntrusiveRefCntPtr<
       *fs,
 #endif
 #if (LLVM_VERSION_MAJOR == 21 && LLVM_VERSION_MINOR >= 1) ||                                                           \
-    (LLVM_VERSION_MAJOR >= 22) // 13e1a2cb
+    (LLVM_VERSION_MAJOR >= 22) // llvmorg-21-init-12923-g13e1a2cb2246
       ci.getDiagnosticOpts(),
 #else
       &ci.getDiagnosticOpts(),
@@ -369,7 +369,7 @@ void buildPreamble(Session &session, CompilerInvocation &ci, IntrusiveRefCntPtr<
 
   CclsPreambleCallbacks pc;
   if (auto newPreamble = PrecompiledPreamble::Build(ci, buf.get(), bounds,
-#if LLVM_VERSION_MAJOR >= 22 // c7f34375
+#if LLVM_VERSION_MAJOR >= 22 // llvmorg-22-init-2136-gc7f343750744
                                                     de,
 #else
                                                     *de,
