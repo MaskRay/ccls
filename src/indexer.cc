@@ -127,6 +127,7 @@ Kind getKind(const Decl *d, SymbolKind &kind) {
   case Decl::NamespaceAlias:
     kind = SymbolKind::Namespace;
     return Kind::Type;
+  case Decl::Concept:
   case Decl::ObjCCategory:
   case Decl::ObjCCategoryImpl:
   case Decl::ObjCImplementation:
