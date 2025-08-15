@@ -490,14 +490,22 @@ Project::Entry Project::findEntry(const std::string &path, bool can_redirect, bo
   for (const std::string &arg : g_config->clang.extraArgs)
     ret.args.push_back(intern(arg));
   ret.args.push_back(intern("-working-directory=" + ret.directory));
+  if (g_config->clang.prependArgs.size()) {
+    std::vector<const char *> args;
+    for (StringRef arg : g_config->clang.prependArgs)
+      args.push_back(intern(arg));
+    ret.args.insert(ret.args.begin() + 1, args.begin(), args.end());
+  }
   return ret;
 }
 
 void Project::index(WorkingFiles *wfiles, const RequestId &id) {
   auto &gi = g_config->index;
   GroupMatch match(gi.whitelist, gi.blacklist), match_i(gi.initialWhitelist, gi.initialBlacklist);
-  std::vector<const char *> args, extra_args;
-  for (const std::string &arg : g_config->clang.extraArgs)
+  std::vector<const char *> args, prepend_args, extra_args;
+  for (StringRef arg : g_config->clang.prependArgs)
+    prepend_args.push_back(intern(arg));
+  for (StringRef arg : g_config->clang.extraArgs)
     extra_args.push_back(intern(arg));
   {
     std::lock_guard lock(mtx);
@@ -510,6 +518,7 @@ void Project::index(WorkingFiles *wfiles, const RequestId &id) {
           args = entry.args;
           args.insert(args.end(), extra_args.begin(), extra_args.end());
           args.push_back(intern("-working-directory=" + entry.directory));
+          args.insert(args.begin() + 1, prepend_args.begin(), prepend_args.end());
           pipeline::index(entry.filename, args, interactive ? IndexMode::Normal : IndexMode::Background, false, id);
         } else {
           LOG_V(1) << "[" << i << "/" << folder.entries.size() << "]: " << reason << "; skip " << entry.filename;
@@ -529,8 +538,10 @@ void Project::indexRelated(const std::string &path) {
   auto &gi = g_config->index;
   GroupMatch match(gi.whitelist, gi.blacklist);
   StringRef stem = sys::path::stem(path);
-  std::vector<const char *> args, extra_args;
-  for (const std::string &arg : g_config->clang.extraArgs)
+  std::vector<const char *> args, prepend_args, extra_args;
+  for (StringRef arg : g_config->clang.prependArgs)
+    prepend_args.push_back(intern(arg));
+  for (StringRef arg : g_config->clang.extraArgs)
     extra_args.push_back(intern(arg));
   std::lock_guard lock(mtx);
   for (auto &[root, folder] : root2folder)
@@ -540,6 +551,7 @@ void Project::indexRelated(const std::string &path) {
         args = entry.args;
         args.insert(args.end(), extra_args.begin(), extra_args.end());
         args.push_back(intern("-working-directory=" + entry.directory));
+        args.insert(args.begin() + 1, prepend_args.begin(), prepend_args.end());
         if (sys::path::stem(entry.filename) == stem && entry.filename != path && match.matches(entry.filename, &reason))
           pipeline::index(entry.filename, args, IndexMode::Background, true);
       }
