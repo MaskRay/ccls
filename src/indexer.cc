@@ -333,7 +333,11 @@ try_again:
     break;
   case Type::Record:
   case Type::Enum:
+#if LLVM_VERSION_MAJOR >= 22 // llvmorg-22-init-3166-g91cdd35008e9
+    d = cast<TagType>(tp)->getOriginalDecl();
+#else
     d = cast<TagType>(tp)->getDecl();
+#endif
     break;
   case Type::TemplateTypeParm:
     d = cast<TemplateTypeParmType>(tp)->getDecl();
@@ -341,10 +345,15 @@ try_again:
   case Type::TemplateSpecialization:
     if (specialization)
       *specialization = true;
-    if (const RecordType *record = tp->getAs<RecordType>())
+    if (const RecordType *record = tp->getAs<RecordType>()) {
+#if LLVM_VERSION_MAJOR >= 22 // llvmorg-22-init-3166-g91cdd35008e9
+      d = record->getOriginalDecl();
+#else
       d = record->getDecl();
-    else
+#endif
+    } else {
       d = cast<TemplateSpecializationType>(tp)->getTemplateName().getAsTemplateDecl();
+    }
     break;
 
   case Type::Auto:
@@ -355,14 +364,20 @@ try_again:
     break;
 
   case Type::InjectedClassName:
+#if LLVM_VERSION_MAJOR >= 22 // llvmorg-22-init-3166-g91cdd35008e9
+    d = cast<InjectedClassNameType>(tp)->getOriginalDecl();
+#else
     d = cast<InjectedClassNameType>(tp)->getDecl();
+#endif
     break;
 
     // FIXME: Template type parameters!
 
+#if LLVM_VERSION_MAJOR < 22 // llvmorg-22-init-3166-g91cdd35008e9
   case Type::Elaborated:
     tp = cast<ElaboratedType>(tp)->getNamedType().getTypePtrOrNull();
     goto try_again;
+#endif
 
   default:
     break;
@@ -411,7 +426,11 @@ bool validateRecord(const RecordDecl *rd) {
     if (fqt->isIncompleteType() || fqt->isDependentType())
       return false;
     if (const RecordType *childType = i->getType()->getAs<RecordType>())
+#if LLVM_VERSION_MAJOR >= 22 // llvmorg-22-init-3166-g91cdd35008e9
+      if (const RecordDecl *child = childType->getOriginalDecl())
+#else
       if (const RecordDecl *child = childType->getDecl())
+#endif
         if (!validateRecord(child))
           return false;
   }
@@ -685,7 +704,11 @@ public:
         if (fd->getIdentifier())
           type.def.vars.emplace_back(getUsr(fd), offset1);
         else if (const auto *rt1 = fd->getType()->getAs<RecordType>()) {
+#if LLVM_VERSION_MAJOR >= 22 // llvmorg-22-init-3166-g91cdd35008e9
+          if (const RecordDecl *rd1 = rt1->getOriginalDecl())
+#else
           if (const RecordDecl *rd1 = rt1->getDecl())
+#endif
             if (seen.insert(rd1).second)
               stack.push_back({rd1, offset1});
         }
