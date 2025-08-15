@@ -42,7 +42,7 @@ OUTPUT:
       "spell": "3:9-3:12|3:3-3:15|1026|-1",
       "bases": [],
       "funcs": [],
-      "types": [],
+      "types": [17234941064111183681],
       "vars": [],
       "alias_of": 0,
       "kind": 5,
@@ -51,6 +51,22 @@ OUTPUT:
       "derived": [],
       "instances": [15768138241775955040, 3182917058194750998],
       "uses": ["5:3-5:6|4|-1", "6:3-6:6|4|-1"]
+    }, {
+      "usr": 17234941064111183681,
+      "detailed_name": "T",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "bases": [],
+      "funcs": [],
+      "types": [],
+      "vars": [],
+      "alias_of": 0,
+      "kind": 26,
+      "parent_kind": 0,
+      "declarations": ["2:21-2:22|2:12-2:22|1025|-1"],
+      "derived": [],
+      "instances": [],
+      "uses": []
     }],
   "usr2var": [{
       "usr": 3182917058194750998,

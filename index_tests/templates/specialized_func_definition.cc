@@ -9,7 +9,6 @@ void Template<T>::Foo() {}
 template<>
 void Template<void>::Foo() {}
 
-
 /*
 // TODO: usage information on Template is bad.
 // TODO: Foo() should have multiple definitions.
@@ -54,6 +53,38 @@ OUTPUT:
       "uses": []
     }],
   "usr2type": [{
+      "usr": 4889840470949104569,
+      "detailed_name": "T",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "bases": [],
+      "funcs": [],
+      "types": [],
+      "vars": [],
+      "alias_of": 0,
+      "kind": 26,
+      "parent_kind": 0,
+      "declarations": ["1:16-1:17|1:10-1:17|1025|-1"],
+      "derived": [],
+      "instances": [],
+      "uses": []
+    }, {
+      "usr": 13161199857701142428,
+      "detailed_name": "T",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "bases": [],
+      "funcs": [],
+      "types": [],
+      "vars": [],
+      "alias_of": 0,
+      "kind": 26,
+      "parent_kind": 0,
+      "declarations": [],
+      "derived": [],
+      "instances": [],
+      "uses": ["7:15-7:16|4|-1"]
+    }, {
       "usr": 17107291254533526269,
       "detailed_name": "class Template {}",
       "qual_name_offset": 6,
@@ -61,11 +92,11 @@ OUTPUT:
       "spell": "2:7-2:15|2:1-4:2|2|-1",
       "bases": [],
       "funcs": [11994188353303124840],
-      "types": [],
+      "types": [4889840470949104569],
       "vars": [],
       "alias_of": 0,
       "kind": 5,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],

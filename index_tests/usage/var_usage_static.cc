@@ -19,14 +19,14 @@ OUTPUT:
       "vars": [],
       "callees": [],
       "kind": 12,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "derived": [],
       "uses": []
     }],
   "usr2type": [{
-      "usr": 53,
+      "usr": 452,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -48,9 +48,9 @@ OUTPUT:
       "qual_name_offset": 11,
       "short_name": "a",
       "spell": "1:12-1:13|1:1-1:13|2|-1",
-      "type": 53,
+      "type": 452,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 2,
       "declarations": [],
       "uses": ["4:3-4:4|20|-1"]

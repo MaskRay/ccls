@@ -24,7 +24,7 @@ OUTPUT:
       "vars": [],
       "callees": ["7:7-7:13|17328473273923617489|3|16420", "9:3-9:9|17328473273923617489|3|16420"],
       "kind": 12,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "derived": [],
@@ -46,7 +46,7 @@ OUTPUT:
       "uses": ["7:7-7:13|16420|-1", "9:3-9:9|16420|-1"]
     }],
   "usr2type": [{
-      "usr": 53,
+      "usr": 452,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -87,7 +87,7 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "a",
       "spell": "3:19-3:20|3:15-3:20|1026|-1",
-      "type": 53,
+      "type": 452,
       "kind": 253,
       "parent_kind": 12,
       "storage": 0,
@@ -99,7 +99,7 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "Foo",
       "spell": "2:7-2:10|2:3-2:10|1026|-1",
-      "type": 53,
+      "type": 452,
       "kind": 13,
       "parent_kind": 3,
       "storage": 0,
@@ -108,6 +108,3 @@ OUTPUT:
     }]
 }
 */
-
-
-

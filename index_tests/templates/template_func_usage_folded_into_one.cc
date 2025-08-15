@@ -24,14 +24,14 @@ OUTPUT:
       "vars": [],
       "callees": [],
       "kind": 12,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "derived": [],
       "uses": ["6:9-6:12|36|-1", "7:9-7:12|36|-1"]
     }],
   "usr2type": [{
-      "usr": 53,
+      "usr": 452,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -46,6 +46,22 @@ OUTPUT:
       "derived": [],
       "instances": [16721564935990383768, 12028309045033782423],
       "uses": []
+    }, {
+      "usr": 17666708977284229997,
+      "detailed_name": "T",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "bases": [],
+      "funcs": [],
+      "types": [],
+      "vars": [],
+      "alias_of": 0,
+      "kind": 26,
+      "parent_kind": 0,
+      "declarations": ["1:19-1:20|1:10-1:20|1|-1"],
+      "derived": [],
+      "instances": [],
+      "uses": []
     }],
   "usr2var": [{
       "usr": 12028309045033782423,
@@ -54,9 +70,9 @@ OUTPUT:
       "short_name": "b",
       "hover": "int b = foo<bool>()",
       "spell": "7:5-7:6|7:1-7:20|2|-1",
-      "type": 53,
+      "type": 452,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": []
@@ -67,9 +83,9 @@ OUTPUT:
       "short_name": "a",
       "hover": "int a = foo<int>()",
       "spell": "6:5-6:6|6:1-6:19|2|-1",
-      "type": 53,
+      "type": 452,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": []

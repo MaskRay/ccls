@@ -18,7 +18,7 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 23,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [6601831367240627080],
@@ -32,7 +32,7 @@ OUTPUT:
       "spell": "2:13-2:14|2:1-2:14|2|-1",
       "type": 13487927231218873822,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 2,
       "declarations": [],
       "uses": []

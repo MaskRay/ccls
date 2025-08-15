@@ -16,14 +16,14 @@ OUTPUT:
       "vars": [10063793875496522529],
       "callees": [],
       "kind": 12,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "derived": [],
       "uses": []
     }],
   "usr2type": [{
-      "usr": 53,
+      "usr": 452,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -45,12 +45,12 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "a",
       "spell": "1:14-1:15|1:10-1:15|1026|-1",
-      "type": 53,
+      "type": 452,
       "kind": 253,
       "parent_kind": 12,
       "storage": 0,
       "declarations": [],
-      "uses": ["2:3-2:4|4|-1"]
+      "uses": ["2:3-2:4|28|-1"]
     }]
 }
 */

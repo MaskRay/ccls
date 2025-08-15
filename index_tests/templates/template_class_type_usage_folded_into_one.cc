@@ -31,7 +31,7 @@ VarDecl b
 OUTPUT:
 {
   "includes": [],
-  "skipped_ranges": ["12:1-29:1"],
+  "skipped_ranges": ["12:1-28:7"],
   "usr2func": [],
   "usr2type": [{
       "usr": 6697181287623958829,
@@ -45,7 +45,7 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 10,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],
@@ -58,11 +58,11 @@ OUTPUT:
       "spell": "5:8-5:11|5:1-7:2|2|-1",
       "bases": [],
       "funcs": [],
-      "types": [13938528237873543349],
+      "types": [15010559816125069973, 13938528237873543349],
       "vars": [],
       "alias_of": 0,
       "kind": 23,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],
@@ -79,7 +79,7 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 10,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],
@@ -101,6 +101,22 @@ OUTPUT:
       "derived": [],
       "instances": [16721564935990383768, 12028309045033782423],
       "uses": ["9:9-9:14|4|-1", "10:9-10:14|4|-1"]
+    }, {
+      "usr": 15010559816125069973,
+      "detailed_name": "T",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "bases": [],
+      "funcs": [],
+      "types": [],
+      "vars": [],
+      "alias_of": 0,
+      "kind": 26,
+      "parent_kind": 0,
+      "declarations": ["4:19-4:20|4:10-4:20|1025|-1"],
+      "derived": [],
+      "instances": [],
+      "uses": []
     }],
   "usr2var": [{
       "usr": 12028309045033782423,
@@ -110,7 +126,7 @@ OUTPUT:
       "spell": "10:15-10:16|10:1-10:16|2|-1",
       "type": 13938528237873543349,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": []
@@ -122,7 +138,7 @@ OUTPUT:
       "spell": "9:15-9:16|9:1-9:16|2|-1",
       "type": 13938528237873543349,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": []

@@ -34,7 +34,7 @@ EXTRA_FLAGS:
 OUTPUT:
 {
   "includes": [],
-  "skipped_ranges": ["12:1-29:1"],
+  "skipped_ranges": ["12:1-28:7"],
   "usr2func": [],
   "usr2type": [{
       "usr": 6697181287623958829,
@@ -48,7 +48,7 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 10,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [16721564935990383768],
@@ -57,19 +57,18 @@ OUTPUT:
       "usr": 11919899838872947844,
       "detailed_name": "T",
       "qual_name_offset": 0,
-      "short_name": "T",
-      "spell": "4:19-4:20|4:10-4:20|2|-1",
+      "short_name": "",
       "bases": [],
       "funcs": [],
       "types": [],
       "vars": [],
       "alias_of": 0,
       "kind": 26,
-      "parent_kind": 5,
-      "declarations": [],
+      "parent_kind": 0,
+      "declarations": ["4:19-4:20|4:10-4:20|1|-1"],
       "derived": [],
       "instances": [8096973118640070624],
-      "uses": []
+      "uses": ["5:1-5:2|4|-1", "5:9-5:10|4|-1"]
     }, {
       "usr": 13892793056005362145,
       "detailed_name": "enum B {}",
@@ -82,7 +81,7 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 10,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [12028309045033782423],
@@ -97,7 +96,7 @@ OUTPUT:
       "spell": "5:3-5:6|5:1-5:12|2|-1",
       "type": 11919899838872947844,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": ["7:7-7:10|12|-1", "8:7-8:10|12|-1"]
@@ -110,7 +109,7 @@ OUTPUT:
       "spell": "8:3-8:4|8:1-8:13|2|-1",
       "type": 13892793056005362145,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": []
@@ -123,7 +122,7 @@ OUTPUT:
       "spell": "7:3-7:4|7:1-7:13|2|-1",
       "type": 6697181287623958829,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": []

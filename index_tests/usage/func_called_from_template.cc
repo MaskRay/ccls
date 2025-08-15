@@ -54,7 +54,7 @@ OUTPUT:
       "vars": [],
       "callees": ["9:3-9:9|10177235824697315808|3|16420"],
       "kind": 12,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "derived": [],
@@ -69,13 +69,29 @@ OUTPUT:
       "vars": [],
       "callees": ["5:3-5:9|468307235068920063|3|16420"],
       "kind": 12,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "derived": [],
       "uses": ["9:3-9:9|16420|-1"]
     }],
-  "usr2type": [],
+  "usr2type": [{
+      "usr": 8908003062153072411,
+      "detailed_name": "T",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "bases": [],
+      "funcs": [],
+      "types": [],
+      "vars": [],
+      "alias_of": 0,
+      "kind": 26,
+      "parent_kind": 0,
+      "declarations": ["3:20-3:21|3:11-3:21|1|-1"],
+      "derived": [],
+      "instances": [],
+      "uses": []
+    }],
   "usr2var": []
 }
 */

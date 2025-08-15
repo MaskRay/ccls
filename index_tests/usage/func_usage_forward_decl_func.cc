@@ -32,7 +32,7 @@ OUTPUT:
       "vars": [],
       "callees": ["4:3-4:6|4259594751088586730|3|16420"],
       "kind": 12,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "derived": [],

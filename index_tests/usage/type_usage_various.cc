@@ -42,7 +42,7 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 5,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [16380484338511689669, 14455976355866885943],

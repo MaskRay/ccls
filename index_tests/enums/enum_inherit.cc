@@ -34,7 +34,7 @@ OUTPUT:
         }],
       "alias_of": 0,
       "kind": 10,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],
@@ -51,11 +51,11 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 252,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],
-      "uses": []
+      "uses": ["8:16-8:23|4|-1"]
     }, {
       "usr": 16985894625255407295,
       "detailed_name": "enum Foo : int {}",
@@ -68,7 +68,7 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 10,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],
@@ -83,7 +83,7 @@ OUTPUT:
       "spell": "2:3-2:4|2:3-2:4|1026|-1",
       "type": 16985894625255407295,
       "kind": 22,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": []
@@ -95,7 +95,7 @@ OUTPUT:
       "spell": "3:3-3:4|3:3-3:9|1026|-1",
       "type": 16985894625255407295,
       "kind": 22,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": []

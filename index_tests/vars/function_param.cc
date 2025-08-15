@@ -17,7 +17,7 @@ OUTPUT:
       "vars": [8730439006497971620, 2525014371090380500],
       "callees": [],
       "kind": 12,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "derived": [],

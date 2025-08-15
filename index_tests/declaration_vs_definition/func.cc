@@ -19,7 +19,7 @@ OUTPUT:
       "vars": [],
       "callees": [],
       "kind": 12,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": ["1:6-1:9|1:1-1:11|1|-1", "2:6-2:9|2:1-2:11|1|-1", "4:6-4:9|4:1-4:11|1|-1"],
       "derived": [],

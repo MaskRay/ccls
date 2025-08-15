@@ -29,7 +29,7 @@ OUTPUT:
         }],
       "alias_of": 0,
       "kind": 10,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [10677751717622394455],
@@ -57,7 +57,7 @@ OUTPUT:
       "spell": "6:5-6:6|6:1-6:15|2|-1",
       "type": 16985894625255407295,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": []

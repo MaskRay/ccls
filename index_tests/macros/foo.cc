@@ -29,7 +29,7 @@ OUTPUT:
       "uses": ["5:12-5:15|64|0"]
     }],
   "usr2type": [{
-      "usr": 53,
+      "usr": 452,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -56,7 +56,7 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 23,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],
@@ -95,9 +95,9 @@ OUTPUT:
       "short_name": "x",
       "hover": "int x = A",
       "spell": "8:5-8:6|8:1-8:10|2|-1",
-      "type": 53,
+      "type": 452,
       "kind": 13,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": []

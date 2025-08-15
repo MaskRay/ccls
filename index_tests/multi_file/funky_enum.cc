@@ -22,7 +22,7 @@ OUTPUT: funky_enum.h
       "spell": "4:1-4:2|4:1-4:2|1026|-1",
       "type": 16985894625255407295,
       "kind": 22,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": []
@@ -36,7 +36,7 @@ OUTPUT: funky_enum.h
       "spell": "6:1-6:2|6:1-6:2|1026|-1",
       "type": 16985894625255407295,
       "kind": 22,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": []
@@ -50,7 +50,7 @@ OUTPUT: funky_enum.h
       "spell": "5:1-5:2|5:1-5:2|1026|-1",
       "type": 16985894625255407295,
       "kind": 22,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "uses": []
@@ -76,7 +76,7 @@ OUTPUT: funky_enum.cc
       "vars": [],
       "alias_of": 0,
       "kind": 10,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],

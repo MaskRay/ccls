@@ -29,6 +29,22 @@ OUTPUT:
       "uses": []
     }],
   "usr2type": [{
+      "usr": 9174142900507230378,
+      "detailed_name": "T",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "bases": [],
+      "funcs": [],
+      "types": [],
+      "vars": [],
+      "alias_of": 0,
+      "kind": 26,
+      "parent_kind": 0,
+      "declarations": ["3:16-3:17|3:10-3:17|1|-1"],
+      "derived": [],
+      "instances": [],
+      "uses": []
+    }, {
       "usr": 15041163540773201510,
       "detailed_name": "struct Foo {}",
       "qual_name_offset": 7,
@@ -40,7 +56,7 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 23,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],

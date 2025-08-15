@@ -31,7 +31,7 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "operator()",
       "bases": [],
-      "vars": [],
+      "vars": [18194802024223591994, 3165816734756776484],
       "callees": [],
       "kind": 6,
       "parent_kind": 0,
@@ -70,6 +70,22 @@ OUTPUT:
       "uses": []
     }],
   "usr2type": [{
+      "usr": 452,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "bases": [],
+      "funcs": [],
+      "types": [],
+      "vars": [],
+      "alias_of": 0,
+      "kind": 0,
+      "parent_kind": 0,
+      "declarations": [],
+      "derived": [],
+      "instances": [18194802024223591994, 3165816734756776484],
+      "uses": []
+    }, {
       "usr": 15041163540773201510,
       "detailed_name": "class Foo {}",
       "qual_name_offset": 6,
@@ -81,12 +97,36 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 5,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],
       "uses": ["7:1-7:4|4|-1", "7:25-7:28|4|-1"]
     }],
-  "usr2var": []
+  "usr2var": [{
+      "usr": 3165816734756776484,
+      "detailed_name": "int b",
+      "qual_name_offset": 4,
+      "short_name": "b",
+      "spell": "4:29-4:30|4:25-4:30|1026|-1",
+      "type": 452,
+      "kind": 253,
+      "parent_kind": 6,
+      "storage": 0,
+      "declarations": [],
+      "uses": []
+    }, {
+      "usr": 18194802024223591994,
+      "detailed_name": "int a",
+      "qual_name_offset": 4,
+      "short_name": "a",
+      "spell": "4:22-4:23|4:18-4:23|1026|-1",
+      "type": 452,
+      "kind": 253,
+      "parent_kind": 6,
+      "storage": 0,
+      "declarations": [],
+      "uses": []
+    }]
 }
 */

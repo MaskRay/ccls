@@ -6,7 +6,7 @@ OUTPUT:
   "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [{
-      "usr": 53,
+      "usr": 452,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -27,7 +27,7 @@ OUTPUT:
       "detailed_name": "extern int global",
       "qual_name_offset": 11,
       "short_name": "global",
-      "type": 53,
+      "type": 452,
       "kind": 13,
       "parent_kind": 0,
       "storage": 1,

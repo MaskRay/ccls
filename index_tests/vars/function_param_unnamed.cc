@@ -14,7 +14,7 @@ OUTPUT:
       "vars": [],
       "callees": [],
       "kind": 12,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "derived": [],

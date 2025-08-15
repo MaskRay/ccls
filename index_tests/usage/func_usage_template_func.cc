@@ -21,7 +21,7 @@ OUTPUT:
       "vars": [],
       "callees": ["5:3-5:9|10585861037135727329|3|16420", "6:3-6:9|10585861037135727329|3|16420"],
       "kind": 12,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "derived": [],
@@ -41,7 +41,23 @@ OUTPUT:
       "derived": [],
       "uses": ["5:3-5:9|16420|-1", "6:3-6:9|16420|-1"]
     }],
-  "usr2type": [],
+  "usr2type": [{
+      "usr": 13420564603121289209,
+      "detailed_name": "T",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "bases": [],
+      "funcs": [],
+      "types": [],
+      "vars": [],
+      "alias_of": 0,
+      "kind": 26,
+      "parent_kind": 0,
+      "declarations": ["1:19-1:20|1:10-1:20|1|-1"],
+      "derived": [],
+      "instances": [],
+      "uses": ["2:13-2:14|4|-1"]
+    }],
   "usr2var": []
 }
 */

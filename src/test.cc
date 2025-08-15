@@ -182,8 +182,8 @@ void diffDocuments(std::string path, std::string path_section, rapidjson::Docume
   char actual_file[] = "/tmp/ccls.actual.XXXXXX";
   int expected_fd = mkstemp(expected_file);
   int actual_fd = mkstemp(actual_file);
-  dprintf(expected_fd, "%s", joined_expected_output.c_str());
-  dprintf(actual_fd, "%s", joined_actual_output.c_str());
+  dprintf(expected_fd, "%s\n", joined_expected_output.c_str());
+  dprintf(actual_fd, "%s\n", joined_actual_output.c_str());
   close(expected_fd);
   close(actual_fd);
   pid_t child = fork();
@@ -246,7 +246,7 @@ bool runIndexTests(const std::string &filter_path, bool enable_update) {
   std::string version = LLVM_VERSION_STRING;
 
   // Index tests change based on the version of clang used.
-  static const char kRequiredClangVersion[] = "6.0.0";
+  static const char kRequiredClangVersion[] = "22.0.0git";
   if (version != kRequiredClangVersion && version.find("svn") == std::string::npos) {
     fprintf(stderr,
             "Index tests must be run using clang version %s, ccls is running "
@@ -276,20 +276,16 @@ bool runIndexTests(const std::string &filter_path, bool enable_update) {
         lines_with_endings.push_back(line);
     }
     TextReplacer text_replacer;
-    std::vector<std::string> flags;
+    std::vector<std::string> args{"-std=c++20", "-resource-dir=" + getDefaultResourceDirectory(), path};
     std::unordered_map<std::string, std::string> all_expected_output;
-    parseTestExpectation(path, lines_with_endings, &text_replacer, &flags, &all_expected_output);
-
-    // Build flags.
-    flags.push_back("-resource-dir=" + getDefaultResourceDirectory());
-    flags.push_back(path);
+    parseTestExpectation(path, lines_with_endings, &text_replacer, &args, &all_expected_output);
 
     // Run test.
     g_config = new Config;
     VFS vfs;
     WorkingFiles wfiles;
     std::vector<const char *> cargs;
-    for (auto &arg : flags)
+    for (auto &arg : args)
       cargs.push_back(arg.c_str());
     bool ok;
     auto result = ccls::idx::index(&wfiles, &vfs, "", path, cargs, {}, true, ok);

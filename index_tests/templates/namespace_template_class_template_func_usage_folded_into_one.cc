@@ -33,7 +33,7 @@ OUTPUT:
       "uses": ["10:21-10:24|36|-1", "11:22-11:25|36|-1"]
     }],
   "usr2type": [{
-      "usr": 53,
+      "usr": 452,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -47,6 +47,22 @@ OUTPUT:
       "declarations": [],
       "derived": [],
       "instances": [15768138241775955040, 3182917058194750998],
+      "uses": []
+    }, {
+      "usr": 404962309137154484,
+      "detailed_name": "R",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "bases": [],
+      "funcs": [],
+      "types": [],
+      "vars": [],
+      "alias_of": 0,
+      "kind": 26,
+      "parent_kind": 0,
+      "declarations": ["4:23-4:24|4:14-4:24|1|-1"],
+      "derived": [],
+      "instances": [],
       "uses": []
     }, {
       "usr": 11072669167287398027,
@@ -71,6 +87,22 @@ OUTPUT:
       "instances": [],
       "uses": []
     }, {
+      "usr": 14005287469305211602,
+      "detailed_name": "T",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "bases": [],
+      "funcs": [],
+      "types": [],
+      "vars": [],
+      "alias_of": 0,
+      "kind": 26,
+      "parent_kind": 0,
+      "declarations": ["2:21-2:22|2:12-2:22|1025|-1"],
+      "derived": [],
+      "instances": [],
+      "uses": []
+    }, {
       "usr": 14042997404480181958,
       "detailed_name": "struct ns::Foo {}",
       "qual_name_offset": 7,
@@ -78,7 +110,7 @@ OUTPUT:
       "spell": "3:10-3:13|3:3-8:4|1026|-1",
       "bases": [],
       "funcs": [8221803074608342407],
-      "types": [],
+      "types": [14005287469305211602],
       "vars": [],
       "alias_of": 0,
       "kind": 23,
@@ -95,7 +127,7 @@ OUTPUT:
       "short_name": "b",
       "hover": "int ns::b = Foo<bool>::foo<double>()",
       "spell": "11:7-11:8|11:3-11:35|1026|-1",
-      "type": 53,
+      "type": 452,
       "kind": 13,
       "parent_kind": 3,
       "storage": 0,
@@ -108,7 +140,7 @@ OUTPUT:
       "short_name": "a",
       "hover": "int ns::a = Foo<int>::foo<float>()",
       "spell": "10:7-10:8|10:3-10:33|1026|-1",
-      "type": 53,
+      "type": 452,
       "kind": 13,
       "parent_kind": 3,
       "storage": 0,

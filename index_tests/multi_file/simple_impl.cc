@@ -44,7 +44,7 @@ OUTPUT: simple_impl.cc
       "vars": [],
       "callees": ["4:3-4:9|16236105532929924676|3|16420"],
       "kind": 12,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "derived": [],

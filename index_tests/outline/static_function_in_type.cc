@@ -13,7 +13,7 @@ OUTPUT: static_function_in_type.h
   "skipped_ranges": [],
   "usr2func": [{
       "usr": 17019747379608639279,
-      "detailed_name": "static void ns::Foo::Register(ns::Manager *)",
+      "detailed_name": "static void ns::Foo::Register(Manager *)",
       "qual_name_offset": 12,
       "short_name": "Register",
       "bases": [],
@@ -87,7 +87,7 @@ OUTPUT: static_function_in_type.cc
   "skipped_ranges": [],
   "usr2func": [{
       "usr": 17019747379608639279,
-      "detailed_name": "static void ns::Foo::Register(ns::Manager *)",
+      "detailed_name": "static void ns::Foo::Register(Manager *)",
       "qual_name_offset": 12,
       "short_name": "Register",
       "spell": "5:11-5:19|5:1-6:2|1026|-1",
@@ -153,8 +153,8 @@ OUTPUT: static_function_in_type.cc
     }],
   "usr2var": [{
       "usr": 13569879755236306838,
-      "detailed_name": "ns::Manager *m",
-      "qual_name_offset": 13,
+      "detailed_name": "Manager *m",
+      "qual_name_offset": 9,
       "short_name": "m",
       "spell": "5:29-5:30|5:20-5:30|1026|-1",
       "type": 1972401196751872203,

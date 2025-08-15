@@ -6,7 +6,6 @@ struct Holder {
 
 const VarType Holder::static_var;
 
-
 /*
 OUTPUT:
 {
@@ -25,7 +24,7 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 10,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [7057400933868440116, 7057400933868440116],
@@ -42,7 +41,7 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 23,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],
@@ -54,40 +53,16 @@ OUTPUT:
       "qual_name_offset": 25,
       "short_name": "static_var",
       "hover": "static constexpr VarType Holder::static_var = (VarType)0x0",
-      "spell": "7:23-7:33|7:1-7:33|1026|-1",
+      "spell": "4:28-4:38|4:3-4:53|1026|-1",
       "type": 5792006888140599735,
-      "kind": 13,
+      "kind": 8,
       "parent_kind": 23,
       "storage": 2,
-      "declarations": ["4:28-4:38|4:3-4:53|1025|-1"],
+      "declarations": ["7:23-7:33|7:1-7:33|1025|-1"],
       "uses": []
     }]
 }
 */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //#include <string>
 //#include <xiosbase>

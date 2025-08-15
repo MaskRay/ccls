@@ -22,7 +22,7 @@ OUTPUT:
         }],
       "alias_of": 0,
       "kind": 5,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [13799811842374292251],

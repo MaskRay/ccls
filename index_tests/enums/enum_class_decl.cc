@@ -22,11 +22,11 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 252,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],
-      "uses": []
+      "uses": ["2:18-2:25|4|-1"]
     }, {
       "usr": 16985894625255407295,
       "detailed_name": "enum class Foo : uint8_t {}",
@@ -45,7 +45,7 @@ OUTPUT:
         }],
       "alias_of": 0,
       "kind": 10,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],

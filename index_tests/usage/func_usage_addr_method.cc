@@ -6,7 +6,6 @@ void user() {
   auto x = &Foo::Used;
 }
 
-
 /*
 OUTPUT:
 {
@@ -22,7 +21,7 @@ OUTPUT:
       "vars": [4636142131003982569],
       "callees": ["6:18-6:22|18417145003926999463|3|132", "6:18-6:22|18417145003926999463|3|132"],
       "kind": 12,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "storage": 0,
       "declarations": [],
       "derived": [],
@@ -54,7 +53,7 @@ OUTPUT:
       "vars": [],
       "alias_of": 0,
       "kind": 23,
-      "parent_kind": 0,
+      "parent_kind": 1,
       "declarations": [],
       "derived": [],
       "instances": [],
