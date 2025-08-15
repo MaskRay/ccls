@@ -1226,8 +1226,8 @@ void init() {
   multiVersionMatcher = new GroupMatch(g_config->index.multiVersionWhitelist, g_config->index.multiVersionBlacklist);
 }
 
-IndexResult index(SemaManager *manager, WorkingFiles *wfiles, VFS *vfs, const std::string &opt_wdir,
-                  const std::string &main, const std::vector<const char *> &args,
+IndexResult index(WorkingFiles *wfiles, VFS *vfs, const std::string &opt_wdir, const std::string &main,
+                  const std::vector<const char *> &args,
                   const std::vector<std::pair<std::string, std::string>> &remapped, bool no_linkage, bool &ok) {
   ok = true;
   auto pch = std::make_shared<PCHContainerOperations>();

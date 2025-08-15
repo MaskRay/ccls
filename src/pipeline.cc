@@ -338,8 +338,7 @@ bool indexer_Parse(SemaManager *completion, WorkingFiles *wfiles, Project *proje
         remapped.emplace_back(path_to_index, content);
     }
     bool ok;
-    auto result =
-        idx::index(completion, wfiles, vfs, entry.directory, path_to_index, entry.args, remapped, no_linkage, ok);
+    auto result = idx::index(wfiles, vfs, entry.directory, path_to_index, entry.args, remapped, no_linkage, ok);
     indexes = std::move(result.indexes);
     n_errs = result.n_errs;
     first_error = std::move(result.first_error);
