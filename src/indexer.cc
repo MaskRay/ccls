@@ -325,6 +325,9 @@ try_again:
   switch (tp->getTypeClass()) {
   case Type::Typedef:
     d = cast<TypedefType>(tp)->getDecl();
+    tp = cast<TypedefType>(tp)->getDecl()->getUnderlyingType().getTypePtrOrNull();
+    if (tp)
+      goto try_again;
     break;
   case Type::ObjCObject:
     d = cast<ObjCObjectType>(tp)->getInterface();
