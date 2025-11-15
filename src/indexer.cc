@@ -364,9 +364,11 @@ try_again:
 
     // FIXME: Template type parameters!
 
+#if LLVM_VERSION_MAJOR < 22 // llvmorg-22-init-3166-g91cdd35008e9
   case Type::Elaborated:
     tp = cast<ElaboratedType>(tp)->getNamedType().getTypePtrOrNull();
     goto try_again;
+#endif
 
   default:
     break;
@@ -1266,7 +1268,7 @@ IndexResult index(WorkingFiles *wfiles, VFS *vfs, const std::string &opt_wdir, c
   clang->setInvocation(std::move(ci));
 #endif
   clang->createDiagnostics(
-#if LLVM_VERSION_MAJOR >= 20
+#if LLVM_VERSION_MAJOR >= 20 && LLVM_VERSION_MAJOR < 22
       *fs,
 #endif
       &dc, false);
@@ -1279,7 +1281,12 @@ IndexResult index(WorkingFiles *wfiles, VFS *vfs, const std::string &opt_wdir, c
   if (!clang->hasTarget())
     return {};
   clang->getPreprocessorOpts().RetainRemappedFileBuffers = true;
+#if LLVM_VERSION_MAJOR >= 22
+  clang->setVirtualFileSystem(fs);
+  clang->createFileManager();
+#else
   clang->createFileManager(fs);
+#endif
   clang->setSourceManager(new SourceManager(clang->getDiagnostics(), clang->getFileManager(), true));
 
   IndexParam param(*vfs, no_linkage);

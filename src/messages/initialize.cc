@@ -345,7 +345,11 @@ void do_initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) 
 
     if (g_config->cache.directory.size()) {
       SmallString<256> path(g_config->cache.directory);
+#if LLVM_VERSION_MAJOR >= 22
+      sys::path::make_absolute(project_path, path);
+#else
       sys::fs::make_absolute(project_path, path);
+#endif
       // Use upper case for the Driver letter on Windows.
       g_config->cache.directory = normalizePath(path.str());
       ensureEndsInSlash(g_config->cache.directory);

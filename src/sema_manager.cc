@@ -268,7 +268,7 @@ std::unique_ptr<CompilerInstance> buildCompilerInstance(Session &session, std::u
   clang->setInvocation(std::move(ci));
 #endif
   clang->createDiagnostics(
-#if LLVM_VERSION_MAJOR >= 20
+#if LLVM_VERSION_MAJOR >= 20 && LLVM_VERSION_MAJOR < 22
       *fs,
 #endif
       &dc, false);
@@ -283,7 +283,12 @@ std::unique_ptr<CompilerInstance> buildCompilerInstance(Session &session, std::u
   // Construct SourceManager with UserFilesAreVolatile: true because otherwise
   // RequiresNullTerminator: true may cause out-of-bounds read when a file is
   // mmap'ed but is saved concurrently.
+#if LLVM_VERSION_MAJOR >= 22
+  clang->setVirtualFileSystem(fs);
+  clang->createFileManager();
+#else
   clang->createFileManager(fs);
+#endif
   clang->setSourceManager(new SourceManager(clang->getDiagnostics(), clang->getFileManager(), true));
   auto &isec = clang->getFrontendOpts().Inputs;
   if (isec.size()) {
