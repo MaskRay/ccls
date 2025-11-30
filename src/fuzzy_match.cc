@@ -111,8 +111,8 @@ int FuzzyMatcher::match(std::string_view text, bool strict) {
     dp[0][j + 1][1] = kMinScore * 2;
   }
   for (int i = 0; i < int(pat.size()); i++) {
-    int(*pre)[2] = dp[i & 1];
-    int(*cur)[2] = dp[(i + 1) & 1];
+    int (*pre)[2] = dp[i & 1];
+    int (*cur)[2] = dp[(i + 1) & 1];
     cur[i][0] = cur[i][1] = kMinScore;
     for (int j = i; j < n; j++) {
       cur[j + 1][0] = std::max(cur[j][0] + missScore(j, false), cur[j][1] + missScore(j, true));
