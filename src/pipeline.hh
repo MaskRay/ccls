@@ -57,7 +57,7 @@ void launchStdout();
 void indexer_Main(SemaManager *manager, VFS *vfs, Project *project, WorkingFiles *wfiles);
 void indexerSort(const std::unordered_map<std::string, int> &dir2prio);
 void mainLoop();
-void standalone(const std::string &root);
+void standalone(const std::string &root, const std::string &souffle_output = "");
 
 void index(const std::string &path, const std::vector<const char *> &args, IndexMode mode, bool must_exist,
            RequestId id = {});

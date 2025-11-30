@@ -1,0 +1,25 @@
+// Usr is uint64_t, requires SOUFFLE_DOMAIN_64BIT build
+.type Usr <: unsigned
+.type File <: symbol
+.type Name <: symbol
+.type Line <: number
+.type Kind <: symbol
+.type Role <: symbol
+
+.decl function(usr: Usr, name: Name, file: File, line: Line, kind: Kind)
+.decl type(usr: Usr, name: Name, file: File, line: Line, kind: Kind)
+.decl variable(usr: Usr, name: Name, file: File, line: Line)
+.decl calls(caller: Usr, callee: Usr)
+.decl inherits(derived: Usr, base: Usr)
+.decl overrides(derived: Usr, base: Usr)
+.decl member_func(type: Usr, func: Usr)
+.decl member_var(type: Usr, var: Usr)
+.decl has_type(var: Usr, type: Usr)
+.decl reference(usr: Usr, file: File, line: Line, role: Role)
+.decl declaration(usr: Usr, file: File, line: Line)
+.decl definition(usr: Usr, file: File, line: Line)
+.decl includes(includer: File, includee: File)
+.decl func_derived(base: Usr, derived: Usr)
+.decl type_derived(base: Usr, derived: Usr)
+.decl type_instances(type: Usr, instance: Usr)
+.decl symbol_in_file(file: File, line: Line, column: number, usr: Usr, kind: Kind, role: Role)

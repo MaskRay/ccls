@@ -213,6 +213,7 @@ target_sources(ccls PRIVATE
   src/query.cc
   src/sema_manager.cc
   src/serializer.cc
+  src/souffle_exporter.cc
   src/test.cc
   src/utils.cc
   src/working_files.cc

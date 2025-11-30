@@ -41,6 +41,8 @@ opt<int> opt_verbose("v", desc("verbosity, from -3 (fatal) to 2 (verbose)"), ini
 opt<std::string> opt_test_index("test-index", ValueOptional, init("!"), desc("run index tests"), cat(C));
 
 opt<std::string> opt_index("index", desc("standalone mode: index a project and exit"), value_desc("root"), cat(C));
+opt<std::string> opt_souffle_output("souffle-output", desc("export index results as Souffle facts to directory"),
+                                    value_desc("dir"), cat(C));
 list<std::string> opt_init("init", desc("extra initialization options in JSON"), cat(C));
 opt<std::string> opt_log_file("log-file", desc("stderr or log file"), value_desc("file"), init("stderr"), cat(C));
 opt<bool> opt_log_file_append("log-file-append", desc("append to log file"), cat(C));
@@ -121,7 +123,13 @@ int main(int argc, char **argv) {
     if (opt_index.size()) {
       SmallString<256> root(opt_index);
       sys::fs::make_absolute(root);
-      pipeline::standalone(std::string(root.data(), root.size()));
+      std::string souffle_dir;
+      if (opt_souffle_output.size()) {
+        SmallString<256> souffle(opt_souffle_output);
+        sys::fs::make_absolute(souffle);
+        souffle_dir = std::string(souffle.data(), souffle.size());
+      }
+      pipeline::standalone(std::string(root.data(), root.size()), souffle_dir);
     } else {
       // The thread that reads from stdin and dispatchs commands to the main
       // thread.

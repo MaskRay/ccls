@@ -12,6 +12,7 @@
 #include "project.hh"
 #include "query.hh"
 #include "sema_manager.hh"
+#include "souffle_exporter.hh"
 
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
@@ -764,14 +765,18 @@ void mainLoop() {
   quit(manager);
 }
 
-void standalone(const std::string &root) {
+void standalone(const std::string &root, const std::string &souffle_output) {
   Project project;
   WorkingFiles wfiles;
   VFS vfs;
+  DB db;
   SemaManager manager(
       nullptr, nullptr, [](const std::string &, const std::vector<Diagnostic> &) {}, [](const RequestId &id) {});
 
   MessageHandler handler;
+  if (!souffle_output.empty()) {
+    handler.db = &db;
+  }
   handler.project = &project;
   handler.wfiles = &wfiles;
   handler.vfs = &vfs;
@@ -787,7 +792,12 @@ void standalone(const std::string &root) {
     printf("entries:   %4d\n", entries);
   }
   while (1) {
-    (void)on_indexed->dequeueAll();
+    auto updates = on_indexed->dequeueAll();
+    if (!souffle_output.empty()) {
+      for (auto &update : updates) {
+        db.applyIndexUpdate(&update);
+      }
+    }
     int64_t enqueued = stats.enqueued, completed = stats.completed;
     if (tty) {
       printf("\rcompleted: %4" PRId64 "/%" PRId64, completed, enqueued);
@@ -799,6 +809,12 @@ void standalone(const std::string &root) {
   }
   if (tty)
     puts("");
+
+  if (!souffle_output.empty()) {
+    SouffleExporter exporter(souffle_output);
+    exporter.exportDB(db);
+  }
+
   quit(manager);
 }
 
