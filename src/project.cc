@@ -323,6 +323,9 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
     rmdir(cdbDir.c_str());
 #endif
   }
+#if LLVM_VERSION_MAJOR >= 10
+  cdb = tooling::expandResponseFiles(std::move(cdb), vfs::getRealFileSystem());
+#endif
 
   ProjectProcessor proc(folder);
   StringSet<> seen;
