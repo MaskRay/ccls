@@ -10,6 +10,7 @@
 #include "sema_manager.hh"
 
 #include <clang/AST/AST.h>
+#include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/Basic/TargetInfo.h>
 #include <clang/Frontend/FrontendAction.h>
 #include <clang/Frontend/MultiplexConsumer.h>
@@ -21,6 +22,7 @@
 #include <clang/Index/USRGeneration.h>
 #endif
 #include <clang/Lex/PreprocessorOptions.h>
+#include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/Support/CrashRecoveryContext.h>
 #include <llvm/Support/Path.h>
@@ -52,6 +54,9 @@ struct File {
   std::unique_ptr<IndexFile> db;
 };
 
+bool isLikelyForwardingFunction(const FunctionTemplateDecl *ft);
+llvm::SmallVector<const CXXConstructorDecl *, 1> searchConstructorsInForwardingFunction(const FunctionDecl *fd);
+
 struct IndexParam {
   std::unordered_map<FileID, File> uid2file;
   std::unordered_map<FileID, bool> uid2multi;
@@ -61,11 +66,41 @@ struct IndexParam {
     std::string qualified;
   };
   std::unordered_map<const Decl *, DeclInfo> decl2Info;
+  llvm::DenseMap<const FunctionDecl *, llvm::SmallVector<const CXXConstructorDecl *, 1>> forwarding_cache;
+
+  // Deferred records for indirect-constructor attribution. At the call site of
+  // a forwarding function (e.g. std::make_unique<A>(...)) the instantiation's
+  // body is not yet attached, so we record the location and resolve it at end
+  // of the indexing pass.
+  struct DeferredForward {
+    IndexFile *db;
+    Range loc;
+    Role role;
+    int lid;
+    const FunctionDecl *fd;
+    Usr enclosing_usr; // valid iff has_enclosing
+    bool has_enclosing;
+  };
+  std::vector<DeferredForward> deferred_forward;
 
   VFS &vfs;
   ASTContext *ctx;
   bool no_linkage;
   IndexParam(VFS &vfs, bool no_linkage) : vfs(vfs), no_linkage(no_linkage) {}
+
+  llvm::ArrayRef<const CXXConstructorDecl *> findIndirectConstructors(const Decl *d) {
+    static const llvm::SmallVector<const CXXConstructorDecl *, 1> empty;
+    const auto *fd = dyn_cast_or_null<FunctionDecl>(d);
+    if (!fd || !fd->isTemplateInstantiation())
+      return empty;
+    if (auto it = forwarding_cache.find(fd); it != forwarding_cache.end())
+      return it->second;
+    FunctionTemplateDecl *pt = fd->getPrimaryTemplate();
+    if (!pt || !isLikelyForwardingFunction(pt))
+      return empty;
+    auto [it, _] = forwarding_cache.try_emplace(fd, searchConstructorsInForwardingFunction(fd));
+    return it->second;
+  }
 
   void seenFile(FileID fid) {
     // If this is the first time we have seen the file (ignoring if we are
@@ -413,6 +448,69 @@ const Decl *getAdjustedDecl(const Decl *d) {
     break;
   }
   return d;
+}
+
+// Heuristic: a function template is "likely forwarding" if its last parameter
+// is a pack expansion `T&&...` (or `T...`) whose template parameter is bound by
+// the function template itself (not by an enclosing template). Matches the
+// shape of std::make_unique, std::make_shared, std::vector::emplace_back, etc.
+bool isLikelyForwardingFunction(const FunctionTemplateDecl *ft) {
+  const FunctionDecl *fd = ft->getTemplatedDecl();
+  unsigned n = fd->getNumParams();
+  if (!n)
+    return false;
+  const ParmVarDecl *last = fd->getParamDecl(n - 1);
+  const auto *pet = dyn_cast<PackExpansionType>(last->getType());
+  if (!pet)
+    return false;
+  QualType base = pet->getPattern().getNonReferenceType();
+  const auto *ttpt = dyn_cast<TemplateTypeParmType>(base.getTypePtr());
+  if (!ttpt)
+    return false;
+  return ft->getTemplateParameters()->getDepth() == ttpt->getDepth();
+}
+
+class ForwardingToConstructorVisitor : public RecursiveASTVisitor<ForwardingToConstructorVisitor> {
+public:
+  llvm::DenseSet<const FunctionDecl *> &seen;
+  llvm::SmallVectorImpl<const CXXConstructorDecl *> &out;
+
+  ForwardingToConstructorVisitor(llvm::DenseSet<const FunctionDecl *> &seen,
+                                 llvm::SmallVectorImpl<const CXXConstructorDecl *> &out)
+      : seen(seen), out(out) {}
+
+  static constexpr unsigned kMaxDepth = 10;
+
+  bool VisitCallExpr(CallExpr *e) {
+    if (seen.size() >= kMaxDepth)
+      return true;
+    FunctionDecl *fd = e->getDirectCallee();
+    if (!fd || seen.contains(fd))
+      return true;
+    FunctionTemplateDecl *pt = fd->getPrimaryTemplate();
+    if (!pt || !isLikelyForwardingFunction(pt))
+      return true;
+    seen.insert(fd);
+    if (Stmt *body = fd->getBody())
+      ForwardingToConstructorVisitor(seen, out).TraverseStmt(body);
+    seen.erase(fd);
+    return true;
+  }
+
+  bool VisitCXXNewExpr(CXXNewExpr *e) {
+    if (const auto *ce = e->getConstructExpr())
+      if (auto *cd = ce->getConstructor())
+        out.push_back(cd);
+    return true;
+  }
+};
+
+llvm::SmallVector<const CXXConstructorDecl *, 1> searchConstructorsInForwardingFunction(const FunctionDecl *fd) {
+  llvm::SmallVector<const CXXConstructorDecl *, 1> ret;
+  llvm::DenseSet<const FunctionDecl *> seen{fd};
+  if (Stmt *body = fd->getBody())
+    ForwardingToConstructorVisitor(seen, ret).TraverseStmt(body);
+  return ret;
 }
 
 bool validateRecord(const RecordDecl *rd) {
@@ -834,8 +932,15 @@ public:
           db->toType(getUsr(dc)).def.funcs.push_back(usr);
       } else {
         const Decl *dc = cast<Decl>(lex_dc);
-        if (getKind(dc, ls_kind) == Kind::Func)
+        bool dc_is_func = getKind(dc, ls_kind) == Kind::Func;
+        if (dc_is_func)
           db->toFunc(getUsr(dc)).def.callees.push_back({loc, usr, Kind::Func, role});
+        // Defer indirect-constructor attribution (e.g. std::make_unique<A>(...)
+        // -> A::A): the instantiation's body is not attached until later in the
+        // indexing pass.
+        if (const auto *fd = dyn_cast<FunctionDecl>(origD); fd && fd->isTemplateInstantiation())
+          if (auto *pt = fd->getPrimaryTemplate(); pt && isLikelyForwardingFunction(pt))
+            param.deferred_forward.push_back({db, loc, role, lid, fd, dc_is_func ? getUsr(dc) : Usr(0), dc_is_func});
       }
       break;
     case Kind::Type:
@@ -1053,6 +1158,18 @@ public:
       break;
     }
     return true;
+  }
+
+  void flushDeferred() {
+    for (const auto &df : param.deferred_forward) {
+      for (const CXXConstructorDecl *cd : param.findIndirectConstructors(df.fd)) {
+        Usr cusr = getUsr(cd);
+        Role crole = Role(df.role | Role::Implicit);
+        df.db->toFunc(cusr).uses.push_back({{df.loc, crole}, df.lid});
+        if (df.has_enclosing)
+          df.db->toFunc(df.enclosing_usr).def.callees.push_back({df.loc, cusr, Kind::Func, crole});
+      }
+    }
   }
 };
 
@@ -1312,7 +1429,8 @@ IndexResult index(WorkingFiles *wfiles, VFS *vfs, const std::string &opt_wdir, c
     indexOpts.IndexTemplateParameters = true;
   }
 
-  auto action = std::make_unique<IndexFrontendAction>(std::make_shared<IndexDataConsumer>(param), indexOpts, param);
+  auto data_consumer = std::make_shared<IndexDataConsumer>(param);
+  auto action = std::make_unique<IndexFrontendAction>(data_consumer, indexOpts, param);
   std::string reason;
   {
     llvm::CrashRecoveryContext crc;
@@ -1323,6 +1441,7 @@ IndexResult index(WorkingFiles *wfiles, VFS *vfs, const std::string &opt_wdir, c
         reason = llvm::toString(std::move(e));
         return;
       }
+      data_consumer->flushDeferred();
       action->EndSourceFile();
       ok = true;
     };
