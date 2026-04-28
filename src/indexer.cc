@@ -10,6 +10,7 @@
 #include "sema_manager.hh"
 
 #include <clang/AST/AST.h>
+#include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/Basic/TargetInfo.h>
 #include <clang/Frontend/FrontendAction.h>
 #include <clang/Frontend/MultiplexConsumer.h>
@@ -21,6 +22,7 @@
 #include <clang/Index/USRGeneration.h>
 #endif
 #include <clang/Lex/PreprocessorOptions.h>
+#include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/Support/CrashRecoveryContext.h>
 #include <llvm/Support/Path.h>
@@ -61,6 +63,18 @@ struct IndexParam {
     std::string qualified;
   };
   std::unordered_map<const Decl *, DeclInfo> decl2Info;
+
+  // A call to a forwarding function (e.g. std::make_unique<A>). The callee's
+  // body is instantiated at the end of the translation unit.
+  struct DeferredForward {
+    IndexFile *db;
+    Range loc;
+    Role role;
+    int lid;
+    const FunctionDecl *callee;
+    const Decl *caller; // nullptr if not in a function
+  };
+  std::vector<DeferredForward> deferred_forward;
 
   VFS &vfs;
   ASTContext *ctx;
@@ -413,6 +427,59 @@ const Decl *getAdjustedDecl(const Decl *d) {
     break;
   }
   return d;
+}
+
+// Whether fd is a specialization of a function template whose last parameter is
+// `Args &&...` of its own template parameter, e.g. std::make_unique.
+bool isLikelyForwardingFunction(const FunctionDecl *fd) {
+  const FunctionTemplateDecl *ft = fd->getPrimaryTemplate();
+  if (!ft || !ft->getTemplatedDecl()->getNumParams())
+    return false;
+  const FunctionDecl *pattern = ft->getTemplatedDecl();
+  const auto *pet = dyn_cast<PackExpansionType>(pattern->getParamDecl(pattern->getNumParams() - 1)->getType());
+  if (!pet)
+    return false;
+  const auto *ttpt = dyn_cast<TemplateTypeParmType>(pet->getPattern().getNonReferenceType().getTypePtr());
+  return ttpt && ft->getTemplateParameters()->getDepth() == ttpt->getDepth();
+}
+
+struct ForwardingToConstructorVisitor : RecursiveASTVisitor<ForwardingToConstructorVisitor> {
+  llvm::DenseSet<const FunctionDecl *> &seen;
+  llvm::SmallVectorImpl<const CXXConstructorDecl *> &out;
+
+  ForwardingToConstructorVisitor(llvm::DenseSet<const FunctionDecl *> &seen,
+                                 llvm::SmallVectorImpl<const CXXConstructorDecl *> &out)
+      : seen(seen), out(out) {}
+
+  static constexpr unsigned kMaxDepth = 10;
+
+  bool VisitCallExpr(CallExpr *e) {
+    if (seen.size() >= kMaxDepth)
+      return true;
+    FunctionDecl *fd = e->getDirectCallee();
+    if (!fd || seen.contains(fd) || !isLikelyForwardingFunction(fd))
+      return true;
+    seen.insert(fd);
+    if (Stmt *body = fd->getBody())
+      TraverseStmt(body);
+    seen.erase(fd);
+    return true;
+  }
+
+  bool VisitCXXNewExpr(CXXNewExpr *e) {
+    if (const auto *ce = e->getConstructExpr())
+      if (auto *cd = ce->getConstructor())
+        out.push_back(cd);
+    return true;
+  }
+};
+
+llvm::SmallVector<const CXXConstructorDecl *, 1> searchConstructorsInForwardingFunction(const FunctionDecl *fd) {
+  llvm::SmallVector<const CXXConstructorDecl *, 1> ret;
+  llvm::DenseSet<const FunctionDecl *> seen{fd};
+  if (Stmt *body = fd->getBody())
+    ForwardingToConstructorVisitor(seen, ret).TraverseStmt(body);
+  return ret;
 }
 
 bool validateRecord(const RecordDecl *rd) {
@@ -834,8 +901,12 @@ public:
           db->toType(getUsr(dc)).def.funcs.push_back(usr);
       } else {
         const Decl *dc = cast<Decl>(lex_dc);
-        if (getKind(dc, ls_kind) == Kind::Func)
+        bool dc_is_func = getKind(dc, ls_kind) == Kind::Func;
+        if (dc_is_func)
           db->toFunc(getUsr(dc)).def.callees.push_back({loc, usr, Kind::Func, role});
+        if (const auto *fd = dyn_cast<FunctionDecl>(origD);
+            fd && fd->isTemplateInstantiation() && isLikelyForwardingFunction(fd))
+          param.deferred_forward.push_back({db, loc, Role(role | Role::Implicit), lid, fd, dc_is_func ? dc : nullptr});
       }
       break;
     case Kind::Type:
@@ -1053,6 +1124,21 @@ public:
       break;
     }
     return true;
+  }
+
+  void finish() override {
+    llvm::DenseMap<const FunctionDecl *, llvm::SmallVector<const CXXConstructorDecl *, 1>> ctors;
+    for (const auto &df : param.deferred_forward) {
+      auto [it, inserted] = ctors.try_emplace(df.callee);
+      if (inserted)
+        it->second = searchConstructorsInForwardingFunction(df.callee);
+      for (const CXXConstructorDecl *cd : it->second) {
+        Usr cusr = getUsr(cd);
+        df.db->toFunc(cusr).uses.push_back({{df.loc, df.role}, df.lid});
+        if (df.caller)
+          df.db->toFunc(getUsr(df.caller)).def.callees.push_back({df.loc, cusr, Kind::Func, df.role});
+      }
+    }
   }
 };
 
