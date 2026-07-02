@@ -6,6 +6,8 @@
 #include "pipeline.hh"
 #include "query.hh"
 
+#include <llvm/ADT/DenseSet.h>
+
 #include <unordered_set>
 
 namespace ccls {
@@ -143,6 +145,76 @@ void inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
   else
     reply(flattenHierarchy(result));
 }
+
+// Standard LSP 3.17 type hierarchy, serving the same data as $ccls/inheritance.
+// For a Kind::Func item (virtual method), supertypes/subtypes are the
+// overridden/overriding methods.
+template <typename Q> std::optional<TypeHierarchyItem> makeTypeHierarchyItem(MessageHandler *m, Q &entity, Kind kind) {
+  const auto *def = entity.anyDef();
+  if (!def)
+    return {};
+  std::optional<Location> loc;
+  if (def->spell)
+    loc = getLsLocation(m->db, m->wfiles, *def->spell);
+  else if (entity.declarations.size())
+    loc = getLsLocation(m->db, m->wfiles, entity.declarations[0]);
+  if (!loc)
+    return {};
+  TypeHierarchyItem item;
+  item.name = def->name(false);
+  item.kind = def->kind;
+  item.detail = def->name(true);
+  item.uri = loc->uri;
+  item.range = item.selectionRange = loc->range;
+  item.data = std::to_string(entity.usr) + ' ' + std::to_string(int(kind));
+  return item;
+}
+
+std::optional<TypeHierarchyItem> makeTypeHierarchyItem(MessageHandler *m, Usr usr, Kind kind) {
+  if (kind == Kind::Func) {
+    if (m->db->hasFunc(usr))
+      return makeTypeHierarchyItem(m, m->db->getFunc(usr), kind);
+  } else if (kind == Kind::Type) {
+    if (m->db->hasType(usr))
+      return makeTypeHierarchyItem(m, m->db->getType(usr), kind);
+  }
+  return {};
+}
+
+void resolveTypeHierarchy(MessageHandler *m, TypeHierarchyResolveParam &param, bool derived, ReplyOnce &reply) {
+  std::vector<TypeHierarchyItem> result;
+  Usr usr;
+  Kind kind;
+  try {
+    size_t pos;
+    usr = std::stoull(param.item.data, &pos);
+    kind = Kind(std::stoi(param.item.data.substr(pos)));
+  } catch (...) {
+    reply(result);
+    return;
+  }
+  llvm::DenseSet<Usr> seen;
+  auto add = [&](const auto &usrs) {
+    for (Usr usr1 : usrs)
+      if (seen.insert(usr1).second)
+        if (auto item = makeTypeHierarchyItem(m, usr1, kind))
+          result.push_back(std::move(*item));
+  };
+  auto expand1 = [&](auto &entity) {
+    if (derived)
+      add(entity.derived);
+    else if (const auto *def = entity.anyDef())
+      add(def->bases);
+  };
+  if (kind == Kind::Func) {
+    if (m->db->hasFunc(usr))
+      expand1(m->db->getFunc(usr));
+  } else if (kind == Kind::Type) {
+    if (m->db->hasType(usr))
+      expand1(m->db->getType(usr));
+  }
+  reply(result);
+}
 } // namespace
 
 void MessageHandler::ccls_inheritance(JsonReader &reader, ReplyOnce &reply) {
@@ -157,5 +229,27 @@ void MessageHandler::textDocument_implementation(TextDocumentPositionParam &para
   param1.position = param.position;
   param1.derived = true;
   inheritance(this, param1, reply);
+}
+
+void MessageHandler::textDocument_prepareTypeHierarchy(TextDocumentPositionParam &param, ReplyOnce &reply) {
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
+  if (!file)
+    return;
+
+  std::vector<TypeHierarchyItem> result;
+  llvm::DenseSet<Usr> seen;
+  for (SymbolRef sym : findSymbolsAtLocation(wf, file, param.position))
+    if ((sym.kind == Kind::Func || sym.kind == Kind::Type) && seen.insert(sym.usr).second)
+      if (auto item = makeTypeHierarchyItem(this, sym.usr, sym.kind))
+        result.push_back(std::move(*item));
+  reply(result);
+}
+
+void MessageHandler::typeHierarchy_supertypes(TypeHierarchyResolveParam &param, ReplyOnce &reply) {
+  resolveTypeHierarchy(this, param, false, reply);
+}
+
+void MessageHandler::typeHierarchy_subtypes(TypeHierarchyResolveParam &param, ReplyOnce &reply) {
+  resolveTypeHierarchy(this, param, true, reply);
 }
 } // namespace ccls

@@ -131,6 +131,7 @@ struct ServerCap {
     std::vector<const char *> commands = {ccls_xref};
   } executeCommandProvider;
   bool callHierarchyProvider = true;
+  bool typeHierarchyProvider = true;
   struct SemanticTokenProvider {
     struct SemanticTokensLegend {
       std::vector<const char *> tokenTypes{std::begin(kTokenTypes), std::end(kTokenTypes)};
@@ -154,7 +155,7 @@ REFLECT_STRUCT(ServerCap, textDocumentSync, hoverProvider, completionProvider, s
                referencesProvider, documentHighlightProvider, documentSymbolProvider, workspaceSymbolProvider,
                codeActionProvider, codeLensProvider, documentFormattingProvider, documentRangeFormattingProvider,
                documentOnTypeFormattingProvider, renameProvider, documentLinkProvider, foldingRangeProvider,
-               executeCommandProvider, callHierarchyProvider, semanticTokensProvider, workspace);
+               executeCommandProvider, callHierarchyProvider, typeHierarchyProvider, semanticTokensProvider, workspace);
 REFLECT_STRUCT(ServerCap::SemanticTokenProvider, legend, range, full);
 REFLECT_STRUCT(ServerCap::SemanticTokenProvider::SemanticTokensLegend, tokenTypes, tokenModifiers);
 

@@ -42,6 +42,7 @@ REFLECT_STRUCT(TextDocumentDidChangeParam, textDocument, contentChanges);
 REFLECT_STRUCT(TextDocumentPositionParam, textDocument, position);
 REFLECT_STRUCT(RenameParam, textDocument, position, newName);
 REFLECT_STRUCT(CallsParam, item);
+REFLECT_STRUCT(TypeHierarchyResolveParam, item);
 
 // completion
 REFLECT_UNDERLYING(CompletionTriggerKind);
@@ -194,6 +195,7 @@ MessageHandler::MessageHandler() {
   bind("textDocument/implementation", &MessageHandler::textDocument_implementation);
   bind("textDocument/onTypeFormatting", &MessageHandler::textDocument_onTypeFormatting);
   bind("textDocument/prepareCallHierarchy", &MessageHandler::textDocument_prepareCallHierarchy);
+  bind("textDocument/prepareTypeHierarchy", &MessageHandler::textDocument_prepareTypeHierarchy);
   bind("textDocument/rangeFormatting", &MessageHandler::textDocument_rangeFormatting);
   bind("textDocument/references", &MessageHandler::textDocument_references);
   bind("textDocument/rename", &MessageHandler::textDocument_rename);
@@ -202,6 +204,8 @@ MessageHandler::MessageHandler() {
   bind("textDocument/signatureHelp", &MessageHandler::textDocument_signatureHelp);
   bind("textDocument/switchSourceHeader", &MessageHandler::textDocument_switchSourceHeader);
   bind("textDocument/typeDefinition", &MessageHandler::textDocument_typeDefinition);
+  bind("typeHierarchy/subtypes", &MessageHandler::typeHierarchy_subtypes);
+  bind("typeHierarchy/supertypes", &MessageHandler::typeHierarchy_supertypes);
   bind("workspace/didChangeConfiguration", &MessageHandler::workspace_didChangeConfiguration);
   bind("workspace/didChangeWatchedFiles", &MessageHandler::workspace_didChangeWatchedFiles);
   bind("workspace/didChangeWorkspaceFolders", &MessageHandler::workspace_didChangeWorkspaceFolders);

@@ -76,6 +76,21 @@ struct CallsParam {
   CallHierarchyItem item;
 };
 
+struct TypeHierarchyItem {
+  std::string name;
+  SymbolKind kind;
+  std::string detail;
+  DocumentUri uri;
+  lsRange range;
+  lsRange selectionRange;
+  std::string data;
+};
+REFLECT_STRUCT(TypeHierarchyItem, name, kind, detail, uri, range, selectionRange, data);
+
+struct TypeHierarchyResolveParam {
+  TypeHierarchyItem item;
+};
+
 // completion
 enum class CompletionTriggerKind {
   Invoked = 1,
@@ -288,6 +303,7 @@ private:
   void textDocument_implementation(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_onTypeFormatting(DocumentOnTypeFormattingParam &, ReplyOnce &);
   void textDocument_prepareCallHierarchy(TextDocumentPositionParam &, ReplyOnce &);
+  void textDocument_prepareTypeHierarchy(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_rangeFormatting(DocumentRangeFormattingParam &, ReplyOnce &);
   void textDocument_references(JsonReader &, ReplyOnce &);
   void textDocument_rename(RenameParam &, ReplyOnce &);
@@ -296,6 +312,8 @@ private:
   void textDocument_signatureHelp(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_switchSourceHeader(TextDocumentIdentifier &, ReplyOnce &);
   void textDocument_typeDefinition(TextDocumentPositionParam &, ReplyOnce &);
+  void typeHierarchy_subtypes(TypeHierarchyResolveParam &, ReplyOnce &);
+  void typeHierarchy_supertypes(TypeHierarchyResolveParam &, ReplyOnce &);
   void workspace_didChangeConfiguration(EmptyParam &);
   void workspace_didChangeWatchedFiles(DidChangeWatchedFilesParam &);
   void workspace_didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParam &);
