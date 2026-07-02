@@ -76,6 +76,8 @@ struct CallsParam {
   CallHierarchyItem item;
 };
 
+using TypeHierarchyItem = CallHierarchyItem;
+
 // completion
 enum class CompletionTriggerKind {
   Invoked = 1,
@@ -288,6 +290,7 @@ private:
   void textDocument_implementation(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_onTypeFormatting(DocumentOnTypeFormattingParam &, ReplyOnce &);
   void textDocument_prepareCallHierarchy(TextDocumentPositionParam &, ReplyOnce &);
+  void textDocument_prepareTypeHierarchy(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_rangeFormatting(DocumentRangeFormattingParam &, ReplyOnce &);
   void textDocument_references(JsonReader &, ReplyOnce &);
   void textDocument_rename(RenameParam &, ReplyOnce &);
@@ -296,6 +299,8 @@ private:
   void textDocument_signatureHelp(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_switchSourceHeader(TextDocumentIdentifier &, ReplyOnce &);
   void textDocument_typeDefinition(TextDocumentPositionParam &, ReplyOnce &);
+  void typeHierarchy_subtypes(CallsParam &, ReplyOnce &);
+  void typeHierarchy_supertypes(CallsParam &, ReplyOnce &);
   void workspace_didChangeConfiguration(EmptyParam &);
   void workspace_didChangeWatchedFiles(DidChangeWatchedFilesParam &);
   void workspace_didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParam &);

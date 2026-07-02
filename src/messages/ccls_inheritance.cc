@@ -6,6 +6,9 @@
 #include "pipeline.hh"
 #include "query.hh"
 
+#include <llvm/ADT/DenseSet.h>
+
+#include <cinttypes>
 #include <unordered_set>
 
 namespace ccls {
@@ -42,18 +45,21 @@ REFLECT_STRUCT(Out_cclsInheritance, id, kind, name, location, numChildren, child
 
 bool expand(MessageHandler *m, Out_cclsInheritance *entry, bool derived, bool qualified, int levels);
 
+template <typename Q> std::optional<Location> getDefOrDeclLocation(MessageHandler *m, Q &entity) {
+  if (const auto *def = entity.anyDef(); def && def->spell)
+    return getLsLocation(m->db, m->wfiles, *def->spell);
+  if (entity.declarations.size())
+    return getLsLocation(m->db, m->wfiles, entity.declarations[0]);
+  return {};
+}
+
 template <typename Q>
 bool expandHelper(MessageHandler *m, Out_cclsInheritance *entry, bool derived, bool qualified, int levels, Q &entity) {
   const auto *def = entity.anyDef();
   if (def) {
     entry->name = def->name(qualified);
-    if (def->spell) {
-      if (auto loc = getLsLocation(m->db, m->wfiles, *def->spell))
-        entry->location = *loc;
-    } else if (entity.declarations.size()) {
-      if (auto loc = getLsLocation(m->db, m->wfiles, entity.declarations[0]))
-        entry->location = *loc;
-    }
+    if (auto loc = getDefOrDeclLocation(m, entity))
+      entry->location = *loc;
   } else if (!derived) {
     entry->numChildren = 0;
     return false;
@@ -143,6 +149,54 @@ void inheritance(MessageHandler *m, Param &param, ReplyOnce &reply) {
   else
     reply(flattenHierarchy(result));
 }
+
+template <typename Fn> void withFuncOrType(MessageHandler *m, Usr usr, Kind kind, Fn &&fn) {
+  if (kind == Kind::Func && m->db->hasFunc(usr))
+    fn(m->db->getFunc(usr));
+  else if (kind == Kind::Type && m->db->hasType(usr))
+    fn(m->db->getType(usr));
+}
+
+// For Kind::Func (virtual methods), supertypes/subtypes are overridden/overriding methods.
+std::optional<TypeHierarchyItem> makeTypeHierarchyItem(MessageHandler *m, Usr usr, Kind kind) {
+  std::optional<TypeHierarchyItem> item;
+  withFuncOrType(m, usr, kind, [&](auto &entity) {
+    const auto *def = entity.anyDef();
+    std::optional<Location> loc;
+    if (!def || !(loc = getDefOrDeclLocation(m, entity)))
+      return;
+    item.emplace();
+    item->name = def->name(false);
+    item->kind = def->kind;
+    item->detail = def->name(true);
+    item->uri = loc->uri;
+    item->range = item->selectionRange = loc->range;
+    item->data = std::to_string(usr) + ' ' + std::to_string(int(kind));
+  });
+  return item;
+}
+
+void resolveTypeHierarchy(MessageHandler *m, CallsParam &param, bool derived, ReplyOnce &reply) {
+  std::vector<TypeHierarchyItem> result;
+  uint64_t usr;
+  int kind;
+  if (sscanf(param.item.data.c_str(), "%" SCNu64 " %d", &usr, &kind) == 2) {
+    llvm::DenseSet<Usr> seen;
+    auto add = [&](const auto &usrs) {
+      for (Usr usr1 : usrs)
+        if (seen.insert(usr1).second)
+          if (auto item = makeTypeHierarchyItem(m, usr1, Kind(kind)))
+            result.push_back(std::move(*item));
+    };
+    withFuncOrType(m, usr, Kind(kind), [&](auto &entity) {
+      if (derived)
+        add(entity.derived);
+      else if (const auto *def = entity.anyDef())
+        add(def->bases);
+    });
+  }
+  reply(result);
+}
 } // namespace
 
 void MessageHandler::ccls_inheritance(JsonReader &reader, ReplyOnce &reply) {
@@ -157,5 +211,27 @@ void MessageHandler::textDocument_implementation(TextDocumentPositionParam &para
   param1.position = param.position;
   param1.derived = true;
   inheritance(this, param1, reply);
+}
+
+void MessageHandler::textDocument_prepareTypeHierarchy(TextDocumentPositionParam &param, ReplyOnce &reply) {
+  auto [file, wf] = findOrFail(param.textDocument.uri.getPath(), reply);
+  if (!file)
+    return;
+
+  std::vector<TypeHierarchyItem> result;
+  llvm::DenseSet<Usr> seen;
+  for (SymbolRef sym : findSymbolsAtLocation(wf, file, param.position))
+    if ((sym.kind == Kind::Func || sym.kind == Kind::Type) && seen.insert(sym.usr).second)
+      if (auto item = makeTypeHierarchyItem(this, sym.usr, sym.kind))
+        result.push_back(std::move(*item));
+  reply(result);
+}
+
+void MessageHandler::typeHierarchy_supertypes(CallsParam &param, ReplyOnce &reply) {
+  resolveTypeHierarchy(this, param, false, reply);
+}
+
+void MessageHandler::typeHierarchy_subtypes(CallsParam &param, ReplyOnce &reply) {
+  resolveTypeHierarchy(this, param, true, reply);
 }
 } // namespace ccls
