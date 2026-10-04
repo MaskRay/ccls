@@ -70,7 +70,7 @@ OUTPUT:
       "qual_name_offset": 0,
       "short_name": "",
       "bases": [],
-      "vars": [10186585723342590949],
+      "vars": [],
       "callees": ["2:14-2:15|11379910413970621988|3|16676"],
       "kind": 0,
       "parent_kind": 0,
@@ -113,7 +113,7 @@ OUTPUT:
       "qual_name_offset": 0,
       "short_name": "",
       "bases": [],
-      "vars": [7421893224715895136, 7421893224715895136],
+      "vars": [],
       "callees": ["2:14-2:15|16584514099482440453|3|16676"],
       "kind": 0,
       "parent_kind": 0,
@@ -188,30 +188,6 @@ OUTPUT:
       "uses": ["1:41-1:42|4|-1", "2:14-2:15|4|-1"]
     }],
   "usr2var": [{
-      "usr": 7421893224715895136,
-      "detailed_name": "int &&args",
-      "qual_name_offset": 6,
-      "short_name": "args",
-      "spell": "1:71-1:75|1:61-1:75|1026|-1",
-      "type": 0,
-      "kind": 253,
-      "parent_kind": 12,
-      "storage": 0,
-      "declarations": [],
-      "uses": ["2:37-2:41|12|-1"]
-    }, {
-      "usr": 10186585723342590949,
-      "detailed_name": "int &&args",
-      "qual_name_offset": 6,
-      "short_name": "args",
-      "spell": "1:71-1:75|1:61-1:75|1026|-1",
-      "type": 0,
-      "kind": 253,
-      "parent_kind": 12,
-      "storage": 0,
-      "declarations": [],
-      "uses": ["2:37-2:41|12|-1"]
-    }, {
       "usr": 17268248497583492412,
       "detailed_name": "Args &&...args",
       "qual_name_offset": 10,

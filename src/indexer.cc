@@ -10,6 +10,7 @@
 #include "sema_manager.hh"
 
 #include <clang/AST/AST.h>
+#include <clang/AST/ASTDiagnostic.h>
 #include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/Basic/TargetInfo.h>
 #include <clang/Frontend/FrontendAction.h>
@@ -75,6 +76,14 @@ struct IndexParam {
     const Decl *caller; // nullptr if not in a function
   };
   std::vector<DeferredForward> deferred_forward;
+
+  // `auto x = dependent;` in a function template.
+  struct DeferredVar {
+    IndexFile *db;
+    const VarDecl *vd;
+    Usr usr;
+  };
+  std::vector<DeferredVar> deferred_var;
 
   VFS &vfs;
   ASTContext *ctx;
@@ -376,6 +385,10 @@ try_again:
       goto try_again;
     break;
 
+  case Type::SubstTemplateTypeParm:
+    tp = cast<SubstTemplateTypeParmType>(tp)->getReplacementType().getTypePtr();
+    goto try_again;
+
   case Type::InjectedClassName:
     d = cast<InjectedClassNameType>(tp)->getDecl();
     break;
@@ -392,6 +405,43 @@ try_again:
     break;
   }
   return d;
+}
+
+// Whether d is a local variable or parameter of a template instantiation. Its
+// occurrences duplicate those of the variable in the template pattern, which
+// is indexed instead.
+bool isInstantiatedLocal(const Decl *d) {
+  if (!isa<VarDecl>(d) && !isa<BindingDecl>(d))
+    return false;
+  // Skip blocks and captured statements (e.g. OpenMP regions), but not lambdas.
+  for (const DeclContext *dc = d->getParentFunctionOrMethod(); dc; dc = dc->getParent())
+    if (auto *fd = dyn_cast<FunctionDecl>(dc))
+      return fd->isTemplateInstantiation();
+  return false;
+}
+
+// If vd is a local of a function template with exactly one instantiation,
+// return the corresponding variable in that instantiation, similar to clangd's
+// getOnlyInstantiation.
+const VarDecl *getOnlyInstantiatedVar(const VarDecl *vd) {
+  auto *fd = dyn_cast_or_null<FunctionDecl>(vd->getParentFunctionOrMethod());
+  const FunctionTemplateDecl *ftd = fd ? fd->getDescribedFunctionTemplate() : nullptr;
+  if (!ftd)
+    return nullptr;
+  const FunctionDecl *only = nullptr;
+  for (const FunctionDecl *spec : ftd->specializations()) {
+    if (spec->getTemplateSpecializationKind() == TSK_ExplicitSpecialization)
+      continue;
+    if (only)
+      return nullptr;
+    only = spec;
+  }
+  if (!only)
+    return nullptr;
+  for (const Decl *d : only->decls())
+    if (auto *vd1 = dyn_cast<VarDecl>(d); vd1 && vd1->getLocation() == vd->getLocation())
+      return vd1;
+  return nullptr;
 }
 
 const Decl *getAdjustedDecl(const Decl *d) {
@@ -652,12 +702,13 @@ public:
     def.detailed_name = intern(name);
   }
 
-  void setVarName(const Decl *d, std::string_view short_name, std::string_view qualified, IndexVar::Def &def) {
+  void setVarName(const Decl *d, std::string_view short_name, std::string_view qualified, IndexVar::Def &def,
+                  QualType deduced_type = QualType()) {
     QualType t;
     const Expr *init = nullptr;
     bool deduced = false;
     if (auto *vd = dyn_cast<VarDecl>(d)) {
-      t = vd->getType();
+      t = deduced_type.isNull() ? vd->getType() : deduced_type;
       init = vd->getAnyInitializer();
       def.storage = vd->getStorageClass();
     } else if (auto *fd = dyn_cast<FieldDecl>(d)) {
@@ -679,11 +730,23 @@ public:
         deduced = true;
       }
     }
+    std::string aka;
     if (!t.isNull() && deduced) {
       SmallString<256> str;
       llvm::raw_svector_ostream os(str);
       PrintingPolicy pp = getDefaultPolicy();
       t.print(os, pp);
+#if LLVM_VERSION_MAJOR >= 14 // llvmorg-14-init-11692-gec64d10340da
+      // Like clangd, show the desugared type if it differs, e.g. for iterator.
+      bool should_aka = false;
+      QualType desugared = desugarForDiagnostic(*ctx, t, should_aka);
+      if (should_aka) {
+        PrintingPolicy pp1 = pp;
+        pp1.FullyQualifiedName = true;
+        if ((aka = desugared.getAsString(pp1)) == str)
+          aka.clear();
+      }
+#endif
       if (str.size() && (str.back() != ' ' && str.back() != '*' && str.back() != '&'))
         str += ' ';
       def.qual_name_offset = str.size();
@@ -694,20 +757,28 @@ public:
     } else {
       setName(d, short_name, qualified, def);
     }
+    std::string hover;
     if (init) {
       SourceManager &sm = ctx->getSourceManager();
       const LangOptions &lang = ctx->getLangOpts();
       SourceRange sr = sm.getExpansionRange(init->getSourceRange()).getAsRange();
       SourceLocation l = d->getLocation();
-      if (l.isMacroID() || !sm.isBeforeInTranslationUnit(l, sr.getBegin()))
-        return;
-      StringRef buf = getSourceInRange(sm, lang, sr);
-      Twine init = buf.count('\n') <= g_config->index.maxInitializerLines - 1
-                       ? buf.size() && buf[0] == ':' ? Twine(" ", buf) : Twine(" = ", buf)
-                       : Twine();
-      Twine t = def.detailed_name + init;
-      def.hover = def.storage == SC_Static && strncmp(def.detailed_name, "static ", 7) ? intern(("static " + t).str())
-                                                                                       : intern(t.str());
+      if (!l.isMacroID() && sm.isBeforeInTranslationUnit(l, sr.getBegin())) {
+        StringRef buf = getSourceInRange(sm, lang, sr);
+        Twine init = buf.count('\n') <= g_config->index.maxInitializerLines - 1
+                         ? buf.size() && buf[0] == ':' ? Twine(" ", buf) : Twine(" = ", buf)
+                         : Twine();
+        hover = (def.detailed_name + init).str();
+      }
+    }
+    if (hover.empty() && aka.size())
+      hover = def.detailed_name;
+    if (hover.size()) {
+      if (def.storage == SC_Static && strncmp(def.detailed_name, "static ", 7))
+        hover.insert(0, "static ");
+      if (aka.size())
+        hover += "\n// aka " + aka;
+      def.hover = intern(hover);
     }
   }
 
@@ -855,6 +926,8 @@ public:
       if (d1 && d1 != d)
         d = d1;
     }
+    if (isInstantiatedLocal(d))
+      return true;
 
     IndexParam::DeclInfo *info;
     Usr usr = getUsr(d, &info);
@@ -936,9 +1009,6 @@ public:
         addMacroUse(db, sm, usr, Kind::Var, spell);
       if (var->def.detailed_name[0] == '\0')
         setVarName(d, info->short_name, info->qualified, var->def);
-      QualType t;
-      if (auto *vd = dyn_cast<ValueDecl>(d))
-        t = vd->getType();
       if (is_def || is_decl) {
         const Decl *dc = cast<Decl>(sem_dc);
         Kind kind = getKind(dc, var->def.parent_kind);
@@ -946,20 +1016,11 @@ public:
           db->toFunc(getUsr(dc)).def.vars.push_back(usr);
         else if (kind == Kind::Type && !isa<RecordDecl>(sem_dc))
           db->toType(getUsr(dc)).def.vars.emplace_back(usr, -1);
-        if (!t.isNull()) {
-          if (auto *bt = t->getAs<BuiltinType>()) {
-            Usr usr1 = static_cast<Usr>(bt->getKind());
-            var->def.type = usr1;
-            if (!isa<EnumConstantDecl>(d))
-              db->toType(usr1).instances.push_back(usr);
-          } else if (const Decl *d1 = getAdjustedDecl(getTypeDecl(t))) {
-            IndexParam::DeclInfo *info1;
-            Usr usr1 = getUsr(d1, &info1);
-            var->def.type = usr1;
-            if (!isa<EnumConstantDecl>(d))
-              db->toType(usr1).instances.push_back(usr);
-          }
-        }
+        if (auto *vd = dyn_cast<ValueDecl>(d))
+          setVarType(db, *var, usr, d, vd->getType());
+        if (auto *vd = dyn_cast<VarDecl>(d);
+            vd && is_def && vd->getType()->isDependentType() && vd->getType()->getContainedDeducedType())
+          param.deferred_var.push_back({db, vd, usr});
       } else if (!var->def.spell && var->declarations.empty()) {
         // e.g. lambda parameter
         SourceLocation l = d->getLocation();
@@ -1126,7 +1187,33 @@ public:
     return true;
   }
 
+  void setVarType(IndexFile *db, IndexVar &var, Usr usr, const Decl *d, QualType t) {
+    if (t.isNull())
+      return;
+    Usr usr1;
+    if (auto *bt = t->getAs<BuiltinType>())
+      usr1 = static_cast<Usr>(bt->getKind());
+    else if (const Decl *d1 = getAdjustedDecl(getTypeDecl(t)))
+      usr1 = getUsr(d1);
+    else
+      return;
+    var.def.type = usr1;
+    if (!isa<EnumConstantDecl>(d))
+      db->toType(usr1).instances.push_back(usr);
+  }
+
   void finish() override {
+    for (const auto &dv : param.deferred_var) {
+      const VarDecl *vd1 = getOnlyInstantiatedVar(dv.vd);
+      if (!vd1)
+        continue;
+      IndexParam::DeclInfo *info;
+      getUsr(dv.vd, &info);
+      IndexVar &var = dv.db->toVar(dv.usr);
+      var.def.detailed_name = var.def.hover = "";
+      setVarName(dv.vd, info->short_name, info->qualified, var.def, vd1->getType());
+      setVarType(dv.db, var, dv.usr, dv.vd, vd1->getType());
+    }
     llvm::DenseMap<const FunctionDecl *, llvm::SmallVector<const CXXConstructorDecl *, 1>> ctors;
     for (const auto &df : param.deferred_forward) {
       auto [it, inserted] = ctors.try_emplace(df.callee);
