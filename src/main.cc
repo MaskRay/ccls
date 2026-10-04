@@ -9,6 +9,7 @@
 #include "working_files.hh"
 
 #include <clang/Basic/Version.h>
+#include <llvm/Config/llvm-config.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/CrashRecoveryContext.h>
 #include <llvm/Support/FileSystem.h>
@@ -36,7 +37,9 @@ std::vector<std::string> g_init_options;
 namespace {
 OptionCategory C("ccls options");
 
+#if LLVM_VERSION_MAJOR < 24 // llvmorg-24-init-10308-g50b8b5a101f2
 opt<bool> opt_help("h", desc("Alias for -help"), cat(C));
+#endif
 opt<int> opt_verbose("v", desc("verbosity, from -3 (fatal) to 2 (verbose)"), init(0), cat(C));
 opt<std::string> opt_test_index("test-index", ValueOptional, init("!"), desc("run index tests"), cat(C));
 
@@ -61,10 +64,12 @@ int main(int argc, char **argv) {
                           "C/C++/Objective-C language server\n\n"
                           "See more on https://github.com/MaskRay/ccls/wiki");
 
+#if LLVM_VERSION_MAJOR < 24
   if (opt_help) {
     PrintHelpMessage();
     return 0;
   }
+#endif
   ccls::log::verbosity = ccls::log::Verbosity(opt_verbose.getValue());
 
   pipeline::init();

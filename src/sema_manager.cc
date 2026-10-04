@@ -10,6 +10,7 @@
 #include "platform.hh"
 
 #include <clang/Basic/TargetInfo.h>
+#include <clang/Frontend/PrecompiledPreamble.h>
 #include <clang/Lex/PreprocessorOptions.h>
 #include <clang/Sema/CodeCompleteConsumer.h>
 #include <clang/Sema/Sema.h>
@@ -348,7 +349,11 @@ void buildPreamble(Session &session, CompilerInvocation &ci, IntrusiveRefCntPtr<
   ws.erase(std::remove(ws.begin(), ws.end(), "error"), ws.end());
   ci.getDiagnosticOpts().IgnoreWarnings = false;
   ci.getFrontendOpts().SkipFunctionBodies = true;
-#if LLVM_VERSION_MAJOR >= 18
+#if LLVM_VERSION_MAJOR >= 24 // llvmorg-24-init-12130-g6cd72b33224f
+  ci.getLangOpts().CommentOpts.ParseAllComments = g_config->index.comments > 1;
+  ci.getLangOpts().CommentOpts.RetainComments = true;
+  ci.getLangOpts().CommentOpts.RetainCommentsFromSystemHeaders = true;
+#elif LLVM_VERSION_MAJOR >= 18
   ci.getLangOpts().CommentOpts.ParseAllComments = g_config->index.comments > 1;
   ci.getLangOpts().RetainCommentsFromSystemHeaders = true;
 #else

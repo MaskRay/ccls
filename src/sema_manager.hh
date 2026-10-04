@@ -11,6 +11,7 @@
 
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/FrontendActions.h>
+#include <clang/Sema/CodeCompleteConsumer.h>
 #include <clang/Sema/CodeCompleteOptions.h>
 
 #include <algorithm>
