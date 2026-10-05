@@ -70,7 +70,7 @@ OUTPUT:
       "uses": []
     }],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -109,7 +109,7 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "b",
       "spell": "4:29-4:30|4:25-4:30|1026|-1",
-      "type": 469,
+      "type": 472,
       "kind": 253,
       "parent_kind": 6,
       "storage": 0,
@@ -121,7 +121,7 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "a",
       "spell": "4:22-4:23|4:18-4:23|1026|-1",
-      "type": 469,
+      "type": 472,
       "kind": 253,
       "parent_kind": 6,
       "storage": 0,

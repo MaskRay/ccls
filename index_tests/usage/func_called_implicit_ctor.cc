@@ -59,7 +59,7 @@ OUTPUT:
       "uses": []
     }],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -98,7 +98,7 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "i",
       "spell": "2:15-2:16|2:11-2:16|1026|-1",
-      "type": 469,
+      "type": 472,
       "kind": 253,
       "parent_kind": 9,
       "storage": 0,

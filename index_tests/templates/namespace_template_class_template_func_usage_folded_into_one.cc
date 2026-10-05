@@ -33,7 +33,7 @@ OUTPUT:
       "uses": ["10:21-10:24|36|-1", "11:22-11:25|36|-1"]
     }],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -127,7 +127,7 @@ OUTPUT:
       "short_name": "b",
       "hover": "int ns::b = Foo<bool>::foo<double>()",
       "spell": "11:7-11:8|11:3-11:35|1026|-1",
-      "type": 469,
+      "type": 472,
       "kind": 13,
       "parent_kind": 3,
       "storage": 0,
@@ -140,7 +140,7 @@ OUTPUT:
       "short_name": "a",
       "hover": "int ns::a = Foo<int>::foo<float>()",
       "spell": "10:7-10:8|10:3-10:33|1026|-1",
-      "type": 469,
+      "type": 472,
       "kind": 13,
       "parent_kind": 3,
       "storage": 0,

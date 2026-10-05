@@ -31,7 +31,7 @@ OUTPUT:
       "uses": ["6:9-6:12|36|-1", "7:9-7:12|36|-1"]
     }],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -70,7 +70,7 @@ OUTPUT:
       "short_name": "b",
       "hover": "int b = foo<bool>()",
       "spell": "7:5-7:6|7:1-7:20|2|-1",
-      "type": 469,
+      "type": 472,
       "kind": 13,
       "parent_kind": 1,
       "storage": 0,
@@ -83,7 +83,7 @@ OUTPUT:
       "short_name": "a",
       "hover": "int a = foo<int>()",
       "spell": "6:5-6:6|6:1-6:19|2|-1",
-      "type": 469,
+      "type": 472,
       "kind": 13,
       "parent_kind": 1,
       "storage": 0,

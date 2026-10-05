@@ -23,7 +23,7 @@ OUTPUT:
       "uses": []
     }],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -45,7 +45,7 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "p",
       "spell": "1:14-1:15|1:10-1:15|1026|-1",
-      "type": 469,
+      "type": 472,
       "kind": 253,
       "parent_kind": 12,
       "storage": 0,
@@ -58,7 +58,7 @@ OUTPUT:
       "short_name": "p",
       "hover": "int p = 0",
       "spell": "2:9-2:10|2:5-2:14|2|-1",
-      "type": 469,
+      "type": 472,
       "kind": 13,
       "parent_kind": 12,
       "storage": 0,

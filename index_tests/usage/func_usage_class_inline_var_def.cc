@@ -28,7 +28,7 @@ OUTPUT:
       "uses": ["6:11-6:17|36|-1"]
     }],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -71,7 +71,7 @@ OUTPUT:
       "short_name": "x",
       "hover": "int Foo::x = helper()",
       "spell": "6:7-6:8|6:3-6:19|1026|-1",
-      "type": 469,
+      "type": 472,
       "kind": 8,
       "parent_kind": 5,
       "storage": 0,

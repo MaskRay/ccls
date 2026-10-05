@@ -222,7 +222,7 @@ OUTPUT: make_functions.cc
       "uses": ["14:3-14:13|16420|-1", "15:3-15:13|16420|-1", "16:3-16:13|16420|-1"]
     }],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -238,7 +238,7 @@ OUTPUT: make_functions.cc
       "instances": [180270746871803062],
       "uses": []
     }, {
-      "usr": 505,
+      "usr": 509,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -356,7 +356,7 @@ OUTPUT: make_functions.cc
       "qual_name_offset": 4,
       "short_name": "args",
       "spell": "9:24-9:28|9:16-9:28|1026|-1",
-      "type": 505,
+      "type": 509,
       "kind": 253,
       "parent_kind": 12,
       "storage": 0,

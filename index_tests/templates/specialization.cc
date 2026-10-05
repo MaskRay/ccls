@@ -106,7 +106,7 @@ OUTPUT:
       "uses": []
     }],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -122,7 +122,7 @@ OUTPUT:
       "instances": [9217877221147056536, 3621126593459656452, 13914496963221806870],
       "uses": []
     }, {
-      "usr": 498,
+      "usr": 501,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -458,7 +458,7 @@ OUTPUT:
       "detailed_name": "int E",
       "qual_name_offset": 4,
       "short_name": "E",
-      "type": 469,
+      "type": 472,
       "kind": 253,
       "parent_kind": 12,
       "storage": 0,
@@ -494,7 +494,7 @@ OUTPUT:
       "detailed_name": "int I",
       "qual_name_offset": 4,
       "short_name": "I",
-      "type": 469,
+      "type": 472,
       "kind": 253,
       "parent_kind": 12,
       "storage": 0,
@@ -506,7 +506,7 @@ OUTPUT:
       "qual_name_offset": 6,
       "short_name": "Value",
       "spell": "43:44-43:49|43:38-43:49|1026|-1",
-      "type": 498,
+      "type": 501,
       "kind": 253,
       "parent_kind": 12,
       "storage": 0,
@@ -519,7 +519,7 @@ OUTPUT:
       "short_name": "kOnst",
       "hover": "static const int kOnst = 7",
       "spell": "41:18-41:23|41:1-41:27|2|-1",
-      "type": 469,
+      "type": 472,
       "kind": 13,
       "parent_kind": 1,
       "storage": 2,

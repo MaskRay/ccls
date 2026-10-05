@@ -29,7 +29,7 @@ OUTPUT:
       "uses": ["5:12-5:15|64|0"]
     }],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -95,7 +95,7 @@ OUTPUT:
       "short_name": "x",
       "hover": "int x = A",
       "spell": "8:5-8:6|8:1-8:10|2|-1",
-      "type": 469,
+      "type": 472,
       "kind": 13,
       "parent_kind": 1,
       "storage": 0,

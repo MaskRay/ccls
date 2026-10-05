@@ -8,7 +8,7 @@ OUTPUT:
   "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -46,7 +46,7 @@ OUTPUT:
       "detailed_name": "static int Foo::member",
       "qual_name_offset": 11,
       "short_name": "member",
-      "type": 469,
+      "type": 472,
       "kind": 8,
       "parent_kind": 5,
       "storage": 2,

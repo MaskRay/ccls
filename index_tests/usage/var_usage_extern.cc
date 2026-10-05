@@ -25,7 +25,7 @@ OUTPUT:
       "uses": []
     }],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -46,7 +46,7 @@ OUTPUT:
       "detailed_name": "extern int a",
       "qual_name_offset": 11,
       "short_name": "a",
-      "type": 469,
+      "type": 472,
       "kind": 13,
       "parent_kind": 0,
       "storage": 1,

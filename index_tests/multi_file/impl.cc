@@ -26,7 +26,7 @@ OUTPUT: header.h
       "uses": []
     }],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -165,7 +165,7 @@ OUTPUT: header.h
       "qual_name_offset": 4,
       "short_name": "Foo4",
       "spell": "17:5-17:9|17:1-17:9|2|-1",
-      "type": 469,
+      "type": 472,
       "kind": 13,
       "parent_kind": 1,
       "storage": 0,
@@ -203,7 +203,7 @@ OUTPUT: header.h
       "qual_name_offset": 11,
       "short_name": "Foo5",
       "spell": "18:12-18:16|18:1-18:16|2|-1",
-      "type": 469,
+      "type": 472,
       "kind": 13,
       "parent_kind": 1,
       "storage": 2,

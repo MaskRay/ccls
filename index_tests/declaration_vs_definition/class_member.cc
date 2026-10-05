@@ -9,7 +9,7 @@ OUTPUT:
   "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -51,7 +51,7 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "foo",
       "spell": "2:7-2:10|2:3-2:10|1026|-1",
-      "type": 469,
+      "type": 472,
       "kind": 8,
       "parent_kind": 5,
       "storage": 0,

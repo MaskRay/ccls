@@ -48,7 +48,7 @@ OUTPUT:
       "uses": ["12:5-12:10|16420|-1", "12:5-12:10|64|0"]
     }],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -71,7 +71,7 @@ OUTPUT:
       "short_name": "make2",
       "hover": "const int make2 = 5",
       "spell": "9:11-9:16|9:1-9:20|2|-1",
-      "type": 469,
+      "type": 472,
       "kind": 13,
       "parent_kind": 1,
       "storage": 0,

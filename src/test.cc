@@ -246,7 +246,7 @@ bool runIndexTests(const std::string &filter_path, bool enable_update) {
   std::string version = LLVM_VERSION_STRING;
 
   // Index tests change based on the version of clang used.
-  static const char kRequiredClangVersion[] = "23.0.0git";
+  static const char kRequiredClangVersion[] = "24.0.0git";
   if (version != kRequiredClangVersion && version.find("svn") == std::string::npos) {
     fprintf(stderr,
             "Index tests must be run using clang version %s, ccls is running "

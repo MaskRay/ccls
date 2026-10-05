@@ -6,7 +6,7 @@ OUTPUT:
   "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [{
-      "usr": 469,
+      "usr": 472,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -29,7 +29,7 @@ OUTPUT:
       "short_name": "global",
       "hover": "static int global = 0",
       "spell": "1:12-1:18|1:1-1:22|2|-1",
-      "type": 469,
+      "type": 472,
       "kind": 13,
       "parent_kind": 1,
       "storage": 2,
