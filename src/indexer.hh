@@ -105,18 +105,32 @@ struct DeclRef : Use {
   Range extent;
 };
 
+// Type and Parameter match LSP InlayHintKind.
+enum class InlayHintKind : uint8_t { Type = 1, Parameter = 2, Designator = 3, BlockEnd = 4 };
+REFLECT_UNDERLYING_B(InlayHintKind);
+
+struct IndexInlayHint {
+  Pos pos;
+  InlayHintKind kind;
+  const char *label;
+};
+
 void reflect(JsonReader &visitor, SymbolRef &value);
 void reflect(JsonReader &visitor, Use &value);
 void reflect(JsonReader &visitor, DeclRef &value);
+void reflect(JsonReader &visitor, IndexInlayHint &value);
 void reflect(JsonWriter &visitor, SymbolRef &value);
 void reflect(JsonWriter &visitor, Use &value);
 void reflect(JsonWriter &visitor, DeclRef &value);
+void reflect(JsonWriter &visitor, IndexInlayHint &value);
 void reflect(BinaryReader &visitor, SymbolRef &value);
 void reflect(BinaryReader &visitor, Use &value);
 void reflect(BinaryReader &visitor, DeclRef &value);
+void reflect(BinaryReader &visitor, IndexInlayHint &value);
 void reflect(BinaryWriter &visitor, SymbolRef &value);
 void reflect(BinaryWriter &visitor, Use &value);
 void reflect(BinaryWriter &visitor, DeclRef &value);
+void reflect(BinaryWriter &visitor, IndexInlayHint &value);
 
 enum class TokenModifier {
 #define TOKEN_MODIFIER(name, str) name,
@@ -286,6 +300,9 @@ struct IndexFile {
 
   // Source ranges that were not processed.
   std::vector<Range> skipped_ranges;
+
+  // Computed only when function locals are indexed.
+  std::vector<IndexInlayHint> inlay_hints;
 
   std::vector<IndexInclude> includes;
   llvm::DenseMap<llvm::CachedHashStringRef, int64_t> dependencies;

@@ -30,6 +30,7 @@ struct QueryFile {
     std::vector<IndexInclude> includes;
     // Parts of the file which are disabled.
     std::vector<Range> skipped_ranges;
+    std::vector<IndexInlayHint> inlay_hints;
     // Used by |$ccls/reload|.
     std::vector<const char *> dependencies;
   };

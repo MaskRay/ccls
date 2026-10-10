@@ -47,6 +47,7 @@ QueryFile::DefUpdate buildFileDefUpdate(IndexFile &&indexed) {
   def.args = std::move(indexed.args);
   def.includes = std::move(indexed.includes);
   def.skipped_ranges = std::move(indexed.skipped_ranges);
+  def.inlay_hints = std::move(indexed.inlay_hints);
   def.dependencies.reserve(indexed.dependencies.size());
   for (auto &dep : indexed.dependencies)
     def.dependencies.push_back(dep.first.val().data()); // llvm 8 -> data()

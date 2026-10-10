@@ -132,6 +132,7 @@ struct ServerCap {
   } executeCommandProvider;
   bool callHierarchyProvider = true;
   bool typeHierarchyProvider = true;
+  bool inlayHintProvider = true;
   struct SemanticTokenProvider {
     struct SemanticTokensLegend {
       std::vector<const char *> tokenTypes{std::begin(kTokenTypes), std::end(kTokenTypes)};
@@ -155,7 +156,8 @@ REFLECT_STRUCT(ServerCap, textDocumentSync, hoverProvider, completionProvider, s
                referencesProvider, documentHighlightProvider, documentSymbolProvider, workspaceSymbolProvider,
                codeActionProvider, codeLensProvider, documentFormattingProvider, documentRangeFormattingProvider,
                documentOnTypeFormattingProvider, renameProvider, documentLinkProvider, foldingRangeProvider,
-               executeCommandProvider, callHierarchyProvider, typeHierarchyProvider, semanticTokensProvider, workspace);
+               executeCommandProvider, callHierarchyProvider, typeHierarchyProvider, inlayHintProvider,
+               semanticTokensProvider, workspace);
 REFLECT_STRUCT(ServerCap::SemanticTokenProvider, legend, range, full);
 REFLECT_STRUCT(ServerCap::SemanticTokenProvider::SemanticTokensLegend, tokenTypes, tokenModifiers);
 
@@ -181,15 +183,15 @@ struct WorkspaceClientCap {
   DynamicReg symbol;
   DynamicReg executeCommand;
 
-  struct SemanticTokensWorkspace {
+  struct RefreshSupport {
     bool refreshSupport = false;
-  } semanticTokens;
+  } inlayHint, semanticTokens;
 };
 
 REFLECT_STRUCT(WorkspaceClientCap::WorkspaceEdit, documentChanges);
-REFLECT_STRUCT(WorkspaceClientCap::SemanticTokensWorkspace, refreshSupport);
+REFLECT_STRUCT(WorkspaceClientCap::RefreshSupport, refreshSupport);
 REFLECT_STRUCT(WorkspaceClientCap, applyEdit, workspaceEdit, didChangeConfiguration, didChangeWatchedFiles, symbol,
-               executeCommand, semanticTokens);
+               executeCommand, inlayHint, semanticTokens);
 
 // Text document specific client capabilities.
 struct TextDocumentClientCap {
@@ -366,6 +368,7 @@ void do_initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) 
   g_config->client.diagnosticsRelatedInformation &= capabilities.textDocument.publishDiagnostics.relatedInformation;
   didChangeWatchedFiles = capabilities.workspace.didChangeWatchedFiles.dynamicRegistration;
   g_config->client.semanticTokensRefresh &= capabilities.workspace.semanticTokens.refreshSupport;
+  g_config->client.inlayHintRefresh &= capabilities.workspace.inlayHint.refreshSupport;
 
   if (!g_config->client.snippetSupport)
     g_config->completion.duplicateOptional = false;

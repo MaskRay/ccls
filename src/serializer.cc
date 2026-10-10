@@ -361,6 +361,7 @@ template <typename TVisitor> void reflect1(TVisitor &vis, IndexFile &v) {
   }
   REFLECT_MEMBER(includes);
   REFLECT_MEMBER(skipped_ranges);
+  REFLECT_MEMBER(inlay_hints);
   REFLECT_MEMBER(usr2func);
   REFLECT_MEMBER(usr2type);
   REFLECT_MEMBER(usr2var);
