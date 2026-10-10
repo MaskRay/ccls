@@ -500,6 +500,10 @@ void main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
       std::optional<bool> param;
       request("workspace/semanticTokens/refresh", param);
     }
+    if (g_config->client.inlayHintRefresh) {
+      std::optional<bool> param;
+      request("workspace/inlayHint/refresh", param);
+    }
     return;
   }
 
@@ -520,6 +524,10 @@ void main_OnIndexed(DB *db, WorkingFiles *wfiles, IndexUpdate *update) {
         TextDocumentIdentifier param;
         param.uri = DocumentUri::fromPath(wfile->filename);
         request("workspace/semanticTokens/refresh", param);
+      }
+      if (g_config->client.inlayHintRefresh) {
+        std::optional<bool> param;
+        request("workspace/inlayHint/refresh", param);
       }
     }
   }

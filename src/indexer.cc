@@ -12,6 +12,8 @@
 #include <clang/AST/AST.h>
 #include <clang/AST/ASTDiagnostic.h>
 #include <clang/AST/RecursiveASTVisitor.h>
+#include <clang/AST/StmtVisitor.h>
+#include <clang/Basic/CharInfo.h>
 #include <clang/Basic/TargetInfo.h>
 #include <clang/Frontend/FrontendAction.h>
 #include <clang/Frontend/MultiplexConsumer.h>
@@ -23,10 +25,15 @@
 #include <clang/Index/USRGeneration.h>
 #endif
 #include <clang/Lex/PreprocessorOptions.h>
+#if LLVM_VERSION_MAJOR >= 22
+#include <clang/Sema/HeuristicResolver.h>
+#endif
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/DenseSet.h>
+#include <llvm/ADT/StringExtras.h>
 #include <llvm/Support/CrashRecoveryContext.h>
 #include <llvm/Support/Path.h>
+#include <llvm/Support/SaveAndRestore.h>
 
 #include <algorithm>
 #include <inttypes.h>
@@ -420,11 +427,9 @@ bool isInstantiatedLocal(const Decl *d) {
   return false;
 }
 
-// If vd is a local of a function template with exactly one instantiation,
-// return the corresponding variable in that instantiation, similar to clangd's
-// getOnlyInstantiation.
-const VarDecl *getOnlyInstantiatedVar(const VarDecl *vd) {
-  auto *fd = dyn_cast_or_null<FunctionDecl>(vd->getParentFunctionOrMethod());
+// If fd is the pattern of a function template with exactly one instantiation,
+// return the instantiation, similar to clangd's getOnlyInstantiation.
+const FunctionDecl *getOnlyInstantiation(const FunctionDecl *fd) {
   const FunctionTemplateDecl *ftd = fd ? fd->getDescribedFunctionTemplate() : nullptr;
   if (!ftd)
     return nullptr;
@@ -436,6 +441,13 @@ const VarDecl *getOnlyInstantiatedVar(const VarDecl *vd) {
       return nullptr;
     only = spec;
   }
+  return only;
+}
+
+// If vd is a local of a function template with exactly one instantiation,
+// return the corresponding variable in that instantiation.
+const VarDecl *getOnlyInstantiatedVar(const VarDecl *vd) {
+  const FunctionDecl *only = getOnlyInstantiation(dyn_cast_or_null<FunctionDecl>(vd->getParentFunctionOrMethod()));
   if (!only)
     return nullptr;
   for (const Decl *d : only->decls())
@@ -545,6 +557,897 @@ bool validateRecord(const RecordDecl *rd) {
   return true;
 }
 
+void setPlainAnonymousTag(PrintingPolicy &pp) {
+#if LLVM_VERSION_MAJOR >= 23 // llvmorg-23-init-4710-gf5f8435605ba
+  pp.AnonymousTagNameStyle = static_cast<unsigned>(PrintingPolicy::AnonymousTagMode::Plain);
+#else
+  pp.AnonymousTagLocations = false;
+#endif
+}
+
+// The following inlay hint code is ported from clangd's InlayHints.cpp.
+
+#if LLVM_VERSION_MAJOR >= 16 // llvmorg-16-init-7826-gbcd9ba2b7e64
+using PackId = const TemplateTypeParmDecl *;
+#else
+using PackId = const TemplateTypeParmType *;
+#endif
+
+// If pvd is declared as `Args`, `Args &` or `Args &&` of an expanded template
+// parameter pack, return the pack.
+PackId getUnderlyingPack(const ParmVarDecl *pvd) {
+  const Type *t = pvd->getType().getTypePtr();
+  if (auto *rt = dyn_cast<ReferenceType>(t))
+    t = rt->getPointeeTypeAsWritten().getTypePtr();
+  if (auto *st = dyn_cast<SubstTemplateTypeParmType>(t))
+    if (PackId replaced = st->getReplacedParameter(); replaced->isParameterPack())
+      return replaced;
+  return nullptr;
+}
+
+bool isExpandedFromParameterPack(const ParmVarDecl *pvd) { return getUnderlyingPack(pvd); }
+
+// Return the last template parameter pack of the function template fd is
+// specialized from.
+PackId getFunctionPack(const FunctionDecl *fd) {
+  if (const FunctionTemplateDecl *ft = fd->getPrimaryTemplate())
+    for (const NamedDecl *nd : llvm::reverse(ft->getTemplateParameters()->asArray()))
+      if (auto *ttpd = dyn_cast<TemplateTypeParmDecl>(nd); ttpd && ttpd->isParameterPack())
+#if LLVM_VERSION_MAJOR >= 16
+        return ttpd;
+#else
+        return cast<TemplateTypeParmType>(ttpd->getTypeForDecl());
+#endif
+  return nullptr;
+}
+
+// Find the first call in a function body that forwards the expanded pack
+// params, e.g. `T(std::forward<Args>(args)...)`, and the callee parameters
+// bound to them.
+struct ForwardingCallVisitor : RecursiveASTVisitor<ForwardingCallVisitor> {
+  ArrayRef<const ParmVarDecl *> params;
+  // The bound parameters before, in and after the callee's own expanded pack.
+  ArrayRef<const ParmVarDecl *> head, pack, tail;
+  // The callee if it has an expanded pack.
+  const FunctionDecl *pack_target = nullptr;
+  bool found = false;
+
+  ForwardingCallVisitor(ArrayRef<const ParmVarDecl *> params) : params(params) {}
+
+  bool VisitCallExpr(CallExpr *e) {
+    auto *callee = dyn_cast_or_null<FunctionDecl>(e->getCalleeDecl());
+    if (callee && callee->getNumParams() == e->getNumArgs())
+      handleCall(callee, {e->getArgs(), e->getNumArgs()});
+    return !found;
+  }
+
+  // A copy or move is not a forwarding target, e.g. passing a pack element to a
+  // by-value parameter of a functor.
+  bool VisitCXXConstructExpr(CXXConstructExpr *e) {
+    if (const CXXConstructorDecl *ctor = e->getConstructor(); ctor && !ctor->isCopyOrMoveConstructor())
+      handleCall(ctor, {e->getArgs(), e->getNumArgs()});
+    return !found;
+  }
+
+  void handleCall(const FunctionDecl *callee, ArrayRef<const Expr *> args) {
+    if (callee->getNumParams() < params.size() || args.size() < params.size() ||
+        llvm::any_of(args, [](const Expr *e) { return isa<PackExpansionExpr>(e); }))
+      return;
+    std::optional<size_t> pos = findPack(args);
+    // Part of the pack may be passed to the `...` of a C variadic function.
+    if (!pos || callee->getNumParams() < *pos + params.size())
+      return;
+    found = true;
+    auto matching = ArrayRef<const ParmVarDecl *>(callee->parameters()).slice(*pos, params.size());
+    head = matching;
+    if (PackId id = getFunctionPack(callee)) {
+      auto is_expanded = [&](const ParmVarDecl *p) { return getUnderlyingPack(p) == id; };
+      head = matching.take_until(is_expanded);
+      pack = matching.drop_front(head.size()).take_while(is_expanded);
+      tail = matching.drop_front(head.size() + pack.size());
+      pack_target = callee;
+    }
+  }
+
+  std::optional<size_t> findPack(ArrayRef<const Expr *> args) {
+    for (size_t i = 0; i + params.size() <= args.size(); i++)
+      if (getForwardedDecl(args[i]) == params.front() && getForwardedDecl(args[i + params.size() - 1]) == params.back())
+        return i;
+    return std::nullopt;
+  }
+
+  // Look through std::forward and an implicit copy or move.
+  static const ValueDecl *getForwardedDecl(const Expr *e) {
+    e = e->IgnoreImplicitAsWritten();
+    if (auto *ce = dyn_cast<CXXConstructExpr>(e))
+      if (ce->getConstructor()->isCopyOrMoveConstructor())
+        e = ce->getArg(0)->IgnoreImplicitAsWritten();
+    if (auto *call = dyn_cast<CallExpr>(e))
+      if (const FunctionDecl *fd = call->getDirectCallee();
+          fd && call->getNumArgs() == 1 && fd->isInStdNamespace() && fd->getIdentifier() && fd->getName() == "forward")
+        e = call->getArg(0)->IgnoreImplicitAsWritten();
+    auto *dre = dyn_cast<DeclRefExpr>(e);
+    return dre ? dre->getDecl() : nullptr;
+  }
+};
+
+// Map each parameter of fd to the parameter it is eventually forwarded to, e.g.
+// the constructor parameters for the arguments of `std::make_unique<T>(...)`.
+SmallVector<const ParmVarDecl *, 8> resolveForwardingParameters(const FunctionDecl *fd) {
+  ArrayRef<const ParmVarDecl *> params = fd->parameters();
+  SmallVector<const ParmVarDecl *, 8> ret(params.begin(), params.end());
+  PackId id = getFunctionPack(fd);
+  if (!id)
+    return ret;
+  auto is_expanded = [&](const ParmVarDecl *p) { return getUnderlyingPack(p) == id; };
+  ArrayRef<const ParmVarDecl *> pack = params.drop_until(is_expanded).take_while(is_expanded);
+  // [begin, end) of ret is mapped to the unresolved pack.
+  size_t begin = pack.data() - params.data(), end = begin + pack.size();
+  llvm::SmallPtrSet<const FunctionTemplateDecl *, 4> seen{fd->getPrimaryTemplate()};
+  const FunctionDecl *cur = fd;
+  for (unsigned depth = 0; pack.size() && cur && depth < ForwardingToConstructorVisitor::kMaxDepth; depth++) {
+    ForwardingCallVisitor visitor(pack);
+    // e.g. std::shared_ptr's constructor forwards to its base in an initializer.
+    if (auto *ctor = dyn_cast<CXXConstructorDecl>(cur))
+      for (const CXXCtorInitializer *init : ctor->inits())
+        if (init->isWritten() && !visitor.found)
+          visitor.TraverseStmt(init->getInit());
+    if (!visitor.found)
+      visitor.TraverseStmt(cur->getBody());
+    if (!visitor.found)
+      break;
+    llvm::copy(visitor.head, ret.begin() + begin);
+    begin += visitor.head.size();
+    end -= visitor.tail.size();
+    llvm::copy(visitor.tail, ret.begin() + end);
+    pack = visitor.pack;
+    cur = visitor.pack_target;
+    if (cur && !seen.insert(cur->getPrimaryTemplate()).second)
+      return {params.begin(), params.end()};
+  }
+  llvm::copy(pack, ret.begin() + begin);
+  return ret;
+}
+
+StringRef getSimpleName(DeclarationName name) {
+  IdentifierInfo *ii = name.getAsIdentifierInfo();
+  return ii ? ii->getName() : "";
+}
+
+StringRef getSimpleName(const NamedDecl *d) { return getSimpleName(d->getDeclName()); }
+
+// Returns true if name is reserved, like _Foo or __Vector_base.
+bool isReservedName(StringRef name) {
+  return name.size() >= 2 && name[0] == '_' && (isUppercase(name[1]) || name[1] == '_');
+}
+
+// Collect the designators of the initializers in the semantic init list sem,
+// descending into subobjects whose braces are elided, e.g. `.a` and `.b.x` for
+// `Outer o{{1, 2}, 3}` where Outer has members `Inner a, b`.
+void collectDesignators(const InitListExpr *sem, llvm::DenseMap<SourceLocation, std::string> &out,
+                        std::string &prefix) {
+  if (!sem || sem->isTransparent() || sem->getType().isNull())
+    return;
+  QualType t = sem->getType().getCanonicalType();
+  bool is_array = t->isArrayType();
+  const RecordDecl *rd = is_array ? nullptr : t->getAsRecordDecl();
+  if (!is_array && !rd)
+    return;
+  unsigned num_bases = 0;
+  if (auto *crd = dyn_cast_or_null<CXXRecordDecl>(rd)) {
+    if (!crd->isAggregate())
+      return;
+    num_bases = crd->getNumBases();
+  }
+  RecordDecl::field_iterator field, field_end;
+  if (rd)
+    field = rd->field_begin(), field_end = rd->field_end();
+  // e.g. std::array { T _M_elems[N]; }
+  bool one_field = rd && !num_bases && field != field_end && std::next(field) == field_end;
+  unsigned index = 0;
+  for (const Expr *init : sem->inits()) {
+    unsigned i = index++;
+    const FieldDecl *fd = nullptr;
+    if (rd) {
+      // Bases cannot be designated.
+      if (i < num_bases)
+        continue;
+      // Unnamed bit-fields have no initializers.
+      while (field != field_end && field->isBitField() && !field->getIdentifier())
+        ++field;
+      if (field == field_end)
+        break;
+      fd = *field++;
+    }
+    if (!init || isa<ImplicitValueInitExpr>(init))
+      continue;
+    auto *elided = dyn_cast<InitListExpr>(init);
+    if (elided && elided->isExplicit())
+      elided = nullptr;
+    size_t size = prefix.size();
+    if (!fd) {
+      prefix += "[" + std::to_string(i) + "]";
+    } else {
+      StringRef name = getSimpleName(fd);
+      // Members of an anonymous struct/union or std::array can be named
+      // directly.
+      if (!elided || !(fd->isAnonymousStructOrUnion() || (one_field && isReservedName(name)))) {
+        if (name.empty() || isReservedName(name))
+          continue;
+        prefix += ("." + name).str();
+      }
+    }
+    if (elided)
+      collectDesignators(elided, out, prefix);
+    else
+      out.try_emplace(init->getBeginLoc(), prefix);
+    prefix.resize(size);
+  }
+}
+
+// Returns a short form of an expression, or "" if it is too complex, e.g.
+// "bar()" for `foo->bar()`.
+std::string summarizeExpr(const Expr *e, const PrintingPolicy &pp) {
+  struct Namer : ConstStmtVisitor<Namer, std::string> {
+    const PrintingPolicy &pp;
+    bool inside_binary = false;
+
+    Namer(const PrintingPolicy &pp) : pp(pp) {}
+
+    static std::string name(const NamedDecl *d) { return getSimpleName(d).str(); }
+    std::string name(QualType t) {
+      if (auto *bt = dyn_cast<BuiltinType>(t.getTypePtr()))
+        return bt->getName(pp).str();
+      if (const TagDecl *td = t->getAsTagDecl())
+        return name(td);
+      return "";
+    }
+
+    std::string Visit(const Expr *e) { return e ? ConstStmtVisitor::Visit(e->IgnoreImplicit()) : ""; }
+    std::string VisitMemberExpr(const MemberExpr *e) { return name(e->getMemberDecl()); }
+    std::string VisitDeclRefExpr(const DeclRefExpr *e) { return name(e->getFoundDecl()); }
+    std::string VisitCallExpr(const CallExpr *e) {
+      return Visit(e->getCallee()) + (e->getNumArgs() == 0 ? "()" : "(...)");
+    }
+    std::string VisitCXXDependentScopeMemberExpr(const CXXDependentScopeMemberExpr *e) {
+      return getSimpleName(e->getMember()).str();
+    }
+    std::string VisitDependentScopeDeclRefExpr(const DependentScopeDeclRefExpr *e) {
+      return getSimpleName(e->getDeclName()).str();
+    }
+    std::string VisitCXXFunctionalCastExpr(const CXXFunctionalCastExpr *e) { return name(e->getType()); }
+    std::string VisitCXXTemporaryObjectExpr(const CXXTemporaryObjectExpr *e) { return name(e->getType()); }
+    std::string VisitCXXMemberCallExpr(const CXXMemberCallExpr *e) {
+      // `operator bool()` called in `if (x)`
+      if (e->getNumArgs() == 0 && e->getMethodDecl() &&
+          e->getMethodDecl()->getDeclName().getNameKind() == DeclarationName::CXXConversionFunctionName &&
+          e->getSourceRange() == e->getImplicitObjectArgument()->getSourceRange())
+        return Visit(e->getImplicitObjectArgument());
+      return VisitCallExpr(e);
+    }
+    std::string VisitCXXConstructExpr(const CXXConstructExpr *e) {
+      return e->getNumArgs() == 1 ? Visit(e->getArg(0)) : "";
+    }
+
+    std::string VisitCXXNullPtrLiteralExpr(const CXXNullPtrLiteralExpr *) { return "nullptr"; }
+    std::string VisitCXXBoolLiteralExpr(const CXXBoolLiteralExpr *e) { return e->getValue() ? "true" : "false"; }
+    std::string VisitIntegerLiteral(const IntegerLiteral *e) {
+      std::string ret;
+      llvm::raw_string_ostream os(ret);
+      e->getValue().print(os, e->getType()->isSignedIntegerType());
+      return os.str();
+    }
+    std::string VisitFloatingLiteral(const FloatingLiteral *e) {
+      std::string ret;
+      llvm::raw_string_ostream os(ret);
+      e->getValue().print(os);
+      os.flush();
+      ret.resize(StringRef(ret).rtrim().size());
+      return ret;
+    }
+    std::string VisitStringLiteral(const StringLiteral *e) {
+      std::string ret = "\"";
+      if (e->getCharByteWidth() != 1 || e->containsNonAscii()) {
+        ret += "...";
+      } else {
+        llvm::raw_string_ostream os(ret);
+        llvm::printEscapedString(e->getString().take_front(e->getLength() > 10 ? 7 : 10), os);
+        os.flush();
+        if (e->getLength() > 10)
+          ret += "...";
+      }
+      return ret + "\"";
+    }
+
+    std::string printUnary(StringRef spelling, const Expr *operand, bool prefix) {
+      std::string sub = Visit(operand);
+      if (sub.empty())
+        return "";
+      return prefix ? (spelling + sub).str() : sub + spelling.str();
+    }
+    std::string printBinary(StringRef spelling, const Expr *lhs_op, const Expr *rhs_op) {
+      if (inside_binary)
+        return "";
+      llvm::SaveAndRestore save(inside_binary, true);
+      std::string lhs = Visit(lhs_op), rhs = Visit(rhs_op);
+      if (lhs.empty() && rhs.empty())
+        return "";
+      return (lhs.empty() ? "..." : lhs) + " " + spelling.str() + " " + (rhs.empty() ? "..." : rhs);
+    }
+    std::string VisitUnaryOperator(const UnaryOperator *e) {
+      return printUnary(UnaryOperator::getOpcodeStr(e->getOpcode()), e->getSubExpr(), !e->isPostfix());
+    }
+    std::string VisitBinaryOperator(const BinaryOperator *e) {
+      return printBinary(BinaryOperator::getOpcodeStr(e->getOpcode()), e->getLHS(), e->getRHS());
+    }
+    std::string VisitCXXOperatorCallExpr(const CXXOperatorCallExpr *e) {
+      const char *spelling = getOperatorSpelling(e->getOperator());
+      if ((e->getOperator() == OO_PlusPlus || e->getOperator() == OO_MinusMinus) && e->getNumArgs() == 2)
+        return printUnary(spelling, e->getArg(0), false);
+      if (e->isInfixBinaryOp())
+        return printBinary(spelling, e->getArg(0), e->getArg(1));
+      if (e->getNumArgs() == 1)
+        switch (e->getOperator()) {
+        case OO_Plus:
+        case OO_Minus:
+        case OO_Star:
+        case OO_Amp:
+        case OO_Tilde:
+        case OO_Exclaim:
+        case OO_PlusPlus:
+        case OO_MinusMinus:
+          return printUnary(spelling, e->getArg(0), true);
+        default:
+          break;
+        }
+      return "";
+    }
+  };
+  return Namer(pp).Visit(e);
+}
+
+// Return the TypeLoc of the invented template parameter if tl is written with
+// `auto`, e.g. `const auto &` in `void f(const auto &x)`.
+TemplateTypeParmTypeLoc getContainedAutoParamType(TypeLoc tl) {
+  if (auto qtl = tl.getAs<QualifiedTypeLoc>())
+    return getContainedAutoParamType(qtl.getUnqualifiedLoc());
+  if (isa<PointerType>(tl.getTypePtr()) || isa<ReferenceType>(tl.getTypePtr()) || isa<ParenType>(tl.getTypePtr()))
+    return getContainedAutoParamType(tl.getNextTypeLoc());
+  if (auto ftl = tl.getAs<FunctionTypeLoc>())
+    return getContainedAutoParamType(ftl.getReturnLoc());
+  if (auto ttptl = tl.getAs<TemplateTypeParmTypeLoc>())
+    if (ttptl.getTypePtr()->getDecl() && ttptl.getTypePtr()->getDecl()->isImplicit())
+      return ttptl;
+  return {};
+}
+
+const ParmVarDecl *getOnlyInstantiatedParam(const ParmVarDecl *pvd) {
+  auto *fd = dyn_cast<FunctionDecl>(pvd->getDeclContext());
+  const FunctionDecl *only = getOnlyInstantiation(fd);
+  if (!only)
+    return nullptr;
+  unsigned i = 0;
+  for (const ParmVarDecl *p : fd->parameters()) {
+    // A preceding pack may expand to any number of parameters.
+    if (p->isParameterPack())
+      return nullptr;
+    if (p == pvd)
+      break;
+    i++;
+  }
+  return i < only->getNumParams() ? only->getParamDecl(i) : nullptr;
+}
+
+#if LLVM_VERSION_MAJOR >= 14 // llvmorg-14-init-11692-gec64d10340da
+// Whether desugaring t steps through a substituted template type parameter,
+// e.g. `std::vector<int>::value_type`.
+bool isSugaredTemplateParameter(QualType t) {
+  while (true) {
+    if (t->getAs<SubstTemplateTypeParmType>())
+      return true;
+    QualType desugared = t->getLocallyUnqualifiedSingleStepDesugaredType();
+    if (desugared != t)
+      t = desugared;
+    else if (QualType pointee = desugared->getPointeeType(); !pointee.isNull() && pointee != t)
+      t = pointee;
+    else
+      return false;
+  }
+}
+#endif
+
+QualType maybeDesugar(ASTContext &ctx, QualType t) {
+#if LLVM_VERSION_MAJOR >= 14 // llvmorg-14-init-11692-gec64d10340da
+  if (isSugaredTemplateParameter(t)) {
+    bool should_aka = false;
+    QualType desugared = desugarForDiagnostic(ctx, t, should_aka);
+    return should_aka ? desugared : t;
+  }
+#endif
+  if (isa<DecltypeType>(t.getTypePtr()))
+    return t.getCanonicalType();
+  if (const AutoType *at = t->getContainedAutoType())
+    if (!at->getDeducedType().isNull() && isa<DecltypeType>(at->getDeducedType().getTypePtr()))
+      return t.getCanonicalType();
+  return t;
+}
+
+class InlayHintVisitor : public RecursiveASTVisitor<InlayHintVisitor> {
+  ASTContext &ctx;
+  const SourceManager &sm;
+  IndexParam &param;
+  PrintingPolicy type_policy;
+#if LLVM_VERSION_MAJOR >= 22 // llvmorg-22-init-7955-ge07af8cbbfa2
+  HeuristicResolver resolver;
+#endif
+  llvm::DenseSet<const IfStmt *> else_ifs;
+  llvm::DenseSet<const InitListExpr *> std_init_lists;
+
+public:
+  InlayHintVisitor(ASTContext &ctx, IndexParam &param)
+      : ctx(ctx), sm(ctx.getSourceManager()), param(param), type_policy(ctx.getPrintingPolicy())
+#if LLVM_VERSION_MAJOR >= 22
+        ,
+        resolver(ctx)
+#endif
+  {
+    type_policy.SuppressScope = true;
+    setPlainAnonymousTag(type_policy);
+  }
+
+  // Skip declarations in system headers and in files not indexed by this
+  // translation unit.
+  bool TraverseDecl(Decl *d) {
+    if (d && !isa<TranslationUnitDecl>(d) && !isa<NamespaceDecl>(d) && !isa<LinkageSpecDecl>(d)) {
+      SourceLocation loc = sm.getExpansionLoc(d->getLocation());
+      FileID fid = sm.getFileID(loc);
+      if (fid.isInvalid() || sm.isInSystemHeader(loc) || !param.consumeFile(fid))
+        return true;
+    }
+    return RecursiveASTVisitor::TraverseDecl(d);
+  }
+
+  bool TraversePseudoObjectExpr(PseudoObjectExpr *e) {
+    Expr *syntactic = e->getSyntacticForm();
+    // The semantic forms share the locations of the syntactic form, e.g.
+    // __builtin_dump_struct.
+    if (isa<CallExpr>(syntactic))
+      return TraverseStmt(syntactic);
+    // MS property `x = y` is a call to a setter.
+    if (isa<BinaryOperator>(syntactic))
+      return true;
+    return RecursiveASTVisitor::TraversePseudoObjectExpr(e);
+  }
+
+  bool VisitTypeLoc(TypeLoc tl) {
+    if (auto *dt = dyn_cast<DecltypeType>(tl.getTypePtr()))
+      if (QualType ut = dt->getUnderlyingType(); !ut->isDependentType())
+        addTypeHint(tl.getSourceRange(), ut, ": ");
+    return true;
+  }
+
+  bool VisitCallExpr(CallExpr *e) {
+    bool functor = false;
+    if (auto *oce = dyn_cast<CXXOperatorCallExpr>(e)) {
+      if (oce->getOperator() != OO_Call)
+        return true;
+      functor = true;
+    }
+    if (isa<UserDefinedLiteral>(e))
+      return true;
+
+    const FunctionDecl *callee = nullptr;
+#if LLVM_VERSION_MAJOR >= 22
+    auto callees = resolver.resolveCalleeOfCallExpr(e);
+    if (callees.size() != 1)
+      return true;
+    if (auto *ftd = dyn_cast<FunctionTemplateDecl>(callees[0]))
+      callee = ftd->getTemplatedDecl();
+    else
+      callee = dyn_cast<FunctionDecl>(callees[0]);
+#else
+    callee = dyn_cast_or_null<FunctionDecl>(e->getCalleeDecl());
+#endif
+    ArrayRef<ParmVarDecl *> params;
+    if (callee)
+      params = callee->parameters();
+#if LLVM_VERSION_MAJOR >= 22
+    else if (FunctionProtoTypeLoc proto = resolver.getFunctionProtoTypeLoc(e->getCallee()))
+      params = proto.getParams();
+#endif
+    else
+      return true;
+
+    // The implied object argument precedes the arguments of a functor call or
+    // a call to an explicit object member function.
+    ArrayRef<const Expr *> args(e->getArgs(), e->getNumArgs());
+    if (auto *md = dyn_cast_or_null<CXXMethodDecl>(callee)) {
+      bool drop = functor;
+#if LLVM_VERSION_MAJOR >= 18 // llvmorg-18-init-7480-gaf4751738db8
+      drop |= !e->isTypeDependent() && md->hasCXXExplicitFunctionObjectParameter();
+#endif
+      if (drop)
+        args = args.drop_front();
+    }
+    processCall(callee, params, args);
+    return true;
+  }
+
+  bool VisitCXXConstructExpr(CXXConstructExpr *e) {
+    if (e->getParenOrBraceRange().isInvalid() || e->isStdInitListInitialization())
+      return true;
+    if (const CXXConstructorDecl *ctor = e->getConstructor())
+      processCall(ctor, ctor->parameters(), {e->getArgs(), e->getNumArgs()});
+    return true;
+  }
+
+  bool VisitFunctionDecl(FunctionDecl *d) {
+    if (auto *fpt = dyn_cast<FunctionProtoType>(d->getType().getTypePtr()))
+      if (!fpt->hasTrailingReturn())
+        if (FunctionTypeLoc ftl = d->getFunctionTypeLoc())
+          addReturnTypeHint(d, ftl.getLocalRangeEnd());
+    if (d->isThisDeclarationADefinition())
+      if (Stmt *body = d->getBody())
+        addBlockEndHint(body->getSourceRange(), "", [&] { return printFunctionName(d); });
+    return true;
+  }
+
+  bool VisitForStmt(ForStmt *s) {
+    addBlockEndHint(s->getBody(), "for", [&] {
+      // Use the loop variable in `for (int i = 0; i < n; i++)`.
+      if (auto *ds = dyn_cast_or_null<DeclStmt>(s->getInit()); ds && ds->isSingleDecl())
+        return getSimpleName(cast<NamedDecl>(ds->getSingleDecl())).str();
+      return summarizeExpr(s->getCond(), type_policy);
+    });
+    return true;
+  }
+
+  bool VisitCXXForRangeStmt(CXXForRangeStmt *s) {
+    addBlockEndHint(s->getBody(), "for", [&] { return getSimpleName(s->getLoopVariable()).str(); });
+    return true;
+  }
+
+  bool VisitWhileStmt(WhileStmt *s) {
+    addBlockEndHint(s->getBody(), "while", [&] { return summarizeExpr(s->getCond(), type_policy); });
+    return true;
+  }
+
+  bool VisitSwitchStmt(SwitchStmt *s) {
+    addBlockEndHint(s->getBody(), "switch", [&] { return summarizeExpr(s->getCond(), type_policy); });
+    return true;
+  }
+
+  bool VisitIfStmt(IfStmt *s) {
+    // An else-if ends the whole chain; don't label it with its own condition.
+    if (auto *else_if = dyn_cast_or_null<IfStmt>(s->getElse()))
+      else_ifs.insert(else_if);
+    if (auto *end = dyn_cast<CompoundStmt>(s->getElse() ? s->getElse() : s->getThen()))
+      addBlockEndHint({s->getThen()->getBeginLoc(), end->getRBracLoc()}, "if",
+                      [&] { return else_ifs.contains(s) ? "" : summarizeExpr(s->getCond(), type_policy); });
+    return true;
+  }
+
+  bool VisitTagDecl(TagDecl *d) {
+    if (d->isThisDeclarationADefinition()) {
+      std::string prefix = d->getKindName().str();
+      if (auto *ed = dyn_cast<EnumDecl>(d); ed && ed->isScoped())
+        prefix += ed->isScopedUsingClassTag() ? " class" : " struct";
+      addBlockEndHint(d->getBraceRange(), prefix, [&] { return getSimpleName(d).str(); }, ";");
+    }
+    return true;
+  }
+
+  bool VisitNamespaceDecl(NamespaceDecl *d) {
+    std::string name = getSimpleName(d).str();
+#if LLVM_VERSION_MAJOR >= 16 // llvmorg-16-init-11611-g15e76eed0c76
+    // Label `namespace a::b {}` once, at the innermost declaration.
+    if (d->decls_begin() != d->decls_end())
+      if (auto *nd = dyn_cast<NamespaceDecl>(*d->decls_begin()); nd && nd->isNested())
+        return true;
+    for (const NamespaceDecl *nd = d; nd->isNested();) {
+      nd = cast<NamespaceDecl>(nd->getParent());
+      name = (getSimpleName(nd) + "::" + name).str();
+    }
+#endif
+    addBlockEndHint(d->getSourceRange(), "namespace", [&] { return name; });
+    return true;
+  }
+
+  // The elements of a std::initializer_list are not designated.
+  bool VisitCXXStdInitializerListExpr(CXXStdInitializerListExpr *e) {
+    if (auto *ile = dyn_cast<InitListExpr>(e->getSubExpr()->IgnoreImplicit()))
+      std_init_lists.insert(ile->getSyntacticForm() ? ile->getSyntacticForm() : ile);
+    return true;
+  }
+
+  bool VisitInitListExpr(InitListExpr *syn) {
+    if (syn->isIdiomaticZeroInitializer(ctx.getLangOpts()) || std_init_lists.contains(syn))
+      return true;
+    llvm::DenseMap<SourceLocation, std::string> designators;
+    std::string prefix;
+    collectDesignators(syn->isSemanticForm() ? syn : syn->getSemanticForm(), designators, prefix);
+    for (const Expr *init : syn->inits()) {
+      if (isa<DesignatedInitExpr>(init))
+        continue;
+      auto it = designators.find(init->getBeginLoc());
+      if (it != designators.end() && !isPrecededByParamNameComment(init, it->second))
+        addHint(init->getSourceRange(), InlayHintKind::Designator, it->second + "=");
+    }
+    return true;
+  }
+
+#if LLVM_VERSION_MAJOR >= 16 // llvmorg-16-init-17081-g95a4c0c83554
+  bool VisitCXXParenListInitExpr(CXXParenListInitExpr *e) {
+    const CXXRecordDecl *rd = e->getType()->getAsCXXRecordDecl();
+    if (!rd)
+      return true;
+    auto inits = e->getUserSpecifiedInitExprs();
+    auto it = inits.begin() + std::min<size_t>(inits.size(), rd->getNumBases());
+    for (const FieldDecl *field : rd->fields()) {
+      if (it == inits.end())
+        break;
+      if (field->isBitField() && !field->getIdentifier())
+        continue;
+      const Expr *init = *it++;
+      if (field->getIdentifier())
+        addHint(init->getSourceRange(), InlayHintKind::Designator, ("." + field->getName() + "=").str());
+    }
+    return true;
+  }
+#endif
+
+  bool VisitLambdaExpr(LambdaExpr *e) {
+    FunctionDecl *d = e->getCallOperator();
+    if (!e->hasExplicitResultType()) {
+      SourceLocation loc;
+      if (FunctionTypeLoc ftl = d->getFunctionTypeLoc())
+        loc = ftl.getLocalRangeEnd();
+      else if (!e->hasExplicitParameters())
+        loc = e->getIntroducerRange().getEnd();
+      if (loc.isValid())
+        addReturnTypeHint(d, loc);
+    }
+    return true;
+  }
+
+  bool VisitVarDecl(VarDecl *d) {
+    if (auto *dd = dyn_cast<DecompositionDecl>(d)) {
+      // The canonical type avoids `tuple_element<I, A>::type`.
+      for (BindingDecl *b : dd->bindings())
+        if (QualType t = b->getType(); !t.isNull() && !t->isDependentType())
+          addTypeHint(b->getLocation(), t.getCanonicalType(), ": ");
+      return true;
+    }
+
+    if (const AutoType *at = d->getType()->getContainedAutoType(); at && at->isDeduced()) {
+      QualType t = d->getType();
+      if (t->isDependentType()) {
+        t = {};
+        if (const VarDecl *vd1 = getOnlyInstantiatedVar(d))
+          t = vd1->getType();
+#if LLVM_VERSION_MAJOR >= 22
+        else if (d->hasInit())
+          if (QualType resolved = resolver.resolveExprToType(d->getInit()); resolved != ctx.DependentTy)
+            t = resolved;
+#endif
+      }
+      addTypeHint(d->getLocation(), t, ": ");
+    }
+
+    if (auto *pvd = dyn_cast<ParmVarDecl>(d))
+      if (pvd->getIdentifier() && pvd->getType()->isDependentType() && pvd->getTypeSourceInfo() &&
+          !getContainedAutoParamType(pvd->getTypeSourceInfo()->getTypeLoc()).isNull())
+        if (const ParmVarDecl *pvd1 = getOnlyInstantiatedParam(pvd))
+          addTypeHint(pvd->getLocation(), pvd1->getType(), ": ");
+    return true;
+  }
+
+private:
+  void processCall(const FunctionDecl *callee, ArrayRef<ParmVarDecl *> params, ArrayRef<const Expr *> args) {
+    if (args.empty() || (callee && isSimpleStdFunction(callee)))
+      return;
+    // The parameter name of a copy or move constructor is uninteresting.
+    if (auto *ctor = dyn_cast_or_null<CXXConstructorDecl>(callee))
+      if (ctor->isCopyOrMoveConstructor())
+        return;
+
+    SmallVector<const ParmVarDecl *, 8> forwarded =
+        callee ? resolveForwardingParameters(callee)
+               : SmallVector<const ParmVarDecl *, 8>(params.begin(), params.end());
+#if LLVM_VERSION_MAJOR >= 18 // llvmorg-18-init-7480-gaf4751738db8
+    if (!params.empty() && params.front()->isExplicitObjectParameter()) {
+      params = params.drop_front();
+      forwarded.erase(forwarded.begin());
+    }
+#endif
+    SmallVector<StringRef, 8> names;
+    for (const ParmVarDecl *p : forwarded) {
+      // `args: 1, args: 2` is unlikely to be useful.
+      StringRef name;
+      if (!isExpandedFromParameterPack(p)) {
+        name = getParamName(p);
+        // Standard library parameter names often start with underscores.
+        name = name.ltrim('_');
+      }
+      names.push_back(name);
+    }
+    if (callee && isSetter(callee, names))
+      return;
+
+    for (size_t i = 0; i < names.size() && i < args.size(); i++) {
+      // A pack expansion breaks the 1:1 mapping between arguments and
+      // parameters.
+      if (isa<PackExpansionExpr>(args[i]))
+        break;
+      if (isa<CXXDefaultArgExpr>(args[i]))
+        continue;
+      bool name_hint = shouldHintName(args[i], names[i]), ref_hint = shouldHintReference(params[i], forwarded[i]);
+      if (name_hint || ref_hint)
+        addHint(args[i]->getSourceRange(), InlayHintKind::Parameter,
+                (Twine(ref_hint ? "&" : "") + (name_hint ? names[i] : "") + ":").str());
+    }
+  }
+
+  // If p is unnamed, use the name from the definition.
+  static StringRef getParamName(const ParmVarDecl *p) {
+    if (IdentifierInfo *ii = p->getIdentifier())
+      return ii->getName();
+    if (auto *fd = dyn_cast<FunctionDecl>(p->getDeclContext()))
+      if (const FunctionDecl *def = fd->getDefinition()) {
+        auto it = llvm::find(fd->parameters(), p);
+        if (it != fd->param_end())
+          if (IdentifierInfo *ii = def->getParamDecl(it - fd->param_begin())->getIdentifier())
+            return ii->getName();
+      }
+    return {};
+  }
+
+  // A function with one parameter whose name is "set" followed by the
+  // parameter name, e.g. setTimeout(timeout).
+  static bool isSetter(const FunctionDecl *callee, ArrayRef<StringRef> names) {
+    if (names.size() != 1 || !callee->getIdentifier())
+      return false;
+    StringRef name = callee->getName();
+    return name.size() > 3 && name.substr(0, 3).lower() == "set" &&
+           name.substr(3).ltrim('_').lower() == names[0].lower();
+  }
+
+  static bool isSimpleStdFunction(const FunctionDecl *callee) {
+    if (!callee->isInStdNamespace() || !callee->getIdentifier() || callee->getNumParams() != 1)
+      return false;
+    StringRef name = callee->getName();
+    return name == "addressof" || name == "as_const" || name == "forward" || name == "move" ||
+           name == "move_if_noexcept";
+  }
+
+  bool shouldHintName(const Expr *arg, StringRef name) {
+    return name.size() && name != getSpelledIdentifier(arg) && !isPrecededByParamNameComment(arg, name);
+  }
+
+  // A forwarded argument is passed by mutable reference only if every function
+  // in the chain takes an lvalue reference: a copy along the way would bind to
+  // an rvalue or const reference.
+  static bool shouldHintReference(const ParmVarDecl *p, const ParmVarDecl *forwarded) {
+    QualType t = forwarded->getType();
+    return p->getType()->isLValueReferenceType() && t->isLValueReferenceType() &&
+           !t.getNonReferenceType().isConstQualified() && !isExpandedFromParameterPack(forwarded);
+  }
+
+  static StringRef getSpelledIdentifier(const Expr *arg) {
+    arg = arg->IgnoreUnlessSpelledInSource();
+    if (auto *dre = dyn_cast<DeclRefExpr>(arg))
+      if (!dre->getQualifier() && dre->getDecl()->getIdentifier())
+        return dre->getDecl()->getName();
+    if (auto *me = dyn_cast<MemberExpr>(arg))
+      if (!me->getQualifier() && me->isImplicitAccess() && me->getMemberDecl()->getIdentifier())
+        return me->getMemberDecl()->getName();
+    return {};
+  }
+
+  // Whether arg is preceded by a comment like /*name=*/.
+  bool isPrecededByParamNameComment(const Expr *arg, StringRef name) {
+    auto [fid, offset] = sm.getDecomposedLoc(sm.getFileLoc(arg->getBeginLoc()));
+    bool invalid = false;
+    StringRef prefix = sm.getBufferData(fid, &invalid);
+    if (invalid)
+      return false;
+    prefix = prefix.substr(0, offset).rtrim();
+    if (!prefix.consume_back("*/"))
+      return false;
+    StringRef ignore = " =.";
+    prefix = prefix.rtrim(ignore);
+    if (!prefix.consume_back(name.trim(ignore)))
+      return false;
+    return prefix.rtrim(ignore).endswith("/*");
+  }
+
+  void addReturnTypeHint(FunctionDecl *d, SourceRange r) {
+    const AutoType *at = d->getReturnType()->getContainedAutoType();
+    if (at && !at->getDeducedType().isNull())
+      addTypeHint(r, d->getReturnType(), "-> ");
+  }
+
+  void addTypeHint(SourceRange r, QualType t, StringRef prefix) {
+    if (t.isNull())
+      return;
+    // `(lambda)` tells nothing the initializer doesn't.
+    if (const CXXRecordDecl *rd = t.getNonReferenceType()->getAsCXXRecordDecl(); rd && rd->isLambda())
+      return;
+    // Prefer the desugared type unless it is too long.
+    QualType desugared = maybeDesugar(ctx, t);
+    std::string name = desugared.getAsString(type_policy);
+    if (desugared != t && !fitsTypeNameLimit(name))
+      name = t.getAsString(type_policy);
+    if (fitsTypeNameLimit(name))
+      addHint(r, InlayHintKind::Type, (Twine(prefix) + name).str());
+  }
+
+  static bool fitsTypeNameLimit(StringRef name) {
+    int limit = g_config->inlayHint.typeNameLimit;
+    return limit <= 0 || name.size() < size_t(limit);
+  }
+
+  // Print the qualifier as written, e.g. `S::f` for an out-of-line definition.
+  std::string printFunctionName(const FunctionDecl *d) {
+    std::string ret;
+    llvm::raw_string_ostream os(ret);
+    if (NestedNameSpecifierLoc qualifier = d->getQualifierLoc())
+      os << Lexer::getSourceText(CharSourceRange::getTokenRange(qualifier.getSourceRange()), sm, ctx.getLangOpts());
+    PrintingPolicy pp(ctx.getLangOpts());
+    pp.SuppressTemplateArgsInCXXConstructors = true;
+    d->getDeclName().print(os, pp);
+    return os.str();
+  }
+
+  void addBlockEndHint(const Stmt *body, StringRef prefix, llvm::function_ref<std::string()> name) {
+    if (auto *cs = dyn_cast_or_null<CompoundStmt>(body))
+      addBlockEndHint(cs->getSourceRange(), prefix, name);
+  }
+
+  // Attach `// prefix name` after the closing brace of a block spanning at least
+  // 10 lines if nothing but `punct` follows the brace on its line.
+  void addBlockEndHint(SourceRange braces, StringRef prefix, llvm::function_ref<std::string()> name,
+                       StringRef punct = "") {
+    auto [begin_fid, begin_offset] = sm.getDecomposedLoc(sm.getFileLoc(braces.getBegin()));
+    auto [fid, offset] = sm.getDecomposedLoc(sm.getFileLoc(braces.getEnd()));
+    if (begin_fid != fid)
+      return;
+    bool invalid = false;
+    StringRef rest = sm.getBufferData(fid, &invalid).substr(offset).split('\n').first;
+    if (invalid || !rest.startswith("}"))
+      return;
+    StringRef trailing = rest.drop_front().trim();
+    if (trailing.size() && trailing != punct)
+      return;
+    if (sm.getLineNumber(fid, offset) < sm.getLineNumber(fid, begin_offset) + 9)
+      return;
+    std::string label = prefix.str(), suffix = name();
+    if (label.size() && suffix.size())
+      label += ' ';
+    label += suffix;
+    if (label.size() <= 60)
+      addHintAt(sm.getComposedLoc(fid, trailing.empty() ? offset + 1 : trailing.end() - rest.data() + offset),
+                InlayHintKind::BlockEnd, "// " + label);
+  }
+
+  // Attach a type hint to the right of r and other hints to the left. r must be
+  // spelled exactly in a file.
+  void addHint(SourceRange r, InlayHintKind kind, StringRef label) {
+    CharSourceRange csr = Lexer::makeFileCharRange(CharSourceRange::getTokenRange(r), sm, ctx.getLangOpts());
+    if (csr.isValid())
+      addHintAt(kind == InlayHintKind::Type ? csr.getEnd() : csr.getBegin(), kind, label);
+  }
+
+  void addHintAt(SourceLocation loc, InlayHintKind kind, StringRef label) {
+    if (sm.isInSystemHeader(loc))
+      return;
+    FileID fid;
+    Range range = fromCharSourceRange(sm, ctx.getLangOpts(), CharSourceRange::getCharRange(loc, loc), &fid);
+    if (IndexFile *db = param.consumeFile(fid))
+      db->inlay_hints.push_back({range.start, kind, intern(label)});
+  }
+};
+
 class IndexDataConsumer : public index::IndexDataConsumer {
 public:
   ASTContext *ctx;
@@ -627,11 +1530,7 @@ public:
 
   PrintingPolicy getDefaultPolicy() const {
     PrintingPolicy pp(ctx->getLangOpts());
-#if LLVM_VERSION_MAJOR >= 23 // llvmorg-22-init-25026-gf5f8435605ba
-    pp.AnonymousTagNameStyle = static_cast<unsigned>(PrintingPolicy::AnonymousTagMode::Plain);
-#else
-    pp.AnonymousTagLocations = false;
-#endif
+    setPlainAnonymousTag(pp);
     pp.TerseOutput = true;
     pp.PolishForDeclaration = true;
     pp.ConstantsAsWritten = true;
@@ -1226,6 +2125,16 @@ public:
           df.db->toFunc(getUsr(df.caller)).def.callees.push_back({df.loc, cusr, Kind::Func, df.role});
       }
     }
+    if (param.no_linkage) {
+      InlayHintVisitor(*ctx, param).TraverseDecl(ctx->getTranslationUnitDecl());
+      // Explicit instantiations may duplicate hints.
+      for (auto &[_, file] : param.uid2file)
+        if (file.db) {
+          std::sort(file.db->inlay_hints.begin(), file.db->inlay_hints.end());
+          file.db->inlay_hints.erase(std::unique(file.db->inlay_hints.begin(), file.db->inlay_hints.end()),
+                                     file.db->inlay_hints.end());
+        }
+    }
   }
 };
 
@@ -1370,7 +2279,7 @@ public:
 };
 } // namespace
 
-const int IndexFile::kMajorVersion = 21;
+const int IndexFile::kMajorVersion = 22;
 const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(const std::string &path, const std::string &contents, bool no_linkage)
@@ -1587,6 +2496,15 @@ void reflect(JsonReader &vis, DeclRef &v) {
   v.file_id = static_cast<int>(strtol(s + 1, &s, 10));
 }
 
+void reflect(JsonReader &vis, IndexInlayHint &v) {
+  std::string t = vis.getString();
+  char *s = const_cast<char *>(t.c_str());
+  v.pos = Pos::fromString(t);
+  s = strchr(s, '|');
+  v.kind = static_cast<InlayHintKind>(strtol(s + 1, &s, 10));
+  v.label = intern(s + 1);
+}
+
 void reflect(JsonWriter &vis, SymbolRef &v) {
   char buf[99];
   snprintf(buf, sizeof buf, "%s|%" PRIu64 "|%d|%d", v.range.toString().c_str(), v.usr, int(v.kind), int(v.role));
@@ -1606,6 +2524,10 @@ void reflect(JsonWriter &vis, DeclRef &v) {
   std::string s(buf);
   reflect(vis, s);
 }
+void reflect(JsonWriter &vis, IndexInlayHint &v) {
+  std::string s = v.pos.toString() + "|" + std::to_string(int(v.kind)) + "|" + v.label;
+  reflect(vis, s);
+}
 
 void reflect(BinaryReader &vis, SymbolRef &v) {
   reflect(vis, v.range);
@@ -1623,6 +2545,12 @@ void reflect(BinaryReader &vis, DeclRef &v) {
   reflect(vis, v.extent);
 }
 
+void reflect(BinaryReader &vis, IndexInlayHint &v) {
+  reflect(vis, v.pos);
+  reflect(vis, v.kind);
+  reflect(vis, v.label);
+}
+
 void reflect(BinaryWriter &vis, SymbolRef &v) {
   reflect(vis, v.range);
   reflect(vis, v.usr);
@@ -1637,5 +2565,10 @@ void reflect(BinaryWriter &vis, Use &v) {
 void reflect(BinaryWriter &vis, DeclRef &v) {
   reflect(vis, static_cast<Use &>(v));
   reflect(vis, v.extent);
+}
+void reflect(BinaryWriter &vis, IndexInlayHint &v) {
+  reflect(vis, v.pos);
+  reflect(vis, v.kind);
+  reflect(vis, v.label);
 }
 } // namespace ccls

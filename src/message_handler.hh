@@ -31,6 +31,10 @@ struct CodeActionParam {
   } context;
 };
 struct EmptyParam {};
+struct InlayHintParam {
+  TextDocumentIdentifier textDocument;
+  lsRange range;
+};
 struct DidOpenTextDocumentParam {
   TextDocumentItem textDocument;
 };
@@ -288,6 +292,7 @@ private:
   void textDocument_formatting(DocumentFormattingParam &, ReplyOnce &);
   void textDocument_hover(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_implementation(TextDocumentPositionParam &, ReplyOnce &);
+  void textDocument_inlayHint(InlayHintParam &, ReplyOnce &);
   void textDocument_onTypeFormatting(DocumentOnTypeFormattingParam &, ReplyOnce &);
   void textDocument_prepareCallHierarchy(TextDocumentPositionParam &, ReplyOnce &);
   void textDocument_prepareTypeHierarchy(TextDocumentPositionParam &, ReplyOnce &);
