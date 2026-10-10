@@ -238,6 +238,7 @@ target_sources(ccls PRIVATE
   src/messages/textDocument_formatting.cc
   src/messages/textDocument_document.cc
   src/messages/textDocument_hover.cc
+  src/messages/textDocument_inlayHint.cc
   src/messages/textDocument_references.cc
   src/messages/textDocument_rename.cc
   src/messages/textDocument_signatureHelp.cc

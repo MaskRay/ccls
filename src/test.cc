@@ -313,6 +313,11 @@ bool runIndexTests(const std::string &filter_path, bool enable_update) {
       actual.Parse(actual_output.c_str());
       rapidjson::Document expected;
       expected.Parse(expected_output.c_str());
+      // Don't compare top-level members missing from the expected output, e.g.
+      // inlay_hints in most tests.
+      if (actual.IsObject() && expected.IsObject() && !expected.ObjectEmpty())
+        for (auto it = actual.MemberBegin(); it != actual.MemberEnd();)
+          it = expected.HasMember(it->name) ? it + 1 : actual.EraseMember(it);
 
       if (actual == expected) {
         // std::cout << "[PASSED] " << path << std::endl;

@@ -35,6 +35,7 @@ namespace ccls {
 REFLECT_STRUCT(CodeActionParam::Context, diagnostics);
 REFLECT_STRUCT(CodeActionParam, textDocument, range, context);
 void reflect(JsonReader &, EmptyParam &) {}
+REFLECT_STRUCT(InlayHintParam, textDocument, range);
 REFLECT_STRUCT(TextDocumentParam, textDocument);
 REFLECT_STRUCT(DidOpenTextDocumentParam, textDocument);
 REFLECT_STRUCT(TextDocumentContentChangeEvent, range, rangeLength, text);
@@ -192,6 +193,7 @@ MessageHandler::MessageHandler() {
   bind("textDocument/formatting", &MessageHandler::textDocument_formatting);
   bind("textDocument/hover", &MessageHandler::textDocument_hover);
   bind("textDocument/implementation", &MessageHandler::textDocument_implementation);
+  bind("textDocument/inlayHint", &MessageHandler::textDocument_inlayHint);
   bind("textDocument/onTypeFormatting", &MessageHandler::textDocument_onTypeFormatting);
   bind("textDocument/prepareCallHierarchy", &MessageHandler::textDocument_prepareCallHierarchy);
   bind("textDocument/prepareTypeHierarchy", &MessageHandler::textDocument_prepareTypeHierarchy);

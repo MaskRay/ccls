@@ -123,6 +123,8 @@ struct Config {
     bool linkSupport = true;
     // ClientCapabilities.workspace.semanticTokens.refreshSupport
     bool semanticTokensRefresh = true;
+    // ClientCapabilities.workspace.inlayHint.refreshSupport
+    bool inlayHintRefresh = true;
 
     // If false, disable snippets and complete just the identifier part.
     // TextDocumentClientCapabilities.completion.completionItem.snippetSupport
@@ -303,6 +305,27 @@ struct Config {
     std::vector<std::string> whitelist;
   } index;
 
+  // Inlay hints are computed when function locals are indexed.
+  struct InlayHint {
+    // Show deduced types of auto variables, structured bindings and auto
+    // return types.
+    bool deducedTypes = true;
+
+    // Show parameter names at call sites.
+    bool parameterNames = true;
+
+    // Show designators of aggregate initializers, e.g. `.x=` in `Point{1, 2}`.
+    bool designators = true;
+
+    // Show `// name` after the closing brace of a block spanning at least 10
+    // lines, e.g. `// namespace foo`.
+    bool blockEnd = false;
+
+    // Omit type hints at least this long. 0 means no limit. Takes effect after
+    // reindexing.
+    int typeNameLimit = 32;
+  } inlayHint;
+
   struct Request {
     // If the document of a request has not been indexed, wait up to this many
     // milleseconds before reporting error.
@@ -346,12 +369,13 @@ REFLECT_STRUCT(Config::Index::Name, suppressUnwrittenScope);
 REFLECT_STRUCT(Config::Index, blacklist, comments, initialNoLinkage, initialBlacklist, initialWhitelist,
                maxInitializerLines, multiVersion, multiVersionBlacklist, multiVersionWhitelist, name, onChange,
                parametersInDeclarations, threads, trackDependency, whitelist);
+REFLECT_STRUCT(Config::InlayHint, deducedTypes, parameterNames, designators, blockEnd, typeNameLimit);
 REFLECT_STRUCT(Config::Request, timeout);
 REFLECT_STRUCT(Config::Session, maxNum);
 REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 REFLECT_STRUCT(Config::Xref, maxNum);
 REFLECT_STRUCT(Config, compilationDatabaseCommand, compilationDatabaseDirectory, cache, capabilities, clang, client,
-               codeLens, completion, diagnostics, highlight, index, request, session, workspaceSymbol, xref);
+               codeLens, completion, diagnostics, highlight, index, inlayHint, request, session, workspaceSymbol, xref);
 
 extern Config *g_config;
 

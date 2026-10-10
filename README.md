@@ -13,6 +13,7 @@ ccls, which originates from [cquery](https://github.com/cquery-project/cquery), 
   * [symbol rename](src/messages/textDocument_rename.cc)
   * [document symbols](src/messages/textDocument_document.cc) and approximate search of [workspace symbol](src/messages/workspace.cc)
   * [hover information](src/messages/textDocument_hover.cc)
+  * [inlay hints](src/messages/textDocument_inlayHint.cc) for parameter names, deduced types, designators and block ends
   * diagnostics and code actions (clang FixIts)
   * semantic highlighting and preprocessor skipped regions
   * semantic navigation: `$ccls/navigate`
