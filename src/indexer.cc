@@ -389,6 +389,12 @@ try_again:
     tp = cast<SubstTemplateTypeParmType>(tp)->getReplacementType().getTypePtr();
     goto try_again;
 
+#if LLVM_VERSION_MAJOR >= 14 // llvmorg-14-init-12821-gaf27466c5039
+  case Type::Using:
+    tp = cast<UsingType>(tp)->desugar().getTypePtr();
+    goto try_again;
+#endif
+
   case Type::InjectedClassName:
     d = cast<InjectedClassNameType>(tp)->getDecl();
     break;
