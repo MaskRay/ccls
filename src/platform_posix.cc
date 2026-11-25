@@ -27,6 +27,8 @@
 #include <malloc.h>
 #endif
 
+#include <clang/Basic/Stack.h>
+
 #include <llvm/ADT/SmallString.h>
 #include <llvm/Support/Path.h>
 
@@ -61,18 +63,32 @@ void traceMe() {
     raise(traceme[0] == 's' ? SIGSTOP : SIGTSTP);
 }
 
+struct ThreadInfo {
+  void *(*fn)(void *);
+  void *arg;
+};
+
+void *threadWrapper(void *arg) {
+  ThreadInfo ti = *(ThreadInfo *)arg;
+  delete (ThreadInfo *)arg;
+#if LLVM_VERSION_MAJOR >= 10  // rL369940
+  clang::noteBottomOfStack(); // per-thread, needed to avoid stack exhaustion
+#endif
+  return ti.fn(ti.arg);
+}
+
 void spawnThread(void *(*fn)(void *), void *arg) {
   pthread_t thd;
   pthread_attr_t attr;
   struct rlimit rlim;
-  size_t stack_size = 4 * 1024 * 1024;
+  size_t stack_size = clang::DesiredStackSize;
   if (getrlimit(RLIMIT_STACK, &rlim) == 0 && rlim.rlim_cur != RLIM_INFINITY)
     stack_size = rlim.rlim_cur;
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
   pthread_attr_setstacksize(&attr, stack_size);
   pipeline::threadEnter();
-  pthread_create(&thd, &attr, fn, arg);
+  pthread_create(&thd, &attr, threadWrapper, new ThreadInfo{fn, arg});
   pthread_attr_destroy(&attr);
 }
 } // namespace ccls
