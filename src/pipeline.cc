@@ -206,7 +206,11 @@ bool indexer_Parse(SemaManager *completion, WorkingFiles *wfiles, Project *proje
   }
 
   struct RAII {
-    ~RAII() { stats.completed++; }
+    ~RAII() {
+      stats.completed++;
+      if (main_waiter)
+        main_waiter->cv.notify_one();
+    }
   } raii;
   if (!matcher.matches(request.path)) {
     LOG_IF_S(INFO, loud) << "skip " << request.path;
@@ -756,10 +760,13 @@ void mainLoop() {
         freeUnusedMemory();
         has_indexed = false;
       }
+      auto progress_changed = [&last_completed]() {
+        return stats.completed.load(std::memory_order_relaxed) != last_completed;
+      };
       if (backlog.empty())
-        main_waiter->wait(g_quit, on_indexed, on_request);
+        main_waiter->waitWithCondition(g_quit, progress_changed, on_indexed, on_request);
       else
-        main_waiter->waitUntil(backlog[0].deadline, on_indexed, on_request);
+        main_waiter->waitUntilWithCondition(backlog[0].deadline, progress_changed, on_indexed, on_request);
     }
   }
 

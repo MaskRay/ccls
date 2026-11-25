@@ -51,10 +51,20 @@ struct MultiQueueWaiter {
     return false;
   }
 
+  template <typename Predicate>
+  static bool shouldWake(Predicate &predicate, std::initializer_list<BaseThreadQueue *> queues) {
+    return predicate() || hasState(queues);
+  }
+
   template <typename... BaseThreadQueue> bool wait(std::atomic<bool> &quit, BaseThreadQueue... queues) {
+    return waitWithCondition(quit, [] { return false; }, queues...);
+  }
+
+  template <typename Predicate, typename... BaseThreadQueue>
+  bool waitWithCondition(std::atomic<bool> &quit, Predicate &&predicate, BaseThreadQueue... queues) {
     MultiQueueLock<BaseThreadQueue...> l(queues...);
     while (!quit.load(std::memory_order_relaxed)) {
-      if (hasState({queues...}))
+      if (shouldWake(predicate, {queues...}))
         return false;
       cv.wait(l);
     }
@@ -63,8 +73,14 @@ struct MultiQueueWaiter {
 
   template <typename... BaseThreadQueue>
   void waitUntil(std::chrono::steady_clock::time_point t, BaseThreadQueue... queues) {
+    waitUntilWithCondition(t, [] { return false; }, queues...);
+  }
+
+  template <typename Predicate, typename... BaseThreadQueue>
+  void waitUntilWithCondition(std::chrono::steady_clock::time_point t, Predicate &&predicate,
+                              BaseThreadQueue... queues) {
     MultiQueueLock<BaseThreadQueue...> l(queues...);
-    if (!hasState({queues...}))
+    if (!shouldWake(predicate, {queues...}))
       cv.wait_until(l, t);
   }
 };
